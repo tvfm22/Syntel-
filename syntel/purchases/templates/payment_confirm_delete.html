@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تأیید حذف پرداخت{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-exclamation-triangle"></i> تأیید حذف پرداخت
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="icon fas fa-exclamation-triangle"></i> هشدار!</h5>
+                        آیا مطمئن هستید که می‌خواهید این پرداخت را حذف کنید؟ این عملیات قابل برگرداندن نیست.
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">جزئیات پرداخت</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">شماره پرداخت:</dt>
+                                <dd class="col-sm-8">{{ payment.payment_number }}</dd>
+
+                                <dt class="col-sm-4">فاکتور:</dt>
+                                <dd class="col-sm-8">{{ payment.invoice.invoice_number }}</dd>
+
+                                <dt class="col-sm-4">مبلغ:</dt>
+                                <dd class="col-sm-8">{{ payment.amount|floatformat:0 }} تومان</dd>
+
+                                <dt class="col-sm-4">روش پرداخت:</dt>
+                                <dd class="col-sm-8">{{ payment.payment_method.name }}</dd>
+
+                                <dt class="col-sm-4">وضعیت:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge badge-{{ payment.payment_status|lower }}">
+                                        {{ payment.get_payment_status_display }}
+                                    </span>
+                                </dd>
+
+                                <dt class="col-sm-4">تاریخ پرداخت:</dt>
+                                <dd class="col-sm-8">{{ payment.payment_date|date:'Y/m/d' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> بله، حذف شود
+                            </button>
+                            <a href="{% url 'payment_detail' payment.id %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> انصراف
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge-pending { background-color: #ffc107; color: #212529; }
+.badge-completed { background-color: #28a745; }
+.badge-failed { background-color: #dc3545; }
+.badge-cancelled { background-color: #6c757d; }
+.badge-refunded { background-color: #17a2b8; }
+</style>
+{% endblock %}

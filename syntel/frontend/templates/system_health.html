@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>
+                        {{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Overall Status -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-{% if overall_status == 'healthy' %}success{% else %}warning{% endif %} text-center" role="alert">
+                                <h4 class="alert-heading">
+                                    {% if overall_status == 'healthy' %}
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        سیستم سالم است
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        نیاز به بررسی دارد
+                                    {% endif %}
+                                </h4>
+                                <p class="mb-0">آخرین بررسی: {{ now|date:"Y/m/d H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Health Checks -->
+                    <div class="row">
+                        {% for check_name, check_data in health_status.items %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card border-{% if check_data.status == 'healthy' %}success{% elif check_data.status == 'warning' %}warning{% else %}danger{% endif %}">
+                                <div class="card-header bg-{% if check_data.status == 'healthy' %}success{% elif check_data.status == 'warning' %}warning{% else %}danger{% endif %} text-white">
+                                    <h5 class="card-title mb-0">
+                                        {% if check_data.status == 'healthy' %}
+                                            <i class="fas fa-check-circle me-2"></i>
+                                        {% elif check_data.status == 'warning' %}
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-times-circle me-2"></i>
+                                        {% endif %}
+                                        {{ check_name|title }}
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">{{ check_data.message }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            وضعیت:
+                                            <span class="badge bg-{% if check_data.status == 'healthy' %}success{% elif check_data.status == 'warning' %}warning{% else %}danger{% endif %}">
+                                                {% if check_data.status == 'healthy' %}
+                                                    سالم
+                                                {% elif check_data.status == 'warning' %}
+                                                    هشدار
+                                                {% else %}
+                                                    خطا
+                                                {% endif %}
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">اقدامات</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <a href="{% url 'backup_management' %}" class="btn btn-primary w-100">
+                                                <i class="fas fa-database me-2"></i>
+                                                مدیریت پشتیبان‌گیری
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button onclick="location.reload()" class="btn btn-info w-100">
+                                                <i class="fas fa-sync me-2"></i>
+                                                بررسی مجدد
+                                            </button>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100">
+                                                <i class="fas fa-home me-2"></i>
+                                                بازگشت به داشبورد
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Information -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">اطلاعات سیستم</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>برنامه</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Django:</strong> {{ django_version }}</li>
+                                                <li><strong>Python:</strong> {{ python_version }}</li>
+                                                <li><strong>سیستم عامل:</strong> {{ os_info }}</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>پایگاه داده</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>نوع:</strong> PostgreSQL</li>
+                                                <li><strong>نام:</strong> {{ database_name }}</li>
+                                                <li><strong>هاست:</strong> {{ database_host }}</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.alert {
+    border-radius: 0.375rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %}

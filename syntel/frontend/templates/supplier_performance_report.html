@@ -1,0 +1,475 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}گزارش عملکرد تأمین‌کنندگان{% endblock %}
+
+{% block content %}
+<style>
+.performance-container {
+    padding: 20px;
+}
+
+.report-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.report-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+}
+
+.report-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    opacity: 0.8;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+}
+
+.performance-distribution {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.distribution-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 20px 0;
+    text-align: center;
+}
+
+.distribution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.distribution-item {
+    text-align: center;
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+}
+
+.distribution-item.excellent { background: linear-gradient(135deg, #28a745, #20c997); }
+.distribution-item.very-good { background: linear-gradient(135deg, #17a2b8, #28a745); }
+.distribution-item.good { background: linear-gradient(135deg, #ffc107, #28a745); }
+.distribution-item.satisfactory { background: linear-gradient(135deg, #fd7e14, #ffc107); }
+.distribution-item.needs-improvement { background: linear-gradient(135deg, #dc3545, #fd7e14); }
+.distribution-item.poor { background: linear-gradient(135deg, #dc3545, #6c757d); }
+
+.distribution-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.distribution-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.supplier-table {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 25px;
+}
+
+.table-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.table-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.supplier-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.supplier-table th,
+.supplier-table td {
+    padding: 12px 15px;
+    text-align: right;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.supplier-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.supplier-table td {
+    font-size: 0.9rem;
+}
+
+.supplier-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.rating-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: white;
+}
+
+.rating-excellent { background: #28a745; }
+.rating-very-good { background: #17a2b8; }
+.rating-good { background: #ffc107; color: #212529; }
+.rating-satisfactory { background: #fd7e14; }
+.rating-needs-improvement { background: #dc3545; }
+.rating-poor { background: #6c757d; }
+
+.performance-alerts {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.alerts-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 20px 0;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.alert-danger { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+.alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; color: #856404; }
+.alert-info { background: #d1ecf1; border-left: 4px solid #17a2b8; color: #0c5460; }
+
+.alert-icon {
+    font-size: 1.1rem;
+}
+
+.btn-export {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.3s ease;
+}
+
+.btn-export:hover {
+    background: #218838;
+}
+
+@media (max-width: 768px) {
+    .performance-container {
+        padding: 15px;
+    }
+
+    .report-header {
+        padding: 20px;
+    }
+
+    .report-title {
+        font-size: 1.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .distribution-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .supplier-table {
+        font-size: 0.8rem;
+    }
+
+    .supplier-table th,
+    .supplier-table td {
+        padding: 8px 10px;
+    }
+}
+</style>
+
+<div class="performance-container">
+    <div class="report-header">
+        <h1 class="report-title">گزارش عملکرد تأمین‌کنندگان</h1>
+        <p class="report-subtitle">تحلیل جامع عملکرد و ارزیابی تأمین‌کنندگان سیستم</p>
+    </div>
+
+    <!-- Key Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value">{{ total_suppliers }}</div>
+            <p class="stat-label">تعداد کل تأمین‌کنندگان</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-value">{{ avg_rating|floatformat:1 }}</div>
+            <p class="stat-label">میانگین امتیاز عملکرد</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🚚</div>
+            <div class="stat-value">{{ avg_on_time_delivery|floatformat:1 }}%</div>
+            <p class="stat-label">میانگین تحویل به موقع</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-value">{{ avg_payment_reliability|floatformat:1 }}</div>
+            <p class="stat-label">قابلیت اطمینان پرداخت</p>
+        </div>
+    </div>
+
+    <!-- Performance Distribution -->
+    <div class="performance-distribution">
+        <h2 class="distribution-title">توزیع عملکرد تأمین‌کنندگان</h2>
+        <div class="distribution-grid">
+            <div class="distribution-item excellent">
+                <div class="distribution-count">{{ performance_distribution.excellent }}</div>
+                <div class="distribution-label">عالی</div>
+            </div>
+            <div class="distribution-item very-good">
+                <div class="distribution-count">{{ performance_distribution.very_good }}</div>
+                <div class="distribution-label">خیلی خوب</div>
+            </div>
+            <div class="distribution-item good">
+                <div class="distribution-count">{{ performance_distribution.good }}</div>
+                <div class="distribution-label">خوب</div>
+            </div>
+            <div class="distribution-item satisfactory">
+                <div class="distribution-count">{{ performance_distribution.satisfactory }}</div>
+                <div class="distribution-label">قابل قبول</div>
+            </div>
+            <div class="distribution-item needs-improvement">
+                <div class="distribution-count">{{ performance_distribution.needs_improvement }}</div>
+                <div class="distribution-label">نیاز به بهبود</div>
+            </div>
+            <div class="distribution-item poor">
+                <div class="distribution-count">{{ performance_distribution.poor }}</div>
+                <div class="distribution-label">ضعیف</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    {% if top_performers %}
+    <div class="supplier-table">
+        <div class="table-header">
+            <h2 class="table-title">بهترین تأمین‌کنندگان</h2>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>نام تأمین‌کننده</th>
+                        <th>امتیاز عملکرد</th>
+                        <th>تحویل به موقع</th>
+                        <th>کیفیت</th>
+                        <th>تعداد سفارشات</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in top_performers %}
+                    <tr>
+                        <td>
+                            <div class="supplier-name">{{ supplier.name }}</div>
+                            <small class="text-muted">{{ supplier.supplier_code }}</small>
+                        </td>
+                        <td>
+                            <span class="rating-badge rating-excellent">{{ supplier.rating|floatformat:1 }}</span>
+                        </td>
+                        <td>{{ supplier.on_time_delivery_rate|floatformat:1 }}%</td>
+                        <td>{{ supplier.quality_rating|floatformat:1 }}</td>
+                        <td>{{ supplier.total_orders }}</td>
+                        <td>{{ supplier.get_status_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Needs Improvement -->
+    {% if needs_improvement %}
+    <div class="supplier-table">
+        <div class="table-header">
+            <h2 class="table-title">تأمین‌کنندگانی که نیاز به بهبود دارند</h2>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>نام تأمین‌کننده</th>
+                        <th>امتیاز عملکرد</th>
+                        <th>تحویل به موقع</th>
+                        <th>کیفیت</th>
+                        <th>مشکلات</th>
+                        <th>اقدامات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in needs_improvement %}
+                    <tr>
+                        <td>
+                            <div class="supplier-name">{{ supplier.name }}</div>
+                            <small class="text-muted">{{ supplier.supplier_code }}</small>
+                        </td>
+                        <td>
+                            <span class="rating-badge rating-{% if supplier.rating >= 3 %}satisfactory{% elif supplier.rating >= 2 %}needs-improvement{% else %}poor{% endif %}">{{ supplier.rating|floatformat:1 }}</span>
+                        </td>
+                        <td>{{ supplier.on_time_delivery_rate|floatformat:1 }}%</td>
+                        <td>{{ supplier.quality_rating|floatformat:1 }}</td>
+                        <td>
+                            {% for alert in supplier.get_performance_alerts %}
+                                <small class="text-danger">{{ alert.message }}</small><br>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{% url 'supplier_detail' supplier.id %}" class="btn btn-sm btn-outline-primary">مشاهده</a>
+                            <a href="{% url 'supplier_evaluation_create_general' %}" class="btn btn-sm btn-outline-success">ارزیابی</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Suppliers Performance Table -->
+    <div class="supplier-table">
+        <div class="table-header">
+            <h2 class="table-title">جدول عملکرد همه تأمین‌کنندگان</h2>
+            <a href="#" class="btn-export">
+                <i class="fas fa-download"></i> خروجی Excel
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>نام تأمین‌کننده</th>
+                        <th>کد</th>
+                        <th>امتیاز کلی</th>
+                        <th>تحویل به موقع</th>
+                        <th>میانگین تأخیر</th>
+                        <th>کیفیت</th>
+                        <th>قابلیت اطمینان پرداخت</th>
+                        <th>تعداد سفارشات</th>
+                        <th>مجموع مبلغ</th>
+                        <th>وضعیت</th>
+                        <th>اقدامات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers %}
+                    <tr>
+                        <td>
+                            <div class="supplier-name">{{ supplier.name }}</div>
+                        </td>
+                        <td>{{ supplier.supplier_code }}</td>
+                        <td>
+                            <span class="rating-badge rating-{{ supplier.get_performance_level }}">{{ supplier.rating|floatformat:1 }}</span>
+                        </td>
+                        <td>{{ supplier.on_time_delivery_rate|floatformat:1 }}%</td>
+                        <td>{{ supplier.avg_delivery_delay_days|floatformat:1 }} روز</td>
+                        <td>{{ supplier.quality_rating|floatformat:1 }}</td>
+                        <td>{{ supplier.payment_reliability_score|floatformat:1 }}</td>
+                        <td>{{ supplier.total_orders }}</td>
+                        <td>{{ supplier.total_amount|intcomma }} تومان</td>
+                        <td>{{ supplier.get_status_display }}</td>
+                        <td>
+                            <a href="{% url 'supplier_detail' supplier.id %}" class="btn btn-sm btn-outline-primary">مشاهده</a>
+                            <a href="{% url 'supplier_evaluation_all_list' %}?supplier={{ supplier.name }}" class="btn btn-sm btn-outline-info">ارزیابی‌ها</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

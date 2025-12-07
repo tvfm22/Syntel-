@@ -1,0 +1,797 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block title %}انتخاب تأمین‌کننده{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-title-section">
+            <h1 class="page-title">
+                <span class="title-icon">🏪</span>
+                {% if selected_supplier %}تأمین‌کننده: {{ selected_supplier.name }}{% else %}انتخاب تأمین‌کننده{% endif %}
+            </h1>
+            <p class="page-subtitle">
+                {% if selected_supplier %}مشاهده فاکتورها و بدهی تأمین‌کننده{% else %}انتخاب تأمین‌کننده و مشاهده اطلاعات{% endif %}
+            </p>
+        </div>
+        <div class="page-actions">
+            {% if selected_supplier %}
+            <a href="{% url 'invoice_register' %}?supplier_id={{ selected_supplier.id }}" class="action-btn action-btn-primary">
+                <span class="btn-icon">➕</span>
+                فاکتور جدید
+            </a>
+            <a href="{% url 'supplier_select' %}" class="action-btn action-btn-secondary">
+                <span class="btn-icon">🔄</span>
+                تغییر تأمین‌کننده
+            </a>
+            {% else %}
+            <a href="{% url 'supplier_create' %}" class="action-btn action-btn-primary">
+                <span class="btn-icon">➕</span>
+                تأمین‌کننده جدید
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if not selected_supplier %}
+<!-- Statistics Cards -->
+<div class="stats-row">
+    <div class="stat-box stat-box-total">
+        <div class="stat-icon-wrapper">📊</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ suppliers|length }}</span>
+            <span class="stat-label">کل تأمین‌کنندگان</span>
+        </div>
+    </div>
+    <div class="stat-box stat-box-active">
+        <div class="stat-icon-wrapper">✅</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ suppliers|length }}</span>
+            <span class="stat-label">تأمین‌کنندگان فعال</span>
+        </div>
+    </div>
+</div>
+
+<!-- Suppliers List (Card View for Mobile) -->
+<div class="suppliers-container">
+    {% for supplier in suppliers %}
+    <div class="supplier-card" data-status="{{ supplier.status }}">
+        <div class="supplier-header">
+            <div class="supplier-number">
+                <span class="supplier-icon">🏢</span>
+                <a href="?supplier_id={{ supplier.id }}">{{ supplier.name }}</a>
+            </div>
+            <div class="supplier-badges">
+                <span class="status-badge status-{{ supplier.status }}">
+                    {{ supplier.get_status_display }}
+                </span>
+                <span class="type-badge type-{{ supplier.supplier_type }}">
+                    {{ supplier.get_supplier_type_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="supplier-body">
+            <div class="supplier-details">
+                <div class="detail-item">
+                    <span class="detail-icon">📞</span>
+                    <div class="detail-content">
+                        <span class="detail-label">تلفن</span>
+                        <span class="detail-value">{{ supplier.phone|default:"-" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">📧</span>
+                    <div class="detail-content">
+                        <span class="detail-label">ایمیل</span>
+                        <span class="detail-value">{{ supplier.email|default:"-" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">👤</span>
+                    <div class="detail-content">
+                        <span class="detail-label">شخص تماس</span>
+                        <span class="detail-value">{{ supplier.contact_person|default:"-" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🏙️</span>
+                    <div class="detail-content">
+                        <span class="detail-label">شهر</span>
+                        <span class="detail-value">{{ supplier.city|default:"-" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <h3>تأمین‌کننده‌ای یافت نشد</h3>
+        <p>هیچ تأمین‌کننده فعالی یافت نشد.</p>
+        <a href="{% url 'supplier_create' %}" class="action-btn action-btn-primary">
+            <span class="btn-icon">➕</span>
+            اولین تأمین‌کننده را اضافه کنید
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Table View for Desktop -->
+<div class="table-view-container">
+    <div class="table-wrapper">
+        <table class="suppliers-table">
+            <thead>
+                <tr>
+                    <th>نام تأمین‌کننده</th>
+                    <th>نوع</th>
+                    <th>وضعیت</th>
+                    <th>شخص تماس</th>
+                    <th>تلفن</th>
+                    <th>ایمیل</th>
+                    <th>شهر</th>
+                    <th>انتخاب</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr data-status="{{ supplier.status }}">
+                    <td>
+                        <a href="?supplier_id={{ supplier.id }}" class="supplier-link">
+                            {{ supplier.name }}
+                        </a>
+                    </td>
+                    <td>{{ supplier.get_supplier_type_display }}</td>
+                    <td>
+                        <span class="status-badge status-{{ supplier.status }}">
+                            {{ supplier.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ supplier.contact_person|default:"-" }}</td>
+                    <td>{{ supplier.phone|default:"-" }}</td>
+                    <td>{{ supplier.email|default:"-" }}</td>
+                    <td>{{ supplier.city|default:"-" }}</td>
+                    <td>
+                        <a href="?supplier_id={{ supplier.id }}" class="tbl-action-btn">انتخاب</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-table-cell">
+                        <div class="empty-table-message">🏢 تأمین‌کننده‌ای یافت نشد</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+<!-- Selected Supplier Statistics -->
+<div class="stats-row">
+    <div class="stat-box stat-box-total">
+        <div class="stat-icon-wrapper">📄</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ invoices|length }}</span>
+            <span class="stat-label">کل فاکتورها</span>
+        </div>
+    </div>
+    <div class="stat-box stat-box-owed">
+        <div class="stat-icon-wrapper">💰</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_owed|floatformat:0|intcomma }}</span>
+            <span class="stat-label">مجموع بدهی (تومان)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Supplier Info Card -->
+<div class="supplier-info-card">
+    <div class="supplier-header">
+        <div class="supplier-number">
+            <span class="supplier-icon">🏢</span>
+            {{ selected_supplier.name }}
+        </div>
+        <div class="supplier-badges">
+            <span class="status-badge status-{{ selected_supplier.status }}">
+                {{ selected_supplier.get_status_display }}
+            </span>
+            <span class="type-badge type-{{ selected_supplier.supplier_type }}">
+                {{ selected_supplier.get_supplier_type_display }}
+            </span>
+        </div>
+    </div>
+    <div class="supplier-body">
+        <div class="supplier-details">
+            <div class="detail-item">
+                <span class="detail-icon">📞</span>
+                <div class="detail-content">
+                    <span class="detail-label">تلفن</span>
+                    <span class="detail-value">{{ selected_supplier.phone|default:"-" }}</span>
+                </div>
+            </div>
+            <div class="detail-item">
+                <span class="detail-icon">📧</span>
+                <div class="detail-content">
+                    <span class="detail-label">ایمیل</span>
+                    <span class="detail-value">{{ selected_supplier.email|default:"-" }}</span>
+                </div>
+            </div>
+            <div class="detail-item">
+                <span class="detail-icon">👤</span>
+                <div class="detail-content">
+                    <span class="detail-label">شخص تماس</span>
+                    <span class="detail-value">{{ selected_supplier.contact_person|default:"-" }}</span>
+                </div>
+            </div>
+            <div class="detail-item">
+                <span class="detail-icon">🏙️</span>
+                <div class="detail-content">
+                    <span class="detail-label">شهر</span>
+                    <span class="detail-value">{{ selected_supplier.city|default:"-" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoices List (Card View for Mobile) -->
+<div class="invoices-container">
+    {% for invoice in invoices %}
+    <div class="invoice-card" data-status="{{ invoice.status }}">
+        <div class="invoice-header">
+            <div class="invoice-number">
+                <span class="invoice-icon">📋</span>
+                <a href="{% url 'invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a>
+            </div>
+            <div class="invoice-badges">
+                <span class="status-badge status-{{ invoice.status }}">
+                    {{ invoice.get_status_display }}
+                </span>
+                <span class="payment-badge payment-{{ invoice.payment_status }}">
+                    {{ invoice.get_payment_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="invoice-body">
+            <div class="invoice-details">
+                <div class="detail-item">
+                    <span class="detail-icon">📅</span>
+                    <div class="detail-content">
+                        <span class="detail-label">تاریخ فاکتور</span>
+                        <span class="detail-value">{{ invoice.invoice_date|date:"Y/m/d" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item detail-amount">
+                    <span class="detail-icon">💵</span>
+                    <div class="detail-content">
+                        <span class="detail-label">مبلغ</span>
+                        <span class="detail-value">{{ invoice.total_amount|floatformat:0|intcomma }} تومان</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="invoice-actions">
+                <a href="{% url 'invoice_detail' invoice.id %}" class="tbl-action-btn" title="مشاهده">👁️</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <h3>فاکتوری یافت نشد</h3>
+        <p>هیچ فاکتوری برای این تأمین‌کننده یافت نشد.</p>
+        <a href="{% url 'invoice_register' %}?supplier_id={{ selected_supplier.id }}" class="action-btn action-btn-primary">
+            <span class="btn-icon">➕</span>
+            فاکتور جدید ایجاد کنید
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Table View for Desktop -->
+<div class="table-view-container">
+    <div class="table-wrapper">
+        <table class="invoices-table">
+            <thead>
+                <tr>
+                    <th>شماره فاکتور</th>
+                    <th>تاریخ فاکتور</th>
+                    <th>مبلغ</th>
+                    <th>وضعیت</th>
+                    <th>پرداخت</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr data-status="{{ invoice.status }}">
+                    <td>
+                        <a href="{% url 'invoice_detail' invoice.id %}" class="invoice-link">
+                            {{ invoice.invoice_number }}
+                        </a>
+                    </td>
+                    <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
+                    <td class="amount-cell">{{ invoice.total_amount|floatformat:0|intcomma }} تومان</td>
+                    <td>
+                        <span class="status-badge status-{{ invoice.status }}">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="payment-badge payment-{{ invoice.payment_status }}">
+                            {{ invoice.get_payment_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{% url 'invoice_detail' invoice.id %}" class="tbl-action-btn" title="مشاهده">👁️</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-table-cell">
+                        <div class="empty-table-message">📭 فاکتوری یافت نشد</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Page Header */
+.page-header {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.page-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-title-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.title-icon {
+    font-size: 2.2rem;
+}
+
+.page-subtitle {
+    color: #666;
+    margin: 5px 0 0 0;
+    font-size: 0.95rem;
+}
+
+.page-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.action-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.action-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.action-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.action-btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+/* Statistics Cards */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.stat-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.3s ease;
+}
+
+.stat-box:hover {
+    transform: translateY(-2px);
+}
+
+.stat-icon-wrapper {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.stat-box-total .stat-icon-wrapper {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.stat-box-active .stat-icon-wrapper {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.stat-box-owed .stat-icon-wrapper {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Card Views */
+.suppliers-container, .invoices-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.supplier-card, .invoice-card, .supplier-info-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.supplier-card:hover, .invoice-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.supplier-header, .invoice-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.supplier-number, .invoice-number {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.supplier-icon, .invoice-icon {
+    font-size: 1.5rem;
+}
+
+.supplier-number a, .invoice-number a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.supplier-badges, .invoice-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.status-badge, .type-badge, .payment-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.status-inactive {
+    background: rgba(255, 0, 0, 0.2);
+    color: white;
+}
+
+.status-pending {
+    background: rgba(255, 165, 0, 0.2);
+    color: white;
+}
+
+.status-blacklisted {
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+.type-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.payment-paid {
+    background: rgba(34, 197, 94, 0.2);
+    color: #16a34a;
+}
+
+.payment-partial {
+    background: rgba(245, 158, 11, 0.2);
+    color: #d97706;
+}
+
+.payment-unpaid {
+    background: rgba(239, 68, 68, 0.2);
+    color: #dc2626;
+}
+
+.supplier-body, .invoice-body {
+    padding: 15px;
+}
+
+.supplier-details, .invoice-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.detail-icon {
+    font-size: 1.2rem;
+    width: 20px;
+}
+
+.detail-content {
+    flex: 1;
+}
+
+.detail-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.detail-value {
+    font-weight: 500;
+    color: #333;
+}
+
+.detail-amount .detail-value {
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.supplier-actions, .invoice-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.tbl-action-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+    color: #333;
+}
+
+.tbl-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Table View (Desktop) */
+.table-view-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.suppliers-table, .invoices-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.suppliers-table thead, .invoices-table thead {
+    background: #f8f9fa;
+}
+
+.suppliers-table th, .invoices-table th {
+    padding: 15px;
+    text-align: right;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.suppliers-table td, .invoices-table td {
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.suppliers-table tbody tr, .invoices-table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+.suppliers-table tbody tr:hover, .invoices-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.supplier-link, .invoice-link {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.supplier-link:hover, .invoice-link:hover {
+    text-decoration: underline;
+}
+
+.amount-cell {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.table-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.empty-table-cell {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-table-message {
+    font-size: 1.2rem;
+    color: #666;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    margin-bottom: 20px;
+    color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header-content {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .page-actions {
+        justify-content: center;
+    }
+
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    .suppliers-container, .invoices-container {
+        grid-template-columns: 1fr;
+    }
+
+    .supplier-details, .invoice-details {
+        grid-template-columns: 1fr;
+    }
+
+    .supplier-actions, .invoice-actions {
+        justify-content: center;
+    }
+
+    .table-view-container {
+        display: none; /* Hide table on mobile, show cards */
+    }
+}
+
+@media (min-width: 769px) {
+    .suppliers-container, .invoices-container {
+        display: none; /* Hide cards on desktop, show table */
+    }
+}
+</style>
+
+{% endblock %}

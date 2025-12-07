@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تحلیل تأمین‌کنندگان{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+.performance-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.score-excellent { color: #28a745; }
+.score-good { color: #007bff; }
+.score-average { color: #ffc107; }
+.score-poor { color: #fd7e14; }
+.score-critical { color: #dc3545; }
+.rating-stars {
+    color: #ffc107;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-truck"></i> تحلیل عملکرد تأمین‌کنندگان
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Supplier Performance Table -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">رتبه‌بندی تأمین‌کنندگان بر اساس عملکرد</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>رتبه</th>
+                                                    <th>نام تأمین‌کننده</th>
+                                                    <th>امتیاز کلی</th>
+                                                    <th>کیفیت</th>
+                                                    <th>به موقع بودن</th>
+                                                    <th>قیمت</th>
+                                                    <th>نرخ تکمیل سفارش</th>
+                                                    <th>نرخ پرداخت</th>
+                                                    <th>کل هزینه (تومان)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for perf in supplier_performance %}
+                                                <tr>
+                                                    <td>{{ forloop.counter }}</td>
+                                                    <td>
+                                                        <strong>{{ perf.supplier.name }}</strong><br>
+                                                        <small class="text-muted">{{ perf.supplier.contact_person }} - {{ perf.supplier.phone }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="performance-score {% if perf.overall_score >= 80 %}score-excellent{% elif perf.overall_score >= 70 %}score-good{% elif perf.overall_score >= 60 %}score-average{% elif perf.overall_score >= 50 %}score-poor{% else %}score-critical{% endif %}">
+                                                            {{ perf.overall_score|floatformat:1 }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {% for i in "12345"|make_list %}
+                                                            {% if forloop.counter <= perf.quality_rating|add:0 %}
+                                                                <i class="fas fa-star rating-stars"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <br><small>{{ perf.quality_rating|default:0|floatformat:1 }}</small>
+                                                    </td>
+                                                    <td>
+                                                        {% for i in "12345"|make_list %}
+                                                            {% if forloop.counter <= perf.timeliness_rating|add:0 %}
+                                                                <i class="fas fa-star rating-stars"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <br><small>{{ perf.timeliness_rating|default:0|floatformat:1 }}</small>
+                                                    </td>
+                                                    <td>
+                                                        {% for i in "12345"|make_list %}
+                                                            {% if forloop.counter <= perf.price_rating|add:0 %}
+                                                                <i class="fas fa-star rating-stars"></i>
+                                                            {% else %}
+                                                                <i class="far fa-star"></i>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        <br><small>{{ perf.price_rating|default:0|floatformat:1 }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="progress" style="height: 20px;">
+                                                            <div class="progress-bar bg-success" role="progressbar"
+                                                                 style="width: {{ perf.completion_rate|floatformat:0 }}%"
+                                                                 aria-valuenow="{{ perf.completion_rate|floatformat:0 }}"
+                                                                 aria-valuemin="0" aria-valuemax="100">
+                                                                {{ perf.completion_rate|floatformat:0 }}%
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="progress" style="height: 20px;">
+                                                            <div class="progress-bar bg-info" role="progressbar"
+                                                                 style="width: {{ perf.payment_rate|floatformat:0 }}%"
+                                                                 aria-valuenow="{{ perf.payment_rate|floatformat:0 }}"
+                                                                 aria-valuemin="0" aria-valuemax="100">
+                                                                {{ perf.payment_rate|floatformat:0 }}%
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ perf.supplier.total_spent|floatformat:0 }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="9" class="text-center text-muted">داده‌ای یافت نشد</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Distribution -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">توزیع امتیازات کیفیت</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="qualityChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">توزیع امتیازات به موقع بودن</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="timelinessChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supplier Insights -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">بینش‌های تأمین‌کنندگان</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="alert alert-success">
+                                                <h6><i class="fas fa-trophy"></i> بهترین تأمین‌کننده</h6>
+                                                {% if supplier_performance %}
+                                                    <strong>{{ supplier_performance.0.supplier.name }}</strong><br>
+                                                    امتیاز: {{ supplier_performance.0.overall_score|floatformat:1 }}
+                                                {% else %}
+                                                    داده‌ای موجود نیست
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="alert alert-warning">
+                                                <h6><i class="fas fa-exclamation-triangle"></i> نیاز به بهبود</h6>
+                                                {% if supplier_performance|length > 1 %}
+                                                    {% for perf in supplier_performance reversed %}
+                                                        {% if perf.overall_score < 60 %}
+                                                            <strong>{{ perf.supplier.name }}</strong><br>
+                                                            امتیاز: {{ perf.overall_score|floatformat:1 }}
+                                                            {% break %}
+                                                        {% endif %}
+                                                    {% empty %}
+                                                    همه تأمین‌کنندگان عملکرد خوبی دارند
+                                                    {% endfor %}
+                                                {% else %}
+                                                    داده کافی موجود نیست
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="alert alert-info">
+                                                <h6><i class="fas fa-chart-line"></i> میانگین امتیازات</h6>
+                                                {% load mathfilters %}
+                                                کیفیت: {{ supplier_performance|average:"quality_rating"|floatformat:1 }}<br>
+                                                به موقع بودن: {{ supplier_performance|average:"timeliness_rating"|floatformat:1 }}<br>
+                                                قیمت: {{ supplier_performance|average:"price_rating"|floatformat:1 }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Quality Ratings Chart
+const qualityCtx = document.getElementById('qualityChart').getContext('2d');
+const qualityData = {{ supplier_performance|safe }};
+const qualityCounts = [0, 0, 0, 0, 0, 0]; // 0-5 stars
+
+qualityData.forEach(supplier => {
+    const rating = Math.round(supplier.quality_rating || 0);
+    if (rating >= 0 && rating <= 5) {
+        qualityCounts[rating]++;
+    }
+});
+
+new Chart(qualityCtx, {
+    type: 'bar',
+    data: {
+        labels: ['0 ستاره', '1 ستاره', '2 ستاره', '3 ستاره', '4 ستاره', '5 ستاره'],
+        datasets: [{
+            label: 'تعداد تأمین‌کنندگان',
+            data: qualityCounts,
+            backgroundColor: '#28a745'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Timeliness Ratings Chart
+const timelinessCtx = document.getElementById('timelinessChart').getContext('2d');
+const timelinessCounts = [0, 0, 0, 0, 0, 0];
+
+qualityData.forEach(supplier => {
+    const rating = Math.round(supplier.timeliness_rating || 0);
+    if (rating >= 0 && rating <= 5) {
+        timelinessCounts[rating]++;
+    }
+});
+
+new Chart(timelinessCtx, {
+    type: 'bar',
+    data: {
+        labels: ['0 ستاره', '1 ستاره', '2 ستاره', '3 ستاره', '4 ستاره', '5 ستاره'],
+        datasets: [{
+            label: 'تعداد تأمین‌کنندگان',
+            data: timelinessCounts,
+            backgroundColor: '#007bff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

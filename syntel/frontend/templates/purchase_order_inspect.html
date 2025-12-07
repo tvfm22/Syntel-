@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}بازرسی کیفیت سفارش خرید{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">بازرسی کیفیت سفارش خرید {{ purchase_order.order_number }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        لطفاً کیفیت اقلام تحویل‌شده را بررسی و ارزیابی کنید.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="quality_status" class="form-label">نتیجه بازرسی کیفیت *</label>
+                            <select class="form-select" id="quality_status" name="quality_status" required>
+                                <option value="passed" {% if purchase_order.quality_status == 'passed' %}selected{% endif %}>قابل قبول - تأیید کیفیت</option>
+                                <option value="conditional" {% if purchase_order.quality_status == 'conditional' %}selected{% endif %}>قابل قبول با شرایط</option>
+                                <option value="failed" {% if purchase_order.quality_status == 'failed' %}selected{% endif %}>رد کیفیت</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="quality_notes" class="form-label">یادداشت‌های بازرسی کیفیت *</label>
+                            <textarea class="form-control" id="quality_notes" name="quality_notes" rows="6"
+                                      placeholder="جزئیات بازرسی کیفیت، مشکلات شناسایی شده، شرایط پذیرش، یا دلایل رد را توضیح دهید" required>{{ purchase_order.quality_notes|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Order Items for Reference -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">اقلام سفارش (برای مرجع)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>نام کالا</th>
+                                                <th>مقدار سفارش</th>
+                                                <th>قیمت واحد</th>
+                                                <th>مجموع</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in purchase_order.order_items.all %}
+                                                <tr>
+                                                    <td>{{ item.request_item.name }}</td>
+                                                    <td>{{ item.quantity }} {{ item.request_item.unit }}</td>
+                                                    <td>{% load custom_filters %}{{ item.unit_price|number_format }}</td>
+                                                    <td>{% load custom_filters %}{{ item.total_price|number_format }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th colspan="3" class="text-end">مجموع کل:</th>
+                                                <th>{% load custom_filters %}{{ purchase_order.total_amount|number_format }}</th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delivery Information -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">اطلاعات تحویل</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>تاریخ تحویل واقعی:</strong>
+                                            {% if purchase_order.actual_delivery_date %}
+                                                {{ purchase_order.actual_delivery_date|date:"Y/m/d" }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </p>
+                                        <p class="mb-1"><strong>وضعیت تحویل:</strong> {{ purchase_order.get_delivery_status_display }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>تحویل توسط:</strong>
+                                            {% if purchase_order.received_by %}
+                                                {{ purchase_order.received_by.get_full_name|default:purchase_order.received_by.username }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </p>
+                                        <p class="mb-0"><strong>یادداشت‌های تحویل:</strong> {{ purchase_order.delivery_notes|default:'-' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'purchase_order_detail' purchase_order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> بازگشت
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> ثبت نتیجه بازرسی
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

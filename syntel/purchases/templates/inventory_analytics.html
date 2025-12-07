@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تحلیل موجودی{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+.status-in_stock { color: #28a745; }
+.status-low_stock { color: #ffc107; }
+.status-out_of_stock { color: #dc3545; }
+.status-over_stock { color: #17a2b8; }
+.stock-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-left: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-boxes"></i> تحلیل موجودی و مصرف محصولات
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Stock Status Overview -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ stock_status.in_stock }}</h3>
+                                    <p class="mb-0">موجود در انبار</p>
+                                    <div class="stock-indicator bg-success"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h3 class="text-warning">{{ stock_status.low_stock }}</h3>
+                                    <p class="mb-0">موجودی کم</p>
+                                    <div class="stock-indicator bg-warning"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h3 class="text-danger">{{ stock_status.out_of_stock }}</h3>
+                                    <p class="mb-0">تمام شده</p>
+                                    <div class="stock-indicator bg-danger"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h3 class="text-info">{{ stock_status.over_stock }}</h3>
+                                    <p class="mb-0">موجودی اضافی</p>
+                                    <div class="stock-indicator bg-info"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stock Status Distribution Chart -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">توزیع وضعیت موجودی</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="stockStatusChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">مصرف بر اساس دسته‌بندی</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="categoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Categories Table -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">آمار دسته‌بندی‌ها</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>دسته‌بندی</th>
+                                                    <th>تعداد محصولات</th>
+                                                    <th>کل درخواست شده</th>
+                                                    <th>کل خریداری شده</th>
+                                                    <th>نرخ مصرف (%)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for category in top_categories %}
+                                                <tr>
+                                                    <td>{{ category.category__name }}</td>
+                                                    <td>{{ category.product_count }}</td>
+                                                    <td>{{ category.total_requested|floatformat:0 }}</td>
+                                                    <td>{{ category.total_purchased|floatformat:0 }}</td>
+                                                    <td>{{ category.utilization_rate|floatformat:1 }}%</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">داده‌ای یافت نشد</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Stock Analysis -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">جزئیات موجودی محصولات</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>نام محصول</th>
+                                                    <th>دسته‌بندی</th>
+                                                    <th>وضعیت موجودی</th>
+                                                    <th>مقدار خریداری شده</th>
+                                                    <th>مقدار درخواست شده</th>
+                                                    <th>نرخ مصرف (%)</th>
+                                                    <th>اقدامات</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for detail in stock_details %}
+                                                <tr>
+                                                    <td>{{ detail.product.name }}</td>
+                                                    <td>{{ detail.product.category.name }}</td>
+                                                    <td>
+                                                        <span class="status-{{ detail.status }}">
+                                                            {% if detail.status == 'in_stock' %}
+                                                                موجود در انبار
+                                                            {% elif detail.status == 'low_stock' %}
+                                                                موجودی کم
+                                                            {% elif detail.status == 'out_of_stock' %}
+                                                                تمام شده
+                                                            {% elif detail.status == 'over_stock' %}
+                                                                موجودی اضافی
+                                                            {% endif %}
+                                                        </span>
+                                                        <div class="stock-indicator bg-{% if detail.status == 'in_stock' %}success{% elif detail.status == 'low_stock' %}warning{% elif detail.status == 'out_of_stock' %}danger{% else %}info{% endif %}"></div>
+                                                    </td>
+                                                    <td>{{ detail.purchased|floatformat:0 }}</td>
+                                                    <td>{{ detail.requested|floatformat:0 }}</td>
+                                                    <td>
+                                                        {% if detail.requested > 0 %}
+                                                            {{ detail.utilization_rate|floatformat:1 }}%
+                                                        {% else %}
+                                                            0%
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <a href="#" class="btn btn-sm btn-outline-primary" title="مشاهده جزئیات">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        {% if detail.status == 'low_stock' or detail.status == 'out_of_stock' %}
+                                                        <a href="#" class="btn btn-sm btn-outline-warning" title="ایجاد درخواست خرید">
+                                                            <i class="fas fa-plus"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted">داده‌ای یافت نشد</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Insights -->
+                    {% if stock_status.low_stock > 0 or stock_status.out_of_stock > 0 %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <h5><i class="fas fa-exclamation-triangle"></i> هشدار موجودی</h5>
+                                <p>
+                                    {{ stock_status.low_stock }} محصول موجودی کم و
+                                    {{ stock_status.out_of_stock }} محصول تمام شده دارید.
+                                    پیشنهاد می‌شود برای این محصولات درخواست خرید جدید ثبت کنید.
+                                </p>
+                                <a href="#" class="btn btn-warning btn-sm" onclick="createBulkRequest()">
+                                    ایجاد درخواست گروهی
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Stock Status Chart
+const stockCtx = document.getElementById('stockStatusChart').getContext('2d');
+const stockData = {{ stock_status|safe }};
+new Chart(stockCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['موجود در انبار', 'موجودی کم', 'تمام شده', 'موجودی اضافی'],
+        datasets: [{
+            data: [stockData.in_stock, stockData.low_stock, stockData.out_of_stock, stockData.over_stock],
+            backgroundColor: [
+                '#28a745', '#ffc107', '#dc3545', '#17a2b8'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            }
+        }
+    }
+});
+
+// Category Chart
+const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+const categoryData = {{ top_categories|safe }};
+new Chart(categoryCtx, {
+    type: 'bar',
+    data: {
+        labels: categoryData.map(item => item.category__name),
+        datasets: [{
+            label: 'کل درخواست شده',
+            data: categoryData.map(item => item.total_requested),
+            backgroundColor: '#007bff'
+        }, {
+            label: 'کل خریداری شده',
+            data: categoryData.map(item => item.total_purchased),
+            backgroundColor: '#28a745'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+function createBulkRequest() {
+    // Implementation for bulk request creation
+    alert('قابلیت ایجاد درخواست گروهی به زودی اضافه خواهد شد');
+}
+</script>
+{% endblock %}

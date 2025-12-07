@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-code me-2"></i>
+                        {{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        این ابزار به شما کمک می‌کند تا اسکریپت‌های انتقال داده سفارشی ایجاد کنید. لطفاً نوع اسکریپت مورد نیاز خود را انتخاب کنید.
+                    </div>
+
+                    <form method="post" class="mb-4">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="script_type" class="form-label">نوع اسکریپت:</label>
+                                    <select class="form-select" id="script_type" name="script_type" required>
+                                        <option value="">انتخاب کنید...</option>
+                                        {% for type_code, type_name in script_types %}
+                                        <option value="{{ type_code }}">{{ type_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">توضیحات (اختیاری):</label>
+                                    <input type="text" class="form-control" id="description" name="description"
+                                           placeholder="توضیحات اسکریپت را وارد کنید">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-download me-2"></i>
+                                ایجاد و دانلود اسکریپت
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Script Type Descriptions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">توضیح انواع اسکریپت</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="accordion" id="scriptTypesAccordion">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingOne">
+                                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                                    پاک‌سازی داده‌ها
+                                                </button>
+                                            </h2>
+                                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#scriptTypesAccordion">
+                                                <div class="accordion-body">
+                                                    این اسکریپت داده‌های نامعتبر، یتیم و غیرضروری را پاک‌سازی می‌کند:
+                                                    <ul>
+                                                        <li>حذف آیتم‌های خرید بدون درخواست</li>
+                                                        <li>حذف درخواست‌های خرید خالی</li>
+                                                        <li>حذف کاربران غیرفعال بدون درخواست</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingTwo">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                                    به‌روزرسانی فیلدها
+                                                </button>
+                                            </h2>
+                                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#scriptTypesAccordion">
+                                                <div class="accordion-body">
+                                                    این اسکریپت فیلدهای خاص را در مدل‌ها به‌روزرسانی می‌کند:
+                                                    <ul>
+                                                        <li>به‌روزرسانی امتیاز تأمین‌کنندگان بر اساس عملکرد</li>
+                                                        <li>اصلاح مقادیر فیلدها بر اساس قوانین کسب‌وکار</li>
+                                                        <li>نرمال‌سازی داده‌ها</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingThree">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                                    حذف رکوردهای تکراری
+                                                </button>
+                                            </h2>
+                                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#scriptTypesAccordion">
+                                                <div class="accordion-body">
+                                                    این اسکریپت رکوردهای تکراری را شناسایی و حذف می‌کند:
+                                                    <ul>
+                                                        <li>شناسایی محصولات تکراری بر اساس نام</li>
+                                                        <li>حذف رکوردهای تکراری با حفظ داده‌های معتبر</li>
+                                                        <li>گزارش تعداد رکوردهای حذف شده</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingFour">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                                    اعتبارسنجی داده‌ها
+                                                </button>
+                                            </h2>
+                                            <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#scriptTypesAccordion">
+                                                <div class="accordion-body">
+                                                    این اسکریپت یکپارچگی داده‌ها را بررسی می‌کند:
+                                                    <ul>
+                                                        <li>بررسی وضعیت‌های نامعتبر درخواست‌ها</li>
+                                                        <li>شناسایی پرداخت‌های با مبلغ منفی</li>
+                                                        <li>اعتبارسنجی وضعیت پرداخت فاکتورها</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingFive">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                                                    به‌روزرسانی انبوه
+                                                </button>
+                                            </h2>
+                                            <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#scriptTypesAccordion">
+                                                <div class="accordion-body">
+                                                    این اسکریپت به‌روزرسانی‌های انبوه را انجام می‌دهد:
+                                                    <ul>
+                                                        <li>به‌روزرسانی حداقل موجودی محصولات</li>
+                                                        <li>تغییر وضعیت تأمین‌کنندگان غیرفعال</li>
+                                                        <li>به‌روزرسانی دسته‌ای بر اساس شرایط</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'backup_management' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-right me-2"></i>
+                                    بازگشت به مدیریت پشتیبان‌گیری
+                                </a>
+                                <a href="{% url 'system_health_check' %}" class="btn btn-info">
+                                    <i class="fas fa-heartbeat me-2"></i>
+                                    بررسی سلامت سیستم
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-fill description based on script type
+document.getElementById('script_type').addEventListener('change', function() {
+    const descriptions = {
+        'data_cleanup': 'پاک‌سازی داده‌های نامعتبر و یتیم',
+        'field_update': 'به‌روزرسانی فیلدهای مدل‌ها بر اساس قوانین کسب‌وکار',
+        'duplicate_removal': 'شناسایی و حذف رکوردهای تکراری',
+        'data_validation': 'بررسی یکپارچگی و اعتبار داده‌ها',
+        'bulk_update': 'به‌روزرسانی انبوه رکوردها'
+    };
+
+    const selectedType = this.value;
+    const descriptionField = document.getElementById('description');
+
+    if (descriptions[selectedType]) {
+        descriptionField.value = descriptions[selectedType];
+    }
+});
+</script>
+{% endblock %}

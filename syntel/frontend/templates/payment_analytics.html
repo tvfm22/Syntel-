@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تحلیل‌های پرداخت - Syntel{% endblock %}
+
+{% block extra_css %}
+<style>
+.analytics-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.analytics-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.analytics-header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.analytics-header p {
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.filters-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: 2rem;
+}
+
+.period-selector {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.period-btn {
+    padding: 0.75rem 1.5rem;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    color: #6b7280;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.period-btn:hover,
+.period-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.custom-date-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.custom-date-filters input,
+.custom-date-filters select {
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: 'Vazir', sans-serif;
+}
+
+.custom-date-filters input:focus,
+.custom-date-filters select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-icon.total { background: linear-gradient(135deg, #667eea, #764ba2); }
+.stat-icon.average { background: linear-gradient(135deg, #f093fb, #f5576c); }
+.stat-icon.trend { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+.stat-icon.velocity { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+
+.stat-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #111827;
+}
+
+.stat-content p {
+    margin: 0.25rem 0 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.chart-card h3 {
+    margin: 0 0 1.5rem 0;
+    color: #111827;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.chart-placeholder {
+    height: 300px;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.data-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.data-table {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.status-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-completed { background: #d1fae5; color: #065f46; }
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-failed { background: #fee2e2; color: #991b1b; }
+
+.amount-positive { color: #059669; font-weight: 600; }
+.amount-negative { color: #dc2626; font-weight: 600; }
+
+.trend-up { color: #059669; }
+.trend-down { color: #dc2626; }
+
+.overdue-alert {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    border: 1px solid #fca5a5;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.overdue-alert h4 {
+    color: #991b1b;
+    margin: 0 0 1rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.overdue-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.overdue-stat {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.overdue-stat .number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #991b1b;
+    display: block;
+}
+
+.overdue-stat .label {
+    font-size: 0.9rem;
+    color: #7f1d1d;
+}
+
+@media (max-width: 768px) {
+    .analytics-header {
+        padding: 1.5rem;
+    }
+    
+    .analytics-header h1 {
+        font-size: 2rem;
+    }
+    
+    .period-selector {
+        flex-direction: column;
+    }
+    
+    .period-btn {
+        text-align: center;
+    }
+    
+    .custom-date-filters {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-overview {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-tables {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <!-- Header -->
+    <div class="analytics-header">
+        <h1>📊 تحلیل‌های پرداخت</h1>
+        <p>داشبورد جامع تحلیل‌های مالی و روندهای پرداخت</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" id="analyticsForm">
+            <!-- Period Selector -->
+            <div class="period-selector">
+                <a href="?period=7" class="period-btn {% if period == '7' %}active{% endif %}">۷ روز گذشته</a>
+                <a href="?period=30" class="period-btn {% if period == '30' %}active{% endif %}">۳۰ روز گذشته</a>
+                <a href="?period=90" class="period-btn {% if period == '90' %}active{% endif %}">۹۰ روز گذشته</a>
+                <a href="?period=month" class="period-btn {% if period == 'month' %}active{% endif %}">ماه جاری</a>
+                <a href="?period=year" class="period-btn {% if period == 'year' %}active{% endif %}">سال جاری</a>
+                <a href="?period=custom" class="period-btn {% if period == 'custom' %}active{% endif %}">سفارشی</a>
+            </div>
+
+            <!-- Custom Date Filters -->
+            <div class="custom-date-filters" {% if period != 'custom' %}style="display: none;"{% endif %} id="customFilters">
+                <div>
+                    <label for="start_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">از تاریخ:</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+                </div>
+                <div>
+                    <label for="end_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">تا تاریخ:</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+                </div>
+                <div>
+                    <label for="year" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">سال:</label>
+                    <select id="year" name="year">
+                        {% for y in "2020,2021,2022,2023,2024,2025"|split:"," %}
+                        <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="month" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">ماه:</label>
+                    <select id="month" name="month">
+                        <option value="">انتخاب ماه</option>
+                        <option value="1" {% if month == '1' %}selected{% endif %}>فروردین</option>
+                        <option value="2" {% if month == '2' %}selected{% endif %}>اردیبهشت</option>
+                        <option value="3" {% if month == '3' %}selected{% endif %}>خرداد</option>
+                        <option value="4" {% if month == '4' %}selected{% endif %}>تیر</option>
+                        <option value="5" {% if month == '5' %}selected{% endif %}>مرداد</option>
+                        <option value="6" {% if month == '6' %}selected{% endif %}>شهریور</option>
+                        <option value="7" {% if month == '7' %}selected{% endif %}>مهر</option>
+                        <option value="8" {% if month == '8' %}selected{% endif %}>آبان</option>
+                        <option value="9" {% if month == '9' %}selected{% endif %}>آذر</option>
+                        <option value="10" {% if month == '10' %}selected{% endif %}>دی</option>
+                        <option value="11" {% if month == '11' %}selected{% endif %}>بهمن</option>
+                        <option value="12" {% if month == '12' %}selected{% endif %}>اسفند</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <button type="submit" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-family: 'Vazir', sans-serif;">
+                    🔄 بروزرسانی تحلیل‌ها
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-overview">
+        <div class="stat-card">
+            <div class="stat-icon total">💰</div>
+            <div class="stat-content">
+                <h3>{{ total_payments }}</h3>
+                <p>کل پرداخت‌ها</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon average">📈</div>
+            <div class="stat-content">
+                <h3>{{ total_amount|floatformat:0|intcomma }}</h3>
+                <p>مجموع مبلغ (تومان)</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon trend">⚡</div>
+            <div class="stat-content">
+                <h3>{{ avg_payment|floatformat:0|intcomma }}</h3>
+                <p>میانگین پرداخت (تومان)</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon velocity">🕐</div>
+            <div class="stat-content">
+                <h3>{{ avg_payment_days }}</h3>
+                <p>میانگین روز پرداخت</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Alert -->
+    {% if overdue_total.count > 0 %}
+    <div class="overdue-alert">
+        <h4>⚠️ فاکتورهای معوق</h4>
+        <div class="overdue-stats">
+            <div class="overdue-stat">
+                <span class="number">{{ overdue_total.count }}</span>
+                <span class="label">فاکتور معوق</span>
+            </div>
+            <div class="overdue-stat">
+                <span class="number">{{ overdue_total.total|floatformat:0|intcomma }}</span>
+                <span class="label">مبلغ معوق (تومان)</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Charts Section -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>روش‌های پرداخت</h3>
+            <div class="chart-placeholder">
+                📊 نمودار روش‌های پرداخت<br>
+                <small>در نسخه‌های آینده اضافه خواهد شد</small>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>روند روزانه پرداخت‌ها</h3>
+            <div class="chart-placeholder">
+                📈 نمودار روند روزانه<br>
+                <small>در نسخه‌های آینده اضافه خواهد شد</small>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>روند ماهانه پرداخت‌ها</h3>
+            <div class="chart-placeholder">
+                📊 نمودار روند ماهانه<br>
+                <small>در نسخه‌های آینده اضافه خواهد شد</small>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>جریان نقدی</h3>
+            <div class="chart-placeholder">
+                💵 نمودار جریان نقدی<br>
+                <small>در نسخه‌های آینده اضافه خواهد شد</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Tables -->
+    <div class="data-tables">
+        <div class="data-table">
+            <div class="table-header">آمار روش‌های پرداخت</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>روش پرداخت</th>
+                            <th>تعداد</th>
+                            <th>مجموع مبلغ</th>
+                            <th>میانگین مبلغ</th>
+                            <th>درصد</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for method in method_stats %}
+                        <tr>
+                            <td>{{ method.payment_method__name }}</td>
+                            <td>{{ method.count }}</td>
+                            <td class="amount-positive">{{ method.total_amount|floatformat:0|intcomma }}</td>
+                            <td>{{ method.avg_amount|floatformat:0|intcomma }}</td>
+                            <td>{{ method.percentage|floatformat:1 }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">تأمین‌کنندگان برتر</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>تأمین‌کننده</th>
+                            <th>تعداد پرداخت</th>
+                            <th>مجموع مبلغ</th>
+                            <th>میانگین پرداخت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in supplier_payments %}
+                        <tr>
+                            <td>{{ supplier.invoice__purchase_order__supplier_name }}</td>
+                            <td>{{ supplier.payment_count }}</td>
+                            <td class="amount-positive">{{ supplier.total_amount|floatformat:0|intcomma }}</td>
+                            <td>{{ supplier.avg_payment|floatformat:0|intcomma }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">پرداخت‌های بزرگ</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>شماره فاکتور</th>
+                            <th>تأمین‌کننده</th>
+                            <th>تاریخ</th>
+                            <th>مبلغ</th>
+                            <th>روش</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in large_payments %}
+                        <tr>
+                            <td>{{ payment.invoice.invoice_number }}</td>
+                            <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
+                            <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
+                            <td class="amount-positive">{{ payment.amount|floatformat:0|intcomma }}</td>
+                            <td>{{ payment.payment_method.name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">پرداخت‌های اخیر</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>شماره فاکتور</th>
+                            <th>تأمین‌کننده</th>
+                            <th>تاریخ</th>
+                            <th>مبلغ</th>
+                            <th>روش</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in recent_payments %}
+                        <tr>
+                            <td>{{ payment.invoice.invoice_number }}</td>
+                            <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
+                            <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
+                            <td class="amount-positive">{{ payment.amount|floatformat:0|intcomma }}</td>
+                            <td>{{ payment.payment_method.name }}</td>
+                            <td><span class="status-badge status-completed">{{ payment.get_payment_status_display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle custom filters visibility
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        const period = this.getAttribute('href').split('=')[1];
+        const customFilters = document.getElementById('customFilters');
+        
+        if (period === 'custom') {
+            customFilters.style.display = 'grid';
+        } else {
+            customFilters.style.display = 'none';
+        }
+    });
+});
+
+// Auto-submit form when custom filters change
+document.querySelectorAll('#customFilters input, #customFilters select').forEach(element => {
+    element.addEventListener('change', function() {
+        document.getElementById('analyticsForm').submit();
+    });
+});
+</script>
+
+{% endblock %}

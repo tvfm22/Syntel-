@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}خلاصه مدیریتی{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.kpi-card {
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.kpi-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.kpi-change {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.kpi-change.positive { color: #28a745; }
+.kpi-change.negative { color: #dc3545; }
+.kpi-change.neutral { color: #6c757d; }
+.growth-indicator {
+    display: inline-block;
+    margin-left: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-pie"></i> خلاصه مدیریتی - شاخص‌های کلیدی عملکرد
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
+                        </a>
+                        <button class="btn btn-primary btn-sm" onclick="exportSummary()">
+                            <i class="fas fa-download"></i> خروجی PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Period Information -->
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-calendar-alt"></i> دوره گزارش: {{ current_month|date:"F Y" }}</h6>
+                        <p class="mb-0">مقایسه با دوره قبل: {{ prev_month|date:"F Y" }}</p>
+                    </div>
+
+                    <!-- Key Performance Indicators -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white kpi-card">
+                                <div class="kpi-value">{{ current_requests }}</div>
+                                <div class="kpi-label">درخواست‌های خرید</div>
+                                <div class="kpi-change {% if request_growth > 0 %}positive{% elif request_growth < 0 %}negative{% else %}neutral{% endif %}">
+                                    {% if request_growth > 0 %}+{% endif %}{{ request_growth|floatformat:1 }}%
+                                    <i class="fas fa-arrow-{% if request_growth > 0 %}up{% elif request_growth < 0 %}down{% else %}right{% endif %} growth-indicator"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white kpi-card">
+                                <div class="kpi-value">{{ current_spending|floatformat:0 }}</div>
+                                <div class="kpi-label">هزینه‌ها (تومان)</div>
+                                <div class="kpi-change {% if spending_growth > 0 %}positive{% elif spending_growth < 0 %}negative{% else %}neutral{% endif %}">
+                                    {% if spending_growth > 0 %}+{% endif %}{{ spending_growth|floatformat:1 }}%
+                                    <i class="fas fa-arrow-{% if spending_growth > 0 %}up{% elif spending_growth < 0 %}down{% else %}right{% endif %} growth-indicator"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white kpi-card">
+                                <div class="kpi-value">{{ approval_rate|floatformat:1 }}%</div>
+                                <div class="kpi-label">نرخ تأیید</div>
+                                <div class="kpi-label">از کل درخواست‌ها</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white kpi-card">
+                                <div class="kpi-value">{{ outstanding|floatformat:0 }}</div>
+                                <div class="kpi-label">بدهی معوق (تومان)</div>
+                                <div class="kpi-label">نیازمند پیگیری</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Performance -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">عملکرد بخش‌ها</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="height: 300px;">
+                                        <canvas id="departmentPerformanceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">جزئیات عملکرد</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>بخش</th>
+                                                    <th>درخواست‌ها</th>
+                                                    <th>تأیید شده</th>
+                                                    <th>نرخ تأیید</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for dept in dept_performance %}
+                                                <tr>
+                                                    <td>{{ dept.user__role }}</td>
+                                                    <td>{{ dept.request_count }}</td>
+                                                    <td>{{ dept.approved_count }}</td>
+                                                    <td>{{ dept.approval_rate|floatformat:1 }}%</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted">داده‌ای یافت نشد</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Insights and Recommendations -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">بینش‌ها و پیشنهادات</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="alert alert-success">
+                                                <h6><i class="fas fa-thumbs-up"></i> نقاط قوت</h6>
+                                                <ul class="mb-0">
+                                                    {% if approval_rate >= 80 %}
+                                                    <li>نرخ تأیید درخواست‌ها بسیار خوب است ({{ approval_rate|floatformat:1 }}%)</li>
+                                                    {% endif %}
+                                                    {% if request_growth >= 0 %}
+                                                    <li>رشد {{ request_growth|floatformat:1 }}% در تعداد درخواست‌ها نسبت به ماه قبل</li>
+                                                    {% endif %}
+                                                    {% if outstanding == 0 %}
+                                                    <li>هیچ بدهی معوقی وجود ندارد</li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="alert alert-warning">
+                                                <h6><i class="fas fa-exclamation-triangle"></i> موارد نیازمند توجه</h6>
+                                                <ul class="mb-0">
+                                                    {% if outstanding > 0 %}
+                                                    <li>مبلغ {{ outstanding|floatformat:0 }} تومان بدهی معوق نیاز به پیگیری دارد</li>
+                                                    {% endif %}
+                                                    {% if approval_rate < 70 %}
+                                                    <li>نرخ تأیید درخواست‌ها پایین است ({{ approval_rate|floatformat:1 }}%)</li>
+                                                    {% endif %}
+                                                    {% if spending_growth > 20 %}
+                                                    <li>رشد {{ spending_growth|floatformat:1 }}% در هزینه‌ها نیاز به بررسی دارد</li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h6>پیشنهادات عملیاتی:</h6>
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="card border-primary">
+                                                        <div class="card-body text-center">
+                                                            <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                                                            <h6>بهبود روند تأیید</h6>
+                                                            <p class="small">استفاده از اتوماسیون برای تسریع فرایند تأیید درخواست‌ها</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="card border-success">
+                                                        <div class="card-body text-center">
+                                                            <i class="fas fa-handshake fa-2x text-success mb-2"></i>
+                                                            <h6>مدیریت تأمین‌کنندگان</h6>
+                                                            <p class="small">بررسی عملکرد تأمین‌کنندگان و بهبود روابط</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="card border-warning">
+                                                        <div class="card-body text-center">
+                                                            <i class="fas fa-boxes fa-2x text-warning mb-2"></i>
+                                                            <h6>بهینه‌سازی موجودی</h6>
+                                                            <p class="small">مدیریت هوشمند موجودی برای کاهش هزینه‌ها</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Department Performance Chart
+const deptCtx = document.getElementById('departmentPerformanceChart').getContext('2d');
+const deptData = {{ dept_performance|safe }};
+new Chart(deptCtx, {
+    type: 'bar',
+    data: {
+        labels: deptData.map(item => item.user__role),
+        datasets: [{
+            label: 'کل درخواست‌ها',
+            data: deptData.map(item => item.request_count),
+            backgroundColor: '#007bff'
+        }, {
+            label: 'درخواست‌های تأیید شده',
+            data: deptData.map(item => item.approved_count),
+            backgroundColor: '#28a745'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        }
+    }
+});
+
+function exportSummary() {
+    // Export functionality - to be implemented
+    alert('قابلیت خروجی PDF به زودی اضافه خواهد شد');
+}
+</script>
+{% endblock %}

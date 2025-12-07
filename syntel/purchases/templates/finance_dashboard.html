@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مالی - Syntel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .dashboard-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 15px;
+        }
+        .bg-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .bg-success-custom { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .bg-info-custom { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .bg-warning-custom { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .bg-danger-custom { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .bg-secondary-custom { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        .quick-action-btn {
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary-custom shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-building"></i>
+                Syntel - داشبورد مالی
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'finance_dashboard' %}">
+                            <i class="bi bi-house-door"></i> داشبورد اصلی
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'finance_dashboard' %}">
+                            <i class="bi bi-graph-up"></i> داشبورد مالی
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            {% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.username }}{% endif %}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> پروفایل</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">خوش آمدید به داشبورد مالی</h2>
+                            <p class="text-muted mb-0">مدیریت مالی و گزارش‌گیری سیستم Syntel</p>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">{{ user.get_role_display }}</div>
+                            <div class="text-primary">{{ user.username }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="section-title">
+                        <i class="bi bi-lightning-charge"></i>
+                        عملیات سریع
+                    </h4>
+                    <div class="d-flex flex-wrap justify-content-center">
+                        <a href="{% url 'finance_dashboard' %}" class="btn btn-primary quick-action-btn">
+                            <i class="bi bi-house-door"></i>
+                            <br>داشبورد اصلی
+                        </a>
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-success quick-action-btn">
+                            <i class="bi bi-graph-up"></i>
+                            <br>تحلیل‌ها
+                        </a>
+                        <a href="{% url 'supplier_list' %}" class="btn btn-info quick-action-btn">
+                            <i class="bi bi-truck"></i>
+                            <br>تأمین‌کنندگان
+                        </a>
+                        {% if user.role == 'purchasing' or user.role == 'manager' %}
+                        <a href="{% url 'supplier_create' %}" class="btn btn-warning quick-action-btn">
+                            <i class="bi bi-plus-circle"></i>
+                            <br>تأمین‌کننده جدید
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'invoice_register' %}" class="btn btn-primary quick-action-btn">
+                            <i class="bi bi-receipt"></i>
+                            <br>فاکتور جدید
+                        </a>
+                        <a href="{% url 'invoices_list' %}?type=store" class="btn btn-success quick-action-btn">
+                            <i class="bi bi-list-ul"></i>
+                            <br>لیست فاکتورها
+                        </a>
+                        {% if user.role == 'purchasing' or user.role == 'manager' %}
+                        <a href="{% url 'reports_dashboard' %}" class="btn btn-dark quick-action-btn">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <br>گزارش‌ها
+                        </a>
+                        {% endif %}
+                        {% if user.role == 'manager' %}
+                        <a href="{% url 'payment_analytics' %}" class="btn btn-danger quick-action-btn">
+                            <i class="bi bi-cash"></i>
+                            <br>تحلیل پرداخت‌ها
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Overview -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="section-title">
+                        <i class="bi bi-cash-stack"></i>
+                        نمای کلی مالی
+                    </h4>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-primary-custom text-white">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </div>
+                                    <h5 class="card-title">ایجاد فاکتور</h5>
+                                    <p class="card-text">ایجاد فاکتور جدید</p>
+                                    <div class="d-flex flex-column gap-2">
+                                        <a href="{% url 'invoice_register' %}" class="btn btn-primary btn-sm">دستی</a>
+                                        <a href="{% url 'completed_orders_for_invoices' %}" class="btn btn-outline-primary btn-sm">از سفارش</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-success-custom text-white">
+                                        <i class="bi bi-credit-card"></i>
+                                    </div>
+                                    <h5 class="card-title">پرداخت‌ها</h5>
+                                    <p class="card-text">مدیریت پرداخت‌ها و تراکنش‌ها</p>
+                                    <a href="{% url 'payment_list' %}" class="btn btn-success">مشاهده</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-info-custom text-white">
+                                        <i class="bi bi-graph-up"></i>
+                                    </div>
+                                    <h5 class="card-title">گزارش‌ها</h5>
+                                    <p class="card-text">گزارش‌های مالی و آماری</p>
+                                    <a href="{% url 'reports_dashboard' %}" class="btn btn-info">مشاهده</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-warning-custom text-white">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </div>
+                                    <h5 class="card-title">هشدارها</h5>
+                                    <p class="card-text">هشدارهای مالی و انقضاء</p>
+                                    <a href="#" class="btn btn-warning">مشاهده</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supplier Management -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="section-title">
+                        <i class="bi bi-truck"></i>
+                        مدیریت تأمین‌کنندگان
+                    </h4>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-secondary-custom text-dark">
+                                        <i class="bi bi-list-ul"></i>
+                                    </div>
+                                    <h5 class="card-title">لیست تأمین‌کنندگان</h5>
+                                    <p class="card-text">مشاهده و مدیریت تأمین‌کنندگان</p>
+                                    <a href="{% url 'supplier_list' %}" class="btn btn-secondary">مشاهده لیست</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-danger-custom text-white">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </div>
+                                    <h5 class="card-title">تأمین‌کننده جدید</h5>
+                                    <p class="card-text">افزودن تأمین‌کننده جدید</p>
+                                    {% if user.role == 'purchasing' or user.role == 'manager' %}
+                                    <a href="{% url 'supplier_create' %}" class="btn btn-danger">افزودن</a>
+                                    {% else %}
+                                    <button class="btn btn-danger" disabled>دسترسی محدود</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-primary-custom text-white">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </div>
+                                    <h5 class="card-title">گزارش عملکرد</h5>
+                                    <p class="card-text">گزارش عملکرد تأمین‌کنندگان</p>
+                                    <a href="{% url 'supplier_performance_report' %}" class="btn btn-primary">مشاهده گزارش</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports & Analytics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="section-title">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        گزارش‌ها و تحلیل‌ها
+                    </h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-info-custom text-white">
+                                        <i class="bi bi-graph-up"></i>
+                                    </div>
+                                    <h5 class="card-title">داشبورد تحلیل‌ها</h5>
+                                    <p class="card-text">تحلیل‌های پیشرفته و نمودارها</p>
+                                    <a href="{% url 'analytics_dashboard' %}" class="btn btn-info">مشاهده تحلیل‌ها</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-body text-center">
+                                    <div class="card-icon bg-success-custom text-white">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </div>
+                                    <h5 class="card-title">داشبورد گزارش‌ها</h5>
+                                    <p class="card-text">گزارش‌های مدیریتی و عملیاتی</p>
+                                    <a href="{% url 'reports_dashboard' %}" class="btn btn-success">مشاهده گزارش‌ها</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activities -->
+        <div class="row">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="section-title">
+                        <i class="bi bi-activity"></i>
+                        فعالیت‌های اخیر
+                    </h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>تاریخ</th>
+                                    <th>کاربر</th>
+                                    <th>فعالیت</th>
+                                    <th>توضیحات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">
+                                        <i class="bi bi-info-circle"></i>
+                                        فعالیتی برای نمایش وجود ندارد
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

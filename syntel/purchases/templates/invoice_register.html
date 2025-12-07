@@ -1,0 +1,587 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ثبت فاکتور جدید{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-box {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px dashed #dee2e6;
+    }
+
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+
+    .summary-row.total {
+        font-weight: bold;
+        font-size: 1.1em;
+        color: #28a745;
+        border-top: 2px solid #28a745;
+        margin-top: 10px;
+        padding-top: 15px;
+    }
+
+    .issues-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .issue-tag {
+        display: inline-flex;
+        align-items: center;
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 0.875rem;
+        border: 1px solid #bbdefb;
+    }
+
+    .issue-tag .remove-issue {
+        margin-left: 8px;
+        cursor: pointer;
+        color: #d32f2f;
+        font-weight: bold;
+    }
+
+    .issue-tag .remove-issue:hover {
+        color: #b71c1c;
+    }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-invoice text-primary"></i>
+                        ثبت فاکتور جدید
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به لیست فاکتورها
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="invoice-form">
+                        {% csrf_token %}
+
+                        <!-- اطلاعات اصلی فاکتور -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-info-circle"></i> اطلاعات اصلی</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="supplier_name">فروشگاه *</label>
+                                            <input type="text" class="form-control" id="supplier_name" name="supplier_name"
+                                                   placeholder="نام فروشگاه را وارد کنید..." required
+                                                   value="{% if default_supplier %}{{ default_supplier.name }}{% endif %}">
+                                            <input type="hidden" id="supplier_id" name="supplier" value="{% if default_supplier %}{{ default_supplier.id }}{% endif %}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="invoice_number">شماره فاکتور *</label>
+                                            <input type="text" class="form-control" id="invoice_number" name="invoice_number" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="request_date">تاریخ درخواست *</label>
+                                            <input type="date" class="form-control" id="request_date" name="request_date"
+                                                   value="{% now 'Y-m-d' %}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="invoice_date">تاریخ فاکتور *</label>
+                                            <input type="date" class="form-control" id="invoice_date" name="invoice_date"
+                                                   value="{% now 'Y-m-d' %}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="total_cash_discount"><i class="fas fa-money-bill-wave text-muted"></i> تخفیف نقدی کل (ریال)</label>
+                                            <input type="text" class="form-control money-input" id="total_cash_discount" name="total_cash_discount" placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="shipping_cost"><i class="fas fa-truck text-muted"></i> هزینه ارسال (ریال)</label>
+                                            <input type="text" class="form-control money-input" id="shipping_cost" name="shipping_cost" placeholder="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- لیست دسته‌بندی‌ها برای JavaScript -->
+                        <script type="application/json" id="categories-data">
+                            [{% for category in categories %}{"id": {{ category.id }}, "name": "{{ category.name }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+                        </script>
+                        <script type="application/json" id="issues-data">
+                            [{% for issue in issues %}{"id": {{ issue.id }}, "name": "{{ issue.name }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+                        </script>
+
+                        <!-- اقلام فاکتور -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-list"></i> اقلام فاکتور</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="items-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 18%; background-color: #007bff; color: white;">شرح کالا</th>
+                                                <th style="width: 12%; background-color: #007bff; color: white;">دسته‌بندی</th>
+                                                <th style="width: 10%; background-color: #007bff; color: white;">درخواست‌کننده</th>
+                                                <th style="width: 8%; background-color: #007bff; color: white;">تعداد</th>
+                                                <th style="width: 13%; background-color: #007bff; color: white;">قیمت واحد (ریال)</th>
+                                                <th style="width: 10%; background-color: #007bff; color: white;">مالیات (ریال)</th>
+                                                <th style="width: 10%; background-color: #007bff; color: white;">تخفیف (ریال)</th>
+                                                <th style="width: 12%; background-color: #007bff; color: white;">مجموع</th>
+                                                <th style="width: 5%; background-color: #007bff; color: white;">عملیات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items-tbody">
+                                            <tr class="item-row">
+                                                <td>
+                                                    <input type="text" class="form-control" name="description_0" placeholder="شرح کالا" required>
+                                                </td>
+                                                <td>
+                                                    <select class="form-control category-select" name="category_0">
+                                                        <option value="">انتخاب دسته‌بندی</option>
+                                                        {% for category in categories %}
+                                                        <option value="{{ category.id }}">{{ category.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select class="form-control" name="requester_0">
+                                                        <option value="">انتخاب درخواست‌کننده</option>
+                                                        {% for requester in requesters %}
+                                                        <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" step="0.01" class="form-control quantity-input" name="quantity_0" placeholder="0" required>
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control money-input unit-price-input" name="unit_price_0" placeholder="0" required>
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control money-input tax-input" name="tax_amount_0" placeholder="0">
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control money-input discount-input" name="discount_amount_0" placeholder="0">
+                                                </td>
+                                                <td>
+                                                    <span class="line-total font-weight-bold">0 ریال</span>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-danger btn-sm remove-item">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="bg-light">
+                                            <tr>
+                                                <td colspan="8" class="text-center">
+                                                    <button type="button" class="btn btn-success btn-sm" id="add-item">
+                                                        <i class="fas fa-plus"></i> افزودن آیتم
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="6" class="text-left"><strong>جمع اقلام:</strong></td>
+                                                <td colspan="2"><strong id="items-total">0 ریال</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="6" class="text-left">هزینه ارسال:</td>
+                                                <td colspan="2"><span id="shipping-display">0 ریال</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="6" class="text-left">تخفیف نقدی:</td>
+                                                <td colspan="2"><span id="total-discount-display" class="text-danger">0 ریال</span></td>
+                                            </tr>
+                                            <tr class="table-success">
+                                                <td colspan="6" class="text-left"><strong>مبلغ نهایی:</strong></td>
+                                                <td colspan="2"><strong id="grand-total" class="text-success" style="font-size: 1.2em;">0 ریال</strong></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- یادداشت‌ها -->
+                        <div class="mb-4">
+                            <!-- موارد ایراد -->
+                            <div class="form-group">
+                                <label for="issue-select">موارد ایراد:</label>
+                                <select id="issue-select" class="form-control">
+                                    <option value="">انتخاب کنید...</option>
+                                    {% for issue in issues %}
+                                    <option value="{{ issue.id }}">{{ issue.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" id="add-issue" class="btn btn-sm btn-primary mt-2">افزودن</button>
+                            </div>
+                            <div id="issues-tags" class="issues-tags mt-3">
+                                <!-- تگ‌های انتخاب شده اینجا نمایش داده می‌شوند -->
+                            </div>
+                            <input type="hidden" name="issues" id="issues-input" value="">
+                            
+                            <div class="form-group mt-4">
+                                <label for="notes"><i class="fas fa-sticky-note text-muted"></i> یادداشت‌ها</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"
+                                          placeholder="یادداشت‌ها و توضیحات اضافی..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- دکمه‌های عملیات -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end">
+                                    <a href="{% url 'invoices_list' %}" class="btn btn-danger ml-2">
+                                        <i class="fas fa-times"></i> انصراف
+                                    </a>
+                                    <button type="submit" name="save_draft" class="btn btn-outline-primary ml-2">
+                                        <i class="fas fa-save"></i> ذخیره پیش‌نویس
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-check"></i> ثبت فاکتور
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let itemCount = 1;
+    
+    // ============================================
+    // Invoice Items Functionality
+    // ============================================
+    
+    // Function to format number with commas (سه رقم سه رقم)
+    function formatNumber(num) {
+        if (!num || num === 0) return '0';
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
+    // Function to parse number from formatted string
+    function parseNumber(str) {
+        if (!str) return 0;
+        return parseFloat(str.toString().replace(/,/g, '')) || 0;
+    }
+    
+    // Format money input field
+    function formatMoneyInput(input) {
+        let cursorPos = input.selectionStart;
+        let oldValue = input.value;
+        let oldLength = oldValue.length;
+        
+        // Remove all commas to get raw number
+        let rawValue = oldValue.replace(/,/g, '');
+        
+        // Only format if it's a valid number
+        if (/^\d*$/.test(rawValue) && rawValue !== '') {
+            let numValue = parseInt(rawValue, 10);
+            if (!isNaN(numValue)) {
+                // Format with commas
+                let formatted = formatNumber(numValue);
+                if (formatted && formatted !== oldValue) {
+                    input.value = formatted;
+                    // Adjust cursor position
+                    let newLength = formatted.length;
+                    let newPos = cursorPos + (newLength - oldLength);
+                    if (newPos < 0) newPos = 0;
+                    if (newPos > newLength) newPos = newLength;
+                    input.setSelectionRange(newPos, newPos);
+                }
+            }
+        }
+    }
+    
+    // Add event listeners to all money inputs
+    function setupMoneyInputs() {
+        document.querySelectorAll('.money-input').forEach(function(input) {
+            // Remove existing listeners by cloning
+            if (!input.dataset.formatted) {
+                input.dataset.formatted = 'true';
+                
+                input.addEventListener('input', function(e) {
+                    formatMoneyInput(this);
+                    calculateTotals();
+                });
+                
+                input.addEventListener('keypress', function(e) {
+                    let char = String.fromCharCode(e.which);
+                    // Only allow numbers
+                    if (!/[\d]/.test(char)) {
+                        e.preventDefault();
+                    }
+                });
+                
+                input.addEventListener('paste', function(e) {
+                    setTimeout(function() {
+                        formatMoneyInput(e.target);
+                        calculateTotals();
+                    }, 10);
+                });
+            }
+        });
+    }
+    
+    function calculateTotals() {
+        let itemsTotal = 0;
+        let totalTax = 0;
+        let totalDiscount = 0;
+        
+        document.querySelectorAll('.item-row').forEach(function(row) {
+            const quantityInput = row.querySelector('.quantity-input');
+            const unitPriceInput = row.querySelector('.unit-price-input');
+            const taxInput = row.querySelector('.tax-input');
+            const discountInput = row.querySelector('.discount-input');
+            const lineTotalSpan = row.querySelector('.line-total');
+            
+            const quantity = parseFloat(quantityInput ? quantityInput.value : 0) || 0;
+            const unitPrice = parseNumber(unitPriceInput ? unitPriceInput.value : 0);
+            const taxAmount = parseNumber(taxInput ? taxInput.value : 0);
+            const discountAmount = parseNumber(discountInput ? discountInput.value : 0);
+            
+            const baseTotal = quantity * unitPrice;
+            const lineTotal = baseTotal + taxAmount - discountAmount;
+            
+            if (lineTotalSpan) {
+                lineTotalSpan.textContent = formatNumber(lineTotal) + ' ریال';
+            }
+            itemsTotal += lineTotal;
+            totalTax += taxAmount;
+            totalDiscount += discountAmount;
+        });
+        
+        // Get rates from form
+        const taxRate = parseFloat(document.getElementById('tax_rate').value) || 0;
+        const discountRate = parseFloat(document.getElementById('discount_rate').value) || 0;
+        
+        // Calculate percentage-based tax and discount
+        const percentageTax = (itemsTotal * taxRate / 100);
+        const percentageDiscount = (itemsTotal * discountRate / 100);
+        
+        // Total tax and discount
+        const totalTaxAmount = totalTax + percentageTax;
+        const totalDiscountAmount = totalDiscount + percentageDiscount;
+        
+        // Add shipping cost and subtract total cash discount
+        const shippingCostEl = document.getElementById('shipping_cost');
+        const totalCashDiscountEl = document.getElementById('total_cash_discount');
+        
+        const shippingCost = parseNumber(shippingCostEl ? shippingCostEl.value : 0);
+        const totalCashDiscount = parseNumber(totalCashDiscountEl ? totalCashDiscountEl.value : 0);
+        
+        // Display items total
+        const itemsTotalEl = document.getElementById('items-total');
+        if (itemsTotalEl) {
+            itemsTotalEl.textContent = formatNumber(itemsTotal) + ' ریال';
+        }
+        
+        // Display shipping cost
+        const shippingDisplay = document.getElementById('shipping-display');
+        if (shippingDisplay) {
+            shippingDisplay.textContent = formatNumber(shippingCost) + ' ریال';
+        }
+        
+        // Display total discount (item discounts + percentage discount + cash discount)
+        const totalDiscountDisplay = document.getElementById('total-discount-display');
+        if (totalDiscountDisplay) {
+            const finalDiscount = totalDiscountAmount + totalCashDiscount;
+            totalDiscountDisplay.textContent = formatNumber(finalDiscount) + ' ریال';
+        }
+        
+        const finalTotal = itemsTotal + totalTaxAmount + shippingCost - totalDiscountAmount - totalCashDiscount;
+        
+        const grandTotalEl = document.getElementById('grand-total');
+        if (grandTotalEl) {
+            grandTotalEl.textContent = formatNumber(finalTotal) + ' ریال';
+        }
+    }
+    
+    // Calculate on quantity input change
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('quantity-input') || 
+            e.target.classList.contains('unit-price-input') ||
+            e.target.classList.contains('tax-input') ||
+            e.target.classList.contains('discount-input') ||
+            e.target.id === 'shipping_cost' ||
+            e.target.id === 'total_cash_discount' ||
+            e.target.id === 'tax_rate' ||
+            e.target.id === 'discount_rate') {
+            calculateTotals();
+        }
+    });
+    
+    // Load categories data from JSON
+    const categoriesDataEl = document.getElementById('categories-data');
+    let categories = [];
+    try {
+        categories = JSON.parse(categoriesDataEl.textContent || '[]');
+    } catch (e) {
+        console.error('Error parsing categories data:', e);
+    }
+    
+    // Build category options HTML
+    function getCategoryOptions() {
+        let options = '<option value="">انتخاب دسته‌بندی</option>';
+        categories.forEach(function(cat) {
+            options += `<option value="${cat.id}">${cat.name}</option>`;
+        });
+        return options;
+    }
+    
+    // Add new item row
+    const addItemBtn = document.getElementById('add-item');
+    if (addItemBtn) {
+        addItemBtn.addEventListener('click', function() {
+            const tbody = document.getElementById('items-tbody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'item-row';
+            newRow.innerHTML = `
+                <td>
+                    <input type="text" class="form-control" name="description_${itemCount}" placeholder="شرح کالا" required>
+                </td>
+                <td>
+                    <select class="form-control category-select" name="category_${itemCount}">
+                        ${getCategoryOptions()}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-control" name="requester_${itemCount}">
+                        <option value="">انتخاب درخواست‌کننده</option>
+                        {% for requester in requesters %}
+                        <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control quantity-input" name="quantity_${itemCount}" placeholder="0" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control money-input unit-price-input" name="unit_price_${itemCount}" placeholder="0" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control money-input tax-input" name="tax_amount_${itemCount}" placeholder="0">
+                </td>
+                <td>
+                    <input type="text" class="form-control money-input discount-input" name="discount_amount_${itemCount}" placeholder="0">
+                </td>
+                <td>
+                    <span class="line-total font-weight-bold">0 ریال</span>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm remove-item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(newRow);
+            itemCount++;
+            
+            // Setup money inputs for new row
+            setupMoneyInputs();
+        });
+    }
+    
+    // Remove item row
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
+            const rows = document.querySelectorAll('.item-row');
+            if (rows.length > 1) {
+                const row = e.target.closest('.item-row');
+                if (row) {
+                    row.remove();
+                    calculateTotals();
+                }
+            } else {
+                alert('حداقل یک آیتم باید وجود داشته باشد');
+            }
+        }
+    });
+    
+    // Initial setup
+    setupMoneyInputs();
+    calculateTotals();
+
+    // Issues management
+    let selectedIssues = [];
+    
+    document.getElementById('add-issue').addEventListener('click', function() {
+        const select = document.getElementById('issue-select');
+        const issueId = select.value;
+        const issueName = select.options[select.selectedIndex].text;
+        
+        if (issueId && !selectedIssues.includes(issueId)) {
+            selectedIssues.push(issueId);
+            addIssueTag(issueId, issueName);
+            updateIssuesInput();
+        }
+        
+        select.value = '';
+    });
+    
+    function addIssueTag(id, name) {
+        const tagsContainer = document.getElementById('issues-tags');
+        const tag = document.createElement('span');
+        tag.className = 'issue-tag';
+        tag.innerHTML = `${name} <span class="remove-issue" data-id="${id}">&times;</span>`;
+        tagsContainer.appendChild(tag);
+        
+        tag.querySelector('.remove-issue').addEventListener('click', function() {
+            const issueId = this.getAttribute('data-id');
+            selectedIssues = selectedIssues.filter(id => id != issueId);
+            tag.remove();
+            updateIssuesInput();
+        });
+    }
+    
+    function updateIssuesInput() {
+        document.getElementById('issues-input').value = selectedIssues.join(',');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}مدیریت درخواست‌کنندگان{% endblock %}
+
+{% block content %}
+<div class="requester-list-container">
+    <div class="page-header">
+        <h1 class="page-title">مدیریت درخواست‌کنندگان</h1>
+        <a href="{% url 'requester_create' %}" class="btn-add">
+            <i class="fas fa-plus"></i> درخواست‌کننده جدید
+        </a>
+    </div>
+
+    <div class="requesters-table">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>نام درخواست‌کننده</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for requester in requesters %}
+                <tr>
+                    <td>{{ requester.get_name_display }}</td>
+                    <td>
+                        <a href="{% url 'requester_delete' requester.id %}" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i> حذف
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.requester-list-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.btn-add {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.requesters-table {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.table th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td, .table th {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

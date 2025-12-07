@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+
+{% block title %}داشبورد مالی - Syntel{% endblock %}
+
+{% block extra_css %}
+<style>
+.finance-dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.dashboard-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.dashboard-header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 1.5rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-item {
+    margin-bottom: 0.75rem;
+}
+
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: #374151;
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.menu-link:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: translateX(5px);
+    border-color: transparent;
+}
+
+.submenu {
+    margin-left: 2rem;
+    margin-top: 0.5rem;
+}
+
+.submenu .menu-link {
+    background: #f1f5f9;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.submenu .menu-link:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.stat-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.quick-actions {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    padding: 2rem;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 2rem;
+}
+
+.quick-actions h3 {
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+    text-align: center;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+@media (max-width: 768px) {
+    .finance-dashboard {
+        padding: 1rem;
+    }
+
+    .dashboard-header {
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="finance-dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1>🏢 داشبورد مالی Syntel</h1>
+        <p>مدیریت مالی و خرید سازمان</p>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-icon">📊</span>
+            <div class="stat-value">۲۴۷</div>
+            <div class="stat-label">فاکتور فعال</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">💰</span>
+            <div class="stat-value">۱۲</div>
+            <div class="stat-label">پرداخت‌های امروز</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">🏪</span>
+            <div class="stat-value">۴۵</div>
+            <div class="stat-label">تأمین‌کننده فعال</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">📈</span>
+            <div class="stat-value">۸.۲M</div>
+            <div class="stat-label">ارزش کل خریدها</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h3>⚡ اقدامات سریع</h3>
+        <div class="actions-grid">
+            <a href="{% url 'invoice_register' %}" class="action-btn">
+                <span>🧾</span>
+                فاکتور جدید
+            </a>
+            <a href="{% url 'invoices_list' %}?type=store" class="action-btn">
+                <span>📋</span>
+                لیست فاکتورها
+            </a>
+            <a href="{% url 'payment_list' %}" class="action-btn">
+                <span>💰</span>
+                پرداخت‌ها
+            </a>
+            <a href="{% url 'payment_create' %}" class="action-btn">
+                <span>➕</span>
+                پرداخت جدید
+            </a>
+            <a href="{% url 'purchase_request' %}" class="action-btn">
+                <span>🛒</span>
+                درخواست خرید جدید
+            </a>
+            <a href="{% url 'reports_dashboard' %}" class="action-btn">
+                <span>📊</span>
+                گزارش سریع
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Menu Grid -->
+    <div class="dashboard-grid">
+        <!-- Dashboard -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>📊</span>
+                داشبورد
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'finance_dashboard' %}" class="menu-link">
+                            <span>🏠</span>
+                            نمای کلی
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'analytics_dashboard' %}" class="menu-link">
+                            <span>📈</span>
+                            آمار و تحلیل‌ها
+                        </a>
+                    </li>
+                    {% if user.role == 'manager' %}
+                    <li class="menu-item">
+                        <a href="{% url 'approvals_list' %}" class="menu-link">
+                            <span>✅</span>
+                            تأیید درخواست‌ها
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Purchases -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>🛒</span>
+                خریدها
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'purchase_requests_list' %}" class="menu-link">
+                            <span>📋</span>
+                            لیست درخواست‌های خرید
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'purchase_orders_list' %}" class="menu-link">
+                            <span>📄</span>
+                            سفارش‌های خرید
+                        </a>
+                        <ul class="submenu">
+                            <li class="menu-item">
+                                <a href="{% url 'purchase_orders_list' %}" class="menu-link">
+                                    <span>📋</span>
+                                    لیست سفارش‌ها
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="{% url 'approved_requests_for_orders' %}" class="menu-link">
+                                    <span>➕</span>
+                                    ایجاد سفارش جدید
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'reports_dashboard' %}" class="menu-link">
+                            <span>📊</span>
+                            گزارشات خرید
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>🧾</span>
+                فاکتورها
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'invoices_list' %}?type=store" class="menu-link">
+                            <span>📋</span>
+                            لیست فاکتورها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'invoice_register' %}" class="menu-link">
+                            <span>➕</span>
+                            فاکتور جدید (دستی)
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'completed_orders_for_invoices' %}" class="menu-link">
+                            <span>📄</span>
+                            فاکتور از سفارش خرید
+                        </a>
+                    </li>
+                    {% if user.role == 'manager' %}
+                    <li class="menu-item">
+                        <a href="{% url 'invoices_list' %}?type=store&status=sent" class="menu-link">
+                            <span>✅</span>
+                            فاکتورهای نیازمند تأیید
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'invoices_list' %}?type=store&payment_status=unpaid" class="menu-link">
+                            <span>💰</span>
+                            فاکتورهای پرداخت نشده
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Payments -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>💳</span>
+                پرداخت‌ها و تأییدها
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'payment_list' %}" class="menu-link">
+                            <span>💰</span>
+                            لیست پرداخت‌ها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'payment_create' %}" class="menu-link">
+                            <span>➕</span>
+                            ثبت پرداخت جدید
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'payment_method_list' %}" class="menu-link">
+                            <span>⚙️</span>
+                            روش‌های پرداخت
+                        </a>
+                        <ul class="submenu">
+                            <li class="menu-item">
+                                <a href="{% url 'payment_method_list' %}" class="menu-link">
+                                    <span>📋</span>
+                                    لیست روش‌ها
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="{% url 'payment_method_create' %}" class="menu-link">
+                                    <span>➕</span>
+                                    افزودن روش جدید
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'pending_invoice_approvals' %}" class="menu-link">
+                            <span>⏳</span>
+                            تأییدهای در انتظار
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'approval_history' %}" class="menu-link">
+                            <span>📋</span>
+                            تاریخچه تأییدها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'invoices_list' %}?type=store&payment_status=unpaid" class="menu-link">
+                            <span>💰</span>
+                            فاکتورهای پرداخت نشده
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'payment_analytics' %}" class="menu-link">
+                            <span>📊</span>
+                            گزارشات پرداخت
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Suppliers -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>🏪</span>
+                مدیریت تأمین‌کنندگان
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'supplier_list' %}" class="menu-link">
+                            <span>📋</span>
+                            مدیریت تأمین‌کنندگان
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'supplier_select' %}" class="menu-link">
+                            <span>🏪</span>
+                            لیست تأمین‌کنندگان
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'supplier_create' %}" class="menu-link">
+                            <span>➕</span>
+                            افزودن/ویرایش تأمین‌کننده
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'supplier_performance_report' %}" class="menu-link">
+                            <span>⭐</span>
+                            ارزیابی عملکرد
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Base Data -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>🗂️</span>
+                داده‌های پایه
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'product_list' %}" class="menu-link">
+                            <span>📦</span>
+                            لیست محصولات
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'unit_list' %}" class="menu-link">
+                            <span>⚖️</span>
+                            واحدهای اندازه‌گیری
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'category_list' %}" class="menu-link">
+                            <span>🏷️</span>
+                            دسته‌بندی‌ها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'payment_type_list' %}" class="menu-link">
+                            <span>💳</span>
+                            انواع پرداخت
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'requester_list' %}" class="menu-link">
+                            <span>👥</span>
+                            مدیریت درخواست‌کنندگان
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'invoice_issue_list' %}" class="menu-link">
+                            <span>⚠️</span>
+                            مدیریت ایرادات فاکتور
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'user_list' %}" class="menu-link">
+                            <span>👥</span>
+                            مدیریت کاربران
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Reports -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>📊</span>
+                گزارشات
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'reports_dashboard' %}" class="menu-link">
+                            <span>🛒</span>
+                            گزارشات خرید
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'payment_analytics' %}" class="menu-link">
+                            <span>💰</span>
+                            گزارشات پرداخت
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'supplier_performance_report' %}" class="menu-link">
+                            <span>⭐</span>
+                            عملکرد تأمین‌کنندگان
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'analytics_dashboard' %}" class="menu-link">
+                            <span>📈</span>
+                            نمودار روند قیمت‌ها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'reports_dashboard' %}" class="menu-link">
+                            <span>📅</span>
+                            گزارشات ماهانه
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

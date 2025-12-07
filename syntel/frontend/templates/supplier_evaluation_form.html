@@ -1,0 +1,593 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if evaluation %}ویرایش ارزیابی تأمین‌کننده{% else %}ایجاد ارزیابی جدید{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+.evaluation-form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.form-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+}
+
+.form-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.form-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 25px;
+}
+
+.form-section {
+    padding: 25px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-icon {
+    color: #667eea;
+    font-size: 1.2rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.form-control, .form-select, .form-textarea {
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-control:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-help {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.rating-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.rating-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.rating-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.rating-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.rating-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 5px;
+}
+
+.star-radio {
+    display: none;
+}
+
+.star-label {
+    font-size: 24px;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.star-radio:checked ~ .star-label,
+.star-label:hover,
+.star-label:hover ~ .star-label {
+    color: #ffc107;
+}
+
+.rating-value {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #333;
+    min-width: 30px;
+    text-align: center;
+}
+
+.overall-rating-display {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.overall-score {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.overall-label {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    padding: 25px;
+    background: #f8f9fa;
+    border-top: 1px solid #e1e5e9;
+}
+
+.btn-submit, .btn-cancel {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    min-width: 150px;
+    text-align: center;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.required-field::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: block;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+@media (max-width: 768px) {
+    .evaluation-form-container {
+        padding: 15px;
+    }
+
+    .form-header {
+        padding: 20px;
+    }
+
+    .form-title {
+        font-size: 1.5rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .rating-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-submit, .btn-cancel {
+        width: 100%;
+    }
+}
+</style>
+
+<div class="evaluation-form-container">
+    <div class="form-header">
+        <h1 class="form-title">
+            {% if evaluation %}ویرایش ارزیابی تأمین‌کننده{% else %}ایجاد ارزیابی جدید{% endif %}
+        </h1>
+        <p class="form-subtitle">
+            {% if evaluation %}
+                ویرایش ارزیابی {{ evaluation.supplier.name }}
+            {% else %}
+                ارزیابی عملکرد تأمین‌کننده
+            {% endif %}
+        </p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" id="evaluationForm">
+        {% csrf_token %}
+
+        <!-- Supplier and Basic Info Section -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle section-icon"></i>
+                    اطلاعات پایه
+                </h2>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label required-field">تأمین‌کننده</label>
+                        <select name="supplier" class="form-select" required>
+                            <option value="">انتخاب تأمین‌کننده...</option>
+                            {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" {% if evaluation and evaluation.supplier.id == supplier.id %}selected{% endif %}>
+                                    {{ supplier.name }} ({{ supplier.supplier_code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-help">تأمین‌کننده‌ای که می‌خواهید ارزیابی کنید</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required-field">نوع ارزیابی</label>
+                        <select name="evaluation_type" class="form-select" required>
+                            <option value="manual" {% if not evaluation or evaluation.evaluation_type == 'manual' %}selected{% endif %}>ارزیابی دستی</option>
+                            <option value="automatic" {% if evaluation and evaluation.evaluation_type == 'automatic' %}selected{% endif %}>ارزیابی خودکار</option>
+                            <option value="periodic" {% if evaluation and evaluation.evaluation_type == 'periodic' %}selected{% endif %}>ارزیابی دوره‌ای</option>
+                        </select>
+                        <div class="form-help">نوع ارزیابی بر اساس نحوه انجام آن</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label required-field">تاریخ ارزیابی</label>
+                        <input type="date" name="evaluation_date" class="form-control"
+                               value="{% if evaluation %}{{ evaluation.evaluation_date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
+                        <div class="form-help">تاریخ انجام ارزیابی</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">سفارش مرتبط</label>
+                        <select name="related_order" class="form-select">
+                            <option value="">انتخاب سفارش (اختیاری)...</option>
+                            {% for order in recent_orders %}
+                                <option value="{{ order.id }}" {% if evaluation and evaluation.related_order and evaluation.related_order.id == order.id %}selected{% endif %}>
+                                    {{ order.order_number }} - {{ order.supplier.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-help">سفارش مرتبط با این ارزیابی (اختیاری)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rating Section -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">
+                    <i class="fas fa-star section-icon"></i>
+                    امتیازدهی
+                </h2>
+
+                <div class="rating-section">
+                    <div class="rating-grid">
+                        <!-- Quality Rating -->
+                        <div class="rating-item">
+                            <label class="rating-label required-field">کیفیت محصولات/خدمات</label>
+                            <div class="rating-input-group">
+                                <div class="rating-stars">
+                                    {% for i in "12345"|make_list %}
+                                        <input type="radio" name="quality_rating" value="{{ i }}" id="quality_{{ i }}"
+                                               class="star-radio" {% if evaluation and evaluation.quality_rating == i %}checked{% endif %} required>
+                                        <label for="quality_{{ i }}" class="star-label">★</label>
+                                    {% endfor %}
+                                </div>
+                                <div class="rating-value" id="quality_value">
+                                    {% if evaluation %}{{ evaluation.quality_rating }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delivery Rating -->
+                        <div class="rating-item">
+                            <label class="rating-label required-field">زمان‌بندی تحویل</label>
+                            <div class="rating-input-group">
+                                <div class="rating-stars">
+                                    {% for i in "12345"|make_list %}
+                                        <input type="radio" name="delivery_rating" value="{{ i }}" id="delivery_{{ i }}"
+                                               class="star-radio" {% if evaluation and evaluation.delivery_rating == i %}checked{% endif %} required>
+                                        <label for="delivery_{{ i }}" class="star-label">★</label>
+                                    {% endfor %}
+                                </div>
+                                <div class="rating-value" id="delivery_value">
+                                    {% if evaluation %}{{ evaluation.delivery_rating }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Price Rating -->
+                        <div class="rating-item">
+                            <label class="rating-label required-field">قیمت‌گذاری</label>
+                            <div class="rating-input-group">
+                                <div class="rating-stars">
+                                    {% for i in "12345"|make_list %}
+                                        <input type="radio" name="price_rating" value="{{ i }}" id="price_{{ i }}"
+                                               class="star-radio" {% if evaluation and evaluation.price_rating == i %}checked{% endif %} required>
+                                        <label for="price_{{ i }}" class="star-label">★</label>
+                                    {% endfor %}
+                                </div>
+                                <div class="rating-value" id="price_value">
+                                    {% if evaluation %}{{ evaluation.price_rating }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Communication Rating -->
+                        <div class="rating-item">
+                            <label class="rating-label required-field">کیفیت ارتباط</label>
+                            <div class="rating-input-group">
+                                <div class="rating-stars">
+                                    {% for i in "12345"|make_list %}
+                                        <input type="radio" name="communication_rating" value="{{ i }}" id="communication_{{ i }}"
+                                               class="star-radio" {% if evaluation and evaluation.communication_rating == i %}checked{% endif %} required>
+                                        <label for="communication_{{ i }}" class="star-label">★</label>
+                                    {% endfor %}
+                                </div>
+                                <div class="rating-value" id="communication_value">
+                                    {% if evaluation %}{{ evaluation.communication_rating }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overall-rating-display">
+                    <div class="overall-score" id="overall_score">
+                        {% if evaluation %}{{ evaluation.overall_rating|floatformat:1 }}{% else %}0.0{% endif %}
+                    </div>
+                    <div class="overall-label">امتیاز کلی</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="form-card">
+            <div class="form-section">
+                <h2 class="section-title">
+                    <i class="fas fa-comments section-icon"></i>
+                    نظرات و تحلیل
+                </h2>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">نقاط قوت</label>
+                        <textarea name="strengths" class="form-textarea" placeholder="نقاط قوت تأمین‌کننده را شرح دهید...">{{ evaluation.strengths|default:'' }}</textarea>
+                        <div class="form-help">جنبه‌های مثبت عملکرد تأمین‌کننده</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نقاط ضعف</label>
+                        <textarea name="weaknesses" class="form-textarea" placeholder="نقاط ضعف تأمین‌کننده را شرح دهید...">{{ evaluation.weaknesses|default:'' }}</textarea>
+                        <div class="form-help">جنبه‌های منفی عملکرد تأمین‌کننده</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">پیشنهادات</label>
+                        <textarea name="recommendations" class="form-textarea" placeholder="پیشنهادات بهبود عملکرد را بیان کنید...">{{ evaluation.recommendations|default:'' }}</textarea>
+                        <div class="form-help">پیشنهاداتی برای بهبود عملکرد تأمین‌کننده</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نظرات کلی</label>
+                        <textarea name="comments" class="form-textarea" placeholder="نظرات کلی خود را درباره تأمین‌کننده بیان کنید...">{{ evaluation.comments|default:'' }}</textarea>
+                        <div class="form-help">هرگونه نظر یا نکته دیگری درباره تأمین‌کننده</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i>
+                {% if evaluation %}بروزرسانی ارزیابی{% else %}ذخیره ارزیابی{% endif %}
+            </button>
+            <a href="{% url 'supplier_evaluation_all_list' %}" class="btn-cancel">
+                <i class="fas fa-times"></i> انصراف
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Rating system functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Update rating values and overall score
+    function updateRatings() {
+        const ratingTypes = ['quality', 'delivery', 'price', 'communication'];
+        let totalScore = 0;
+        let validRatings = 0;
+
+        ratingTypes.forEach(type => {
+            const radios = document.querySelectorAll(`input[name="${type}_rating"]`);
+            const valueElement = document.getElementById(`${type}_value`);
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    valueElement.textContent = this.value;
+                    calculateOverall();
+                });
+            });
+
+            // Set initial value
+            const checkedRadio = document.querySelector(`input[name="${type}_rating"]:checked`);
+            if (checkedRadio) {
+                valueElement.textContent = checkedRadio.value;
+                totalScore += parseInt(checkedRadio.value);
+                validRatings++;
+            }
+        });
+
+        calculateOverall();
+    }
+
+    function calculateOverall() {
+        const ratingTypes = ['quality', 'delivery', 'price', 'communication'];
+        let totalScore = 0;
+        let validRatings = 0;
+
+        ratingTypes.forEach(type => {
+            const checkedRadio = document.querySelector(`input[name="${type}_rating"]:checked`);
+            if (checkedRadio) {
+                totalScore += parseInt(checkedRadio.value);
+                validRatings++;
+            }
+        });
+
+        const overallScore = validRatings > 0 ? (totalScore / validRatings).toFixed(1) : '0.0';
+        document.getElementById('overall_score').textContent = overallScore;
+    }
+
+    // Initialize ratings
+    updateRatings();
+
+    // Form validation
+    const form = document.getElementById('evaluationForm');
+    form.addEventListener('submit', function(e) {
+        const requiredRatings = ['quality_rating', 'delivery_rating', 'price_rating', 'communication_rating'];
+        let isValid = true;
+
+        requiredRatings.forEach(rating => {
+            const checked = document.querySelector(`input[name="${rating}"]:checked`);
+            if (!checked) {
+                isValid = false;
+                // Add error styling if needed
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('لطفاً تمام معیارهای ارزیابی را امتیازدهی کنید.');
+        }
+    });
+});
+</script>
+{% endblock %}

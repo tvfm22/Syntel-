@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        {{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- System Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ total_users }}</h5>
+                                    <p class="card-text">کاربر</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ total_requests }}</h5>
+                                    <p class="card-text">درخواست خرید</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ total_invoices }}</h5>
+                                    <p class="card-text">فاکتور</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ total_payments }}</h5>
+                                    <p class="card-text">پرداخت</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Database Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">اطلاعات پایگاه داده</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>نام پایگاه داده:</strong> {{ database_name }}</p>
+                                            <p><strong>هاست:</strong> {{ database_host }}</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>تعداد تأمین‌کنندگان:</strong> {{ total_suppliers }}</p>
+                                            <p><strong>نوع:</strong> PostgreSQL</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backup Operations -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-download me-2"></i>
+                                        پشتیبان‌گیری
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <a href="{% url 'backup_database' %}" class="btn btn-primary">
+                                            <i class="fas fa-database me-2"></i>
+                                            پشتیبان‌گیری از پایگاه داده
+                                        </a>
+                                        <a href="{% url 'export_data_json' %}" class="btn btn-success">
+                                            <i class="fas fa-file-code me-2"></i>
+                                            صدور داده‌ها به JSON
+                                        </a>
+                                        <a href="{% url 'export_data_csv' %}" class="btn btn-info">
+                                            <i class="fas fa-file-csv me-2"></i>
+                                            صدور داده‌ها به CSV
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-upload me-2"></i>
+                                        بازیابی و انتقال
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form action="{% url 'import_data_json' %}" method="post" enctype="multipart/form-data" class="mb-3">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <label for="json_file" class="form-label">انتخاب فایل JSON برای وارد کردن:</label>
+                                            <input type="file" class="form-control" id="json_file" name="json_file" accept=".json" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-warning w-100">
+                                            <i class="fas fa-upload me-2"></i>
+                                            وارد کردن داده‌ها از JSON
+                                        </button>
+                                    </form>
+
+                                    <hr>
+
+                                    <div class="d-grid gap-2">
+                                        <a href="{% url 'create_migration_script' %}" class="btn btn-secondary">
+                                            <i class="fas fa-code me-2"></i>
+                                            ایجاد اسکریپت انتقال
+                                        </a>
+                                        <a href="{% url 'system_health_check' %}" class="btn btn-outline-primary">
+                                            <i class="fas fa-heartbeat me-2"></i>
+                                            بررسی سلامت سیستم
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Migration Script Runner -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-play me-2"></i>
+                                        اجرای اسکریپت انتقال
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form action="{% url 'run_migration_script' %}" method="post" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <label for="script_file" class="form-label">انتخاب فایل اسکریپت انتقال:</label>
+                                                <input type="file" class="form-control" id="script_file" name="script_file" accept=".py" required>
+                                            </div>
+                                            <div class="col-md-4 d-flex align-items-end">
+                                                <button type="submit" class="btn btn-danger w-100">
+                                                    <i class="fas fa-play me-2"></i>
+                                                    اجرای اسکریپت
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="form-text">
+                                            فایل‌های اسکریپت باید با احتیاط اجرا شوند. از صحت اسکریپت اطمینان حاصل کنید.
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Migration Output Display -->
+                    {% if request.session.migration_output %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-terminal me-2"></i>
+                                        خروجی اجرای اسکریپت
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <pre class="bg-dark text-light p-3 rounded" style="font-size: 0.9em; max-height: 300px; overflow-y: auto;">{{ request.session.migration_output }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Clear migration output from session after displaying
+{% if request.session.migration_output %}
+    fetch('{% url "backup_management" %}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    });
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,923 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}لیست فاکتورها{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-title-section">
+            <h1 class="page-title">
+                <span class="title-icon">📄</span>
+                مدیریت فاکتورها
+            </h1>
+            <p class="page-subtitle">مشاهده و مدیریت تمامی فاکتورهای سیستم</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
+                <span class="btn-icon">➕</span>
+                فاکتور جدید
+            </a>
+            <a href="{% url 'completed_orders_for_invoices' %}" class="action-btn action-btn-secondary">
+                <span class="btn-icon">🛒</span>
+                فاکتور از سفارش
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-row">
+    <div class="stat-box stat-box-total">
+        <div class="stat-icon-wrapper">📊</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ invoices|length }}</span>
+            <span class="stat-label">کل فاکتورها</span>
+        </div>
+    </div>
+    <div class="stat-box stat-box-pending">
+        <div class="stat-icon-wrapper">⏳</div>
+        <div class="stat-info">
+            <span class="stat-value" id="draftCount">-</span>
+            <span class="stat-label">پیش‌نویس</span>
+        </div>
+    </div>
+    <div class="stat-box stat-box-approved">
+        <div class="stat-icon-wrapper">✅</div>
+        <div class="stat-info">
+            <span class="stat-value" id="approvedCount">-</span>
+            <span class="stat-label">تأیید شده</span>
+        </div>
+    </div>
+    <div class="stat-box stat-box-paid">
+        <div class="stat-icon-wrapper">💰</div>
+        <div class="stat-info">
+            <span class="stat-value" id="paidCount">-</span>
+            <span class="stat-label">پرداخت شده</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="filters-card">
+    <div class="filters-header">
+        <span class="filters-title">🔍 فیلتر و جستجو</span>
+        <a href="{% url 'invoices_list' %}" class="clear-filters-btn">
+            پاک کردن فیلترها
+        </a>
+    </div>
+    <form method="get" class="filters-form">
+        <div class="filter-group">
+            <label class="filter-label">جستجو</label>
+            <div class="search-input-wrapper">
+                <input type="text" name="search" class="filter-input" placeholder="شماره فاکتور یا تأمین‌کننده..." value="{{ search_query }}">
+                <button type="submit" class="search-btn">🔎</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">وضعیت فاکتور</label>
+            <select name="status" class="filter-select" onchange="this.form.submit()">
+                <option value="">همه وضعیت‌ها</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">وضعیت پرداخت</label>
+            <select name="payment_status" class="filter-select" onchange="this.form.submit()">
+                <option value="">همه وضعیت‌ها</option>
+                {% for value, label in payment_choices %}
+                <option value="{{ value }}" {% if selected_payment == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">موارد ایراد</label>
+            <select name="issue" class="filter-select" onchange="this.form.submit()">
+                <option value="">همه</option>
+                {% for issue in issues %}
+                <option value="{{ issue.id }}" {% if selected_issue == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Invoices List -->
+<div class="invoices-container">
+    {% for invoice in invoices %}
+    <div class="invoice-card" data-status="{{ invoice.status }}">
+        <div class="invoice-header">
+            <div class="invoice-number">
+                <span class="invoice-icon">📋</span>
+                <a href="{% url 'invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a>
+            </div>
+            <div class="invoice-badges">
+                <span class="status-badge status-{{ invoice.status }}">
+                    {{ invoice.get_status_display }}
+                </span>
+                <span class="payment-badge payment-{{ invoice.payment_status }}">
+                    {{ invoice.get_payment_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="invoice-body">
+            <div class="invoice-details">
+                <div class="detail-item">
+                    <span class="detail-icon">🏢</span>
+                    <div class="detail-content">
+                        <span class="detail-label">تأمین‌کننده</span>
+                        <span class="detail-value">{{ invoice.purchase_order.supplier_name|default:"نامشخص" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">📅</span>
+                    <div class="detail-content">
+                        <span class="detail-label">تاریخ فاکتور</span>
+                        <span class="detail-value">{{ invoice.invoice_date|date:"Y/m/d" }}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">⏰</span>
+                    <div class="detail-content">
+                        <span class="detail-label">سررسید</span>
+                        <span class="detail-value {% if invoice.is_overdue %}overdue{% endif %}">
+                            {{ invoice.due_date|date:"Y/m/d"|default:"تعیین نشده" }}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-item detail-amount">
+                    <span class="detail-icon">💵</span>
+                    <div class="detail-content">
+                        <span class="detail-label">مبلغ کل</span>
+                        <span class="detail-value amount-value">{{ invoice.total_amount|floatformat:0 }} تومان</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="invoice-footer">
+            <div class="invoice-meta">
+                <span class="meta-item">🕐 ایجاد: {{ invoice.created_at|date:"Y/m/d" }}</span>
+            </div>
+            <div class="invoice-actions">
+                <a href="{% url 'invoice_detail' invoice.id %}" class="action-icon-btn view-btn" title="مشاهده">
+                    👁️
+                </a>
+                {% if invoice.status == 'draft' %}
+                <a href="{% url 'invoice_update' invoice.id %}" class="action-icon-btn edit-btn" title="ویرایش">
+                    ✏️
+                </a>
+                <a href="{% url 'invoice_send' invoice.id %}" class="action-icon-btn send-btn" title="ارسال">
+                    📤
+                </a>
+                {% endif %}
+                {% if invoice.status == 'sent' and user.role == 'manager' %}
+                <a href="{% url 'invoice_approve' invoice.id %}" class="action-icon-btn approve-btn" title="تأیید">
+                    ✅
+                </a>
+                {% endif %}
+                {% if invoice.status == 'approved' and user.role == 'manager' %}
+                <a href="{% url 'invoice_pay' invoice.id %}" class="action-icon-btn pay-btn" title="پرداخت">
+                    💳
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3 class="empty-title">فاکتوری یافت نشد</h3>
+        <p class="empty-text">هنوز هیچ فاکتوری در سیستم ثبت نشده است یا فیلتر انتخابی نتیجه‌ای ندارد.</p>
+        <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
+            <span class="btn-icon">➕</span>
+            ایجاد اولین فاکتور
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Table View for Desktop -->
+<div class="table-view-container">
+    <div class="table-wrapper">
+        <table class="invoices-table">
+            <thead>
+                <tr>
+                    <th>شماره فاکتور</th>
+                    <th>تأمین‌کننده</th>
+                    <th>تاریخ فاکتور</th>
+                    <th>سررسید</th>
+                    <th>مبلغ</th>
+                    <th>وضعیت</th>
+                    <th>پرداخت</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr data-status="{{ invoice.status }}">
+                    <td>
+                        <a href="{% url 'invoice_detail' invoice.id %}" class="invoice-link">
+                            {{ invoice.invoice_number }}
+                        </a>
+                    </td>
+                    <td>{{ invoice.purchase_order.supplier_name|default:"نامشخص" }}</td>
+                    <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
+                    <td class="{% if invoice.is_overdue %}overdue{% endif %}">
+                        {{ invoice.due_date|date:"Y/m/d"|default:"-" }}
+                    </td>
+                    <td class="amount-cell">{{ invoice.total_amount|floatformat:0 }} تومان</td>
+                    <td>
+                        <span class="status-badge status-{{ invoice.status }}">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="payment-badge payment-{{ invoice.payment_status }}">
+                            {{ invoice.get_payment_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{% url 'invoice_detail' invoice.id %}" class="tbl-action-btn" title="مشاهده">👁️</a>
+                            {% if invoice.status == 'draft' %}
+                            <a href="{% url 'invoice_update' invoice.id %}" class="tbl-action-btn" title="ویرایش">✏️</a>
+                            <a href="{% url 'invoice_send' invoice.id %}" class="tbl-action-btn" title="ارسال">📤</a>
+                            {% endif %}
+                            {% if invoice.status == 'sent' and user.role == 'manager' %}
+                            <a href="{% url 'invoice_approve' invoice.id %}" class="tbl-action-btn" title="تأیید">✅</a>
+                            {% endif %}
+                            {% if invoice.status == 'approved' and user.role == 'manager' %}
+                            <a href="{% url 'invoice_pay' invoice.id %}" class="tbl-action-btn" title="پرداخت">💳</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-table-cell">
+                        <div class="empty-table-message">📭 فاکتوری یافت نشد</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate statistics
+    const cards = document.querySelectorAll('.invoice-card');
+    let draftCount = 0, approvedCount = 0, paidCount = 0;
+    
+    cards.forEach(card => {
+        const status = card.dataset.status;
+        if (status === 'draft') draftCount++;
+        else if (status === 'approved') approvedCount++;
+        else if (status === 'paid') paidCount++;
+    });
+    
+    document.getElementById('draftCount').textContent = draftCount;
+    document.getElementById('approvedCount').textContent = approvedCount;
+    document.getElementById('paidCount').textContent = paidCount;
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.page-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.page-title {
+    color: white;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.title-icon {
+    font-size: 2rem;
+}
+
+.page-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0.5rem 0 0 0;
+    font-size: 0.95rem;
+}
+
+.page-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.action-btn-primary {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+.action-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+    background: var(--light-color);
+}
+
+.action-btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.action-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-icon {
+    font-size: 1.1rem;
+}
+
+/* Statistics Row */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.stat-box {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    border-right: 4px solid transparent;
+}
+
+.stat-box:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-box-total { border-right-color: var(--primary-color); }
+.stat-box-pending { border-right-color: var(--warning-color); }
+.stat-box-approved { border-right-color: var(--success-color); }
+.stat-box-paid { border-right-color: var(--info-color); }
+
+.stat-icon-wrapper {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light-color);
+    border-radius: var(--radius-md);
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* Filters Card */
+.filters-card {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.filters-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.clear-filters-btn {
+    color: var(--danger-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.clear-filters-btn:hover {
+    text-decoration: underline;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark-color);
+}
+
+.filter-input,
+.filter-select {
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+}
+
+.search-input-wrapper .filter-input {
+    flex: 1;
+    padding-left: 3rem;
+}
+
+.search-btn {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary-color);
+    border: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.search-btn:hover {
+    background: var(--primary-dark);
+}
+
+/* Invoice Cards (Mobile/Card View) */
+.invoices-container {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.invoice-card {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.invoice-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.invoice-header {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.invoice-number {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.invoice-icon {
+    font-size: 1.25rem;
+}
+
+.invoice-number a {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.invoice-number a:hover {
+    text-decoration: underline;
+}
+
+.invoice-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-badge,
+.payment-badge {
+    padding: 0.375rem 0.875rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Status Badge Colors */
+.status-draft { background: #e5e7eb; color: #374151; }
+.status-sent { background: #dbeafe; color: #1e40af; }
+.status-approved { background: #d1fae5; color: #065f46; }
+.status-paid { background: #cffafe; color: #0e7490; }
+.status-cancelled { background: #fee2e2; color: #991b1b; }
+.status-overdue { background: #fef3c7; color: #92400e; }
+
+/* Payment Badge Colors */
+.payment-unpaid { background: #fee2e2; color: #991b1b; }
+.payment-partial { background: #fef3c7; color: #92400e; }
+.payment-paid { background: #d1fae5; color: #065f46; }
+.payment-overpaid { background: #e0e7ff; color: #3730a3; }
+
+.invoice-body {
+    padding: 1.5rem;
+}
+
+.invoice-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.detail-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.detail-value.overdue {
+    color: var(--danger-color);
+}
+
+.detail-amount {
+    grid-column: span 2;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-top: 0.5rem;
+}
+
+.amount-value {
+    font-size: 1.25rem;
+    color: var(--success-color) !important;
+}
+
+.invoice-footer {
+    padding: 1rem 1.5rem;
+    background: #f8fafc;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.invoice-meta {
+    display: flex;
+    gap: 1rem;
+}
+
+.meta-item {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.invoice-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-icon-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.view-btn { background: #dbeafe; }
+.view-btn:hover { background: #bfdbfe; transform: scale(1.1); }
+
+.edit-btn { background: #fef3c7; }
+.edit-btn:hover { background: #fde68a; transform: scale(1.1); }
+
+.send-btn { background: #e0e7ff; }
+.send-btn:hover { background: #c7d2fe; transform: scale(1.1); }
+
+.approve-btn { background: #d1fae5; }
+.approve-btn:hover { background: #a7f3d0; transform: scale(1.1); }
+
+.pay-btn { background: #cffafe; }
+.pay-btn:hover { background: #a5f3fc; transform: scale(1.1); }
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 0.5rem;
+}
+
+.empty-text {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+}
+
+/* Table View (Desktop) */
+.table-view-container {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.invoices-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.invoices-table thead {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+}
+
+.invoices-table th {
+    padding: 1.25rem 1rem;
+    text-align: right;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.invoices-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.invoices-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.invoices-table tbody tr:hover {
+    background: var(--light-color);
+}
+
+.invoice-link {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.invoice-link:hover {
+    text-decoration: underline;
+}
+
+.amount-cell {
+    font-weight: 700;
+    color: var(--success-color);
+    white-space: nowrap;
+}
+
+.overdue {
+    color: var(--danger-color) !important;
+    font-weight: 600;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.375rem;
+}
+
+.tbl-action-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--light-color);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.tbl-action-btn:hover {
+    background: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.empty-table-cell {
+    text-align: center;
+    padding: 3rem !important;
+}
+
+.empty-table-message {
+    font-size: 1.1rem;
+    color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .table-view-container {
+        display: none;
+    }
+    
+    .invoices-container {
+        display: flex;
+    }
+}
+
+@media (min-width: 993px) {
+    .invoices-container {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        padding: 1.5rem;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .page-title {
+        font-size: 1.35rem;
+    }
+    
+    .page-actions {
+        flex-direction: column;
+    }
+    
+    .action-btn {
+        justify-content: center;
+    }
+    
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .invoice-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .detail-amount {
+        grid-column: span 1;
+    }
+    
+    .invoice-footer {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .invoice-actions {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-box {
+        padding: 1rem;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+    }
+}
+</style>
+{% endblock %}

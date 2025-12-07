@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}حذف کاربر{% endblock %}
+
+{% block content %}
+<style>
+.delete-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.delete-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.delete-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #dc3545;
+    margin: 0;
+}
+
+.delete-subtitle {
+    color: #666;
+    margin-top: 5px;
+}
+
+.delete-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.user-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border-right: 4px solid #dc3545;
+}
+
+.user-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.user-details {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.warning-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: right;
+}
+
+.warning-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.warning-text {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.delete-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-delete, .btn-cancel {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .delete-container {
+        padding: 15px;
+    }
+
+    .delete-card {
+        padding: 20px;
+    }
+
+    .delete-actions {
+        flex-direction: column;
+    }
+
+    .btn-delete, .btn-cancel {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+
+<div class="delete-container">
+    <div class="delete-header">
+        <h1 class="delete-title">حذف کاربر</h1>
+        <p class="delete-subtitle">آیا مطمئن هستید که می‌خواهید این کاربر را حذف کنید؟</p>
+    </div>
+
+    <div class="delete-card">
+        <div class="user-info">
+            <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+            <div class="user-details">
+                نام کاربری: {{ user.username }}<br>
+                نقش: {{ user.get_role_display }}<br>
+                وضعیت: {% if user.is_active %}فعال{% else %}غیرفعال{% endif %}
+            </div>
+        </div>
+
+        <div class="warning-message">
+            <div class="warning-title">⚠️ هشدار</div>
+            <div class="warning-text">
+                این عملیات قابل برگرداندن نیست. با حذف این کاربر:
+                <br>• دسترسی کاربر به سیستم قطع خواهد شد
+                <br>• تمام داده‌های مرتبط با این کاربر حفظ خواهد شد
+                <br>• نمی‌توان کاربر جدیدی با همین نام کاربری ایجاد کرد
+            </div>
+        </div>
+
+        <div class="delete-actions">
+            <a href="{% url 'user_list' %}" class="btn-cancel">انصراف</a>
+            <form method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-delete">حذف کاربر</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

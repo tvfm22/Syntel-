@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if payment_method %}ویرایش روش پرداخت{% else %}ایجاد روش پرداخت{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {% if payment_method %}ویرایش روش پرداخت{% else %}ایجاد روش پرداخت جدید{% endif %}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'payment_method_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="code">کد روش پرداخت *</label>
+                                    <input type="text" class="form-control" id="code" name="code" 
+                                           value="{% if payment_method %}{{ payment_method.code }}{% endif %}" 
+                                           required maxlength="20" pattern="[A-Z_]+" title="فقط حروف بزرگ و زیرخط مجاز است">
+                                    <small class="form-text text-muted">کد منحصر به فرد (حروف بزرگ و زیرخط)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name">نام روش پرداخت *</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{% if payment_method %}{{ payment_method.name }}{% endif %}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="description">توضیحات</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3">{% if payment_method %}{{ payment_method.description }}{% endif %}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuration Options -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5>تنظیمات روش پرداخت</h5>
+                                <hr>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="requires_bank_info" 
+                                               name="requires_bank_info" {% if payment_method and payment_method.requires_bank_info %}checked{% endif %}>
+                                        <label class="custom-control-label" for="requires_bank_info">
+                                            نیاز به اطلاعات بانکی
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="requires_check_info" 
+                                               name="requires_check_info" {% if payment_method and payment_method.requires_check_info %}checked{% endif %}>
+                                        <label class="custom-control-label" for="requires_check_info">
+                                            نیاز به شماره چک
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="requires_card_info" 
+                                               name="requires_card_info" {% if payment_method and payment_method.requires_card_info %}checked{% endif %}>
+                                        <label class="custom-control-label" for="requires_card_info">
+                                            نیاز به اطلاعات کارت
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="requires_reference" 
+                                               name="requires_reference" {% if payment_method and payment_method.requires_reference %}checked{% endif %}>
+                                        <label class="custom-control-label" for="requires_reference">
+                                            نیاز به شماره مرجع
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="is_active" 
+                                               name="is_active" {% if not payment_method or payment_method.is_active %}checked{% endif %}>
+                                        <label class="custom-control-label" for="is_active">
+                                            فعال
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> {% if payment_method %}بروزرسانی{% else %}ایجاد{% endif %} روش پرداخت
+                                </button>
+                                <a href="{% url 'payment_method_list' %}" class="btn btn-secondary ml-2">انصراف</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Auto-generate code from name if empty
+    $('#name').on('input', function() {
+        if (!$('#code').val()) {
+            const name = $(this).val();
+            const code = name.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            $('#code').val(code);
+        }
+    });
+});
+</script>
+{% endblock %}

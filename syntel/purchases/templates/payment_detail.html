@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}جزئیات پرداخت{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">جزئیات پرداخت</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'payment_update' payment.id %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit"></i> ویرایش
+                        </a>
+                        <a href="{% url 'payment_delete' payment.id %}" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> حذف
+                        </a>
+                        <a href="{% url 'payment_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Payment Information -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">اطلاعات پرداخت</h5>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">شماره پرداخت:</dt>
+                                        <dd class="col-sm-8">{{ payment.payment_number }}</dd>
+
+                                        <dt class="col-sm-4">فاکتور:</dt>
+                                        <dd class="col-sm-8">
+                                            <a href="{% url 'invoice_detail' payment.invoice.id %}">
+                                                {{ payment.invoice.invoice_number }}
+                                            </a>
+                                        </dd>
+
+                                        <dt class="col-sm-4">مبلغ:</dt>
+                                        <dd class="col-sm-8">{{ payment.amount|floatformat:0 }} تومان</dd>
+
+                                        <dt class="col-sm-4">روش پرداخت:</dt>
+                                    <dd class="col-sm-8">{{ payment.payment_method.name }}</dd>
+
+                                        <dt class="col-sm-4">وضعیت:</dt>
+                                        <dd class="col-sm-8">
+                                            <span class="badge badge-{{ payment.payment_status|lower }}">
+                                                {{ payment.get_payment_status_display }}
+                                            </span>
+                                        </dd>
+
+                                        <dt class="col-sm-4">تاریخ پرداخت:</dt>
+                                        <dd class="col-sm-8">{{ payment.payment_date|date:'Y/m/d' }}</dd>
+
+                                        {% if payment.reference_number %}
+                                        <dt class="col-sm-4">شماره مرجع:</dt>
+                                        <dd class="col-sm-8">{{ payment.reference_number }}</dd>
+                                        {% endif %}
+
+                                        {% if payment.bank_name %}
+                                        <dt class="col-sm-4">نام بانک:</dt>
+                                        <dd class="col-sm-8">{{ payment.bank_name }}</dd>
+                                        {% endif %}
+
+                                        {% if payment.check_number %}
+                                        <dt class="col-sm-4">شماره چک:</dt>
+                                        <dd class="col-sm-8">{{ payment.check_number }}</dd>
+                                        {% endif %}
+
+                                        {% if payment.card_last_four %}
+                                        <dt class="col-sm-4">چهار رقم آخر کارت:</dt>
+                                        <dd class="col-sm-8">**** **** **** {{ payment.card_last_four }}</dd>
+                                        {% endif %}
+
+                                        {% if payment.notes %}
+                                        <dt class="col-sm-4">یادداشت‌ها:</dt>
+                                        <dd class="col-sm-8">{{ payment.notes }}</dd>
+                                        {% endif %}
+
+                                        <dt class="col-sm-4">تاریخ ایجاد:</dt>
+                                        <dd class="col-sm-8">{{ payment.created_at|date:'Y/m/d H:i' }}</dd>
+
+                                        <dt class="col-sm-4">آخرین بروزرسانی:</dt>
+                                        <dd class="col-sm-8">{{ payment.updated_at|date:'Y/m/d H:i' }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Summary -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">خلاصه فاکتور</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <h4>{{ payment.invoice.purchase_order.supplier_name }}</h4>
+                                        <p class="text-muted">{{ payment.invoice.invoice_number }}</p>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>مجموع فاکتور:</strong><br>
+                                                {{ payment.invoice.total_amount|floatformat:0 }} تومان
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>پرداخت شده:</strong><br>
+                                                {{ payment.invoice.get_paid_amount|floatformat:0 }} تومان
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>مانده:</strong><br>
+                                                {{ payment.invoice.get_remaining_amount|floatformat:0 }} تومان
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>درصد پرداخت:</strong><br>
+                                                {{ payment.invoice.get_payment_percentage|floatformat:1 }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Activity Log -->
+                            {% if payment.activity_logs.exists %}
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="card-title">لاگ فعالیت‌ها</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="timeline">
+                                        {% for log in payment.activity_logs.all|slice:":10" %}
+                                        <div class="timeline-item">
+                                            <div class="timeline-marker bg-primary"></div>
+                                            <div class="timeline-content">
+                                                <h6 class="timeline-title">{{ log.action }}</h6>
+                                                <p class="text-muted">{{ log.details }}</p>
+                                                <small class="text-muted">
+                                                    {{ log.user.get_full_name }} - {{ log.timestamp|date:'Y/m/d H:i' }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge-pending { background-color: #ffc107; color: #212529; }
+.badge-completed { background-color: #28a745; }
+.badge-failed { background-color: #dc3545; }
+.badge-cancelled { background-color: #6c757d; }
+.badge-refunded { background-color: #17a2b8; }
+
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-left: 30px;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -23px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+}
+</style>
+{% endblock %}

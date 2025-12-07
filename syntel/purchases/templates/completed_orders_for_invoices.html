@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سفارش‌های تکمیل‌شده برای ایجاد فاکتور{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">سفارش‌های تکمیل‌شده برای ایجاد فاکتور</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به لیست فاکتورها
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>شماره سفارش</th>
+                                    <th>تأمین‌کننده</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>تاریخ تکمیل</th>
+                                    <th>مجموع</th>
+                                    <th>اقلام</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'purchase_order_detail' order.id %}">{{ order.order_number }}</a>
+                                    </td>
+                                    <td>{{ order.supplier_name }}</td>
+                                    <td>{{ order.created_at|date:"Y/m/d" }}</td>
+                                    <td>{{ order.completed_at|date:"Y/m/d" }}</td>
+                                    <td>{{ order.total_amount|floatformat:0 }} تومان</td>
+                                    <td>{{ order.order_items.count }} قلم</td>
+                                    <td>
+                                        <a href="{% url 'invoice_create' order.id %}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-plus"></i> ایجاد فاکتور
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">هیچ سفارش تکمیل‌شده‌ای برای ایجاد فاکتور یافت نشد</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

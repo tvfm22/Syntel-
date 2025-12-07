@@ -1,0 +1,24 @@
+{% for request in requests %}
+    <tr>
+        <td>#{{ request.id }}</td>
+        <td>{{ request.user.get_role_display }}</td>
+        <td>{{ request.user.username }}</td>
+        <td>{{ request.created_at|date:"d/m/Y H:i" }}</td>
+        <td>
+            <span class="status-badge status-{{ request.status }}">
+                {% if request.status == 'pending' %}منتظر
+                {% elif request.status == 'purchased' %}خریداری شد
+                {% elif request.status == 'partial' %}کسری دارد
+                {% endif %}
+            </span>
+        </td>
+        <td>
+            <a href="{% url 'purchase_request_detail' request.id %}" class="action-btn">مشاهده</a>
+            <a href="{% url 'update_purchase_request' request.id %}" class="action-btn" style="background: #2196F3;">ثبت خرید</a>
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="6" class="no-data">درخواست معلق‌ای وجود ندارد</td>
+    </tr>
+{% endfor %}

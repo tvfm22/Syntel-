@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تأییدهای در انتظار{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">تأییدهای در انتظار</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'approval_history' %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-history"></i> تاریخچه تأییدها
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if pending_approvals %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>شماره فاکتور</th>
+                                        <th>تأمین‌کننده</th>
+                                        <th>مبلغ کل</th>
+                                        <th>سطح تأیید</th>
+                                        <th>تاریخ درخواست</th>
+                                        <th>عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for approval in pending_approvals %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'invoice_detail' approval.invoice.id %}">{{ approval.invoice.invoice_number }}</a>
+                                        </td>
+                                        <td>{{ approval.invoice.purchase_order.supplier_name }}</td>
+                                        <td>{{ approval.invoice.total_amount|floatformat:0 }} تومان</td>
+                                        <td>
+                                            <span class="badge badge-primary">{{ approval.get_approval_level_display }}</span>
+                                        </td>
+                                        <td>{{ approval.requested_at|date:"Y/m/d H:i" }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#approveModal{{ approval.id }}">
+                                                    <i class="fas fa-check"></i> تأیید
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#rejectModal{{ approval.id }}">
+                                                    <i class="fas fa-times"></i> رد
+                                                </button>
+                                                <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#revisionModal{{ approval.id }}">
+                                                    <i class="fas fa-edit"></i> بازبینی
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h4>هیچ تأییدی در انتظار نیست</h4>
+                            <p class="text-muted">تمام فاکتورها بررسی شده‌اند</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Modals -->
+{% for approval in pending_approvals %}
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal{{ approval.id }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تأیید فاکتور {{ approval.invoice.invoice_number }}</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'invoice_approve' approval.invoice.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="approval_id" value="{{ approval.id }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="comments{{ approval.id }}">نظرات (اختیاری)</label>
+                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="3" placeholder="نظرات خود را وارد کنید..."></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>اطلاعات فاکتور:</strong><br>
+                        تأمین‌کننده: {{ approval.invoice.purchase_order.supplier_name }}<br>
+                        مبلغ کل: {{ approval.invoice.total_amount|floatformat:0 }} تومان<br>
+                        سطح تأیید: {{ approval.get_approval_level_display }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-success">تأیید فاکتور</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal{{ approval.id }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد فاکتور {{ approval.invoice.invoice_number }}</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'invoice_reject' approval.invoice.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="approval_id" value="{{ approval.id }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="rejection_reason{{ approval.id }}">دلیل رد *</label>
+                        <textarea class="form-control" id="rejection_reason{{ approval.id }}" name="rejection_reason" rows="3" required placeholder="دلیل رد فاکتور را توضیح دهید..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="comments{{ approval.id }}">نظرات اضافی (اختیاری)</label>
+                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="2" placeholder="نظرات خود را وارد کنید..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">رد فاکتور</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Revision Modal -->
+<div class="modal fade" id="revisionModal{{ approval.id }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">درخواست بازبینی فاکتور {{ approval.invoice.invoice_number }}</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form method="post" action="{% url 'invoice_request_revision' approval.invoice.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="approval_id" value="{{ approval.id }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="revision_notes{{ approval.id }}">نکات بازبینی *</label>
+                        <textarea class="form-control" id="revision_notes{{ approval.id }}" name="revision_notes" rows="4" required placeholder="نکات و تغییرات مورد نیاز را توضیح دهید..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="comments{{ approval.id }}">نظرات اضافی (اختیاری)</label>
+                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="2" placeholder="نظرات خود را وارد کنید..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-warning">درخواست بازبینی</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Auto-focus on modal textareas when opened
+    $('.modal').on('shown.bs.modal', function() {
+        $(this).find('textarea').first().focus();
+    });
+});
+</script>
+{% endblock %}

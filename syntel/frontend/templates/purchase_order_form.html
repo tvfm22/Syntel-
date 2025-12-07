@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if purchase_order %}ویرایش سفارش خرید{% else %}ایجاد سفارش خرید{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        {% if purchase_order %}ویرایش سفارش خرید{% else %}ایجاد سفارش خرید{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Order Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="mb-3">اطلاعات سفارش</h5>
+                                <div class="mb-3">
+                                    <label for="order_number" class="form-label">شماره سفارش</label>
+                                    <input type="text" class="form-control" id="order_number" name="order_number"
+                                           value="{% if purchase_order %}{{ purchase_order.order_number }}{% endif %}"
+                                           placeholder="اگر خالی باشد، به صورت خودکار تولید می‌شود">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="delivery_date" class="form-label">تاریخ تحویل</label>
+                                    <input type="date" class="form-control" id="delivery_date" name="delivery_date"
+                                           value="{% if purchase_order and purchase_order.delivery_date %}{{ purchase_order.delivery_date|date:'Y-m-d' }}{% endif %}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="payment_terms" class="form-label">شرایط پرداخت</label>
+                                    <textarea class="form-control" id="payment_terms" name="payment_terms" rows="3"
+                                              placeholder="مثال: پرداخت نقدی، چکی، اعتباری">{{ purchase_order.payment_terms|default:'' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="mb-3">اطلاعات تأمین‌کننده</h5>
+                                <div class="mb-3">
+                                    <label for="supplier_name" class="form-label">نام تأمین‌کننده *</label>
+                                    <input type="text" class="form-control" id="supplier_name" name="supplier_name"
+                                           value="{{ purchase_order.supplier_name|default:'' }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="supplier_contact" class="form-label">اطلاعات تماس تأمین‌کننده</label>
+                                    <input type="text" class="form-control" id="supplier_contact" name="supplier_contact"
+                                           value="{{ purchase_order.supplier_contact|default:'' }}"
+                                           placeholder="تلفن، ایمیل، موبایل">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="supplier_address" class="form-label">آدرس تأمین‌کننده</label>
+                                    <textarea class="form-control" id="supplier_address" name="supplier_address" rows="3">{{ purchase_order.supplier_address|default:'' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Order Items -->
+                        <h5 class="mb-3">اقلام سفارش</h5>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>نام کالا</th>
+                                        <th>واحد</th>
+                                        <th>مقدار</th>
+                                        <th>قیمت واحد (تومان)</th>
+                                        <th>مجموع قیمت (تومان)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                        <tr>
+                                            <td>{{ item.name }}</td>
+                                            <td>{{ item.unit }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm"
+                                                       name="unit_price_{{ item.id }}"
+                                                       value="{% if purchase_order %}{{ item.unit_price|default:0 }}{% endif %}"
+                                                       step="0.01" min="0" onchange="calculateTotal(this, {{ item.quantity }})">
+                                            </td>
+                                            <td>
+                                                <span id="total_{{ item.id }}">
+                                                    {% if purchase_order %}
+                                                        {% load custom_filters %}
+                                                        {{ item.total_price|number_format }}
+                                                    {% else %}
+                                                        0
+                                                    {% endif %}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-dark">
+                                        <th colspan="4" class="text-end">مجموع کل:</th>
+                                        <th id="grand_total">
+                                            {% if purchase_order %}
+                                                {% load custom_filters %}
+                                                {{ purchase_order.total_amount|number_format }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">توضیحات</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="توضیحات اضافی درباره سفارش">{{ purchase_order.notes|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Request Information (Read-only) -->
+                        {% if purchase_request %}
+                            <div class="alert alert-info">
+                                <h6>اطلاعات درخواست خرید:</h6>
+                                <p class="mb-1"><strong>شماره درخواست:</strong> {{ purchase_request.id }}</p>
+                                <p class="mb-1"><strong>بخش:</strong> {{ purchase_request.user.get_role_display }}</p>
+                                <p class="mb-1"><strong>کاربر:</strong> {{ purchase_request.user.get_full_name|default:purchase_request.user.username }}</p>
+                                <p class="mb-0"><strong>تاریخ ایجاد:</strong> {{ purchase_request.created_at|date:"Y/m/d H:i" }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'purchase_orders_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> بازگشت
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    {% if purchase_order %}ذخیره تغییرات{% else %}ایجاد سفارش{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function calculateTotal(input, quantity) {
+    const unitPrice = parseFloat(input.value) || 0;
+    const total = unitPrice * quantity;
+    const totalElement = document.getElementById('total_' + input.name.split('_')[2]);
+    totalElement.textContent = total.toLocaleString('fa-IR');
+
+    // Update grand total
+    updateGrandTotal();
+}
+
+function updateGrandTotal() {
+    let grandTotal = 0;
+    const totalElements = document.querySelectorAll('[id^="total_"]');
+    totalElements.forEach(element => {
+        const value = parseFloat(element.textContent.replace(/,/g, '')) || 0;
+        grandTotal += value;
+    });
+    document.getElementById('grand_total').textContent = grandTotal.toLocaleString('fa-IR');
+}
+
+// Initialize calculations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateGrandTotal();
+});
+</script>
+{% endblock %}

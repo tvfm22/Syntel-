@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}تأیید حذف فاکتور{% endblock %}
+
+{% block content %}
+<style>
+.delete-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.delete-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.delete-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.delete-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.delete-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.delete-body {
+    padding: 30px;
+}
+
+.delete-message {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.invoice-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.invoice-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.invoice-details {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.warning-text {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+
+.delete-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.btn-confirm, .btn-cancel {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 120px;
+    text-align: center;
+}
+
+.btn-confirm {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-confirm:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .delete-container {
+        padding: 15px;
+    }
+
+    .delete-actions {
+        flex-direction: column;
+    }
+
+    .btn-confirm, .btn-cancel {
+        width: 100%;
+    }
+}
+</style>
+
+<div class="delete-container">
+    <div class="delete-card">
+        <div class="delete-header">
+            <div class="delete-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h1 class="delete-title">تأیید حذف فاکتور</h1>
+        </div>
+
+        <div class="delete-body">
+            <div class="delete-message">
+                <p>آیا مطمئن هستید که می‌خواهید این فاکتور را حذف کنید؟</p>
+            </div>
+
+            <div class="invoice-info">
+                <div class="invoice-name">{{ invoice.invoice_number }}</div>
+                <div class="invoice-details">
+                    تأمین‌کننده: {{ invoice.supplier.name|default:"نامشخص" }}
+                    {% if invoice.purchase_order %} | سفارش: {{ invoice.purchase_order.order_number }}{% endif %}
+                    | مبلغ: {{ invoice.total_amount|number_format }} تومان
+                    | وضعیت: {{ invoice.get_status_display }}
+                </div>
+            </div>
+
+            <div class="warning-text">
+                <strong>توجه:</strong> این عملیات قابل برگرداندن نیست. فاکتور از سیستم حذف خواهد شد و دیگر قابل دسترسی نخواهد بود. همچنین تمام پرداخت‌ها و سفارشات مرتبط حفظ خواهند شد اما فاکتور قابل دسترسی نخواهد بود.
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="delete-actions">
+                    <a href="{% url 'invoice_detail' invoice.id %}" class="btn-cancel">انصراف</a>
+                    <button type="submit" class="btn-confirm">
+                        <i class="fas fa-trash"></i> حذف فاکتور
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

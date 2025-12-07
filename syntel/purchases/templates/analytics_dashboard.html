@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}داشبورد تحلیلی{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.analytics-card {
+    transition: transform 0.2s;
+}
+.analytics-card:hover {
+    transform: translateY(-2px);
+}
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+.metric-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line"></i> داشبورد تحلیلی سیستم خرید
+                    </h3>
+                    <div class="card-tools">
+                        <small class="text-muted">آخرین بروزرسانی: {{ now|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Quick Metrics Row -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card analytics-card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <div class="metric-value">{{ total_requests|default:0 }}</div>
+                                    <div class="metric-label">کل درخواست‌های خرید</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card analytics-card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <div class="metric-value">{{ approved_requests|default:0 }}</div>
+                                    <div class="metric-label">درخواست‌های تأیید شده</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card analytics-card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <div class="metric-value">{{ pending_approvals|default:0 }}</div>
+                                    <div class="metric-label">در انتظار تأیید</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card analytics-card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <div class="metric-value">{{ total_suppliers|default:0 }}</div>
+                                    <div class="metric-label">تأمین‌کنندگان فعال</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Navigation -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">گزارش‌های تحلیلی</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <a href="{% url 'purchase_analytics' %}" class="btn btn-outline-primary btn-block">
+                                                <i class="fas fa-shopping-cart"></i>
+                                                <br>
+                                                <strong>تحلیل خریدها</strong>
+                                                <br>
+                                                <small>روند درخواست‌ها و تحلیل محصولات</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <a href="{% url 'financial_analytics' %}" class="btn btn-outline-success btn-block">
+                                                <i class="fas fa-dollar-sign"></i>
+                                                <br>
+                                                <strong>تحلیل مالی</strong>
+                                                <br>
+                                                <small>هزینه‌ها و پرداخت‌ها</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <a href="{% url 'supplier_analytics' %}" class="btn btn-outline-info btn-block">
+                                                <i class="fas fa-truck"></i>
+                                                <br>
+                                                <strong>تحلیل تأمین‌کنندگان</strong>
+                                                <br>
+                                                <small>عملکرد و امتیازدهی</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <a href="{% url 'inventory_analytics' %}" class="btn btn-outline-warning btn-block">
+                                                <i class="fas fa-boxes"></i>
+                                                <br>
+                                                <strong>تحلیل موجودی</strong>
+                                                <br>
+                                                <small>موجودی و مصرف محصولات</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <a href="{% url 'executive_summary' %}" class="btn btn-outline-danger btn-block">
+                                                <i class="fas fa-chart-pie"></i>
+                                                <br>
+                                                <strong>خلاصه مدیریتی</strong>
+                                                <br>
+                                                <small>شاخص‌های کلیدی عملکرد</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <button class="btn btn-outline-secondary btn-block" onclick="exportDashboard()">
+                                                <i class="fas fa-download"></i>
+                                                <br>
+                                                <strong>خروجی گزارش</strong>
+                                                <br>
+                                                <small>PDF/Excel</small>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">فعالیت‌های اخیر</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group list-group-flush">
+                                        {% for activity in recent_activities %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1">{{ activity.title }}</h6>
+                                                <small>{{ activity.date|timesince }}</small>
+                                            </div>
+                                            <p class="mb-1">{{ activity.description }}</p>
+                                            <small class="text-muted">{{ activity.user }}</small>
+                                        </div>
+                                        {% empty %}
+                                        <div class="list-group-item text-center text-muted">
+                                            فعالیتی یافت نشد
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">هشدارها و اعلان‌ها</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ pending_approvals }} درخواست خرید در انتظار تأیید هستند
+                                    </div>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i>
+                                        {{ overdue_invoices }} فاکتور سررسید گذشته دارند
+                                    </div>
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        {{ completed_today }} سفارش امروز تکمیل شده است
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportDashboard() {
+    // Export functionality - to be implemented
+    alert('قابلیت خروجی گزارش به زودی اضافه خواهد شد');
+}
+
+// Auto refresh dashboard every 5 minutes
+setInterval(function() {
+    // Optional: implement auto-refresh
+}, 300000);
+</script>
+{% endblock %}

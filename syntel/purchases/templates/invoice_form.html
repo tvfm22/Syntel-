@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if invoice %}ویرایش فاکتور{% else %}ایجاد فاکتور{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {% if invoice %}ویرایش فاکتور {{ invoice.invoice_number }}{% else %}ایجاد فاکتور جدید{% endif %}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Invoice Header Information -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="invoice_number">شماره فاکتور *</label>
+                                    <input type="text" class="form-control" id="invoice_number" name="invoice_number" 
+                                           value="{% if invoice %}{{ invoice.invoice_number }}{% endif %}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="invoice_date">تاریخ فاکتور *</label>
+                                    <input type="date" class="form-control" id="invoice_date" name="invoice_date" 
+                                           value="{% if invoice %}{{ invoice.invoice_date|date:'Y-m-d' }}{% else %}{{ purchase_order.created_at|date:'Y-m-d' }}{% endif %}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="due_date">تاریخ سررسید</label>
+                                    <input type="date" class="form-control" id="due_date" name="due_date" 
+                                           value="{% if invoice %}{{ invoice.due_date|date:'Y-m-d' }}{% endif %}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Purchase Order Information -->
+                        {% if purchase_order %}
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h5>اطلاعات سفارش خرید</h5>
+                                    <p><strong>شماره سفارش:</strong> {{ purchase_order.order_number }}</p>
+                                    <p><strong>تأمین‌کننده:</strong> {{ purchase_order.supplier_name }}</p>
+                                    <p><strong>تاریخ سفارش:</strong> {{ purchase_order.created_at|date:"Y/m/d" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Financial Information -->
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="tax_rate">نرخ مالیات (%)</label>
+                                    <input type="number" step="0.01" class="form-control" id="tax_rate" name="tax_rate" 
+                                           value="{% if invoice %}{{ invoice.tax_rate }}{% else %}9{% endif %}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="discount_rate">نرخ تخفیف (%)</label>
+                                    <input type="number" step="0.01" class="form-control" id="discount_rate" name="discount_rate" 
+                                           value="{% if invoice %}{{ invoice.discount_rate }}{% endif %}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="shipping_cost">هزینه حمل و نقل</label>
+                                    <input type="number" step="0.01" class="form-control" id="shipping_cost" name="shipping_cost" 
+                                           value="{% if invoice %}{{ invoice.shipping_cost }}{% endif %}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="payment_terms">شرایط پرداخت</label>
+                                    <input type="text" class="form-control" id="payment_terms" name="payment_terms" 
+                                           value="{% if invoice %}{{ invoice.payment_terms }}{% endif %}" placeholder="مثال: 30 روز">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Items -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h4>اقلام فاکتور</h4>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="invoice-items-table">
+                                        <thead>
+                                            <tr>
+                                                <th>شرح کالا</th>
+                                                <th>واحد</th>
+                                                <th>تعداد</th>
+                                                <th>قیمت واحد</th>
+                                                <th>مجموع</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in items %}
+                                            <tr>
+                                                <td>
+                                                    <input type="text" class="form-control" name="description_{{ item.id }}" 
+                                                           value="{{ item.description }}" readonly>
+                                                </td>
+                                                <td>{{ item.order_item.request_item.unit.name }}</td>
+                                                <td>
+                                                    <input type="number" step="0.01" class="form-control quantity-input" 
+                                                           name="quantity_{{ item.id }}" value="{{ item.quantity }}" readonly>
+                                                </td>
+                                                <td>
+                                                    <input type="number" step="0.01" class="form-control unit-price-input" 
+                                                           name="unit_price_{{ item.id }}" value="{{ item.unit_price }}">
+                                                </td>
+                                                <td>
+                                                    <span class="line-total">{{ item.line_total|floatformat:0 }}</span> تومان
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            {% for order_item in order_items %}
+                                            <tr>
+                                                <td>{{ order_item.request_item.name }}</td>
+                                                <td>{{ order_item.request_item.unit.name }}</td>
+                                                <td>{{ order_item.quantity }}</td>
+                                                <td>
+                                                    <input type="number" step="0.01" class="form-control unit-price-input" 
+                                                           name="unit_price_new_{{ forloop.counter }}" value="{{ order_item.unit_price }}">
+                                                </td>
+                                                <td>
+                                                    <span class="line-total">0</span> تومان
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="4" class="text-left"><strong>جمع کل:</strong></td>
+                                                <td><strong id="grand-total">0 تومان</strong></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="notes">یادداشت‌ها</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3">{% if invoice %}{{ invoice.notes }}{% endif %}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> {% if invoice %}به‌روزرسانی{% else %}ایجاد{% endif %} فاکتور
+                                </button>
+                                <a href="{% url 'invoices_list' %}" class="btn btn-secondary ml-2">انصراف</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    function calculateTotals() {
+        let grandTotal = 0;
+        
+        $('#invoice-items-table tbody tr').each(function() {
+            const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
+            const unitPrice = parseFloat($(this).find('.unit-price-input').val()) || 0;
+            const lineTotal = quantity * unitPrice;
+            
+            $(this).find('.line-total').text(lineTotal.toLocaleString() + ' تومان');
+            grandTotal += lineTotal;
+        });
+        
+        // Apply discount and tax
+        const discountRate = parseFloat($('#discount_rate').val()) || 0;
+        const taxRate = parseFloat($('#tax_rate').val()) || 0;
+        const shippingCost = parseFloat($('#shipping_cost').val()) || 0;
+        
+        const discountAmount = grandTotal * (discountRate / 100);
+        const subtotalAfterDiscount = grandTotal - discountAmount;
+        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
+        const finalTotal = subtotalAfterDiscount + taxAmount + shippingCost;
+        
+        $('#grand-total').text(finalTotal.toLocaleString() + ' تومان');
+    }
+    
+    // Calculate on input change
+    $(document).on('input', '.unit-price-input, #discount_rate, #tax_rate, #shipping_cost', calculateTotals);
+    
+    // Initial calculation
+    calculateTotals();
+});
+</script>
+{% endblock %}

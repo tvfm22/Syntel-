@@ -1,0 +1,642 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}مانیتورینگ سیستم{% endblock %}
+
+{% block content %}
+<div class="container-fluid" dir="rtl">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tachometer-alt text-primary"></i>
+                        مانیتورینگ سیستم
+                    </h4>
+                    <div>
+                        <span class="badge badge-info">
+                            آخرین به‌روزرسانی: {{ last_updated|date:"H:i:s Y-m-d" }}
+                        </span>
+                        <button class="btn btn-sm btn-outline-primary ml-2" onclick="location.reload()">
+                            <i class="fas fa-sync-alt"></i> تازه‌سازی
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- System Alerts -->
+                    {% if alerts %}
+                    <div class="alerts-section mb-4">
+                        <h5 class="text-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            هشدارهای سیستم
+                        </h5>
+                        {% for alert in alerts %}
+                        <div class="alert alert-{{ alert.type }} alert-dismissible fade show" role="alert">
+                            <strong>{{ alert.message }}</strong>
+                            {% if alert.action %}
+                            <br><small>{{ alert.action }}</small>
+                            {% endif %}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- System Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-server"></i>
+                                        اطلاعات سیستم
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>سیستم عامل:</strong></td>
+                                            <td>{{ system_info.os }} {{ system_info.os_version }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>هاست:</strong></td>
+                                            <td>{{ system_info.hostname }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Python:</strong></td>
+                                            <td>{{ system_info.python_version }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Django:</strong></td>
+                                            <td>{{ system_info.django_version }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-database"></i>
+                                        اطلاعات پایگاه داده
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>نام پایگاه داده:</strong></td>
+                                            <td>{{ db_info.database_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>انجین:</strong></td>
+                                            <td>{{ db_info.database_engine|slice:"17:" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>هاست:</strong></td>
+                                            <td>{{ db_info.host }}:{{ db_info.port }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>اندازه:</strong></td>
+                                            <td>{{ db_size }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>اتصالات فعال:</strong></td>
+                                            <td>{{ active_connections }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Resources -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-microchip"></i>
+                                        منابع سیستم
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-primary">{{ system_resources.cpu_usage }}%</h4>
+                                                <p class="mb-0">استفاده از CPU</p>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-primary" style="width: {{ system_resources.cpu_usage }}%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-info">{{ system_resources.memory_percent }}%</h4>
+                                                <p class="mb-0">استفاده از حافظه</p>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-info" style="width: {{ system_resources.memory_percent }}%"></div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ system_resources.memory_used|floatformat:"0" }} / {{ system_resources.memory_total|floatformat:"0" }} MB
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-success">{{ system_resources.disk_percent }}%</h4>
+                                                <p class="mb-0">استفاده از دیسک</p>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-success" style="width: {{ system_resources.disk_percent }}%"></div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ system_resources.disk_used|floatformat:"0" }} / {{ system_resources.disk_total|floatformat:"0" }} GB
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Application Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-chart-bar"></i>
+                                        آمار برنامه
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-primary">{{ stats.total_users }}</h3>
+                                                <p class="mb-0">کاربران کل</p>
+                                                <small class="text-muted">{{ stats.active_users }} فعال</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-info">{{ stats.total_requests }}</h3>
+                                                <p class="mb-0">درخواست‌ها</p>
+                                                <small class="text-muted">{{ stats.pending_requests }} در انتظار</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-success">{{ stats.total_orders }}</h3>
+                                                <p class="mb-0">سفارش‌ها</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-warning">{{ stats.total_invoices }}</h3>
+                                                <p class="mb-0">فاکتورها</p>
+                                                <small class="text-muted">{{ stats.paid_invoices }} پرداخت شده</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-danger">{{ stats.total_payments }}</h3>
+                                                <p class="mb-0">پرداخت‌ها</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 col-sm-6">
+                                            <div class="text-center">
+                                                <h3 class="text-secondary">{{ stats.total_suppliers }}</h3>
+                                                <p class="mb-0">تأمین‌کنندگان</p>
+                                                <small class="text-muted">{{ stats.total_products }} محصول</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-clock"></i>
+                                        فعالیت‌های اخیر (24 ساعت)
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-info">{{ recent_activity.new_requests }}</h4>
+                                                <p class="mb-0">درخواست جدید</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-success">{{ recent_activity.new_orders }}</h4>
+                                                <p class="mb-0">سفارش جدید</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-warning">{{ recent_activity.new_invoices }}</h4>
+                                                <p class="mb-0">فاکتور جدید</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-danger">{{ recent_activity.new_payments }}</h4>
+                                                <p class="mb-0">پرداخت جدید</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        وضعیت سلامت سیستم
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-warning">{{ health_status.pending_approvals }}</h4>
+                                                <p class="mb-0">تأییدیه در انتظار</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-danger">{{ health_status.overdue_invoices }}</h4>
+                                                <p class="mb-0">فاکتور سررسید گذشته</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-info">{{ health_status.low_stock_products }}</h4>
+                                                <p class="mb-0">محصول کم‌موجودی</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-secondary">{{ health_status.inactive_suppliers }}</h4>
+                                                <p class="mb-0">تأمین‌کننده غیرفعال</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="text-center">
+                                        <h5 class="text-danger">{{ health_status.outstanding_payments|floatformat:"0"|intcomma }} تومان</h5>
+                                        <p class="mb-0">بدهی معوق کل</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Trends -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-dark">
+                                <div class="card-header bg-dark text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-chart-line"></i>
+                                        روند عملکرد (7 روز گذشته)
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <h6 class="text-center text-primary">درخواست‌های روزانه</h6>
+                                            <canvas id="requestsChart" width="100%" height="200"></canvas>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-center text-success">پرداخت‌های روزانه</h6>
+                                            <canvas id="paymentsChart" width="100%" height="200"></canvas>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-center text-warning">درآمد روزانه</h6>
+                                            <canvas id="revenueChart" width="100%" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slow Queries (if available) -->
+                    {% if slow_queries %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-secondary">
+                                <div class="card-header bg-secondary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-turtle"></i>
+                                        کوئری‌های کند (بالاترین زمان اجرا)
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>کوئری</th>
+                                                    <th>زمان کل (ms)</th>
+                                                    <th>تعداد اجرا</th>
+                                                    <th>میانگین زمان (ms)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for query in slow_queries %}
+                                                <tr>
+                                                    <td>
+                                                        <code style="font-size: 0.8em;">{{ query.0|truncatechars:100 }}</code>
+                                                    </td>
+                                                    <td>{{ query.1|floatformat:"0" }}</td>
+                                                    <td>{{ query.2 }}</td>
+                                                    <td>{{ query.3|floatformat:"2" }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Error Logs (if any) -->
+                    {% if error_logs %}
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-bug"></i>
+                                        لاگ خطاها
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>زمان</th>
+                                                    <th>سطح</th>
+                                                    <th>پیام</th>
+                                                    <th>ماژول</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for error in error_logs %}
+                                                <tr>
+                                                    <td>{{ error.timestamp }}</td>
+                                                    <td>
+                                                        <span class="badge badge-{{ error.level_class }}">{{ error.level }}</span>
+                                                    </td>
+                                                    <td>{{ error.message }}</td>
+                                                    <td>{{ error.module }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js for performance trends -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Requests Chart
+    const requestsCtx = document.getElementById('requestsChart').getContext('2d');
+    const requestsData = {{ performance_trends.daily_requests|safe }};
+    new Chart(requestsCtx, {
+        type: 'line',
+        data: {
+            labels: requestsData.map(item => item.date),
+            datasets: [{
+                label: 'درخواست‌ها',
+                data: requestsData.map(item => item.count),
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Payments Chart
+    const paymentsCtx = document.getElementById('paymentsChart').getContext('2d');
+    const paymentsData = {{ performance_trends.daily_payments|safe }};
+    new Chart(paymentsCtx, {
+        type: 'line',
+        data: {
+            labels: paymentsData.map(item => item.date),
+            datasets: [{
+                label: 'پرداخت‌ها',
+                data: paymentsData.map(item => item.count),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueData = {{ performance_trends.daily_revenue|safe }};
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: revenueData.map(item => item.date),
+            datasets: [{
+                label: 'درآمد (تومان)',
+                data: revenueData.map(item => item.amount),
+                borderColor: 'rgb(255, 205, 86)',
+                backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('fa-IR');
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+
+// Auto refresh every 30 seconds
+setInterval(function() {
+    updateMonitoringData();
+}, 30000);
+
+// Function to update monitoring data via AJAX
+function updateMonitoringData() {
+    fetch('{% url "system_monitoring_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSystemResources(data.data.system_resources);
+                updateActiveConnections(data.data.active_connections);
+                updateRecentActivity(data.data.recent_activity);
+                updateHealthStatus(data.data.health_status);
+                updateTimestamp(data.data.timestamp);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating monitoring data:', error);
+        });
+}
+
+function updateSystemResources(resources) {
+    // Update CPU usage
+    const cpuElement = document.querySelector('.text-primary');
+    if (cpuElement && resources.cpu_usage !== 'N/A') {
+        cpuElement.textContent = resources.cpu_usage + '%';
+        const cpuProgress = cpuElement.nextElementSibling.querySelector('.progress-bar');
+        if (cpuProgress) {
+            cpuProgress.style.width = resources.cpu_usage + '%';
+        }
+    }
+    
+    // Update Memory usage
+    const memoryElement = document.querySelector('.text-info');
+    if (memoryElement && resources.memory_percent !== 'N/A') {
+        memoryElement.textContent = resources.memory_percent + '%';
+        const memoryProgress = memoryElement.nextElementSibling.querySelector('.progress-bar');
+        if (memoryProgress) {
+            memoryProgress.style.width = resources.memory_percent + '%';
+        }
+    }
+    
+    // Update Disk usage
+    const diskElement = document.querySelector('.text-success');
+    if (diskElement && resources.disk_percent !== 'N/A') {
+        diskElement.textContent = resources.disk_percent + '%';
+        const diskProgress = diskElement.nextElementSibling.querySelector('.progress-bar');
+        if (diskProgress) {
+            diskProgress.style.width = resources.disk_percent + '%';
+        }
+    }
+}
+
+function updateActiveConnections(connections) {
+    const connElement = document.querySelector('td:contains("اتصالات فعال")').nextElementSibling;
+    if (connElement) {
+        connElement.textContent = connections;
+    }
+}
+
+function updateRecentActivity(activity) {
+    // Update recent activity numbers
+    const activityElements = document.querySelectorAll('.card-body .row .col-6 .text-center h4');
+    if (activityElements.length >= 4) {
+        activityElements[0].textContent = activity.new_requests;
+        activityElements[1].textContent = activity.new_orders;
+        activityElements[2].textContent = activity.new_invoices;
+        activityElements[3].textContent = activity.new_payments;
+    }
+}
+
+function updateHealthStatus(health) {
+    // Update health status numbers
+    const healthElements = document.querySelectorAll('.bg-danger .card-body .row .col-6 .text-center h4');
+    if (healthElements.length >= 4) {
+        healthElements[0].textContent = health.pending_approvals;
+        healthElements[1].textContent = health.overdue_invoices;
+        healthElements[2].textContent = health.low_stock_products || 'N/A';
+        healthElements[3].textContent = health.inactive_suppliers || 'N/A';
+    }
+    
+    // Update outstanding payments
+    const outstandingElement = document.querySelector('.text-danger');
+    if (outstandingElement) {
+        outstandingElement.textContent = health.outstanding_payments.toLocaleString('fa-IR') + ' تومان';
+    }
+}
+
+function updateTimestamp(timestamp) {
+    const timestampElement = document.querySelector('.badge-info');
+    if (timestampElement) {
+        const date = new Date(timestamp);
+        timestampElement.textContent = 'آخرین به‌روزرسانی: ' + date.toLocaleString('fa-IR');
+    }
+}
+</script>
+
+<style>
+.card {
+    margin-bottom: 1rem;
+}
+
+.progress {
+    height: 8px;
+}
+
+.table th {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.alert {
+    margin-bottom: 1rem;
+}
+
+canvas {
+    max-height: 200px;
+}
+</style>
+{% endblock %}

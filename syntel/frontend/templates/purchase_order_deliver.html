@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}ثبت تحویل سفارش خرید{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">ثبت تحویل سفارش خرید {{ purchase_order.order_number }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        لطفاً جزئیات تحویل سفارش را وارد کنید.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="actual_delivery_date" class="form-label">تاریخ تحویل واقعی *</label>
+                                <input type="date" class="form-control" id="actual_delivery_date" name="actual_delivery_date"
+                                       value="{{ purchase_order.actual_delivery_date|default:'' }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="delivery_status" class="form-label">وضعیت تحویل *</label>
+                                <select class="form-select" id="delivery_status" name="delivery_status" required>
+                                    <option value="full" {% if purchase_order.delivery_status == 'full' %}selected{% endif %}>تحویل کامل</option>
+                                    <option value="partial" {% if purchase_order.delivery_status == 'partial' %}selected{% endif %}>تحویل جزئی</option>
+                                    <option value="over_delivered" {% if purchase_order.delivery_status == 'over_delivered' %}selected{% endif %}>بیش از سفارش</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="delivery_notes" class="form-label">یادداشت‌های تحویل</label>
+                            <textarea class="form-control" id="delivery_notes" name="delivery_notes" rows="4"
+                                      placeholder="توضیحات مربوط به تحویل، مشکلات، یا نکات مهم">{{ purchase_order.delivery_notes|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Order Summary -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">خلاصه سفارش</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>شماره سفارش:</strong> {{ purchase_order.order_number }}</p>
+                                        <p class="mb-1"><strong>تأمین‌کننده:</strong> {{ purchase_order.supplier_name }}</p>
+                                        <p class="mb-1"><strong>تاریخ برنامه‌ریزی شده:</strong>
+                                            {% if purchase_order.delivery_date %}
+                                                {{ purchase_order.delivery_date|date:"Y/m/d" }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>تعداد اقلام:</strong> {{ purchase_order.get_total_items }}</p>
+                                        <p class="mb-1"><strong>مجموع مقدار:</strong> {{ purchase_order.get_total_quantity }}</p>
+                                        <p class="mb-0"><strong>مجموع مبلغ:</strong>
+                                            {% load custom_filters %}
+                                            {{ purchase_order.total_amount|number_format }} تومان
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'purchase_order_detail' purchase_order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> بازگشت
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> ثبت تحویل
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

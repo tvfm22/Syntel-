@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}اعلان‌ها{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-bell me-2"></i>
+                        اعلان‌ها
+                    </h2>
+                    <p class="text-muted mb-0">اعلان‌های شما و فعالیت‌های سیستم</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if unread_count > 0 %}
+                    <a href="?mark_read=all" class="btn btn-outline-primary">
+                        <i class="fas fa-check-double me-1"></i>
+                        همه را خوانده شده علامت بزن
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-outline-secondary" onclick="refreshNotifications()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        بروزرسانی
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">کل اعلان‌ها</h6>
+                            <h4 class="mb-0">{{ notifications.paginator.count }}</h4>
+                        </div>
+                        <div class="avatar-sm bg-primary rounded-circle">
+                            <i class="fas fa-bell fa-lg text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">اعلان‌های خوانده نشده</h6>
+                            <h4 class="mb-0 text-warning">{{ unread_count }}</h4>
+                        </div>
+                        <div class="avatar-sm bg-warning rounded-circle">
+                            <i class="fas fa-envelope fa-lg text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">اعلان‌های امروز</h6>
+                            <h4 class="mb-0">{{ notifications|length }}</h4>
+                        </div>
+                        <div class="avatar-sm bg-success rounded-circle">
+                            <i class="fas fa-calendar-day fa-lg text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">اعلان‌های فوری</h6>
+                            <h4 class="mb-0 text-danger">{{ notifications|length }}</h4>
+                        </div>
+                        <div class="avatar-sm bg-danger rounded-circle">
+                            <i class="fas fa-exclamation-triangle fa-lg text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if notifications %}
+                    <div class="notifications-list">
+                        {% for notification in notifications %}
+                        <div class="notification-item {% if not notification.is_read %}unread{% endif %} p-3 border-bottom"
+                             data-notification-id="{{ notification.id }}">
+                            <div class="d-flex align-items-start">
+                                <!-- Notification Icon -->
+                                <div class="notification-icon me-3">
+                                    {% if notification.notification_type == 'approval' %}
+                                        <div class="avatar-sm bg-primary rounded-circle">
+                                            <i class="fas fa-check-circle text-white"></i>
+                                        </div>
+                                    {% elif notification.notification_type == 'alert' %}
+                                        <div class="avatar-sm bg-warning rounded-circle">
+                                            <i class="fas fa-exclamation-triangle text-white"></i>
+                                        </div>
+                                    {% elif notification.notification_type == 'success' %}
+                                        <div class="avatar-sm bg-success rounded-circle">
+                                            <i class="fas fa-check text-white"></i>
+                                        </div>
+                                    {% elif notification.notification_type == 'warning' %}
+                                        <div class="avatar-sm bg-danger rounded-circle">
+                                            <i class="fas fa-exclamation text-white"></i>
+                                        </div>
+                                    {% elif notification.notification_type == 'error' %}
+                                        <div class="avatar-sm bg-danger rounded-circle">
+                                            <i class="fas fa-times text-white"></i>
+                                        </div>
+                                    {% else %}
+                                        <div class="avatar-sm bg-info rounded-circle">
+                                            <i class="fas fa-info text-white"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Notification Content -->
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                {{ notification.title }}
+                                                {% if not notification.is_read %}
+                                                <span class="badge bg-primary ms-2">جدید</span>
+                                                {% endif %}
+                                                {% if notification.priority == 'urgent' %}
+                                                <span class="badge bg-danger ms-1">فوری</span>
+                                                {% elif notification.priority == 'high' %}
+                                                <span class="badge bg-warning ms-1">بالا</span>
+                                                {% endif %}
+                                            </h6>
+                                            <p class="text-muted mb-2">{{ notification.message }}</p>
+                                            <small class="text-muted">
+                                                {{ notification.created_at|timesince }} پیش
+                                                {% if notification.is_expired %}
+                                                <span class="text-danger">(منقضی شده)</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="d-flex gap-2">
+                                            {% if notification.action_url %}
+                                            <a href="{{ notification.action_url }}" class="btn btn-sm btn-outline-primary">
+                                                مشاهده
+                                            </a>
+                                            {% endif %}
+                                            <a href="{% url 'notification_detail' notification.id %}" class="btn btn-sm btn-outline-secondary">
+                                                جزئیات
+                                            </a>
+                                            <form method="post" action="{% url 'delete_notification' notification.id %}" class="d-inline"
+                                                  onsubmit="return confirm('آیا از حذف این اعلان اطمینان دارید؟')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if notifications.has_other_pages %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <nav aria-label="Notifications pagination">
+                            <ul class="pagination">
+                                {% if notifications.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ notifications.previous_page_number }}">قبلی</a>
+                                </li>
+                                {% endif %}
+
+                                {% for num in notifications.paginator.page_range %}
+                                {% if notifications.number == num %}
+                                <li class="page-item active">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% elif num > notifications.number|add:'-3' and num < notifications.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+
+                                {% if notifications.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ notifications.next_page_number }}">بعدی</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">اعلانی یافت نشد</h5>
+                        <p class="text-muted">اعلان‌های شما در اینجا نمایش داده خواهد شد.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh notifications every 30 seconds
+setInterval(refreshNotifications, 30000);
+
+function refreshNotifications() {
+    // Reload the page to show updated notifications
+    location.reload();
+}
+
+// Mark notification as read when clicked
+document.addEventListener('DOMContentLoaded', function() {
+    const notificationItems = document.querySelectorAll('.notification-item');
+
+    notificationItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const notificationId = this.dataset.notificationId;
+            if (notificationId) {
+                // Mark as read via AJAX
+                fetch(`/notifications/${notificationId}/mark-read/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.classList.remove('unread');
+                        const badge = this.querySelector('.badge');
+                        if (badge) badge.remove();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.notifications-list {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.notification-item {
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #e3f2fd;
+    border-right: 4px solid #2196f3;
+}
+
+.notification-item.unread:hover {
+    background-color: #bbdefb;
+}
+
+.notification-icon {
+    flex-shrink: 0;
+}
+
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.pagination .page-link {
+    color: #6366f1;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #6366f1;
+    border-color: #6366f1;
+}
+</style>
+{% endblock %}

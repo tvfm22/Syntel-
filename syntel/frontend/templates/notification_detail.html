@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ notification.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-1">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'notifications_list' %}">
+                                    <i class="fas fa-bell me-1"></i>
+                                    اعلان‌ها
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active">{{ notification.title }}</li>
+                        </ol>
+                    </nav>
+                    <h2 class="mb-1">{{ notification.title }}</h2>
+                    <p class="text-muted mb-0">
+                        {{ notification.created_at|timesince }} پیش
+                        {% if notification.is_expired %}
+                        <span class="badge bg-danger ms-2">منقضی شده</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if notification.action_url %}
+                    <a href="{{ notification.action_url }}" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>
+                        مشاهده مرتبط
+                    </a>
+                    {% endif %}
+                    <form method="post" action="{% url 'delete_notification' notification.id %}" class="d-inline"
+                          onsubmit="return confirm('آیا از حذف این اعلان اطمینان دارید؟')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fas fa-trash me-1"></i>
+                            حذف
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Details -->
+    <div class="row">
+        <div class="col-xl-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center">
+                        <!-- Notification Type Icon -->
+                        {% if notification.notification_type == 'approval' %}
+                            <div class="avatar-sm bg-primary rounded-circle me-3">
+                                <i class="fas fa-check-circle text-white"></i>
+                            </div>
+                        {% elif notification.notification_type == 'alert' %}
+                            <div class="avatar-sm bg-warning rounded-circle me-3">
+                                <i class="fas fa-exclamation-triangle text-white"></i>
+                            </div>
+                        {% elif notification.notification_type == 'success' %}
+                            <div class="avatar-sm bg-success rounded-circle me-3">
+                                <i class="fas fa-check text-white"></i>
+                            </div>
+                        {% elif notification.notification_type == 'warning' %}
+                            <div class="avatar-sm bg-danger rounded-circle me-3">
+                                <i class="fas fa-exclamation text-white"></i>
+                            </div>
+                        {% elif notification.notification_type == 'error' %}
+                            <div class="avatar-sm bg-danger rounded-circle me-3">
+                                <i class="fas fa-times text-white"></i>
+                            </div>
+                        {% else %}
+                            <div class="avatar-sm bg-info rounded-circle me-3">
+                                <i class="fas fa-info text-white"></i>
+                            </div>
+                        {% endif %}
+
+                        <div>
+                            <h5 class="card-title mb-1">{{ notification.title }}</h5>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-{{ notification.notification_type|notification_type_color }}">
+                                    {{ notification.get_notification_type_display }}
+                                </span>
+                                <span class="badge bg-{{ notification.priority|priority_color }}">
+                                    {{ notification.get_priority_display }}
+                                </span>
+                                {% if notification.is_read %}
+                                <span class="badge bg-secondary">خوانده شده</span>
+                                {% else %}
+                                <span class="badge bg-primary">خوانده نشده</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="notification-message">
+                        {{ notification.message|linebreaks }}
+                    </div>
+
+                    {% if notification.related_object %}
+                    <hr>
+                    <div class="related-object">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-link me-1"></i>
+                            مرتبط با:
+                        </h6>
+                        <div class="alert alert-info">
+                            <strong>{{ notification.content_type.model|title }}</strong>
+                            {% if notification.related_object %}
+                            - {{ notification.related_object }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-xl-4">
+            <!-- Notification Metadata -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        اطلاعات اعلان
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">نوع:</dt>
+                        <dd class="col-sm-7">{{ notification.get_notification_type_display }}</dd>
+
+                        <dt class="col-sm-5">اولویت:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-{{ notification.priority|priority_color }}">
+                                {{ notification.get_priority_display }}
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-5">وضعیت:</dt>
+                        <dd class="col-sm-7">
+                            {% if notification.is_read %}
+                            <span class="badge bg-secondary">خوانده شده</span>
+                            {% else %}
+                            <span class="badge bg-primary">خوانده نشده</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">تاریخ ایجاد:</dt>
+                        <dd class="col-sm-7">{{ notification.created_at|date:"Y/m/d H:i" }}</dd>
+
+                        {% if notification.expires_at %}
+                        <dt class="col-sm-5">تاریخ انقضا:</dt>
+                        <dd class="col-sm-7">
+                            {{ notification.expires_at|date:"Y/m/d H:i" }}
+                            {% if notification.is_expired %}
+                            <span class="text-danger">(منقضی شده)</span>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-bolt me-1"></i>
+                        اقدامات سریع
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if not notification.is_read %}
+                        <button class="btn btn-outline-primary" onclick="markAsRead()">
+                            <i class="fas fa-check me-1"></i>
+                            علامت‌گذاری به عنوان خوانده شده
+                        </button>
+                        {% endif %}
+
+                        {% if notification.action_url %}
+                        <a href="{{ notification.action_url }}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>
+                            مشاهده مرتبط
+                        </a>
+                        {% endif %}
+
+                        <a href="{% url 'notifications_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            بازگشت به لیست
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function markAsRead() {
+    fetch(`/notifications/{{ notification.id }}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            const statusBadge = document.querySelector('.badge.bg-primary');
+            if (statusBadge && statusBadge.textContent.includes('خوانده نشده')) {
+                statusBadge.className = 'badge bg-secondary';
+                statusBadge.textContent = 'خوانده شده';
+            }
+
+            // Hide mark as read button
+            const markReadBtn = document.querySelector('button[onclick="markAsRead()"]');
+            if (markReadBtn) {
+                markReadBtn.style.display = 'none';
+            }
+
+            // Show success message
+            showMessage('اعلان به عنوان خوانده شده علامت‌گذاری شد', 'success');
+        } else {
+            showMessage('خطا در بروزرسانی وضعیت', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('خطا در ارتباط با سرور', 'error');
+    });
+}
+
+function showMessage(message, type) {
+    // Simple message display
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+
+<style>
+.notification-message {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    border-bottom: none;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.dl-horizontal dt {
+    text-align: right;
+    padding-right: 0;
+}
+
+.dl-horizontal dd {
+    text-align: left;
+    padding-left: 0;
+}
+</style>
+
+{% load custom_filters %}
+{% block extra_head %}
+<style>
+/* Custom template filters for badge colors */
+</style>
+{% endblock %}
+{% endblock %}

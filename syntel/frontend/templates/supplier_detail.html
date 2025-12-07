@@ -1,0 +1,696 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}جزئیات تأمین‌کننده{% endblock %}
+
+{% block content %}
+<style>
+.supplier-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.detail-header {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.supplier-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    position: relative;
+}
+
+.supplier-name {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+    margin-bottom: 10px;
+}
+
+.supplier-meta {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.supplier-type, .supplier-code, .supplier-status {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.status-badge {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.status-inactive {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.header-actions {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-edit, .btn-activate, .btn-deactivate, .btn-delete {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-edit {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-edit:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+.btn-activate {
+    background: #28a745;
+    color: white;
+}
+
+.btn-activate:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.btn-deactivate {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-deactivate:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.detail-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.card-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.card-title::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin-left: 10px;
+    border-radius: 2px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.contact-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.contact-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+.contact-label {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 60px;
+}
+
+.contact-value {
+    font-weight: 500;
+    color: #333;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin: 0;
+}
+
+.recent-orders, .evaluations {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.order-item, .evaluation-item {
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    transition: background 0.3s ease;
+}
+
+.order-item:hover, .evaluation-item:hover {
+    background: #f8f9fa;
+}
+
+.order-header, .evaluation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.order-title, .evaluation-title {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.order-status, .evaluation-rating {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.rating-excellent {
+    background: #d4edda;
+    color: #155724;
+}
+
+.rating-good {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.rating-average {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.rating-poor {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.order-details, .evaluation-details {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-state h4 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .supplier-detail-container {
+        padding: 15px;
+    }
+
+    .detail-content {
+        grid-template-columns: 1fr;
+    }
+
+    .supplier-name {
+        font-size: 2rem;
+    }
+
+    .supplier-meta {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .header-actions {
+        position: static;
+        margin-top: 20px;
+        justify-content: center;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-info {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="supplier-detail-container">
+    <!-- Supplier Header -->
+    <div class="detail-header">
+        <div class="supplier-header">
+            <h1 class="supplier-name">{{ supplier.name }}</h1>
+            <div class="supplier-meta">
+                <span class="supplier-type">{{ supplier.get_supplier_type_display }}</span>
+                {% if supplier.supplier_code %}
+                <span class="supplier-code">کد: {{ supplier.supplier_code }}</span>
+                {% endif %}
+            </div>
+            <span class="status-badge status-{{ supplier.status }}">
+                {{ supplier.get_status_display }}
+            </span>
+            <div class="header-actions">
+                <a href="{% url 'supplier_update' supplier.id %}" class="btn-edit">
+                    <i class="fas fa-edit"></i> ویرایش
+                </a>
+                {% if supplier.status == 'active' %}
+                <a href="{% url 'supplier_deactivate' supplier.id %}" class="btn-deactivate">
+                    <i class="fas fa-ban"></i> غیرفعال
+                </a>
+                {% else %}
+                <a href="{% url 'supplier_activate' supplier.id %}" class="btn-activate">
+                    <i class="fas fa-check"></i> فعال
+                </a>
+                {% endif %}
+                <a href="{% url 'supplier_delete' supplier.id %}" class="btn-delete">
+                    <i class="fas fa-trash"></i> حذف
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-content">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Basic Information -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">اطلاعات پایه</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        {% if supplier.contact_person %}
+                        <div class="info-item">
+                            <span class="info-label">شخص تماس</span>
+                            <span class="info-value">{{ supplier.contact_person }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.email %}
+                        <div class="info-item">
+                            <span class="info-label">ایمیل</span>
+                            <span class="info-value">{{ supplier.email }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.phone %}
+                        <div class="info-item">
+                            <span class="info-label">تلفن ثابت</span>
+                            <span class="info-value">{{ supplier.phone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.mobile %}
+                        <div class="info-item">
+                            <span class="info-label">تلفن همراه</span>
+                            <span class="info-value">{{ supplier.mobile }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.website %}
+                        <div class="info-item">
+                            <span class="info-label">وب‌سایت</span>
+                            <span class="info-value">
+                                <a href="{{ supplier.website }}" target="_blank" style="color: #667eea;">{{ supplier.website }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.payment_terms %}
+                        <div class="info-item">
+                            <span class="info-label">شرایط پرداخت</span>
+                            <span class="info-value">{{ supplier.payment_terms }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.credit_limit %}
+                        <div class="info-item">
+                            <span class="info-label">حد اعتبار</span>
+                            <span class="info-value">{{ supplier.credit_limit|floatformat:0 }} تومان</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Information -->
+            {% if supplier.address or supplier.city or supplier.state %}
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">اطلاعات آدرس</h3>
+                </div>
+                <div class="card-body">
+                    {% if supplier.address %}
+                    <p style="margin-bottom: 10px; color: #333;">{{ supplier.address }}</p>
+                    {% endif %}
+                    <div class="contact-info">
+                        {% if supplier.city %}
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt contact-icon"></i>
+                            <span class="contact-label">شهر:</span>
+                            <span class="contact-value">{{ supplier.city }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.state %}
+                        <div class="contact-item">
+                            <i class="fas fa-map contact-icon"></i>
+                            <span class="contact-label">استان:</span>
+                            <span class="contact-value">{{ supplier.state }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.postal_code %}
+                        <div class="contact-item">
+                            <i class="fas fa-mail-bulk contact-icon"></i>
+                            <span class="contact-label">کد پستی:</span>
+                            <span class="contact-value">{{ supplier.postal_code }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.country %}
+                        <div class="contact-item">
+                            <i class="fas fa-globe contact-icon"></i>
+                            <span class="contact-label">کشور:</span>
+                            <span class="contact-value">{{ supplier.country }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Business Information -->
+            {% if supplier.tax_id or supplier.registration_number or supplier.business_license %}
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">اطلاعات کسب‌وکار</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        {% if supplier.tax_id %}
+                        <div class="info-item">
+                            <span class="info-label">شماره مالیاتی</span>
+                            <span class="info-value">{{ supplier.tax_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.registration_number %}
+                        <div class="info-item">
+                            <span class="info-label">شماره ثبت</span>
+                            <span class="info-value">{{ supplier.registration_number }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.business_license %}
+                        <div class="info-item">
+                            <span class="info-label">شماره جواز کسب</span>
+                            <span class="info-value">{{ supplier.business_license }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Banking Information -->
+            {% if supplier.bank_name or supplier.bank_account %}
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">اطلاعات بانکی</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        {% if supplier.bank_name %}
+                        <div class="info-item">
+                            <span class="info-label">نام بانک</span>
+                            <span class="info-value">{{ supplier.bank_name }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.bank_account %}
+                        <div class="info-item">
+                            <span class="info-label">شماره حساب</span>
+                            <span class="info-value">{{ supplier.bank_account }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.bank_routing %}
+                        <div class="info-item">
+                            <span class="info-label">شماره شبا</span>
+                            <span class="info-value">{{ supplier.bank_routing }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Notes -->
+            {% if supplier.notes %}
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">یادداشت‌ها</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color: #333; line-height: 1.6;">{{ supplier.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Statistics -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">آمار</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ supplier.purchase_orders.count }}</div>
+                            <p class="stat-label">کل سفارشات</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ evaluations|length }}</div>
+                            <p class="stat-label">ارزیابی‌ها</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ pending_invoices|length }}</div>
+                            <p class="stat-label">فاکتورهای باز</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ overdue_invoices|length }}</div>
+                            <p class="stat-label">فاکتورهای معوق</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">سفارشات اخیر</h3>
+                </div>
+                <div class="card-body">
+                    {% if recent_orders %}
+                    <div class="recent-orders">
+                        {% for order in recent_orders %}
+                        <div class="order-item">
+                            <div class="order-header">
+                                <h5 class="order-title">{{ order.order_number }}</h5>
+                                <span class="order-status status-{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="order-details">
+                                <p>تاریخ: {{ order.created_at|date:"Y/m/d" }}</p>
+                                <p>مبلغ: {{ order.total_amount|floatformat:0 }} تومان</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <h4>سفارشاتی یافت نشد</h4>
+                        <p>هیچ سفارشی برای این تأمین‌کننده ثبت نشده است.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Evaluations -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h3 class="card-title">ارزیابی‌ها</h3>
+                    <a href="{% url 'supplier_evaluation_create_general' %}" class="btn btn-primary btn-sm ms-2">
+                        <i class="fas fa-plus"></i> ارزیابی جدید
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if evaluations %}
+                    <div class="evaluations">
+                        {% for evaluation in evaluations %}
+                        <div class="evaluation-item">
+                            <div class="evaluation-header">
+                                <h5 class="evaluation-title">{{ evaluation.get_evaluation_type_display }}</h5>
+                                <span class="evaluation-rating rating-{{ evaluation.get_overall_rating_display|lower }}">
+                                    {{ evaluation.get_overall_rating_display }}
+                                </span>
+                            </div>
+                            <div class="evaluation-details">
+                                <p>تاریخ: {{ evaluation.evaluation_date|date:"Y/m/d" }}</p>
+                                <p>ارزیابی‌کننده: {{ evaluation.evaluator.get_full_name }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="{% url 'supplier_evaluation_all_list' %}?supplier={{ supplier.name }}" class="btn btn-outline-primary btn-sm">
+                            مشاهده همه ارزیابی‌ها
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <h4>ارزیابی‌ای یافت نشد</h4>
+                        <p>هیچ ارزیابی‌ای برای این تأمین‌کننده ثبت نشده است.</p>
+                        <a href="{% url 'supplier_evaluation_create_general' %}" class="btn btn-primary btn-sm">
+                            اولین ارزیابی را ثبت کنید
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

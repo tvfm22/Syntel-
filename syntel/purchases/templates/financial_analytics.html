@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تحلیل مالی{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+.metric-card {
+    text-align: center;
+    padding: 20px;
+}
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+.metric-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-dollar-sign"></i> تحلیل مالی و هزینه‌ها
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Date Range Filter -->
+                    <div class="filter-section">
+                        <form method="get" class="row">
+                            <div class="col-md-4">
+                                <label for="start_date">از تاریخ:</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control"
+                                       value="{{ start_date|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="end_date">تا تاریخ:</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control"
+                                       value="{{ end_date|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label>&nbsp;</label><br>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> اعمال فیلتر
+                                </button>
+                                <a href="{% url 'financial_analytics' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> پاک کردن
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Key Financial Metrics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white metric-card">
+                                    <div class="metric-value">{{ outstanding_invoices.total_outstanding|floatformat:0 }}</div>
+                                <div class="metric-label">مبلغ بدهی معوق (تومان)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white metric-card">
+                                    <div class="metric-value">{{ overdue_invoices.total_overdue|floatformat:0 }}</div>
+                                <div class="metric-label">مبلغ سررسید گذشته (تومان)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white metric-card">
+                                <div class="metric-value">{{ outstanding_invoices.count }}</div>
+                                <div class="metric-label">فاکتورهای پرداخت نشده</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white metric-card">
+                                <div class="metric-value">{{ overdue_invoices.count }}</div>
+                                <div class="metric-label">فاکتورهای سررسید گذشته</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Spending Chart -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">روند هزینه‌های ماهانه</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="monthlySpendingChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods and Outstanding Amounts -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">روش‌های پرداخت</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="paymentMethodsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">جزئیات پرداخت‌ها</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>روش پرداخت</th>
+                                                    <th>تعداد پرداخت‌ها</th>
+                                                    <th>مجموع مبلغ (تومان)</th>
+                                                    <th>درصد</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for method in payment_methods %}
+                                                <tr>
+                                                    <td>{{ method.payment_method }}</td>
+                                                    <td>{{ method.count }}</td>
+                                                    <td>{{ method.total_amount|floatformat:0 }}</td>
+                                                    <td>
+                                                        {% widthratio method.total_amount payment_methods|length|mul:method.total_amount 100 %}%
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted">داده‌ای یافت نشد</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outstanding Invoices Alert -->
+                    {% if outstanding_invoices.count > 0 %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <h5><i class="fas fa-exclamation-triangle"></i> فاکتورهای پرداخت نشده</h5>
+                                <p>تعداد {{ outstanding_invoices.count }} فاکتور با مجموع مبلغ {{ outstanding_invoices.total_outstanding|floatformat:0 }} تومان پرداخت نشده‌اند.</p>
+                                <a href="{% url 'invoices_list' %}?payment_status=unpaid" class="btn btn-warning btn-sm">
+                                    مشاهده فاکتورها
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Monthly Spending Chart
+const spendingCtx = document.getElementById('monthlySpendingChart').getContext('2d');
+const spendingData = {{ monthly_spending|safe }};
+new Chart(spendingCtx, {
+    type: 'line',
+    data: {
+        labels: spendingData.map(item => new Date(item.month).toLocaleDateString('fa-IR')),
+        datasets: [{
+            label: 'مجموع هزینه‌ها (تومان)',
+            data: spendingData.map(item => item.total_amount),
+            borderColor: '#28a745',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            tension: 0.1
+        }, {
+            label: 'تعداد فاکتورها',
+            data: spendingData.map(item => item.invoice_count),
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            yAxisID: 'y1',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'مبلغ (تومان)'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'تعداد'
+                },
+                grid: {
+                    drawOnChartArea: false,
+                },
+            }
+        }
+    }
+});
+
+// Payment Methods Chart
+const paymentCtx = document.getElementById('paymentMethodsChart').getContext('2d');
+const paymentData = {{ payment_methods|safe }};
+new Chart(paymentCtx, {
+    type: 'pie',
+    data: {
+        labels: paymentData.map(item => item.payment_method),
+        datasets: [{
+            data: paymentData.map(item => item.total_amount),
+            backgroundColor: [
+                '#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d', '#17a2b8'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
