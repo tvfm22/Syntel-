@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}تست داده‌های قیمت - Syntel{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 2rem;">
+    <h1>تست داده‌های قیمت</h1>
+    
+    <div style="margin: 2rem 0; padding: 1rem; background: #f0f9ff; border-radius: 8px;">
+        <h2>آمار کلی</h2>
+        <p><strong>تعداد محصولات با قیمت:</strong> {{ products_count }}</p>
+        <p><strong>افزایش قیمت:</strong> {{ increased_count }}</p>
+        <p><strong>کاهش قیمت:</strong> {{ decreased_count }}</p>
+        <p><strong>میانگین تغییرات:</strong> {{ avg_change|floatformat:2 }}%</p>
+    </div>
+
+    <div style="margin: 2rem 0;">
+        <h2>محصولات (نمونه 10 مورد اول)</h2>
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f3f4f6;">
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #e5e7eb;">نام محصول</th>
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #e5e7eb;">قیمت فعلی</th>
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #e5e7eb;">تغییر (%)</th>
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #e5e7eb;">آخرین بروزرسانی</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td style="padding: 0.75rem; border: 1px solid #e5e7eb;">{{ product.name }}</td>
+                    <td style="padding: 0.75rem; border: 1px solid #e5e7eb;">{{ product.current_price|floatformat:0 }} ریال</td>
+                    <td style="padding: 0.75rem; border: 1px solid #e5e7eb; color: {% if product.percent_change > 0 %}#dc2626{% elif product.percent_change < 0 %}#059669{% else %}#6b7280{% endif %};">
+                        {{ product.percent_change|floatformat:2 }}%
+                    </td>
+                    <td style="padding: 0.75rem; border: 1px solid #e5e7eb;">{{ product.last_update|date:"Y-m-d" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="padding: 2rem; text-align: center; color: #6b7280;">
+                        هیچ داده‌ای یافت نشد
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin: 2rem 0; padding: 1rem; background: #fef2f2; border-radius: 8px;">
+        <h2>هشدارها (افزایش بیش از 5%)</h2>
+        {% if high_increase_products %}
+            <ul>
+                {% for product in high_increase_products %}
+                <li style="padding: 0.5rem;">
+                    <strong>{{ product.name }}</strong>: 
+                    {{ product.current_price|floatformat:0 }} ریال 
+                    (<span style="color: #dc2626;">+{{ product.percent_change|floatformat:2 }}%</span>)
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #6b7280;">هیچ هشداری وجود ندارد</p>
+        {% endif %}
+    </div>
+
+    <div style="margin: 2rem 0;">
+        <a href="/purchases/dashboard/prices/" class="btn btn-primary">بازگشت به داشبورد قیمت</a>
+    </div>
+</div>
+{% endblock %}

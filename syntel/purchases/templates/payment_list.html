@@ -14,7 +14,7 @@
                         <a href="{% url 'payment_create' %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus"></i> پرداخت جدید
                         </a>
-                        <a href="{% url 'payment_method_list' %}" class="btn btn-info btn-sm">
+                        <a href="{% url 'payment_location_list' %}" class="btn btn-info btn-sm">
                             <i class="fas fa-cogs"></i> روش‌های پرداخت
                         </a>
                     </div>
@@ -31,7 +31,7 @@
                         <div class="col-md-2">
                             <select name="payment_method" class="form-control" onchange="this.form.submit()">
                                 <option value="">همه روش‌ها</option>
-                                {% for method in payment_methods %}
+                                {% for method in payment_locations %}
                                 <option value="{{ method.id }}" {% if selected_method|add:'' == method.id|add:'' %}selected{% endif %}>{{ method.name }}</option>
                                 {% endfor %}
                             </select>
@@ -79,7 +79,7 @@
                                     <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
                                     <td>{{ payment.amount|floatformat:0 }} تومان</td>
                                     <td>
-                                        <span class="badge badge-secondary">{{ payment.payment_method.name }}</span>
+                                        <span class="badge badge-secondary">{{ payment.payment_location.name }}</span>
                                     </td>
                                     <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
                                     <td>
@@ -121,4 +121,31 @@
         </div>
     </div>
 </div>
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

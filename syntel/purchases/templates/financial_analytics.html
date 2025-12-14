@@ -142,20 +142,20 @@
                                         <table class="table table-bordered table-striped">
                                             <thead>
                                                 <tr>
-                                                    <th>روش پرداخت</th>
+                                                    <th>محل پرداخت</th>
                                                     <th>تعداد پرداخت‌ها</th>
                                                     <th>مجموع مبلغ (تومان)</th>
                                                     <th>درصد</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for method in payment_methods %}
+                                                {% for method in payment_locations %}
                                                 <tr>
-                                                    <td>{{ method.payment_method }}</td>
+                                                    <td>{{ method.payment_location }}</td>
                                                     <td>{{ method.count }}</td>
                                                     <td>{{ method.total_amount|floatformat:0 }}</td>
                                                     <td>
-                                                        {% widthratio method.total_amount payment_methods|length|mul:method.total_amount 100 %}%
+                                                        {% widthratio method.total_amount payment_locations|length|mul:method.total_amount 100 %}%
                                                     </td>
                                                 </tr>
                                                 {% empty %}
@@ -190,6 +190,35 @@
         </div>
     </div>
 </div>
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
 
 <script>
 // Monthly Spending Chart
@@ -245,11 +274,11 @@ new Chart(spendingCtx, {
 
 // Payment Methods Chart
 const paymentCtx = document.getElementById('paymentMethodsChart').getContext('2d');
-const paymentData = {{ payment_methods|safe }};
+const paymentData = {{ payment_locations|safe }};
 new Chart(paymentCtx, {
     type: 'pie',
     data: {
-        labels: paymentData.map(item => item.payment_method),
+        labels: paymentData.map(item => item.payment_location),
         datasets: [{
             data: paymentData.map(item => item.total_amount),
             backgroundColor: [

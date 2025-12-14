@@ -49,11 +49,12 @@
         .navbar {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            box-shadow: var(--shadow-md);
-            padding: 1rem 0;
+            box-shadow: var(--shadow-sm);
+            padding: 0.75rem 0;
             position: sticky;
             top: 0;
             z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .navbar-container {
@@ -85,46 +86,150 @@
             justify-content: center;
             color: white;
             font-size: 1.25rem;
+            box-shadow: var(--shadow-md);
         }
 
-        .navbar-menu {
+        /* Hamburger Menu Button */
+        .mobile-menu-toggle {
             display: flex;
-            gap: 0.5rem;
-            list-style: none;
             align-items: center;
+            justify-content: center;
+            background: transparent;
+            color: var(--dark-color);
+            border: none;
+            padding: 0.5rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            margin-left: 1rem;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: var(--light-color);
+            color: var(--primary-color);
+        }
+
+        /* Sidebar Menu */
+        .navbar-menu {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 320px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1002;
+            overflow-y: auto;
+        }
+
+        .navbar-menu.active {
+            right: 0;
+        }
+
+        .menu-header {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--light-color);
+        }
+
+        .menu-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+        }
+
+        .menu-close-btn {
+            background: white;
+            border: 1px solid var(--border-color);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--dark-color);
+            transition: all 0.2s;
+        }
+
+        .menu-close-btn:hover {
+            background: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+
+        .menu-items {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .navbar-menu a {
-            padding: 0.75rem 1.25rem;
+            padding: 1rem;
             color: var(--dark-color);
             text-decoration: none;
             border-radius: var(--radius-md);
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .navbar-menu a:hover {
             background: var(--light-color);
             color: var(--primary-color);
+            transform: translateX(-5px);
         }
 
         .navbar-menu a.active {
-            background: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
             color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Overlay */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
 
         .user-info {
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 0.75rem 1.25rem;
+            padding: 0.5rem 1rem;
             background: var(--light-color);
             border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
         }
 
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             display: flex;
@@ -132,13 +237,15 @@
             justify-content: center;
             color: white;
             font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-sm);
         }
 
         .logout-btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--danger-color);
-            color: white;
-            border: none;
+            padding: 0.6rem 1.2rem;
+            background: white;
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
             border-radius: var(--radius-md);
             cursor: pointer;
             font-weight: 600;
@@ -147,8 +254,8 @@
         }
 
         .logout-btn:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
+            background: var(--danger-color);
+            color: white;
             box-shadow: var(--shadow-md);
         }
 
@@ -428,80 +535,12 @@
             font-size: 0.875rem;
         }
 
-        /* Mobile Menu Toggle */
-        .mobile-menu-toggle {
-            display: none;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-size: 1.5rem;
-            transition: all 0.3s ease;
-            line-height: 1;
-        }
 
-        .mobile-menu-toggle:hover {
-            background: var(--primary-dark);
-        }
-
-        .navbar-menu.mobile-hidden {
-            display: flex;
-        }
-
-        .mobile-user-section {
-            display: none;
-        }
-
-        /* Mobile Menu Backdrop */
-        .menu-backdrop {
-            display: none;
-            position: fixed;
-            top: 70px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 998;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .menu-backdrop.show {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
 
         /* Responsive */
         @media (max-width: 768px) {
-            body {
-                padding-top: 70px; /* Space for fixed navbar */
-            }
-
-            .navbar {
-                padding: 0.75rem 0;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 1000;
-                background: rgba(255, 255, 255, 0.98);
-                backdrop-filter: blur(10px);
-            }
-
             .navbar-container {
                 padding: 0 1rem;
-                justify-content: space-between;
-                align-items: center;
-                position: relative;
-            }
-
-            .mobile-menu-toggle {
-                display: block;
             }
 
             .navbar-brand {
@@ -512,108 +551,6 @@
                 width: 36px;
                 height: 36px;
                 font-size: 1.125rem;
-            }
-
-            /* Hide desktop user info and logout */
-            .navbar-container > div:last-child {
-                display: none !important;
-            }
-
-            /* Desktop menu hidden on mobile */
-            .navbar-menu {
-                display: none !important;
-            }
-
-            /* Mobile menu shown when toggled */
-            .navbar-menu.mobile-show {
-                display: flex !important;
-                flex-direction: column;
-                position: fixed;
-                top: 70px;
-                left: 0;
-                right: 0;
-                background: white;
-                max-height: calc(100vh - 70px);
-                overflow-y: auto;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-                z-index: 999;
-                animation: slideDown 0.3s ease;
-            }
-
-            @keyframes slideDown {
-                from {
-                    opacity: 0;
-                    transform: translateY(-20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .navbar-menu li {
-                width: 100%;
-                list-style: none;
-            }
-
-            .navbar-menu a {
-                width: 100%;
-                text-align: right;
-                padding: 1.25rem 1.5rem;
-                border-bottom: 1px solid var(--border-color);
-                font-size: 1.125rem;
-                display: block;
-            }
-
-            .navbar-menu a:hover {
-                background: var(--light-color);
-            }
-
-            .navbar-menu a.active {
-                background: var(--primary-color);
-                color: white;
-            }
-
-            .navbar-menu li:last-child a {
-                border-bottom: none;
-            }
-
-            /* Mobile user section inside menu */
-            .mobile-user-section {
-                display: block !important;
-                padding: 1.25rem;
-                background: white;
-                border-bottom: 1px solid var(--border-color);
-                list-style: none;
-            }
-
-            .mobile-user-section .logout-btn {
-                width: 100%;
-                padding: 1rem 1.5rem;
-                background: linear-gradient(135deg, #ef4444, #dc2626);
-                border: none;
-                font-family: 'Vazir', sans-serif;
-                font-size: 1rem;
-                font-weight: 600;
-                color: white;
-                cursor: pointer;
-                border-radius: var(--radius-lg);
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 0.5rem;
-            }
-
-            .mobile-user-section .logout-btn:hover {
-                background: linear-gradient(135deg, #dc2626, #b91c1c);
-                transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
-            }
-
-            .mobile-user-section .logout-btn:active {
-                transform: translateY(0);
             }
 
             .container {
@@ -713,8 +650,89 @@
 </head>
 <body>
     {% if user.is_authenticated %}
-    <!-- Mobile Menu Backdrop -->
-    <div class="menu-backdrop" id="menuBackdrop" onclick="toggleMobileMenu()"></div>
+    <!-- Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+    
+    <!-- Sidebar Menu -->
+    <div class="navbar-menu" id="sidebarMenu">
+        <div class="menu-header">
+            <div class="menu-title">منوی سیستم</div>
+            <button class="menu-close-btn" onclick="toggleMenu()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+
+        <div class="menu-items">
+            {% if user.role == 'purchasing' %}
+            <a href="{% url 'dashboard' %}" {% if request.path == '/dashboard/' %}class="active"{% endif %}>
+                <span>داشبورد</span>
+            </a>
+            {% endif %}
+            
+            {% if user.role in 'kitchen,bar,counter' %}
+            <a href="{% url 'purchase_request' %}" {% if 'purchase-request' in request.path %}class="active"{% endif %}>
+                <span>درخواست خرید</span>
+            </a>
+            {% endif %}
+            
+            {% if user.role == 'purchasing' %}
+            <a href="{% url 'purchase_requests_list' %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
+                <span>درخواست‌ها</span>
+            </a>
+            <a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
+                <span>عملکرد تأمین‌کنندگان</span>
+            </a>
+            <a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
+                <span>گزارشات خرید</span>
+            </a>
+            <a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>
+                <span>گزارشات</span>
+            </a>
+            {% endif %}
+            
+            {% if user.role == 'manager' %}
+            <a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
+                <span>داشبورد مالی</span>
+                    </a>
+                    <a href="{% url 'approvals_list' %}" {% if 'approvals' in request.path %}class="active"{% endif %}>
+                        <span>تأییدیه‌ها</span>
+                    </a>
+                    <a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
+                        <span>عملکرد تأمین‌کنندگان</span>
+                    </a>
+                    <a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات خرید</span>
+                    </a>
+                    <a href="{% url 'payment_analytics' %}" {% if 'payment-analytics' in request.path %}class="active"{% endif %}>
+                        <span>تحلیل‌های پرداخت</span>
+                    </a>
+                    <a href="{% url 'inventory_reports' %}" {% if 'inventory-reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات موجودی</span>
+                    </a>
+                    <a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات</span>
+                    </a>
+                    <a href="{% url 'backup_management' %}" {% if 'backup' in request.path %}class="active"{% endif %}>
+                        <span>پشتیبان‌گیری</span>
+                    </a>
+                    <a href="{% url 'system_monitoring' %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>
+                        <span>مانیتورینگ سیستم</span>
+                    </a>
+                    {% endif %}
+
+                    <!-- Temporary: Add finance dashboard to all users for testing -->
+                    <a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
+                        <span>[TEST] داشبورد مالی</span>
+                    </a>
+
+                    <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="logout-btn" style="width: 100%; justify-content: center; display: flex;">خروج از سیستم</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
     
     <nav class="navbar">
         <div class="navbar-container">
@@ -723,52 +741,8 @@
                 <span>Syntel</span>
             </a>
             
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                ☰
-            </button>
-            
-            <ul class="navbar-menu mobile-hidden" id="mobileMenu">
-                <!-- Mobile Logout Section (only visible on mobile) -->
-                <li class="mobile-user-section">
-                    <form method="post" action="{% url 'logout' %}" style="margin: 0;">
-                        {% csrf_token %}
-                        <button type="submit" class="logout-btn">خروج از سیستم</button>
-                    </form>
-                </li>
-
-                {% if user.role == 'purchasing' %}
-                <li><a href="{% url 'dashboard' %}" {% if request.path == '/dashboard/' %}class="active"{% endif %}>داشبورد</a></li>
-                {% endif %}
-                
-                {% if user.role in 'kitchen,bar,counter' %}
-                <li><a href="{% url 'purchase_request' %}" {% if 'purchase-request' in request.path %}class="active"{% endif %}>درخواست خرید</a></li>
-                {% endif %}
-                
-                {% if user.role == 'purchasing' %}
-                <li><a href="{% url 'purchase_requests_list' %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>درخواست‌ها</a></li>
-                <li><a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>عملکرد تأمین‌کنندگان</a></li>
-                <li><a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>گزارشات خرید</a></li>
-                <li><a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>گزارشات</a></li>
-                {% endif %}
-                
-                {% if user.role == 'manager' %}
-                <li><a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>داشبورد مالی</a></li>
-                <li><a href="{% url 'approvals_list' %}" {% if 'approvals' in request.path %}class="active"{% endif %}>تأییدیه‌ها</a></li>
-                <li><a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>عملکرد تأمین‌کنندگان</a></li>
-                <li><a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>گزارشات خرید</a></li>
-                <li><a href="{% url 'payment_analytics' %}" {% if 'payment-analytics' in request.path %}class="active"{% endif %}>تحلیل‌های پرداخت</a></li>
-                <li><a href="{% url 'inventory_reports' %}" {% if 'inventory-reports' in request.path %}class="active"{% endif %}>گزارشات موجودی</a></li>
-                <li><a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>گزارشات</a></li>
-                <li><a href="{% url 'backup_management' %}" {% if 'backup' in request.path %}class="active"{% endif %}>پشتیبان‌گیری</a></li>
-                <li><a href="{% url 'system_monitoring' %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>مانیتورینگ سیستم</a></li>
-                {% endif %}
-
-                <!-- Temporary: Add finance dashboard to all users for testing -->
-                <li><a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>[TEST] داشبورد مالی</a></li>
-            </ul>
-            
-            <!-- Desktop User Info (hidden on mobile) -->
             <div style="display: flex; align-items: center; gap: 1rem;">
+                <!-- User Info (Always Visible) -->
                 <div class="user-info">
                     <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
                     <div>
@@ -776,11 +750,13 @@
                         <div style="font-size: 0.75rem; color: #6b7280;">{{ user.get_role_display }}</div>
                     </div>
                 </div>
-                <form method="post" action="{% url 'logout' %}" style="margin: 0;">
-                    {% csrf_token %}
-                    <button type="submit" class="logout-btn">خروج</button>
-                </form>
+
+                <button class="mobile-menu-toggle" onclick="toggleMenu()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
             </div>
+            
+
         </div>
     </nav>
     {% endif %}
@@ -798,51 +774,35 @@
     </div>
 
     <script>
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            const backdrop = document.getElementById('menuBackdrop');
-            const isShowing = menu.classList.contains('mobile-show');
+        function toggleMenu() {
+            const menu = document.getElementById('sidebarMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const isShowing = menu.classList.contains('active');
             
             if (isShowing) {
-                menu.classList.remove('mobile-show');
-                backdrop.classList.remove('show');
+                menu.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
             } else {
-                menu.classList.add('mobile-show');
-                backdrop.classList.add('show');
+                menu.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
             }
         }
 
-        // Close mobile menu when clicking a link
+        // Close menu when clicking a link
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.navbar-menu a').forEach(link => {
                 link.addEventListener('click', function() {
-                    const menu = document.getElementById('mobileMenu');
-                    const backdrop = document.getElementById('menuBackdrop');
+                    const menu = document.getElementById('sidebarMenu');
+                    const overlay = document.getElementById('menuOverlay');
                     if (menu) {
-                        menu.classList.remove('mobile-show');
-                        backdrop.classList.remove('show');
+                        menu.classList.remove('active');
+                        overlay.classList.remove('active');
+                        document.body.style.overflow = '';
                     }
                 });
             });
-        });
-
-        // Prevent body scroll when menu is open
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                const menu = document.getElementById('mobileMenu');
-                if (menu && menu.classList.contains('mobile-show')) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
-            });
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const menu = document.getElementById('mobileMenu');
-            if (menu) {
-                observer.observe(menu, { attributes: true, attributeFilter: ['class'] });
-            }
         });
     </script>
 

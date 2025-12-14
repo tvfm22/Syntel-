@@ -243,10 +243,20 @@
         {% for category in categories %}
         <div class="category-card">
             <div class="category-header">
-                <h3 class="category-name">{{ category.name }}</h3>
+                <h3 class="category-name">
+                    {% if category.parent %}
+                        <span style="opacity: 0.7; font-size: 0.85em;">{{ category.parent.name }} › </span>
+                    {% endif %}
+                    {{ category.name }}
+                </h3>
                 <p class="category-stats">{{ category.product_count }} محصول</p>
             </div>
             <div class="category-body">
+                {% if category.parent %}
+                <p class="category-description" style="color: #764ba2; font-weight: 500; margin-bottom: 8px;">
+                    <i class="fas fa-layer-group"></i> زیر دسته از: {{ category.parent.name }}
+                </p>
+                {% endif %}
                 {% if category.description %}
                 <p class="category-description">{{ category.description }}</p>
                 {% endif %}

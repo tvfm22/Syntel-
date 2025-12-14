@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 
 # Custom User model with roles
 class User(AbstractUser):
@@ -149,21 +150,32 @@ class Unit(models.Model):
 
 # Category model for product categories
 class Category(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='نام دسته‌بندی')
+    name = models.CharField(max_length=100, verbose_name='نام دسته‌بندی')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subcategories', verbose_name='دسته‌بندی والد')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
 
     def __str__(self):
+        if self.parent:
+            return f"{self.parent.name} > {self.name}"
         return self.name
 
     @property
     def product_count(self):
         """Return the count of active products in this category"""
         return self.product_set.filter(is_active=True).count()
+    
+    @property
+    def full_path(self):
+        """Return the full hierarchical path of the category"""
+        if self.parent:
+            return f"{self.parent.full_path} > {self.name}"
+        return self.name
 
     class Meta:
         verbose_name = 'دسته‌بندی'
         verbose_name_plural = 'دسته‌بندی‌ها'
+        unique_together = [['name', 'parent']]
 
 # Product model for base products
 class Product(models.Model):
@@ -771,10 +783,10 @@ class Payment(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='single_payments', null=True, blank=True, verbose_name='فاکتور')
     invoices = models.ManyToManyField(Invoice, related_name='payments', blank=True, verbose_name='فاکتورها')
     
-    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='مبلغ پرداخت')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='مبلغ پرداخت', validators=[MinValueValidator(0)])
     
     # Payment details
-    payment_method = models.ForeignKey('PaymentMethod', null=True, blank=True, on_delete=models.SET_NULL, related_name='payments', verbose_name='روش پرداخت')
+    payment_location = models.ForeignKey('PaymentLocation', null=True, blank=True, on_delete=models.SET_NULL, related_name='payments', verbose_name='محل پرداخت')
     payment_date = models.DateField(default=timezone.now, verbose_name='تاریخ پرداخت')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='completed', verbose_name='وضعیت پرداخت')
     
@@ -883,16 +895,16 @@ class Payment(models.Model):
         ordering = ['-payment_date', '-created_at']
         indexes = [
             models.Index(fields=['payment_date']),
-            models.Index(fields=['payment_method']),
+            models.Index(fields=['payment_location']),
             models.Index(fields=['payment_status']),
             models.Index(fields=['amount']),
             models.Index(fields=['payment_date', 'payment_status']),
         ]
 
-# Payment Method Configuration
-class PaymentMethod(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='نام روش پرداخت')
-    code = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='کد روش پرداخت')
+# Payment Location Configuration
+class PaymentLocation(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name='نام محل پرداخت')
+    code = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='کد محل پرداخت')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     
     # Configuration
@@ -914,13 +926,13 @@ class PaymentMethod(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.code:
-            base_code = slugify(self.name) or 'method'
+            base_code = slugify(self.name) or 'location'
             self.code = base_code[:20]
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = 'روش پرداخت'
-        verbose_name_plural = 'روش‌های پرداخت'
+        verbose_name = 'محل پرداخت'
+        verbose_name_plural = 'محل‌های پرداخت'
         ordering = ['display_order', 'name']
 
 # Supplier Management System
@@ -1428,3 +1440,27 @@ class Notification(models.Model):
             models.Index(fields=['is_read', 'recipient']),
             models.Index(fields=['notification_type', 'priority']),
         ]
+
+# Price History Tracking
+class PriceHistory(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='price_history', verbose_name='محصول')
+    price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='قیمت')
+    date = models.DateTimeField(default=timezone.now, verbose_name='تاریخ و زمان')
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='price_histories', verbose_name='فاکتور')
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='price_histories', verbose_name='تأمین‌کننده')
+    
+    # Percentage change from previous price
+    percent_change = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name='درصد تغییر')
+    
+    class Meta:
+        verbose_name = 'تاریخچه قیمت'
+        verbose_name_plural = 'تاریخچه قیمت‌ها'
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['product', '-date']),
+            models.Index(fields=['date']),
+            models.Index(fields=['percent_change']),
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} - {self.price} ({self.date.date()})"

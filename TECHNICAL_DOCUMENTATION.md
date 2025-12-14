@@ -100,7 +100,7 @@ class Payment(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_date = models.DateField()
-    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.CASCADE)
+    payment_location = models.ForeignKey(PaymentLocation, on_delete=models.CASCADE)
     reference_number = models.CharField(max_length=100, blank=True)
 ```
 

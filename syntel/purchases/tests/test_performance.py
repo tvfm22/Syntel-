@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.core.management import call_command
 from purchases.models import (
     Category, Unit, Product, Supplier, PurchaseRequest,
-    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentMethod,
+    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation,
     ActivityLog, Notification
 )
 import time
@@ -174,7 +174,7 @@ class PerformanceTests(TransactionTestCase):
                     total_amount=1000.00,
                     status='paid'
                 )
-                payment_method = PaymentMethod.objects.create(name=f'Method {i}')
+                payment_method = PaymentLocation.objects.create(name=f'Method {i}')
                 Payment.objects.create(
                     invoice=invoice,
                     amount=1000.00,

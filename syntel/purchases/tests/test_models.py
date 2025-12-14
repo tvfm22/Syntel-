@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from purchases.models import (
-    Category, Unit, Product, PaymentType, PaymentMethod,
+    Category, Unit, Product, PaymentType, PaymentLocation,
     Supplier, SupplierEvaluation, PurchaseRequest, PurchaseItem,
     PurchaseOrder, PurchaseOrderItem, Invoice, InvoiceItem,
     InvoiceApproval, Payment, ActivityLog, Notification
@@ -177,7 +177,7 @@ class ModelTests(TestCase):
             due_date=timezone.now().date() + timedelta(days=30)
         )
 
-        payment_method = PaymentMethod.objects.create(
+        payment_method = PaymentLocation.objects.create(
             name='Bank Transfer',
             is_active=True
         )
@@ -186,14 +186,14 @@ class ModelTests(TestCase):
             invoice=invoice,
             amount=500.00,
             payment_date=timezone.now().date(),
-            payment_method=payment_method,
+            payment_location=payment_method,
             reference_number='REF-001',
             created_by=self.user
         )
 
         self.assertEqual(payment.invoice, invoice)
         self.assertEqual(payment.amount, 500.00)
-        self.assertEqual(payment.payment_method, payment_method)
+        self.assertEqual(payment.payment_location, payment_method)
         self.assertEqual(payment.created_by, self.user)
 
     def test_activity_log_creation(self):
@@ -315,7 +315,7 @@ class ModelTests(TestCase):
         self.assertEqual(request.items.count(), 1)
         self.assertEqual(order.request, request)
         self.assertEqual(invoice.order, order)
-        self.assertEqual(invoice.items.count(), 1)
+        self.assertEqual(invoice.invoice_items.count(), 1)
 
     def test_data_integrity(self):
         """Test data integrity constraints"""
@@ -348,7 +348,7 @@ class ModelTests(TestCase):
             supplier.full_clean()  # Should raise validation error
 
         # Test positive amount validation
-        payment_method = PaymentMethod.objects.create(name='Test Method')
+        payment_method = PaymentLocation.objects.create(name='Test Method')
 
         payment = Payment(
             invoice=Invoice.objects.create(
@@ -363,7 +363,7 @@ class ModelTests(TestCase):
             ),
             amount=-100.00,  # Negative amount should be invalid
             payment_date=timezone.now().date(),
-            payment_method=payment_method
+            payment_location=payment_method
         )
 
         with self.assertRaises(Exception):

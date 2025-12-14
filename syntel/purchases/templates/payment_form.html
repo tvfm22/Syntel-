@@ -62,7 +62,7 @@
                                 <div class="form-group">
                                     <label for="payment_date">تاریخ پرداخت *</label>
                                     <input type="date" class="form-control" id="payment_date" name="payment_date" 
-                                           value="{% if payment %}{{ payment.payment_date|date:'Y-m-d' }}{% else %}{{ 'now'|date:'Y-m-d' }}{% endif %}" required>
+                                           value="{% if payment %}{{ payment.payment_date|date:'Y-m-d' }}{% else %}1404/01/01{% endif %}" required>
                                 </div>
                             </div>
                         </div>
@@ -70,10 +70,10 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="payment_method">روش پرداخت *</label>
-                                    <select class="form-control" id="payment_method" name="payment_method" required>
-                                        {% for method in payment_methods %}
-                                        <option value="{{ method.id }}" {% if payment and payment.payment_method.id == method.id %}selected{% endif %}>
+                                    <label for="payment_location">محل پرداخت *</label>
+                                    <select class="form-control" id="payment_location" name="payment_location" required>
+                                        {% for method in payment_locations %}
+                                        <option value="{{ method.id }}" {% if payment and payment.payment_location.id == method.id %}selected{% endif %}>
                                             {{ method.name }}
                                         </option>
                                         {% endfor %}
@@ -165,12 +165,18 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
 <script>
 $(document).ready(function() {
     function togglePaymentFields() {
-        const method = $('#payment_method').val();
-        const paymentMethods = {{ payment_methods|safe }};
+        const method = $('#payment_location').val();
+        const paymentMethods = {{ payment_locations|safe }};
         
         // Find the selected method configuration
         const selectedMethod = paymentMethods.find(m => m.code === method);
@@ -185,8 +191,26 @@ $(document).ready(function() {
         }
     }
     
-    $('#payment_method').change(togglePaymentFields);
+    $('#payment_location').change(togglePaymentFields);
     togglePaymentFields(); // Initial call
+
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

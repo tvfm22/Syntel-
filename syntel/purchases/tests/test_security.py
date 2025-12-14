@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from purchases.models import (
     Category, Unit, Product, Supplier, PurchaseRequest,
-    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentMethod
+    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation
 )
 import json
 

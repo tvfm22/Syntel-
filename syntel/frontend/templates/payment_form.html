@@ -98,15 +98,15 @@
                     <div class="form-group">
                         <label class="form-label" for="id_payment_date">تاریخ پرداخت *</label>
                         <input type="date" name="payment_date" id="id_payment_date" class="form-input"
-                               value="{% if request.POST.payment_date %}{{ request.POST.payment_date }}{% else %}{{ timezone.now|date:'Y-m-d' }}{% endif %}" required>
+                               value="{% if request.POST.payment_date %}{{ request.POST.payment_date }}{% else %}1404/01/01{% endif %}" required>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="id_payment_method">روش پرداخت *</label>
-                        <select name="payment_method" id="id_payment_method" class="form-select" required>
-                            <option value="">انتخاب روش پرداخت</option>
-                            {% for method in payment_methods %}
-                            <option value="{{ method.id }}" {% if request.POST.payment_method == method.id|stringformat:"i" %}selected{% endif %}>
+                        <label class="form-label" for="id_payment_location">محل پرداخت *</label>
+                        <select name="payment_location" id="id_payment_location" class="form-select" required>
+                            <option value="">انتخاب محل پرداخت</option>
+                            {% for method in payment_locations %}
+                            <option value="{{ method.id }}" {% if request.POST.payment_location == method.id|stringformat:"i" %}selected{% endif %}>
                                 {{ method.name }}
                             </option>
                             {% endfor %}
@@ -161,7 +161,7 @@ document.getElementById('id_amount').addEventListener('input', function(e) {
 // Form validation
 document.querySelector('.payment-form').addEventListener('submit', function(e) {
     const amount = document.getElementById('id_amount').value.replace(/,/g, '');
-    const paymentMethod = document.getElementById('id_payment_method').value;
+    const paymentMethod = document.getElementById('id_payment_location').value;
 
     if (!amount || parseFloat(amount) <= 0) {
         alert('لطفاً مبلغ معتبر وارد کنید.');
@@ -170,7 +170,7 @@ document.querySelector('.payment-form').addEventListener('submit', function(e) {
     }
 
     if (!paymentMethod) {
-        alert('لطفاً روش پرداخت را انتخاب کنید.');
+        alert('لطفاً محل پرداخت را انتخاب کنید.');
         e.preventDefault();
         return;
     }
@@ -470,4 +470,30 @@ document.querySelector('.payment-form').addEventListener('submit', function(e) {
     }
 }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

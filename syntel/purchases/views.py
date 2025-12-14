@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import io
+import csv
+import json
+import os
+import platform
+import django
 from datetime import datetime, timedelta
 from decimal import Decimal
 from functools import wraps
 
 import psutil
+from django.core.management import call_command
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
@@ -20,9 +27,10 @@ from .models import (
     Category,
     Invoice,
     InvoiceIssue,
+    InvoiceItem,
     Notification,
     Payment,
-    PaymentMethod,
+    PaymentLocation,
     PaymentType,
     Product,
     PurchaseItem,
@@ -377,31 +385,158 @@ def export_analytics_to_pdf(request, analytics_type):
 @custom_login_required
 @role_required(["manager"])
 def backup_management(request):
-    return render(request, "backup_management.html")
+    context = {
+        "title": "مدیریت پشتیبان‌گیری و داده‌ها",
+        "total_users": User.objects.count(),
+        "total_requests": PurchaseRequest.objects.count(),
+        "total_invoices": Invoice.objects.count(),
+        "total_payments": Payment.objects.count(),
+        "total_suppliers": Supplier.objects.count(),
+        "database_name": settings.DATABASES['default']['NAME'],
+        "database_host": settings.DATABASES['default']['HOST'] or 'localhost',
+    }
+    return render(request, "backup_management.html", context)
 
 
 @custom_login_required
 @role_required(["manager"])
 def backup_database(request):
-    return HttpResponse("Backup created")
+    """Create a server-side backup of the database."""
+    try:
+        # Create backups directory if it doesn't exist
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'backup_{timestamp}.json'
+        filepath = os.path.join(backup_dir, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=f)
+            
+        messages.success(request, f"Database backup created successfully: {filename}")
+    except Exception as e:
+        messages.error(request, f"Error creating backup: {str(e)}")
+        
+    return redirect('backup_management')
 
 
 @custom_login_required
 @role_required(["manager"])
 def export_data_json(request):
-    return JsonResponse({"status": "ok"})
+    """Download a full database backup as JSON."""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'syntel_export_{timestamp}.json'
+    
+    buffer = io.StringIO()
+    call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=buffer)
+    buffer.seek(0)
+    
+    response = HttpResponse(buffer.getvalue(), content_type='application/json')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @custom_login_required
 @role_required(["manager"])
 def export_data_csv(request):
-    return HttpResponse("id,name\n")
+    """Export specific data models to CSV."""
+    model_name = request.GET.get('model', 'products')
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{model_name}_{timestamp}.csv"'
+    response.write(u'\ufeff'.encode('utf8'))  # BOM for Excel compatibility
+    
+    writer = csv.writer(response)
+    
+    if model_name == 'products':
+        writer.writerow(['ID', 'Name', 'Category', 'Unit', 'Price', 'Stock', 'Description'])
+        for obj in Product.objects.select_related('category', 'unit').all():
+            writer.writerow([
+                obj.id, 
+                obj.name, 
+                obj.category.name if obj.category else '', 
+                obj.unit.name if obj.unit else '', 
+                obj.current_price, 
+                obj.stock_quantity,
+                obj.description
+            ])
+            
+    elif model_name == 'suppliers':
+        writer.writerow(['ID', 'Name', 'Contact Person', 'Phone', 'Email', 'Address', 'Rating'])
+        for obj in Supplier.objects.all():
+            writer.writerow([
+                obj.id, 
+                obj.name, 
+                obj.contact_person, 
+                obj.phone, 
+                obj.email, 
+                obj.address,
+                obj.rating
+            ])
+            
+    elif model_name == 'purchases':
+        writer.writerow(['ID', 'Requester', 'Status', 'Date Created', 'Total Items'])
+        for obj in PurchaseRequest.objects.select_related('requester').prefetch_related('items').all():
+            writer.writerow([
+                obj.id, 
+                obj.requester.username, 
+                obj.get_status_display(), 
+                obj.created_at.strftime('%Y-%m-%d %H:%M'), 
+                obj.items.count()
+            ])
+            
+    elif model_name == 'invoices':
+        writer.writerow(['ID', 'Invoice Number', 'Supplier', 'Amount', 'Status', 'Date'])
+        for obj in Invoice.objects.select_related('supplier').all():
+            writer.writerow([
+                obj.id,
+                obj.invoice_number,
+                obj.supplier.name,
+                obj.total_amount,
+                obj.get_status_display(),
+                obj.issue_date
+            ])
+            
+    else:
+        writer.writerow(['Error', 'Invalid model specified'])
+        
+    return response
 
 
 @custom_login_required
 @role_required(["manager"])
 def import_data_json(request):
-    return HttpResponse("Imported")
+    """Import data from a JSON backup file."""
+    if request.method == 'POST' and request.FILES.get('backup_file'):
+        backup_file = request.FILES['backup_file']
+        
+        # Save temporarily
+        temp_dir = os.path.join(settings.BASE_DIR, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, f'restore_{datetime.now().strftime("%Y%m%d%H%M%S")}.json')
+        
+        try:
+            with open(temp_path, 'wb+') as destination:
+                for chunk in backup_file.chunks():
+                    destination.write(chunk)
+                    
+            call_command('loaddata', temp_path)
+            messages.success(request, "Data imported successfully.")
+        except Exception as e:
+            messages.error(request, f"Error importing data: {str(e)}")
+        finally:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+                
+        return redirect('backup_management')
+        
+    messages.error(request, "No file provided.")
+    return redirect('backup_management')
 
 
 @custom_login_required
@@ -601,10 +736,22 @@ def category_list(request):
 def category_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
+        parent_id = request.POST.get("parent")
+        description = request.POST.get("description", "")
         if name:
-            Category.objects.create(name=name)
+            parent = None
+            if parent_id:
+                parent = Category.objects.filter(id=parent_id).first()
+            Category.objects.create(
+                name=name, 
+                parent=parent,
+                description=description
+            )
             return redirect("category_list")
-    return render(request, "category_form.html")
+    
+    # Get all parent categories (categories without a parent)
+    parent_categories = Category.objects.filter(parent__isnull=True, is_active=True)
+    return render(request, "category_form.html", {"parent_categories": parent_categories})
 
 
 @custom_login_required
@@ -613,9 +760,25 @@ def category_update(request, category_id):
     category = get_object_or_404(Category, id=category_id)
     if request.method == "POST":
         category.name = request.POST.get("name", category.name)
+        category.description = request.POST.get("description", category.description)
+        parent_id = request.POST.get("parent")
+        if parent_id:
+            category.parent = Category.objects.filter(id=parent_id).first()
+        else:
+            category.parent = None
         category.save()
         return redirect("category_list")
-    return render(request, "category_form.html", {"category": category})
+    
+    # Get all parent categories except the current one and its descendants
+    parent_categories = Category.objects.filter(
+        parent__isnull=True, 
+        is_active=True
+    ).exclude(id=category_id)
+    
+    return render(request, "category_form.html", {
+        "category": category,
+        "parent_categories": parent_categories
+    })
 
 
 @custom_login_required
@@ -884,12 +1047,9 @@ def invoices_list(request):
     date_search_type = request.GET.get('date_search_type', '')
     date_query = request.GET.get('date_query', '').strip()
     invoice_type = request.GET.get('type', 'store')  # Default to 'store' for store invoices
-    selected_issue = request.GET.get('issue', '')
-    if selected_issue:
-        try:
-            selected_issue = int(selected_issue)
-        except ValueError:
-            selected_issue = ''
+    
+    # Handle single issue selection
+    selected_issue = request.GET.get('issue', '').strip()
     
     # Base queryset
     invoices = Invoice.objects.select_related("purchase_order", "supplier").all()
@@ -913,7 +1073,11 @@ def invoices_list(request):
         invoices = invoices.filter(payment_status=selected_payment_status)
     
     if selected_issue:
-        invoices = invoices.filter(issues__id=selected_issue)
+        try:
+            issue_id = int(selected_issue)
+            invoices = invoices.filter(issues__id=issue_id).distinct()
+        except ValueError:
+            pass
     
     # Apply date filter
     if date_query and date_search_type:
@@ -955,6 +1119,7 @@ def invoices_list(request):
         'invoice_type': invoice_type,
         'issues': issues,
         'selected_issue': selected_issue,
+        'selected_issues_str': selected_issue,
     }
     
     return render(request, "invoice_list.html", context)
@@ -1122,7 +1287,7 @@ def invoice_register(request):
         return redirect("invoice_detail", invoice_id=invoice.id)
 
     # نمایش فرم ایجاد فاکتور دستی
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(is_active=True).select_related('parent').order_by('parent__name', 'name')
     
     # اگر supplier_id در GET وجود دارد، تامین‌کننده را پیش‌فرض کن
     default_supplier = None
@@ -1301,8 +1466,8 @@ def completed_orders_for_invoices(request):
 @custom_login_required
 @role_required(["manager", "purchasing"])
 def payment_list(request):
-    payments = Payment.objects.select_related("invoice", "payment_method").all()
-    methods = PaymentMethod.objects.all()
+    payments = Payment.objects.select_related("invoice", "payment_location").all()
+    methods = PaymentLocation.objects.all()
     return render(
         request,
         "payment_list.html",
@@ -1314,7 +1479,7 @@ def payment_list(request):
 @role_required(["manager"])
 def payment_create(request, invoice_id=None):
     invoices = Invoice.objects.all()
-    methods = PaymentMethod.objects.all()
+    methods = PaymentLocation.objects.all()
     target_invoice = Invoice.objects.filter(id=invoice_id).first() if invoice_id else None
 
     # Handle bulk payment
@@ -1336,7 +1501,7 @@ def payment_create(request, invoice_id=None):
                 payment = Payment.objects.create(
                     amount=amount_val,
                     payment_date=request.POST.get("payment_date") or timezone.now().date(),
-                    payment_method=PaymentMethod.objects.filter(id=request.POST.get("payment_method")).first(),
+                    payment_location=PaymentLocation.objects.filter(id=request.POST.get("payment_location")).first(),
                     reference_number=request.POST.get("reference_number", ""),
                     notes=request.POST.get("notes", ""),
                     created_by=request.user,
@@ -1368,7 +1533,7 @@ def payment_create(request, invoice_id=None):
                 invoice=invoice,
                 amount=amount_val,
                 payment_date=request.POST.get("payment_date") or timezone.now().date(),
-                payment_method=PaymentMethod.objects.filter(id=request.POST.get("payment_method")).first(),
+                payment_location=PaymentLocation.objects.filter(id=request.POST.get("payment_location")).first(),
                 reference_number=request.POST.get("reference_number", ""),
                 notes=request.POST.get("notes", ""),
                 created_by=request.user,
@@ -1424,30 +1589,30 @@ def payment_delete(request, payment_id):
 
 @custom_login_required
 @role_required(["manager"])
-def payment_method_list(request):
-    payment_methods = PaymentMethod.objects.all()
+def payment_location_list(request):
+    payment_methods = PaymentLocation.objects.all()
     return render(request, "payment_method_list.html", {"payment_methods": payment_methods})
 
 
 @custom_login_required
 @role_required(["manager"])
-def payment_method_create(request):
+def payment_location_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
         if name:
-            PaymentMethod.objects.create(name=name)
-            return redirect("payment_method_list")
+            PaymentLocation.objects.create(name=name)
+            return redirect("payment_location_list")
     return render(request, "payment_method_form.html")
 
 
 @custom_login_required
 @role_required(["manager"])
-def payment_method_update(request, method_id):
-    payment_method = get_object_or_404(PaymentMethod, id=method_id)
+def payment_location_update(request, method_id):
+    payment_method = get_object_or_404(PaymentLocation, id=method_id)
     if request.method == "POST":
         payment_method.name = request.POST.get("name", payment_method.name)
         payment_method.save()
-        return redirect("payment_method_list")
+        return redirect("payment_location_list")
     return render(request, "payment_method_form.html", {"payment_method": payment_method})
 
 
@@ -1783,12 +1948,41 @@ def executive_summary(request):
 
 @custom_login_required
 @role_required(["manager"])
+@custom_login_required
+@role_required(["manager"])
 def system_monitoring(request):
+    # System Info
+    system_info = {
+        "os": platform.system(),
+        "os_version": platform.release(),
+        "hostname": platform.node(),
+        "python_version": platform.python_version(),
+        "django_version": django.get_version(),
+    }
+    
+    # DB Info
+    db_settings = settings.DATABASES['default']
+    db_info = {
+        "database_name": db_settings['NAME'],
+        "database_engine": db_settings['ENGINE'],
+        "host": db_settings['HOST'] or 'localhost',
+        "port": db_settings['PORT'] or '5432',
+    }
+    
+    # Resources
     data = {
         "cpu_percent": psutil.cpu_percent(interval=0.1),
         "memory_percent": psutil.virtual_memory().percent,
+        "disk_usage": psutil.disk_usage("/").percent,
     }
-    return render(request, "system_monitoring.html", {"system_resources": data})
+    
+    context = {
+        "system_info": system_info,
+        "db_info": db_info,
+        "system_resources": data,
+        "last_updated": datetime.now(),
+    }
+    return render(request, "system_monitoring.html", context)
 
 
 @custom_login_required
@@ -1894,3 +2088,87 @@ def get_recent_notifications(request):
 
 def handler404(request, exception=None):
     raise Http404()
+
+
+@custom_login_required
+def search_supplier_products(request):
+    """Search for products used in previous invoices for a specific supplier."""
+    supplier_id = request.GET.get('supplier_id')
+    query = request.GET.get('q', '').strip()
+    
+    if not supplier_id:
+        return JsonResponse({'results': []})
+        
+    # Search in InvoiceItems linked to Invoices from this supplier
+    items = InvoiceItem.objects.filter(
+        invoice__supplier_id=supplier_id,
+        description__icontains=query
+    ).values_list('description', flat=True).distinct()[:10]
+    
+    return JsonResponse({'results': list(items)})
+
+
+@custom_login_required
+def search_products_autocomplete(request):
+    """Autocomplete API for products with their categories"""
+    query = request.GET.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    products = Product.objects.filter(
+        models.Q(name__icontains=query) | models.Q(category__name__icontains=query),
+        is_active=True
+    ).select_related('category', 'category__parent')[:15]
+    
+    results = []
+    for product in products:
+        category_display = ''
+        if product.category:
+            if product.category.parent:
+                category_display = f"{product.category.parent.name} > {product.category.name}"
+            else:
+                category_display = product.category.name
+        
+        results.append({
+            'id': product.id,
+            'name': product.name,
+            'category': category_display,
+            'label': f"{product.name} ({category_display})" if category_display else product.name
+        })
+    
+    return JsonResponse({'results': results})
+
+
+@custom_login_required
+def search_categories_autocomplete(request):
+    """Autocomplete API for categories with subcategories"""
+    query = request.GET.get('q', '').strip()
+    parent_id = request.GET.get('parent_id')
+    
+    if not query or len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    categories = Category.objects.filter(
+        name__icontains=query,
+        is_active=True
+    ).select_related('parent')
+    
+    if parent_id:
+        categories = categories.filter(parent_id=parent_id)
+    
+    categories = categories[:15]
+    
+    results = []
+    for cat in categories:
+        display_name = cat.full_path if cat.parent else cat.name
+        results.append({
+            'id': cat.id,
+            'name': cat.name,
+            'parent_id': cat.parent_id,
+            'full_path': display_name,
+            'label': display_name
+        })
+    
+    return JsonResponse({'results': results})
+

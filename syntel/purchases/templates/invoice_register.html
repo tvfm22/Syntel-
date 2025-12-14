@@ -5,285 +5,567 @@
 
 {% block extra_css %}
 <style>
-    .summary-box {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
+    :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --bg-color: #f9fafb;
+        --card-bg: #ffffff;
+        --text-main: #111827;
+        --text-muted: #6b7280;
+        --border-color: #e5e7eb;
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    }
+
+    .minimal-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border-color);
+        padding: 0;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .card-header-custom {
+        background-color: #f8fafc;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .card-body-custom {
+        padding: 1.5rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        padding: 0.625rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        background-color: #fff;
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .form-control.form-control-sm, .form-select.form-control-sm {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Custom Grid System */
+    .custom-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -0.5rem;
+    }
+    .custom-col {
+        padding: 0.5rem;
+        box-sizing: border-box;
+    }
+    .col-20 {
+        width: 20%;
+        flex: 0 0 20%;
+    }
+    @media (max-width: 992px) {
+        .col-20 {
+            width: 33.33%;
+            flex: 0 0 33.33%;
+        }
+    }
+    @media (max-width: 576px) {
+        .col-20 {
+            width: 50%;
+            flex: 0 0 50%;
+        }
+    }
+
+    .table-minimal {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-minimal th {
+        background-color: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 1rem;
+        text-align: right;
+        border-bottom: 1px solid #e2e8f0;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .table-minimal td {
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+
+    .table-minimal tr:last-child td {
+        border-bottom: none;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
+        border: none;
+        background: transparent;
+    }
+
+    .btn-action:hover {
+        background-color: #fee2e2;
+        color: #ef4444;
+    }
+
+    .summary-panel {
+        background-color: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
     }
 
     .summary-row {
         display: flex;
         justify-content: space-between;
-        padding: 8px 0;
-        border-bottom: 1px dashed #dee2e6;
-    }
-
-    .summary-row:last-child {
-        border-bottom: none;
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+        color: var(--text-muted);
     }
 
     .summary-row.total {
-        font-weight: bold;
-        font-size: 1.1em;
-        color: #28a745;
-        border-top: 2px solid #28a745;
-        margin-top: 10px;
-        padding-top: 15px;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border-color);
+        font-weight: 700;
+        color: var(--text-main);
+        font-size: 1.2rem;
     }
 
-    .issues-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+    .btn-primary-custom {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-custom {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .btn-outline-custom:hover {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
     }
 
     .issue-tag {
         display: inline-flex;
         align-items: center;
-        background: #e3f2fd;
-        color: #1976d2;
-        padding: 4px 8px;
-        border-radius: 16px;
-        font-size: 0.875rem;
-        border: 1px solid #bbdefb;
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+        margin-bottom: 0.5rem;
     }
 
     .issue-tag .remove-issue {
-        margin-left: 8px;
+        margin-right: 0.5rem;
         cursor: pointer;
-        color: #d32f2f;
-        font-weight: bold;
+        opacity: 0.6;
     }
 
     .issue-tag .remove-issue:hover {
-        color: #b71c1c;
+        opacity: 1;
+    }
+
+    /* Autocomplete styles */
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid #d4d4d4;
+        border-bottom: none;
+        border-top: none;
+        z-index: 99;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #fff;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-items div {
+        padding: 10px;
+        cursor: pointer;
+        background-color: #fff;
+        border-bottom: 1px solid #d4d4d4;
+        font-size: 0.9rem;
+    }
+
+    .autocomplete-items div:hover {
+        background-color: #e9e9e9;
+    }
+
+    .autocomplete-active {
+        background-color: DodgerBlue !important;
+        color: #ffffff;
+    }
+    
+    .input-wrapper {
+        position: relative;
+    }
+    
+    /* Autocomplete item styles */
+    .autocomplete-item {
+        padding: 8px 12px !important;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .autocomplete-main {
+        font-weight: 500;
+        color: #111827;
+        margin-bottom: 2px;
+    }
+    
+    .autocomplete-sub {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-style: italic;
+    }
+    
+    .autocomplete-item:hover .autocomplete-main {
+        color: #4f46e5;
+    }
+    
+    /* Select2 RTL styles */
+    .select2-container {
+        width: 100% !important;
+    }
+    
+    .select2-container--default .select2-selection--single {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        height: 38px;
+        padding: 0.4rem 0.75rem;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 22px;
+        padding-right: 0;
+        padding-left: 20px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        left: 5px;
+        right: auto;
+    }
+    
+    .select2-dropdown {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-family: 'Vazir', sans-serif;
+    }
+    
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #4f46e5;
     }
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-file-invoice text-primary"></i>
-                        ثبت فاکتور جدید
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست فاکتورها
-                        </a>
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            
+            <div class="page-header">
+                <div class="page-title">
+                    <i class="fas fa-file-invoice text-primary"></i>
+                    <span>ثبت فاکتور جدید</span>
+                </div>
+                <a href="{% url 'invoices_list' %}" class="btn btn-outline-custom btn-sm">
+                    <i class="fas fa-arrow-left ml-2"></i> بازگشت
+                </a>
+            </div>
+
+            <form method="post" id="invoice-form">
+                {% csrf_token %}
+
+                <!-- اطلاعات اصلی -->
+                <div class="minimal-card">
+                    <div class="card-body-custom pt-4 pb-4">
+                        <div class="d-flex align-items-center mb-4 border-bottom pb-2">
+                            <span class="text-primary ml-2" style="font-size: 1.1rem;">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            <h6 class="font-weight-bold m-0" style="font-size: 1rem; color: var(--text-main);">اطلاعات پایه</h6>
+                        </div>
+
+                        <div class="custom-row">
+                            <div class="custom-col col-20">
+                                <label for="supplier_name" class="form-label small text-muted mb-1">فروشگاه</label>
+                                <input type="text" class="form-control form-control-sm" id="supplier_name" name="supplier_name"
+                                       placeholder="نام فروشگاه..." required
+                                       value="{% if default_supplier %}{{ default_supplier.name }}{% endif %}">
+                                <input type="hidden" id="supplier_id" name="supplier" value="{% if default_supplier %}{{ default_supplier.id }}{% endif %}">
+                            </div>
+                            <div class="custom-col col-20">
+                                <label for="invoice_number" class="form-label small text-muted mb-1">شماره فاکتور</label>
+                                <input type="text" class="form-control form-control-sm" id="invoice_number" name="invoice_number" required>
+                            </div>
+                            <div class="custom-col col-20">
+                                <label for="invoice_date" class="form-label small text-muted mb-1">تاریخ فاکتور</label>
+                                <input type="date" class="form-control form-control-sm" id="invoice_date" name="invoice_date"
+                                       value="1404/01/01" required>
+                            </div>
+                            <div class="custom-col col-20">
+                                <label for="request_date" class="form-label small text-muted mb-1">تاریخ درخواست</label>
+                                <input type="date" class="form-control form-control-sm" id="request_date" name="request_date"
+                                       value="1404/01/01" required>
+                            </div>
+                            
+                            <div class="custom-col col-20">
+                                <label for="total_cash_discount" class="form-label small text-muted mb-1">تخفیف</label>
+                                <input type="text" class="form-control form-control-sm money-input" id="total_cash_discount" name="total_cash_discount" placeholder="0">
+                            </div>
+                            <div class="custom-col col-20">
+                                <label for="shipping_cost" class="form-label small text-muted mb-1">هزینه ارسال</label>
+                                <input type="text" class="form-control form-control-sm money-input" id="shipping_cost" name="shipping_cost" placeholder="0">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <form method="post" id="invoice-form">
-                        {% csrf_token %}
 
-                        <!-- اطلاعات اصلی فاکتور -->
-                        <div class="card mb-4">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0"><i class="fas fa-info-circle"></i> اطلاعات اصلی</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="supplier_name">فروشگاه *</label>
-                                            <input type="text" class="form-control" id="supplier_name" name="supplier_name"
-                                                   placeholder="نام فروشگاه را وارد کنید..." required
-                                                   value="{% if default_supplier %}{{ default_supplier.name }}{% endif %}">
-                                            <input type="hidden" id="supplier_id" name="supplier" value="{% if default_supplier %}{{ default_supplier.id }}{% endif %}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="invoice_number">شماره فاکتور *</label>
-                                            <input type="text" class="form-control" id="invoice_number" name="invoice_number" required>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="request_date">تاریخ درخواست *</label>
-                                            <input type="date" class="form-control" id="request_date" name="request_date"
-                                                   value="{% now 'Y-m-d' %}" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="invoice_date">تاریخ فاکتور *</label>
-                                            <input type="date" class="form-control" id="invoice_date" name="invoice_date"
-                                                   value="{% now 'Y-m-d' %}" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="total_cash_discount"><i class="fas fa-money-bill-wave text-muted"></i> تخفیف نقدی کل (ریال)</label>
-                                            <input type="text" class="form-control money-input" id="total_cash_discount" name="total_cash_discount" placeholder="0">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="shipping_cost"><i class="fas fa-truck text-muted"></i> هزینه ارسال (ریال)</label>
-                                            <input type="text" class="form-control money-input" id="shipping_cost" name="shipping_cost" placeholder="0">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- اقلام فاکتور -->
+                <div class="minimal-card">
+                    <div class="card-header-custom">
+                        <div class="section-title">
+                            <i class="fas fa-list text-primary"></i> اقلام فاکتور
                         </div>
-
-                        <!-- لیست دسته‌بندی‌ها برای JavaScript -->
-                        <script type="application/json" id="categories-data">
-                            [{% for category in categories %}{"id": {{ category.id }}, "name": "{{ category.name }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
-                        </script>
-                        <script type="application/json" id="issues-data">
-                            [{% for issue in issues %}{"id": {{ issue.id }}, "name": "{{ issue.name }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
-                        </script>
-
-                        <!-- اقلام فاکتور -->
-                        <div class="card mb-4">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0"><i class="fas fa-list"></i> اقلام فاکتور</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="items-table">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 18%; background-color: #007bff; color: white;">شرح کالا</th>
-                                                <th style="width: 12%; background-color: #007bff; color: white;">دسته‌بندی</th>
-                                                <th style="width: 10%; background-color: #007bff; color: white;">درخواست‌کننده</th>
-                                                <th style="width: 8%; background-color: #007bff; color: white;">تعداد</th>
-                                                <th style="width: 13%; background-color: #007bff; color: white;">قیمت واحد (ریال)</th>
-                                                <th style="width: 10%; background-color: #007bff; color: white;">مالیات (ریال)</th>
-                                                <th style="width: 10%; background-color: #007bff; color: white;">تخفیف (ریال)</th>
-                                                <th style="width: 12%; background-color: #007bff; color: white;">مجموع</th>
-                                                <th style="width: 5%; background-color: #007bff; color: white;">عملیات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="items-tbody">
-                                            <tr class="item-row">
-                                                <td>
-                                                    <input type="text" class="form-control" name="description_0" placeholder="شرح کالا" required>
-                                                </td>
-                                                <td>
-                                                    <select class="form-control category-select" name="category_0">
-                                                        <option value="">انتخاب دسته‌بندی</option>
-                                                        {% for category in categories %}
-                                                        <option value="{{ category.id }}">{{ category.name }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <select class="form-control" name="requester_0">
-                                                        <option value="">انتخاب درخواست‌کننده</option>
-                                                        {% for requester in requesters %}
-                                                        <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="0.01" class="form-control quantity-input" name="quantity_0" placeholder="0" required>
-                                                </td>
-                                                <td>
-                                                    <input type="text" class="form-control money-input unit-price-input" name="unit_price_0" placeholder="0" required>
-                                                </td>
-                                                <td>
-                                                    <input type="text" class="form-control money-input tax-input" name="tax_amount_0" placeholder="0">
-                                                </td>
-                                                <td>
-                                                    <input type="text" class="form-control money-input discount-input" name="discount_amount_0" placeholder="0">
-                                                </td>
-                                                <td>
-                                                    <span class="line-total font-weight-bold">0 ریال</span>
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="btn btn-danger btn-sm remove-item">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                        <tfoot class="bg-light">
-                                            <tr>
-                                                <td colspan="8" class="text-center">
-                                                    <button type="button" class="btn btn-success btn-sm" id="add-item">
-                                                        <i class="fas fa-plus"></i> افزودن آیتم
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="6" class="text-left"><strong>جمع اقلام:</strong></td>
-                                                <td colspan="2"><strong id="items-total">0 ریال</strong></td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="6" class="text-left">هزینه ارسال:</td>
-                                                <td colspan="2"><span id="shipping-display">0 ریال</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="6" class="text-left">تخفیف نقدی:</td>
-                                                <td colspan="2"><span id="total-discount-display" class="text-danger">0 ریال</span></td>
-                                            </tr>
-                                            <tr class="table-success">
-                                                <td colspan="6" class="text-left"><strong>مبلغ نهایی:</strong></td>
-                                                <td colspan="2"><strong id="grand-total" class="text-success" style="font-size: 1.2em;">0 ریال</strong></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
+                        <button type="button" class="btn btn-sm btn-primary-custom" id="add-item">
+                            <i class="fas fa-plus ml-1"></i> افزودن آیتم
+                        </button>
+                    </div>
+                    
+                    <div class="card-body-custom p-0">
+                        <div class="table-responsive">
+                            <table class="table-minimal" id="items-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%">شرح کالا</th>
+                                        <th style="width: 15%">دسته‌بندی</th>
+                                        <th style="width: 12%">درخواست‌کننده</th>
+                                        <th style="width: 8%">تعداد</th>
+                                        <th style="width: 15%">قیمت واحد</th>
+                                        <th style="width: 10%">مالیات</th>
+                                        <th style="width: 10%">تخفیف</th>
+                                        <th style="width: 10%">مجموع</th>
+                                        <th style="width: 5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-tbody">
+                                    <tr class="item-row">
+                                        <td>
+                                            <div class="input-wrapper">
+                                                <input type="text" class="form-control form-control-sm description-input" name="description_0" placeholder="شرح کالا" required autocomplete="off">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm category-select" name="category_0">
+                                                <option value="">انتخاب...</option>
+                                                {% for category in categories %}
+                                                <option value="{{ category.id }}">
+                                                    {% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" name="requester_0">
+                                                <option value="">انتخاب...</option>
+                                                {% for requester in requesters %}
+                                                <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" class="form-control form-control-sm quantity-input" name="quantity_0" placeholder="0" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input unit-price-input" name="unit_price_0" placeholder="0" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input tax-input" name="tax_amount_0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input discount-input" name="discount_amount_0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <span class="line-total font-weight-bold text-primary">0</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn-action remove-item">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-
-                        <!-- یادداشت‌ها -->
-                        <div class="mb-4">
-                            <!-- موارد ایراد -->
-                            <div class="form-group">
-                                <label for="issue-select">موارد ایراد:</label>
-                                <select id="issue-select" class="form-control">
-                                    <option value="">انتخاب کنید...</option>
-                                    {% for issue in issues %}
-                                    <option value="{{ issue.id }}">{{ issue.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button type="button" id="add-issue" class="btn btn-sm btn-primary mt-2">افزودن</button>
-                            </div>
-                            <div id="issues-tags" class="issues-tags mt-3">
-                                <!-- تگ‌های انتخاب شده اینجا نمایش داده می‌شوند -->
-                            </div>
-                            <input type="hidden" name="issues" id="issues-input" value="">
-                            
-                            <div class="form-group mt-4">
-                                <label for="notes"><i class="fas fa-sticky-note text-muted"></i> یادداشت‌ها</label>
-                                <textarea class="form-control" id="notes" name="notes" rows="3"
-                                          placeholder="یادداشت‌ها و توضیحات اضافی..."></textarea>
-                            </div>
-                        </div>
-
-                        <!-- دکمه‌های عملیات -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-end">
-                                    <a href="{% url 'invoices_list' %}" class="btn btn-danger ml-2">
-                                        <i class="fas fa-times"></i> انصراف
-                                    </a>
-                                    <button type="submit" name="save_draft" class="btn btn-outline-primary ml-2">
-                                        <i class="fas fa-save"></i> ذخیره پیش‌نویس
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-check"></i> ثبت فاکتور
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="row">
+                    <!-- یادداشت‌ها و ایرادات -->
+                    <div class="col-lg-8">
+                        <div class="minimal-card h-100">
+                            <div class="card-header-custom">
+                                <div class="section-title">
+                                    <i class="fas fa-clipboard-check text-primary"></i>
+                                    توضیحات تکمیلی
+                                </div>
+                            </div>
+                            
+                            <div class="card-body-custom">
+                                <div class="mb-4">
+                                    <label class="form-label">موارد ایراد</label>
+                                    <div class="d-flex gap-2 mb-2">
+                                        <select id="issue-select" class="form-select" style="max-width: 300px;">
+                                            <option value="">انتخاب مورد ایراد...</option>
+                                            {% for issue in issues %}
+                                            <option value="{{ issue.id }}">{{ issue.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="button" id="add-issue" class="btn btn-outline-custom btn-sm">افزودن</button>
+                                    </div>
+                                    <div id="issues-tags" class="d-flex flex-wrap"></div>
+                                    <input type="hidden" name="issues" id="issues-input" value="">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="notes" class="form-label">یادداشت‌ها</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="4"
+                                              placeholder="توضیحات اضافی در مورد فاکتور..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- خلاصه مالی -->
+                    <div class="col-lg-4">
+                        <div class="minimal-card summary-panel">
+                            <h5 class="mb-4 font-weight-bold">خلاصه فاکتور</h5>
+                            
+                            <div class="summary-row">
+                                <span>جمع اقلام:</span>
+                                <span id="items-total">0 ریال</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>هزینه ارسال:</span>
+                                <span id="shipping-display">0 ریال</span>
+                            </div>
+                            <div class="summary-row text-danger">
+                                <span>تخفیف‌ها:</span>
+                                <span id="total-discount-display">0 ریال</span>
+                            </div>
+                            
+                            <div class="summary-row total">
+                                <span>مبلغ قابل پرداخت:</span>
+                                <span id="grand-total" class="text-primary">0 ریال</span>
+                            </div>
+
+                            <div class="mt-4 d-grid gap-2">
+                                <button type="submit" class="btn btn-primary-custom btn-block w-100">
+                                    <i class="fas fa-check ml-2"></i> ثبت نهایی فاکتور
+                                </button>
+                                <button type="submit" name="save_draft" class="btn btn-outline-custom btn-block w-100">
+                                    <i class="fas fa-save ml-2"></i> ذخیره پیش‌نویس
+                                </button>
+                                <a href="{% url 'invoices_list' %}" class="btn btn-link text-muted text-decoration-none text-center w-100">
+                                    انصراف
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data for JS -->
+                <script type="application/json" id="categories-data">
+                    [{% for category in categories %}{"id": {{ category.id }}, "name": "{{ category.name }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+                </script>
+
+            </form>
         </div>
     </div>
 </div>
@@ -293,6 +575,31 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let itemCount = 1;
+    
+    // ============================================
+    // Initialize Select2 for Category Selects
+    // ============================================
+    function initSelect2(element) {
+        $(element).select2({
+            placeholder: "جستجو و انتخاب دسته‌بندی...",
+            allowClear: true,
+            dir: "rtl",
+            language: {
+                noResults: function() {
+                    return "نتیجه‌ای یافت نشد";
+                },
+                searching: function() {
+                    return "در حال جستجو...";
+                }
+            },
+            width: '100%'
+        });
+    }
+    
+    // Initialize Select2 for existing category selects
+    $('.category-select').each(function() {
+        initSelect2(this);
+    });
     
     // ============================================
     // Invoice Items Functionality
@@ -389,24 +696,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const lineTotal = baseTotal + taxAmount - discountAmount;
             
             if (lineTotalSpan) {
-                lineTotalSpan.textContent = formatNumber(lineTotal) + ' ریال';
+                lineTotalSpan.textContent = formatNumber(lineTotal);
             }
             itemsTotal += lineTotal;
             totalTax += taxAmount;
             totalDiscount += discountAmount;
         });
-        
-        // Get rates from form
-        const taxRate = parseFloat(document.getElementById('tax_rate').value) || 0;
-        const discountRate = parseFloat(document.getElementById('discount_rate').value) || 0;
-        
-        // Calculate percentage-based tax and discount
-        const percentageTax = (itemsTotal * taxRate / 100);
-        const percentageDiscount = (itemsTotal * discountRate / 100);
-        
-        // Total tax and discount
-        const totalTaxAmount = totalTax + percentageTax;
-        const totalDiscountAmount = totalDiscount + percentageDiscount;
         
         // Add shipping cost and subtract total cash discount
         const shippingCostEl = document.getElementById('shipping_cost');
@@ -427,14 +722,14 @@ document.addEventListener('DOMContentLoaded', function() {
             shippingDisplay.textContent = formatNumber(shippingCost) + ' ریال';
         }
         
-        // Display total discount (item discounts + percentage discount + cash discount)
+        // Display total discount
         const totalDiscountDisplay = document.getElementById('total-discount-display');
         if (totalDiscountDisplay) {
-            const finalDiscount = totalDiscountAmount + totalCashDiscount;
+            const finalDiscount = totalDiscount + totalCashDiscount;
             totalDiscountDisplay.textContent = formatNumber(finalDiscount) + ' ریال';
         }
         
-        const finalTotal = itemsTotal + totalTaxAmount + shippingCost - totalDiscountAmount - totalCashDiscount;
+        const finalTotal = itemsTotal + shippingCost - totalCashDiscount; // Note: item line totals already include tax and discount
         
         const grandTotalEl = document.getElementById('grand-total');
         if (grandTotalEl) {
@@ -449,30 +744,168 @@ document.addEventListener('DOMContentLoaded', function() {
             e.target.classList.contains('tax-input') ||
             e.target.classList.contains('discount-input') ||
             e.target.id === 'shipping_cost' ||
-            e.target.id === 'total_cash_discount' ||
-            e.target.id === 'tax_rate' ||
-            e.target.id === 'discount_rate') {
+            e.target.id === 'total_cash_discount') {
             calculateTotals();
         }
     });
     
-    // Load categories data from JSON
-    const categoriesDataEl = document.getElementById('categories-data');
-    let categories = [];
-    try {
-        categories = JSON.parse(categoriesDataEl.textContent || '[]');
-    } catch (e) {
-        console.error('Error parsing categories data:', e);
-    }
-    
-    // Build category options HTML
+    // Build category options HTML from server-side template
     function getCategoryOptions() {
-        let options = '<option value="">انتخاب دسته‌بندی</option>';
-        categories.forEach(function(cat) {
-            options += `<option value="${cat.id}">${cat.name}</option>`;
-        });
+        let options = '<option value="">انتخاب...</option>';
+        {% for category in categories %}
+        options += '<option value="{{ category.id }}">{% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}</option>';
+        {% endfor %}
         return options;
     }
+
+    // Autocomplete functionality for products
+    function setupAutocomplete(input) {
+        let currentFocus;
+        let selectedProductData = null;
+        
+        input.addEventListener("input", function(e) {
+            const val = this.value;
+            const supplierId = document.getElementById('supplier_id').value;
+            const row = this.closest('.item-row');
+            
+            closeAllLists();
+            if (!val || val.length < 2) { return false; }
+            
+            currentFocus = -1;
+            
+            // Create a DIV element that will contain the items (values)
+            const listDiv = document.createElement("DIV");
+            listDiv.setAttribute("id", this.id + "autocomplete-list");
+            listDiv.setAttribute("class", "autocomplete-items");
+            this.parentNode.appendChild(listDiv);
+            
+            // Fetch suggestions from product autocomplete API
+            fetch(`{% url 'products_autocomplete' %}?q=${encodeURIComponent(val)}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear list if new data comes in
+                    listDiv.innerHTML = '';
+                    
+                    // Show products with their categories
+                    data.results.forEach(item => {
+                        const itemDiv = document.createElement("DIV");
+                        itemDiv.classList.add('autocomplete-item');
+                        
+                        // Create label with product name and category
+                        const mainText = document.createElement('div');
+                        mainText.classList.add('autocomplete-main');
+                        const regex = new RegExp(`(${val})`, 'gi');
+                        mainText.innerHTML = item.name.replace(regex, "<strong>$1</strong>");
+                        
+                        if (item.category) {
+                            const categoryText = document.createElement('div');
+                            categoryText.classList.add('autocomplete-sub');
+                            categoryText.textContent = item.category;
+                            itemDiv.appendChild(mainText);
+                            itemDiv.appendChild(categoryText);
+                        } else {
+                            itemDiv.appendChild(mainText);
+                        }
+                        
+                        // Store product data
+                        itemDiv.dataset.productId = item.id;
+                        itemDiv.dataset.productName = item.name;
+                        itemDiv.dataset.categoryName = item.category || '';
+                        
+                        itemDiv.addEventListener("click", function(e) {
+                            input.value = this.dataset.productName;
+                            
+                            // Auto-fill category if available
+                            if (row && this.dataset.categoryName) {
+                                const categorySelect = row.querySelector('.category-select');
+                                if (categorySelect) {
+                                    // Try to find matching category in dropdown
+                                    for (let option of categorySelect.options) {
+                                        if (option.text.includes(this.dataset.categoryName)) {
+                                            categorySelect.value = option.value;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            closeAllLists();
+                        });
+                        listDiv.appendChild(itemDiv);
+                    });
+                    
+                    // Also fetch from supplier products (legacy support)
+                    if (supplierId) {
+                        fetch(`{% url 'search_supplier_products' %}?supplier_id=${supplierId}&q=${encodeURIComponent(val)}`)
+                            .then(response => response.json())
+                            .then(supplierData => {
+                                supplierData.results.forEach(item => {
+                                    const itemDiv = document.createElement("DIV");
+                                    itemDiv.classList.add('autocomplete-item');
+                                    const regex = new RegExp(`(${val})`, 'gi');
+                                    itemDiv.innerHTML = `<div class="autocomplete-main">${item.replace(regex, "<strong>$1</strong>")}</div>`;
+                                    itemDiv.innerHTML += `<input type='hidden' value='${item}'>`;
+                                    
+                                    itemDiv.addEventListener("click", function(e) {
+                                        input.value = this.getElementsByTagName("input")[0].value;
+                                        closeAllLists();
+                                    });
+                                    listDiv.appendChild(itemDiv);
+                                });
+                            });
+                    }
+                });
+        });
+        
+        input.addEventListener("keydown", function(e) {
+            let x = document.getElementById(this.id + "autocomplete-list");
+            if (x) x = x.getElementsByTagName("div");
+            if (e.keyCode == 40) { // DOWN
+                currentFocus++;
+                addActive(x);
+            } else if (e.keyCode == 38) { // UP
+                currentFocus--;
+                addActive(x);
+            } else if (e.keyCode == 13) { // ENTER
+                e.preventDefault();
+                if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                }
+            }
+        });
+        
+        function addActive(x) {
+            if (!x) return false;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add("autocomplete-active");
+        }
+        
+        function removeActive(x) {
+            for (let i = 0; i < x.length; i++) {
+                x[i].classList.remove("autocomplete-active");
+            }
+        }
+        
+        function closeAllLists(elmnt) {
+            const x = document.getElementsByClassName("autocomplete-items");
+            for (let i = 0; i < x.length; i++) {
+                if (elmnt != x[i] && elmnt != input) {
+                    x[i].parentNode.removeChild(x[i]);
+                }
+            }
+        }
+        
+        document.addEventListener("click", function (e) {
+            closeAllLists(e.target);
+        });
+    }
+
+    // Initialize autocomplete for existing inputs
+    document.querySelectorAll('.description-input').forEach(input => {
+        setupAutocomplete(input);
+    });
     
     // Add new item row
     const addItemBtn = document.getElementById('add-item');
@@ -483,39 +916,41 @@ document.addEventListener('DOMContentLoaded', function() {
             newRow.className = 'item-row';
             newRow.innerHTML = `
                 <td>
-                    <input type="text" class="form-control" name="description_${itemCount}" placeholder="شرح کالا" required>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control form-control-sm description-input" name="description_${itemCount}" placeholder="شرح کالا" required autocomplete="off">
+                    </div>
                 </td>
                 <td>
-                    <select class="form-control category-select" name="category_${itemCount}">
+                    <select class="form-select form-select-sm category-select" name="category_${itemCount}">
                         ${getCategoryOptions()}
                     </select>
                 </td>
                 <td>
-                    <select class="form-control" name="requester_${itemCount}">
-                        <option value="">انتخاب درخواست‌کننده</option>
+                    <select class="form-select form-select-sm" name="requester_${itemCount}">
+                        <option value="">انتخاب...</option>
                         {% for requester in requesters %}
                         <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
                         {% endfor %}
                     </select>
                 </td>
                 <td>
-                    <input type="number" step="0.01" class="form-control quantity-input" name="quantity_${itemCount}" placeholder="0" required>
+                    <input type="number" step="0.01" class="form-control form-control-sm quantity-input" name="quantity_${itemCount}" placeholder="0" required>
                 </td>
                 <td>
-                    <input type="text" class="form-control money-input unit-price-input" name="unit_price_${itemCount}" placeholder="0" required>
+                    <input type="text" class="form-control form-control-sm money-input unit-price-input" name="unit_price_${itemCount}" placeholder="0" required>
                 </td>
                 <td>
-                    <input type="text" class="form-control money-input tax-input" name="tax_amount_${itemCount}" placeholder="0">
+                    <input type="text" class="form-control form-control-sm money-input tax-input" name="tax_amount_${itemCount}" placeholder="0">
                 </td>
                 <td>
-                    <input type="text" class="form-control money-input discount-input" name="discount_amount_${itemCount}" placeholder="0">
+                    <input type="text" class="form-control form-control-sm money-input discount-input" name="discount_amount_${itemCount}" placeholder="0">
                 </td>
                 <td>
-                    <span class="line-total font-weight-bold">0 ریال</span>
+                    <span class="line-total font-weight-bold text-primary">0</span>
                 </td>
-                <td>
-                    <button type="button" class="btn btn-danger btn-sm remove-item">
-                        <i class="fas fa-trash"></i>
+                <td class="text-center">
+                    <button type="button" class="btn-action remove-item">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </td>
             `;
@@ -524,6 +959,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Setup money inputs for new row
             setupMoneyInputs();
+            
+            // Setup autocomplete for new row
+            setupAutocomplete(newRow.querySelector('.description-input'));
+            
+            // Initialize Select2 for new category select
+            initSelect2(newRow.querySelector('.category-select'));
         });
     }
     
@@ -546,6 +987,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial setup
     setupMoneyInputs();
     calculateTotals();
+
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
 
     // Issues management
     let selectedIssues = [];

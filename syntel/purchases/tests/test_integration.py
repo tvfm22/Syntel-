@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from purchases.models import (
     Category, Unit, Product, Supplier, PurchaseRequest,
-    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentMethod,
+    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation,
     ActivityLog, Notification
 )
 import json
@@ -147,14 +147,14 @@ class IntegrationTests(TransactionTestCase):
         self.assertEqual(invoice.total_amount, 1500.00)
 
         # Step 5: Manager creates payment
-        payment_method = PaymentMethod.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
 
         self.client.login(username='manager_user', password='testpass123')
         response = self.client.post(reverse('payment_create'), {
             'invoice': invoice.id,
             'amount': '1500.00',
             'payment_date': timezone.now().date().isoformat(),
-            'payment_method': payment_method.id,
+            'payment_location': payment_method.id,
             'reference_number': 'REF-TEST-001',
             'notes': 'Full payment for test invoice'
         })
@@ -191,7 +191,7 @@ class IntegrationTests(TransactionTestCase):
             due_date=timezone.now().date() + timezone.timedelta(days=30)
         )
 
-        payment_method = PaymentMethod.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
 
         # Create first partial payment
         self.client.login(username='manager_user', password='testpass123')
@@ -199,7 +199,7 @@ class IntegrationTests(TransactionTestCase):
             'invoice': invoice.id,
             'amount': '1000.00',
             'payment_date': timezone.now().date().isoformat(),
-            'payment_method': payment_method.id,
+            'payment_location': payment_method.id,
             'reference_number': 'REF-PARTIAL-001',
             'notes': 'First partial payment'
         })
@@ -220,7 +220,7 @@ class IntegrationTests(TransactionTestCase):
             'invoice': invoice.id,
             'amount': '1000.00',
             'payment_date': timezone.now().date().isoformat(),
-            'payment_method': payment_method.id,
+            'payment_location': payment_method.id,
             'reference_number': 'REF-PARTIAL-002',
             'notes': 'Second partial payment'
         })
@@ -383,7 +383,7 @@ class IntegrationTests(TransactionTestCase):
                 status='paid'
             )
 
-            payment_method = PaymentMethod.objects.create(name=f'Method {i+1}')
+            payment_method = PaymentLocation.objects.create(name=f'Method {i+1}')
             Payment.objects.create(
                 invoice=invoice,
                 amount=1000.00 * (i + 1),

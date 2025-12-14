@@ -1,6 +1,7 @@
 from django.urls import path
 from django.shortcuts import redirect
 from . import views
+from . import views_dashboard
 
 urlpatterns = [
     path('', lambda request: redirect('login'), name='home'),
@@ -75,6 +76,9 @@ urlpatterns = [
     path('invoices/', views.invoices_list, name='invoices_list'),
     path('invoices/bulk-delete/', views.invoice_bulk_delete, name='invoice_bulk_delete'),
     path('invoices/register/', views.invoice_register, name='invoice_register'),
+    path('invoices/search-products/', views.search_supplier_products, name='search_supplier_products'),
+    path('api/products/autocomplete/', views.search_products_autocomplete, name='products_autocomplete'),
+    path('api/categories/autocomplete/', views.search_categories_autocomplete, name='categories_autocomplete'),
     path('invoices/create/<int:order_id>/', views.invoice_create, name='invoice_create'),
     path('invoices/<int:invoice_id>/', views.invoice_detail, name='invoice_detail'),
     path('invoices/<int:invoice_id>/update/', views.invoice_update, name='invoice_update'),
@@ -94,9 +98,9 @@ urlpatterns = [
     path('payments/<int:payment_id>/', views.payment_detail, name='payment_detail'),
     path('payments/<int:payment_id>/update/', views.payment_update, name='payment_update'),
     path('payments/<int:payment_id>/delete/', views.payment_delete, name='payment_delete'),
-    path('payment-methods/', views.payment_method_list, name='payment_method_list'),
-    path('payment-methods/create/', views.payment_method_create, name='payment_method_create'),
-    path('payment-methods/<int:method_id>/update/', views.payment_method_update, name='payment_method_update'),
+    path('payment-methods/', views.payment_location_list, name='payment_location_list'),
+    path('payment-methods/create/', views.payment_location_create, name='payment_location_create'),
+    path('payment-methods/<int:method_id>/update/', views.payment_location_update, name='payment_location_update'),
     # Supplier Management URLs
     path('suppliers/', views.supplier_list, name='supplier_list'),
     path('suppliers/select/', views.supplier_select, name='supplier_select'),
@@ -139,4 +143,16 @@ urlpatterns = [
     path('notifications/<int:notification_id>/delete/', views.delete_notification, name='delete_notification'),
     path('notifications/unread-count/', views.get_unread_notifications_count, name='unread_notifications_count'),
     path('notifications/recent/', views.get_recent_notifications, name='recent_notifications'),
+
+    # Price Dashboard Page
+    path('dashboard/prices/', views_dashboard.price_dashboard_view, name='price_dashboard'),
+    path('dashboard/prices/test/', views_dashboard.price_test_view, name='price_test'),
+
+    # Dashboard API URLs
+    path('api/dashboard/products/changes/', views_dashboard.ProductChangeListAPIView.as_view(), name='api_product_changes'),
+    path('api/dashboard/products/high-increase/', views_dashboard.HighIncreaseProductsAPIView.as_view(), name='api_high_increase'),
+    path('api/dashboard/products/<int:pk>/history/', views_dashboard.PriceHistoryAPIView.as_view(), name='api_price_history'),
+    path('api/dashboard/stats/', views_dashboard.DashboardStatsAPIView.as_view(), name='api_dashboard_stats'),
+    path('api/dashboard/filters/', views_dashboard.DashboardFiltersAPIView.as_view(), name='api_dashboard_filters'),
+    path('api/dashboard/export/', views_dashboard.DashboardExportAPIView.as_view(), name='api_dashboard_export'),
 ]

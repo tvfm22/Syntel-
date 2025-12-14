@@ -322,6 +322,7 @@
     }
 }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 {% endblock %}
 
 {% block content %}
@@ -478,12 +479,12 @@
     <!-- Data Tables -->
     <div class="data-tables">
         <div class="data-table">
-            <div class="table-header">آمار روش‌های پرداخت</div>
+            <div class="table-header">آمار محل‌های پرداخت</div>
             <div class="table-responsive">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>روش پرداخت</th>
+                            <th>محل پرداخت</th>
                             <th>تعداد</th>
                             <th>مجموع مبلغ</th>
                             <th>میانگین مبلغ</th>
@@ -493,7 +494,7 @@
                     <tbody>
                         {% for method in method_stats %}
                         <tr>
-                            <td>{{ method.payment_method__name }}</td>
+                            <td>{{ method.payment_location__name }}</td>
                             <td>{{ method.count }}</td>
                             <td class="amount-positive">{{ method.total_amount|floatformat:0|intcomma }}</td>
                             <td>{{ method.avg_amount|floatformat:0|intcomma }}</td>
@@ -551,7 +552,7 @@
                             <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
                             <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
                             <td class="amount-positive">{{ payment.amount|floatformat:0|intcomma }}</td>
-                            <td>{{ payment.payment_method.name }}</td>
+                            <td>{{ payment.payment_location.name }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -580,7 +581,7 @@
                             <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
                             <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
                             <td class="amount-positive">{{ payment.amount|floatformat:0|intcomma }}</td>
-                            <td>{{ payment.payment_method.name }}</td>
+                            <td>{{ payment.payment_location.name }}</td>
                             <td><span class="status-badge status-completed">{{ payment.get_payment_status_display }}</span></td>
                         </tr>
                         {% endfor %}
@@ -612,6 +613,30 @@ document.querySelectorAll('#customFilters input, #customFilters select').forEach
         document.getElementById('analyticsForm').submit();
     });
 });
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
 </script>
+{% endblock %}
 
 {% endblock %}

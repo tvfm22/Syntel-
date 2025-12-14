@@ -56,7 +56,7 @@
                                 <div class="form-group">
                                     <label for="payment_date">تاریخ پرداخت *</label>
                                     <input type="date" class="form-control" id="payment_date" name="payment_date" 
-                                           value="{% now 'Y-m-d' %}" required>
+                                           value="1404/01/01" required>
                                 </div>
                             </div>
                         </div>
@@ -64,9 +64,9 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="payment_method">روش پرداخت</label>
-                                    <select class="form-control" id="payment_method" name="payment_method">
-                                        {% for method in payment_methods %}
+                                    <label for="payment_location">محل پرداخت</label>
+                                    <select class="form-control" id="payment_location" name="payment_location">
+                                        {% for method in payment_locations %}
                                         <option value="{{ method.id }}">{{ method.name }}</option>
                                         {% endfor %}
                                     </select>
@@ -104,4 +104,31 @@
         </div>
     </div>
 </div>
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

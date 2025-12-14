@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from purchases.models import (
     Category, Unit, Product, Supplier, PurchaseRequest,
-    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentMethod
+    PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation
 )
 
 User = get_user_model()
@@ -300,14 +300,14 @@ class ViewTests(TestCase):
             due_date=timezone.now().date() + timezone.timedelta(days=30)
         )
 
-        payment_method = PaymentMethod.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
 
         self.client.login(username='manager_user', password='testpass123')
         response = self.client.post(reverse('payment_create'), {
             'invoice': invoice.id,
             'amount': '500.00',
             'payment_date': timezone.now().date().isoformat(),
-            'payment_method': payment_method.id,
+            'payment_location': payment_method.id,
             'reference_number': 'REF-001',
             'notes': 'Test payment'
         })

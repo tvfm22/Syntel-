@@ -23,7 +23,7 @@
                             <div class="col-md-6">
                                 <label for="actual_delivery_date" class="form-label">تاریخ تحویل واقعی *</label>
                                 <input type="date" class="form-control" id="actual_delivery_date" name="actual_delivery_date"
-                                       value="{{ purchase_order.actual_delivery_date|default:'' }}" required>
+                                       value="{% if purchase_order.actual_delivery_date %}{{ purchase_order.actual_delivery_date }}{% else %}1404/01/01{% endif %}" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="delivery_status" class="form-label">وضعیت تحویل *</label>
@@ -86,4 +86,31 @@
         </div>
     </div>
 </div>
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

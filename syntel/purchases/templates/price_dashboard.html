@@ -1,0 +1,583 @@
+{% extends 'base.html' %}
+
+{% block title %}داشبورد نظارت بر قیمت - Syntel{% endblock %}
+
+{% block content %}
+<style>
+    .minimal-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+    .minimal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .minimal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+    }
+    .minimal-filters {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+    .minimal-select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        color: #374151;
+        font-family: 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .minimal-button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: #059669;
+        color: white;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .minimal-button:hover {
+        background: #047857;
+    }
+    .minimal-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .minimal-stat {
+        background: white;
+        padding: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+    .minimal-stat-value {
+        font-size: 1.875rem;
+        font-weight: 600;
+        margin: 0.5rem 0;
+        color: #111827;
+    }
+    .minimal-stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin: 0;
+    }
+    .minimal-section {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .minimal-section-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .minimal-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+    }
+    .minimal-search {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        width: 250px;
+    }
+    .minimal-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .minimal-table thead {
+        background: #f9fafb;
+    }
+    .minimal-table th {
+        padding: 0.75rem 1rem;
+        text-align: right;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .minimal-table td {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        color: #374151;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .minimal-table tbody tr:hover {
+        background: #f9fafb;
+    }
+    .minimal-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .minimal-link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    .minimal-link:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="minimal-container">
+    <div class="minimal-header">
+        <h1 class="minimal-title">نظارت بر قیمت</h1>
+        <div class="minimal-filters">
+            <select id="categoryFilter" class="minimal-select">
+                <option value="">همه دسته‌بندی‌ها</option>
+            </select>
+            <select id="storeFilter" class="minimal-select">
+                <option value="">همه فروشگاه‌ها</option>
+            </select>
+            <select id="daysFilter" class="minimal-select">
+                <option value="30">30 روز</option>
+                <option value="90">3 ماه</option>
+                <option value="180">6 ماه</option>
+                <option value="365">1 سال</option>
+            </select>
+            <button onclick="refreshData()" class="minimal-button" style="background: #10b981;">
+                🔄 رفرش
+            </button>
+            <button onclick="exportToExcel()" class="minimal-button">
+                خروجی Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="minimal-stats">
+        <div class="minimal-stat">
+            <p class="minimal-stat-label">افزایش قیمت</p>
+            <h3 class="minimal-stat-value" id="increasedCount" style="color: #dc2626;">-</h3>
+        </div>
+        <div class="minimal-stat">
+            <p class="minimal-stat-label">کاهش قیمت</p>
+            <h3 class="minimal-stat-value" id="decreasedCount" style="color: #059669;">-</h3>
+        </div>
+        <div class="minimal-stat">
+            <p class="minimal-stat-label">میانگین تغییرات</p>
+            <h3 class="minimal-stat-value" id="avgChange" style="color: #3b82f6;">-</h3>
+        </div>
+        <div class="minimal-stat">
+            <p class="minimal-stat-label">بیشترین افزایش</p>
+            <h3 class="minimal-stat-value" id="maxIncreasePercent" style="color: #f59e0b; font-size: 1.5rem;">-</h3>
+            <p id="maxIncreaseName" style="font-size: 0.75rem; color: #6b7280; margin: 0;">-</p>
+        </div>
+    </div>
+
+    <div class="minimal-section" id="alertsSection" style="display: none;">
+        <div class="minimal-section-header">
+            <h2 class="minimal-section-title">هشدارها (افزایش بیش از 5%)</h2>
+        </div>
+        <table class="minimal-table">
+            <thead>
+                <tr>
+                    <th>محصول</th>
+                    <th>دسته‌بندی</th>
+                    <th>قیمت قبلی</th>
+                    <th>قیمت فعلی</th>
+                    <th>تغییر</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="alertsTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="minimal-section">
+        <div class="minimal-section-header">
+            <h2 class="minimal-section-title">تغییرات قیمت</h2>
+            <input type="text" id="searchInput" placeholder="جستجو..." class="minimal-search">
+        </div>
+        <table class="minimal-table">
+            <thead>
+                <tr>
+                    <th>محصول</th>
+                    <th>دسته‌بندی</th>
+                    <th>بروزرسانی</th>
+                    <th>قیمت فعلی</th>
+                    <th>تغییر</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="productsTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="chartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 1.5rem; border-radius: 8px; width: 90%; max-width: 700px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+            <h3 id="modalTitle" style="margin: 0; font-size: 1rem; font-weight: 600; color: #111827;">تاریخچه قیمت</h3>
+            <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        <div style="height: 350px;">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+    // CSRF Token Setup
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    if (csrftoken) {
+        axios.defaults.headers.common['X-CSRFToken'] = csrftoken;
+    }
+
+    // State
+    let chartInstance = null;
+
+    // Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 صفحه داشبورد قیمت بارگذاری شد');
+        
+        // Load initial data
+        loadFilters();
+        loadStats();
+        loadAlerts();
+        loadProducts();
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            console.log('⏰ آپدیت خودکار...');
+            loadStats();
+            loadAlerts();
+        }, 30000);
+
+        // Event Listeners
+        const categoryFilter = document.getElementById('categoryFilter');
+        const storeFilter = document.getElementById('storeFilter');
+        const daysFilter = document.getElementById('daysFilter');
+        const searchInput = document.getElementById('searchInput');
+        
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', refreshData);
+            console.log('✓ فیلتر دسته‌بندی متصل شد');
+        }
+        
+        if (storeFilter) {
+            storeFilter.addEventListener('change', refreshData);
+            console.log('✓ فیلتر فروشگاه متصل شد');
+        }
+        
+        if (daysFilter) {
+            daysFilter.addEventListener('change', refreshData);
+            console.log('✓ فیلتر روزها متصل شد');
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(loadProducts, 500));
+            console.log('✓ جستجو متصل شد');
+        }
+    });
+
+    function refreshData() {
+        console.log('🔄 رفرش داده‌ها با فیلترهای جدید...');
+        const category = document.getElementById('categoryFilter').value;
+        const store = document.getElementById('storeFilter').value;
+        const days = document.getElementById('daysFilter').value;
+        console.log(`   فیلترها: دسته=${category}, فروشگاه=${store}, روزها=${days}`);
+        
+        loadStats();
+        loadAlerts();
+        loadProducts();
+    }
+
+    // API Calls
+    async function loadFilters() {
+        try {
+            console.log('📡 بارگذاری فیلترها...');
+            const response = await axios.get('/api/dashboard/filters/');
+            console.log('✓ فیلترها دریافت شد:', response.data);
+            const { categories, suppliers } = response.data;
+            
+            const catSelect = document.getElementById('categoryFilter');
+            categories.forEach(c => {
+                catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+
+            const storeSelect = document.getElementById('storeFilter');
+            suppliers.forEach(s => {
+                storeSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+            console.log(`✓ ${categories.length} دسته و ${suppliers.length} فروشگاه بارگذاری شد`);
+        } catch (error) {
+            console.error('❌ خطا در بارگذاری فیلترها:', error);
+            if (error.response) {
+                console.error('   Status:', error.response.status);
+                console.error('   Data:', error.response.data);
+            }
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const params = {
+                category: document.getElementById('categoryFilter').value,
+                store: document.getElementById('storeFilter').value,
+                days: document.getElementById('daysFilter').value
+            };
+            
+            console.log('📊 بارگذاری آمار با پارامترها:', params);
+            const response = await axios.get('/api/dashboard/stats/', { params });
+            const data = response.data;
+            console.log('✓ آمار دریافت شد:', data);
+            
+            document.getElementById('increasedCount').textContent = data.increased_count;
+            document.getElementById('decreasedCount').textContent = data.decreased_count;
+            document.getElementById('avgChange').textContent = `${parseFloat(data.avg_change).toFixed(1)}%`;
+            
+            if (data.max_increase) {
+                document.getElementById('maxIncreaseName').textContent = data.max_increase.name;
+                document.getElementById('maxIncreasePercent').textContent = `+${parseFloat(data.max_increase.percent).toFixed(1)}%`;
+            } else {
+                document.getElementById('maxIncreaseName').textContent = '-';
+                document.getElementById('maxIncreasePercent').textContent = '-';
+            }
+        } catch (error) {
+            console.error('❌ خطا در بارگذاری آمار:', error);
+            if (error.response) {
+                console.error('   Status:', error.response.status);
+                console.error('   Data:', error.response.data);
+            }
+        }
+    }
+
+    async function loadAlerts() {
+        try {
+            const params = {
+                category: document.getElementById('categoryFilter').value,
+                store: document.getElementById('storeFilter').value,
+                days: document.getElementById('daysFilter').value
+            };
+            
+            console.log('⚠️ بارگذاری هشدارها با پارامترها:', params);
+            const response = await axios.get('/api/dashboard/products/high-increase/', { params });
+            console.log(`✓ ${response.data.length} هشدار دریافت شد`);
+            
+            const tbody = document.getElementById('alertsTableBody');
+            const section = document.getElementById('alertsSection');
+            tbody.innerHTML = '';
+
+            if (response.data.length > 0) {
+                section.style.display = 'block';
+                response.data.forEach(product => {
+                    const row = `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>${product.category_name || '-'}</td>
+                            <td style="color: #6b7280;">${formatPrice(product.previous_price)}</td>
+                            <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
+                            <td><span class="minimal-badge" style="background: #fef2f2; color: #dc2626;">+${parseFloat(product.percent_change).toFixed(1)}%</span></td>
+                            <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="minimal-link">نمودار</a></td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } else {
+                section.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('❌ خطا در بارگذاری هشدارها:', error);
+            if (error.response) {
+                console.error('   Status:', error.response.status);
+                console.error('   Data:', error.response.data);
+            }
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const searchInput = document.getElementById('searchInput');
+            const params = {
+                category: document.getElementById('categoryFilter').value,
+                store: document.getElementById('storeFilter').value,
+                days: document.getElementById('daysFilter').value,
+                search: searchInput ? searchInput.value : ''
+            };
+
+            console.log('📦 بارگذاری محصولات با پارامترها:', params);
+            const response = await axios.get('/api/dashboard/products/changes/', { params });
+            console.log(`✓ ${response.data.length} محصول دریافت شد`);
+            
+            const tbody = document.getElementById('productsTableBody');
+            tbody.innerHTML = '';
+
+            response.data.forEach(product => {
+                let badgeStyle = 'background: #f3f4f6; color: #374151;';
+                let changeSign = '';
+                if (product.percent_change > 0) {
+                    badgeStyle = 'background: #fef2f2; color: #dc2626;';
+                    changeSign = '+';
+                } else if (product.percent_change < 0) {
+                    badgeStyle = 'background: #f0fdf4; color: #059669;';
+                }
+                
+                const row = `
+                    <tr>
+                        <td style="font-weight: 500;">${product.name}</td>
+                        <td style="color: #6b7280;">${product.category_name || '-'}</td>
+                        <td style="color: #9ca3af; font-size: 0.8125rem;">${new Date(product.last_update).toLocaleDateString('fa-IR')}</td>
+                        <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
+                        <td><span class="minimal-badge" style="${badgeStyle}">${changeSign}${parseFloat(product.percent_change).toFixed(1)}%</span></td>
+                        <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="minimal-link">نمودار</a></td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            if (response.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">هیچ محصولی یافت نشد</td></tr>';
+            }
+        } catch (error) {
+            console.error('❌ خطا در بارگذاری محصولات:', error);
+            if (error.response) {
+                console.error('   Status:', error.response.status);
+                console.error('   Data:', error.response.data);
+            }
+        }
+    }
+
+    async function showHistory(productId, productName) {
+        document.getElementById('modalTitle').textContent = `تاریخچه قیمت: ${productName}`;
+        const modal = document.getElementById('chartModal');
+        modal.style.display = 'flex';
+
+        try {
+            const response = await axios.get(`/api/dashboard/products/${productId}/history/`);
+            const history = response.data;
+
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: history.map(h => new Date(h.date).toLocaleDateString('fa-IR')),
+                    datasets: [{
+                        label: 'قیمت',
+                        data: history.map(h => h.price),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 4
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#f3f4f6'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Error loading history:', error);
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('chartModal').style.display = 'none';
+    }
+
+    // Utilities
+    function formatPrice(price) {
+        if (!price) return '-';
+        return parseInt(price).toLocaleString('fa-IR') + ' ریال';
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    function exportToExcel() {
+        const params = new URLSearchParams({
+            category: document.getElementById('categoryFilter').value,
+            store: document.getElementById('storeFilter').value,
+            days: document.getElementById('daysFilter').value,
+            search: document.getElementById('searchInput').value
+        });
+        window.location.href = `/api/dashboard/export/?${params.toString()}`;
+    }
+</script>
+{% endblock %}

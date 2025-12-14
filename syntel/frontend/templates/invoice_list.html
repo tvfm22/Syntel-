@@ -1,1208 +1,880 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 
-{% block title %}{% if invoice_type == 'store' %}Ù„ÛŒØ³Øª ÙØ§Ú©ØªÙˆØ±Ù‡Ø§ÛŒ ÙØ±ÙˆØ´Ú¯Ø§Ù‡{% else %}Ù„ÛŒØ³Øª ÙØ§Ú©ØªÙˆØ±Ù‡Ø§{% endif %}{% endblock %}
-
-{% block content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-title-section">
-            <h1 class="page-title">
-                <span class="title-icon">ğŸ“„</span>
-                {% if invoice_type == 'store' %}Ù…Ø¯ÛŒØ±ÛŒØª ÙØ§Ú©ØªÙˆØ±Ù‡Ø§ÛŒ ÙØ±ÙˆØ´Ú¯Ø§Ù‡{% else %}Ù…Ø¯ÛŒØ±ÛŒØª ÙØ§Ú©ØªÙˆØ±Ù‡Ø§{% endif %}
-            </h1>
-            <p class="page-subtitle">{% if invoice_type == 'store' %}Ù…Ø´Ø§Ù‡Ø¯Ù‡ Ùˆ Ù…Ø¯ÛŒØ±ÛŒØª ÙØ§Ú©ØªÙˆØ±Ù‡Ø§ÛŒ ÙØ±ÙˆØ´Ú¯Ø§Ù‡{% else %}Ù…Ø´Ø§Ù‡Ø¯Ù‡ Ùˆ Ù…Ø¯ÛŒØ±ÛŒØª ØªÙ…Ø§Ù…ÛŒ ÙØ§Ú©ØªÙˆØ±Ù‡Ø§ÛŒ Ø³ÛŒØ³ØªÙ…{% endif %}</p>
-        </div>
-        <div class="page-actions">
-            <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
-                <span class="btn-icon">â•</span>
-                ÙØ§Ú©ØªÙˆØ± Ø¬Ø¯ÛŒØ¯
-            </a>
-            <a href="{% url 'completed_orders_for_invoices' %}" class="action-btn action-btn-secondary">
-                <span class="btn-icon">ğŸ›’</span>
-                ÙØ§Ú©ØªÙˆØ± Ø§Ø² Ø³ÙØ§Ø±Ø´
-            </a>
-            <button id="bulkPaymentBtn" class="action-btn action-btn-success" style="display: none;">
-                <span class="btn-icon">ğŸ’°</span>
-                Ù¾Ø±Ø¯Ø§Ø®Øª Ú¯Ø±ÙˆÙ‡ÛŒ
-            </button>
-            <button id="bulkDeleteBtn" class="action-btn action-btn-danger" style="display: none;">
-                <span class="btn-icon">ğŸ—‘ï¸</span>
-                Ø­Ø°Ù Ú¯Ø±ÙˆÙ‡ÛŒ
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Statistics Cards -->
-<div class="stats-row">
-    <div class="stat-box stat-box-total">
-        <div class="stat-icon-wrapper">ğŸ“Š</div>
-        <div class="stat-info">
-            <span class="stat-value">{{ invoices|length }}</span>
-            <span class="stat-label">Ú©Ù„ ÙØ§Ú©ØªÙˆØ±Ù‡Ø§</span>
-        </div>
-    </div>
-    <div class="stat-box stat-box-pending">
-        <div class="stat-icon-wrapper">â³</div>
-        <div class="stat-info">
-            <span class="stat-value" id="draftCount">-</span>
-            <span class="stat-label">Ù¾ÛŒØ´â€ŒÙ†ÙˆÛŒØ³</span>
-        </div>
-    </div>
-    <div class="stat-box stat-box-approved">
-        <div class="stat-icon-wrapper">âœ…</div>
-        <div class="stat-info">
-            <span class="stat-value" id="approvedCount">-</span>
-            <span class="stat-label">ØªØ£ÛŒÛŒØ¯ Ø´Ø¯Ù‡</span>
-        </div>
-    </div>
-    <div class="stat-box stat-box-paid">
-        <div class="stat-icon-wrapper">ğŸ’°</div>
-        <div class="stat-info">
-            <span class="stat-value" id="paidCount">-</span>
-            <span class="stat-label">Ù¾Ø±Ø¯Ø§Ø®Øª Ø´Ø¯Ù‡</span>
-        </div>
-    </div>
-</div>
-
-<!-- Filters Section -->
-<div class="filters-card">
-    <div class="filters-header">
-        <span class="filters-title">ğŸ” ÙÛŒÙ„ØªØ± Ùˆ Ø¬Ø³ØªØ¬Ùˆ</span>
-        <a href="{% url 'invoices_list' %}" class="clear-filters-btn">
-            Ù¾Ø§Ú© Ú©Ø±Ø¯Ù† ÙÛŒÙ„ØªØ±Ù‡Ø§
-        </a>
-    </div>
-    <form method="get" class="filters-form">
-        <div class="filter-group">
-            <label class="filter-label">Ø¬Ø³ØªØ¬Ùˆ</label>
-            <div class="search-input-wrapper">
-                <input type="text" name="search" class="filter-input" placeholder="Ø´Ù…Ø§Ø±Ù‡ ÙØ§Ú©ØªÙˆØ± ÛŒØ§ ØªØ£Ù…ÛŒÙ†â€ŒÚ©Ù†Ù†Ø¯Ù‡..." value="{{ search_query }}">
-                <button type="submit" class="search-btn">ğŸ”</button>
-            </div>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">ÙˆØ¶Ø¹ÛŒØª ÙØ§Ú©ØªÙˆØ±</label>
-            <select name="status" class="filter-select" onchange="this.form.submit()">
-                <option value="">Ù‡Ù…Ù‡ ÙˆØ¶Ø¹ÛŒØªâ€ŒÙ‡Ø§</option>
-                {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">Ø§ÛŒØ±Ø§Ø¯Ø§Øª ÙØ§Ú©ØªÙˆØ±</label>
-            <!-- DEBUG: Issues count: {{ issues|length }} -->
-            <select name="issue" class="filter-select" onchange="this.form.submit()">
-                <option value="">Ù‡Ù…Ù‡ ÙØ§Ú©ØªÙˆØ±Ù‡Ø§</option>
-                {% for issue in issues %}
-                <option value="{{ issue.id }}" {% if selected_issue == issue.id %}selected{% endif %}>{{ issue.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">ØªØ§Ø±ÛŒØ® Ø¬Ø³ØªØ¬Ùˆ</label>
-            <input type="date" name="date_query" class="filter-input" value="{{ date_query }}">
-        </div>
-    </form>
-</div>
-
-<!-- Invoices List (Card View for Mobile) -->
-<div class="invoices-container">
-    {% for invoice in invoices %}
-    <div class="invoice-card" data-status="{{ invoice.status }}">
-        <div class="invoice-header">
-            {% if is_manager %}
-            <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}" data-amount="{{ invoice.remaining_amount }}" style="margin-left: 10px;">
-            {% endif %}
-            <div class="invoice-number">
-                <span class="invoice-icon">ğŸ“‹</span>
-                <a href="{% url 'invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a>
-            </div>
-            <div class="invoice-badges">
-                <span class="status-badge status-{{ invoice.status }}">
-                    {{ invoice.get_status_display }}
-                </span>
-                <span class="payment-badge payment-{{ invoice.payment_status }}">
-                    {{ invoice.get_payment_status_display }}
-                </span>
-            </div>
-        </div>
-        
-        <div class="invoice-body">
-            <div class="invoice-details">
-                <div class="detail-item">
-                    <span class="detail-icon">ğŸ¢</span>
-                    <div class="detail-content">
-                        <span class="detail-label">ØªØ£Ù…ÛŒÙ†â€ŒÚ©Ù†Ù†Ø¯Ù‡</span>
-                        <span class="detail-value">{{ invoice.supplier.name|default:"Ù†Ø§Ù…Ø´Ø®Øµ" }}</span>
-                    </div>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-icon">ğŸ“…</span>
-                    <div class="detail-content">
-                        <span class="detail-label">ØªØ§Ø±ÛŒØ® ÙØ§Ú©ØªÙˆØ±</span>
-                        <span class="detail-value">{{ invoice.invoice_date|date:"Y/m/d" }}</span>
-                    </div>
-                </div>
-                <div class="detail-item detail-amount">
-                    <span class="detail-icon">ğŸ’µ</span>
-                    <div class="detail-content">
-                        <span class="detail-label">Ù…Ø¨Ù„Øº Ú©Ù„</span>
-                        <span class="detail-value amount-value">{{ invoice.total_amount|number_format }} ØªÙˆÙ…Ø§Ù†</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="invoice-footer">
-            <div class="invoice-meta">
-                <span class="meta-item">ğŸ• Ø§ÛŒØ¬Ø§Ø¯: {{ invoice.created_at|date:"Y/m/d" }}</span>
-            </div>
-            <div class="invoice-actions">
-                <a href="{% url 'invoice_detail' invoice.id %}" class="action-icon-btn view-btn" title="Ù…Ø´Ø§Ù‡Ø¯Ù‡">
-                    ğŸ‘ï¸
-                </a>
-                {% if invoice.status == 'draft' %}
-                <a href="{% url 'invoice_update' invoice.id %}" class="action-icon-btn edit-btn" title="ÙˆÛŒØ±Ø§ÛŒØ´">
-                    âœï¸
-                </a>
-                <a href="{% url 'invoice_send' invoice.id %}" class="action-icon-btn send-btn" title="Ø§Ø±Ø³Ø§Ù„">
-                    ğŸ“¤
-                </a>
-                {% endif %}
-                {% if invoice.status == 'sent' %}
-                <a href="{% url 'invoice_approve' invoice.id %}" class="action-icon-btn approve-btn" title="ØªØ£ÛŒÛŒØ¯">
-                    âœ…
-                </a>
-                {% endif %}
-                {% if invoice.status == 'approved' and invoice.can_add_payment %}
-                <a href="{% url 'payment_create_for_invoice' invoice.id %}" class="action-icon-btn pay-btn" title="Ù¾Ø±Ø¯Ø§Ø®Øª">
-                    ğŸ’³
-                </a>
-                {% endif %}
-                {% if is_manager %}
-                <form method="post" action="{% url 'invoice_delete' invoice.id %}" style="display: inline;" onsubmit="return confirm('Ø¢ÛŒØ§ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ Ø§ÛŒÙ† ÙØ§Ú©ØªÙˆØ± Ø±Ø§ Ø­Ø°Ù Ú©Ù†ÛŒØ¯ØŸ');">
-                    {% csrf_token %}
-                    <button type="submit" class="action-icon-btn delete-btn" title="Ø­Ø°Ù">
-                        ğŸ—‘ï¸
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="empty-state">
-        <div class="empty-icon">ğŸ“­</div>
-        <h3 class="empty-title">ÙØ§Ú©ØªÙˆØ±ÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯</h3>
-        <p class="empty-text">Ù‡Ù†ÙˆØ² Ù‡ÛŒÚ† ÙØ§Ú©ØªÙˆØ±ÛŒ Ø¯Ø± Ø³ÛŒØ³ØªÙ… Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª ÛŒØ§ ÙÛŒÙ„ØªØ± Ø§Ù†ØªØ®Ø§Ø¨ÛŒ Ù†ØªÛŒØ¬Ù‡â€ŒØ§ÛŒ Ù†Ø¯Ø§Ø±Ø¯.</p>
-        <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
-            <span class="btn-icon">â•</span>
-            Ø§ÛŒØ¬Ø§Ø¯ Ø§ÙˆÙ„ÛŒÙ† ÙØ§Ú©ØªÙˆØ±
-        </a>
-    </div>
-    {% endfor %}
-</div>
-
-<!-- Table View for Desktop -->
-<div class="table-view-container">
-    <div class="table-wrapper">
-        <table class="invoices-table">
-            <thead>
-                <tr>
-                    <th>
-                        <input type="checkbox" id="selectAll" title="Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡">
-                    </th>
-                    <th>Ø´Ù…Ø§Ø±Ù‡ ÙØ§Ú©ØªÙˆØ±</th>
-                    <th>ØªØ£Ù…ÛŒÙ†â€ŒÚ©Ù†Ù†Ø¯Ù‡</th>
-                    <th>ØªØ§Ø±ÛŒØ® ÙØ§Ú©ØªÙˆØ±</th>
-                    <th>Ù…Ø¨Ù„Øº</th>
-                    <th>ÙˆØ¶Ø¹ÛŒØª</th>
-                    <th>Ù¾Ø±Ø¯Ø§Ø®Øª</th>
-                    <th>Ø¹Ù…Ù„ÛŒØ§Øª</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in invoices %}
-                <tr data-status="{{ invoice.status }}">
-                    <td>
-                        {% if is_manager %}
-                        <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}" data-amount="{{ invoice.remaining_amount }}">
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'invoice_detail' invoice.id %}" class="invoice-link">
-                            {{ invoice.invoice_number }}
-                        </a>
-                    </td>
-                    <td>{{ invoice.supplier.name|default:"Ù†Ø§Ù…Ø´Ø®Øµ" }}</td>
-                    <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
-                    <td class="amount-cell">{{ invoice.total_amount|number_format }} ØªÙˆÙ…Ø§Ù†</td>
-                    <td>
-                        <span class="status-badge status-{{ invoice.status }}">
-                            {{ invoice.get_status_display }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="payment-badge payment-{{ invoice.payment_status }}">
-                            {{ invoice.get_payment_status_display }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="table-actions">
-                            <a href="{% url 'invoice_detail' invoice.id %}" class="tbl-action-btn" title="Ù…Ø´Ø§Ù‡Ø¯Ù‡">ğŸ‘ï¸</a>
-                            {% if invoice.status == 'draft' %}
-                            <a href="{% url 'invoice_update' invoice.id %}" class="tbl-action-btn" title="ÙˆÛŒØ±Ø§ÛŒØ´">âœï¸</a>
-                            <a href="{% url 'invoice_send' invoice.id %}" class="tbl-action-btn" title="Ø§Ø±Ø³Ø§Ù„">ğŸ“¤</a>
-                            {% endif %}
-                            {% if invoice.status == 'sent' %}
-                            <a href="{% url 'invoice_approve' invoice.id %}" class="tbl-action-btn" title="ØªØ£ÛŒÛŒØ¯">âœ…</a>
-                            {% endif %}
-                            {% if invoice.status == 'approved' and invoice.can_add_payment %}
-                            <a href="{% url 'payment_create_for_invoice' invoice.id %}" class="tbl-action-btn" title="Ù¾Ø±Ø¯Ø§Ø®Øª">ğŸ’³</a>
-                            {% endif %}
-                            {% if is_manager %}
-                            <form method="post" action="{% url 'invoice_delete' invoice.id %}" style="display: inline;" onsubmit="return confirm('Ø¢ÛŒØ§ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ Ø§ÛŒÙ† ÙØ§Ú©ØªÙˆØ± Ø±Ø§ Ø­Ø°Ù Ú©Ù†ÛŒØ¯ØŸ');">
-                                {% csrf_token %}
-                                <button type="submit" class="tbl-action-btn delete-btn" title="Ø­Ø°Ù">ğŸ—‘ï¸</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="empty-table-cell">
-                        <div class="empty-table-message">ğŸ“­ ÙØ§Ú©ØªÙˆØ±ÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯</div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Pagination -->
-{% if invoices.has_other_pages %}
-<div class="pagination-container">
-    <nav class="pagination-nav">
-        {% if invoices.has_previous %}
-        <a href="?page={{ invoices.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_payment_status %}&payment_status={{ selected_payment_status }}{% endif %}{% if date_search_type %}&date_search_type={{ date_search_type }}{% endif %}{% if date_query %}&date_query={{ date_query }}{% endif %}" class="page-btn">
-            â—€ï¸ Ù‚Ø¨Ù„ÛŒ
-        </a>
-        {% endif %}
-        
-        <div class="page-numbers">
-            {% for num in invoices.paginator.page_range %}
-                {% if invoices.number == num %}
-                    <span class="page-num active">{{ num }}</span>
-                {% elif num > invoices.number|add:'-3' and num < invoices.number|add:'3' %}
-                    <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_payment_status %}&payment_status={{ selected_payment_status }}{% endif %}{% if date_search_type %}&date_search_type={{ date_search_type }}{% endif %}{% if date_query %}&date_query={{ date_query }}{% endif %}" class="page-num">{{ num }}</a>
-                {% endif %}
-            {% endfor %}
-        </div>
-        
-        {% if invoices.has_next %}
-        <a href="?page={{ invoices.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_payment_status %}&payment_status={{ selected_payment_status }}{% endif %}{% if date_search_type %}&date_search_type={{ date_search_type }}{% endif %}{% if date_query %}&date_query={{ date_query }}{% endif %}" class="page-btn">
-            Ø¨Ø¹Ø¯ÛŒ â–¶ï¸
-        </a>
-        {% endif %}
-    </nav>
-</div>
-{% endif %}
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Calculate statistics from table rows
-    const rows = document.querySelectorAll('.invoices-table tbody tr[data-status]');
-    let draftCount = 0, approvedCount = 0, paidCount = 0;
-    
-    rows.forEach(row => {
-        const status = row.dataset.status;
-        if (status === 'draft') draftCount++;
-        else if (status === 'approved') approvedCount++;
-        else if (status === 'paid') paidCount++;
-    });
-    
-    document.getElementById('draftCount').textContent = draftCount;
-    document.getElementById('approvedCount').textContent = approvedCount;
-    document.getElementById('paidCount').textContent = paidCount;
-
-    // Bulk actions functionality
-    const selectAllCheckbox = document.getElementById('selectAll');
-    const invoiceCheckboxes = document.querySelectorAll('.invoice-checkbox');
-    const bulkPaymentBtn = document.getElementById('bulkPaymentBtn');
-    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
-
-    // Select all functionality
-    selectAllCheckbox.addEventListener('change', function() {
-        const isChecked = this.checked;
-        invoiceCheckboxes.forEach(checkbox => {
-            checkbox.checked = isChecked;
-        });
-        updateBulkActionButtons();
-    });
-
-    // Individual checkbox change
-    invoiceCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateBulkActionButtons();
-            // Update select all state
-            const checkedBoxes = document.querySelectorAll('.invoice-checkbox:checked');
-            selectAllCheckbox.checked = checkedBoxes.length === invoiceCheckboxes.length;
-            selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < invoiceCheckboxes.length;
-        });
-    });
-
-    function updateBulkActionButtons() {
-        const selectedInvoices = document.querySelectorAll('.invoice-checkbox:checked');
-        const canPay = Array.from(selectedInvoices).every(cb => {
-            const row = cb.closest('tr');
-            if (row) {
-                return row.querySelector('.pay-btn') || row.querySelector('.tbl-action-btn[title="Ù¾Ø±Ø¯Ø§Ø®Øª"]');
-            }
-            const card = cb.closest('.invoice-card');
-            if (card) {
-                return card.querySelector('.pay-btn');
-            }
-            return false;
-        });
-
-        if (selectedInvoices.length > 0) {
-            if (canPay) {
-                bulkPaymentBtn.style.display = 'inline-flex';
-                bulkPaymentBtn.textContent = `ğŸ’° Ù¾Ø±Ø¯Ø§Ø®Øª Ú¯Ø±ÙˆÙ‡ÛŒ (${selectedInvoices.length} ÙØ§Ú©ØªÙˆØ±)`;
-            } else {
-                bulkPaymentBtn.style.display = 'none';
-            }
-            bulkDeleteBtn.style.display = 'inline-flex';
-            bulkDeleteBtn.textContent = `ğŸ—‘ï¸ Ø­Ø°Ù Ú¯Ø±ÙˆÙ‡ÛŒ (${selectedInvoices.length} ÙØ§Ú©ØªÙˆØ±)`;
-        } else {
-            bulkPaymentBtn.style.display = 'none';
-            bulkDeleteBtn.style.display = 'none';
-        }
-    }
-
-    // Bulk payment button click
-    bulkPaymentBtn.addEventListener('click', function() {
-        const selectedInvoices = document.querySelectorAll('.invoice-checkbox:checked');
-        if (selectedInvoices.length === 0) {
-            alert('Ù„Ø·ÙØ§Ù‹ Ø­Ø¯Ø§Ù‚Ù„ ÛŒÚ© ÙØ§Ú©ØªÙˆØ± Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯.');
-            return;
-        }
-
-        // Calculate total amount
-        let totalAmount = 0;
-        const invoiceIds = [];
-        selectedInvoices.forEach(checkbox => {
-            invoiceIds.push(checkbox.value);
-            totalAmount += parseFloat(checkbox.dataset.amount) || 0;
-        });
-
-        // Create form and submit
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{% url "payment_create" %}';
-
-        // Add CSRF token
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (csrfToken) {
-            form.appendChild(csrfToken.cloneNode(true));
-        }
-
-        // Add invoice IDs
-        invoiceIds.forEach(id => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'invoices';
-            input.value = id;
-            form.appendChild(input);
-        });
-
-        // Add amount
-        const amountInput = document.createElement('input');
-        amountInput.type = 'hidden';
-        amountInput.name = 'amount';
-        amountInput.value = totalAmount.toFixed(2);
-        form.appendChild(amountInput);
-
-        // Add to body and submit
-        document.body.appendChild(form);
-        form.submit();
-    });
-
-    // Bulk delete button click
-    bulkDeleteBtn.addEventListener('click', function() {
-        const selectedInvoices = document.querySelectorAll('.invoice-checkbox:checked');
-        if (selectedInvoices.length === 0) {
-            alert('Ù„Ø·ÙØ§Ù‹ Ø­Ø¯Ø§Ù‚Ù„ ÛŒÚ© ÙØ§Ú©ØªÙˆØ± Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯.');
-            return;
-        }
-
-        if (!confirm(`Ø¢ÛŒØ§ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ ${selectedInvoices.length} ÙØ§Ú©ØªÙˆØ± Ø±Ø§ Ø­Ø°Ù Ú©Ù†ÛŒØ¯ØŸ Ø§ÛŒÙ† Ø¹Ù…Ù„ ØºÛŒØ±Ù‚Ø§Ø¨Ù„ Ø¨Ø§Ø²Ú¯Ø´Øª Ø§Ø³Øª.`)) {
-            return;
-        }
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{% url "invoice_bulk_delete" %}';
-
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (csrfToken) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrfToken.value;
-            form.appendChild(csrfInput);
-        }
-
-        selectedInvoices.forEach(checkbox => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'invoice_ids';
-            input.value = checkbox.value;
-            form.appendChild(input);
-        });
-
-        document.body.appendChild(form);
-        form.submit();
-    });
-});
-</script>
-{% endblock %}
+{% block title %}{% if invoice_type == 'store' %}áíÓÊ İÇ˜ÊæÑåÇí İÑæÔÇå{% else %}áíÓÊ İÇ˜ÊæÑåÇ{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Page Header */
-.page-header {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
-    border-radius: 1rem !important;
-    padding: 2rem !important;
-    margin-bottom: 2rem !important;
-    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4) !important;
-}
-
-.page-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-}
-
-.page-title {
-    color: #ffffff !important;
-    font-size: 1.75rem !important;
-    font-weight: 700 !important;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.title-icon {
-    font-size: 2rem;
-}
-
-.page-subtitle {
-    color: #c7d2fe !important;
-    margin: 0.5rem 0 0 0;
-    font-size: 0.95rem;
-}
-
-.page-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.action-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.875rem 1.5rem;
-    border-radius: 0.75rem !important;
-    font-weight: 600;
-    text-decoration: none !important;
-    transition: all 0.3s ease;
-    font-size: 0.95rem;
-    border: none;
-    cursor: pointer;
-}
-
-.action-btn-primary {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.4);
-    font-weight: 700;
-}
-
-.action-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.6);
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-}
-
-.action-btn-secondary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 15px -3px rgba(59, 130, 246, 0.4);
-    font-weight: 600;
-}
-
-.action-btn-secondary:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.6);
-    color: #ffffff;
-    transform: translateY(-2px);
-}
-
-.action-btn-success {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 15px -3px rgba(139, 92, 246, 0.4);
-    font-weight: 600;
-}
-
-.action-btn-success:hover {
-    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-    box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.6);
-    color: #ffffff;
-    transform: translateY(-2px);
-}
-
-.action-btn-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 15px -3px rgba(239, 68, 68, 0.4);
-    font-weight: 600;
-}
-
-.action-btn-danger:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.6);
-    color: #ffffff;
-    transform: translateY(-2px);
-}
-
-.btn-icon {
-    font-size: 1.1rem;
-}
-
-/* Statistics Row */
-.stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 2rem;
-}
-
-.stat-box {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    box-shadow: var(--shadow-md);
-    transition: all 0.3s ease;
-    border-right: 4px solid transparent;
-}
-
-.stat-box:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-}
-
-.stat-box-total { border-right-color: var(--primary-color); }
-.stat-box-pending { border-right-color: var(--warning-color); }
-.stat-box-approved { border-right-color: var(--success-color); }
-.stat-box-paid { border-right-color: var(--info-color); }
-
-.stat-icon-wrapper {
-    font-size: 2rem;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--light-color);
-    border-radius: var(--radius-md);
-}
-
-.stat-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--dark-color);
-}
-
-.stat-label {
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-/* Filters Card */
-.filters-card {
-    background: white;
-    border-radius: var(--radius-xl);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: var(--shadow-md);
-}
-
-.filters-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.filters-title {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--dark-color);
-}
-
-.clear-filters-btn {
-    color: var(--danger-color);
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.clear-filters-btn:hover {
-    text-decoration: underline;
-}
-
-.filters-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.25rem;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.filter-label {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--dark-color);
-}
-
-.filter-input,
-.filter-select {
-    padding: 0.875rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.95rem;
-    font-family: inherit;
-    transition: all 0.3s ease;
-    background: white;
-}
-
-.filter-input:focus,
-.filter-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.search-input-wrapper {
-    position: relative;
-    display: flex;
-}
-
-.search-input-wrapper .filter-input {
-    flex: 1;
-    padding-left: 3rem;
-}
-
-.search-btn {
-    position: absolute;
-    left: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--primary-color);
-    border: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.search-btn:hover {
-    background: var(--primary-dark);
-}
-
-/* Invoice Cards (Mobile/Card View) */
-.invoices-container {
-    display: none;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.invoice-card {
-    background: white;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.invoice-card:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
-}
-
-.invoice-header {
-    padding: 1.25rem 1.5rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-.invoice-number {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.invoice-icon {
-    font-size: 1.25rem;
-}
-
-.invoice-number a {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-.invoice-number a:hover {
-    text-decoration: underline;
-}
-
-.invoice-badges {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.status-badge,
-.payment-badge {
-    padding: 0.375rem 0.875rem;
-    border-radius: var(--radius-lg);
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-/* Status Badge Colors */
-.status-draft { background: #e5e7eb; color: #374151; }
-.status-sent { background: #dbeafe; color: #1e40af; }
-.status-approved { background: #d1fae5; color: #065f46; }
-.status-paid { background: #cffafe; color: #0e7490; }
-.status-cancelled { background: #fee2e2; color: #991b1b; }
-.status-overdue { background: #fef3c7; color: #92400e; }
-
-/* Payment Badge Colors */
-.payment-unpaid { background: #fee2e2; color: #991b1b; }
-.payment-partial { background: #fef3c7; color: #92400e; }
-.payment-paid { background: #d1fae5; color: #065f46; }
-.payment-overpaid { background: #e0e7ff; color: #3730a3; }
-
-.invoice-body {
-    padding: 1.5rem;
-}
-
-.invoice-details {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
-
-.detail-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.detail-icon {
-    font-size: 1.25rem;
-    flex-shrink: 0;
-}
-
-.detail-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.detail-label {
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.detail-value {
-    font-weight: 600;
-    color: var(--dark-color);
-}
-
-.detail-value.overdue {
-    color: var(--danger-color);
-}
-
-.detail-amount {
-    grid-column: span 2;
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    margin-top: 0.5rem;
-}
-
-.amount-value {
-    font-size: 1.25rem;
-    color: var(--success-color) !important;
-}
-
-.invoice-footer {
-    padding: 1rem 1.5rem;
-    background: #f8fafc;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.invoice-meta {
-    display: flex;
-    gap: 1rem;
-}
-
-.meta-item {
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-.invoice-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.action-icon-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    transition: all 0.3s ease;
-    font-size: 1.1rem;
-}
-
-.view-btn { background: #dbeafe; }
-.view-btn:hover { background: #bfdbfe; transform: scale(1.1); }
-
-.edit-btn { background: #fef3c7; }
-.edit-btn:hover { background: #fde68a; transform: scale(1.1); }
-
-.send-btn { background: #e0e7ff; }
-.send-btn:hover { background: #c7d2fe; transform: scale(1.1); }
-
-.approve-btn { background: #d1fae5; }
-.approve-btn:hover { background: #a7f3d0; transform: scale(1.1); }
-
-.pay-btn { background: #cffafe; }
-.pay-btn:hover { background: #a5f3fc; transform: scale(1.1); }
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: white;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-}
-
-.empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-}
-
-.empty-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--dark-color);
-    margin-bottom: 0.5rem;
-}
-
-.empty-text {
-    color: #6b7280;
-    margin-bottom: 1.5rem;
-}
-
-/* Table View (Desktop) */
-.table-view-container {
-    background: white;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-}
-
-.table-wrapper {
-    overflow-x: auto;
-}
-
-.invoices-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.invoices-table thead {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-}
-
-.invoices-table th {
-    padding: 1.25rem 1rem;
-    text-align: right;
-    color: white;
-    font-weight: 600;
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-.invoices-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-}
-
-.invoices-table tbody tr {
-    transition: all 0.3s ease;
-}
-
-.invoices-table tbody tr:hover {
-    background: var(--light-color);
-}
-
-.invoice-link {
-    color: var(--primary-color);
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.invoice-link:hover {
-    text-decoration: underline;
-}
-
-.amount-cell {
-    font-weight: 700;
-    color: var(--success-color);
-    white-space: nowrap;
-}
-
-.overdue {
-    color: var(--danger-color) !important;
-    font-weight: 600;
-}
-
-.table-actions {
-    display: flex;
-    gap: 0.375rem;
-}
-
-.tbl-action-btn {
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    background: var(--light-color);
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.tbl-action-btn:hover {
-    background: var(--primary-color);
-    transform: scale(1.1);
-}
-
-.empty-table-cell {
-    text-align: center;
-    padding: 3rem !important;
-}
-
-.empty-table-message {
-    font-size: 1.1rem;
-    color: #6b7280;
-}
-
-/* Pagination */
-.pagination-container {
-    margin-top: 2rem;
-    display: flex;
-    justify-content: center;
-}
-
-.pagination-nav {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: white;
-    padding: 1rem 1.5rem;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-}
-
-.page-btn {
-    padding: 0.75rem 1.25rem;
-    background: var(--primary-color);
-    color: white;
-    text-decoration: none;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.page-btn:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-}
-
-.page-numbers {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.page-num {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    color: var(--dark-color);
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.page-num:hover {
-    background: var(--light-color);
-}
-
-.page-num.active {
-    background: var(--primary-color);
-    color: white;
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-    .table-view-container {
-        display: none;
+    :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --bg-color: #f9fafb;
+        --card-bg: #ffffff;
+        --text-main: #111827;
+        --text-muted: #6b7280;
+        --border-color: #e5e7eb;
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --warning-bg: #fef3c7;
+        --warning-text: #92400e;
+        --danger-bg: #fee2e2;
+        --danger-text: #991b1b;
+        --info-bg: #e0e7ff;
+        --info-text: #3730a3;
     }
-    
-    .invoices-container {
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Page Header */
+    .page-header-custom {
         display: flex;
-    }
-}
-
-@media (min-width: 993px) {
-    .invoices-container {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .page-header {
-        padding: 1.5rem;
-    }
-    
-    .page-header-content {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .page-title {
-        font-size: 1.35rem;
-    }
-    
-    .page-actions {
-        flex-direction: column;
-    }
-    
-    .action-btn {
-        justify-content: center;
-    }
-    
-    .stats-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .filters-form {
-        grid-template-columns: 1fr;
-    }
-    
-    .invoice-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .detail-amount {
-        grid-column: span 1;
-    }
-    
-    .invoice-footer {
-        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-top: 1rem;
+        flex-wrap: wrap;
         gap: 1rem;
-        align-items: stretch;
     }
-    
-    .invoice-actions {
-        justify-content: center;
-    }
-    
-    .pagination-nav {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-}
 
-@media (max-width: 480px) {
-    .stats-row {
-        grid-template-columns: 1fr;
+    .page-title-wrapper h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    
-    .stat-box {
+
+    .page-subtitle {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .action-btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .btn-primary-custom {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: var(--primary-hover);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-custom {
+        background-color: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-outline-custom:hover {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
+    }
+
+    /* Stats Cards */
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .stat-icon.blue {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+    }
+
+    .stat-icon.yellow {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+
+    .stat-icon.green {
+        background-color: #dcfce7;
+        color: #16a34a;
+    }
+
+    .stat-icon.purple {
+        background-color: #f3e8ff;
+        color: #9333ea;
+    }
+
+    .stat-info h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+        color: var(--text-main);
+    }
+
+    .stat-info p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    /* Filters */
+    .filter-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+    }
+
+    .filter-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-main);
+    }
+
+    .form-control-custom,
+    .form-select-custom {
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        width: 100%;
+        font-family: 'Vazir', inherit;
+        background-color: #fff;
+        transition: all 0.2s;
+    }
+
+    .form-control-custom:focus,
+    .form-select-custom:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    /* Table */
+    .table-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-custom th {
+        background-color: #f8fafc;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 1rem 1.5rem;
+        text-align: right;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table-custom td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        color: var(--text-main);
+        font-size: 0.95rem;
+    }
+
+    .table-custom tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-custom tr:hover td {
+        background-color: #f9fafb;
+    }
+
+    /* Badges */
+    .badge-custom {
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .status-draft {
+        background-color: var(--warning-bg);
+        color: var(--warning-text);
+    }
+
+    .status-sent {
+        background-color: var(--info-bg);
+        color: var(--info-text);
+    }
+
+    .status-approved {
+        background-color: var(--success-bg);
+        color: var(--success-text);
+    }
+
+    .status-rejected {
+        background-color: var(--danger-bg);
+        color: var(--danger-text);
+    }
+
+    .status-cancelled {
+        background-color: #f3f4f6;
+        color: #4b5563;
+    }
+
+    .payment-unpaid {
+        background-color: var(--danger-bg);
+        color: var(--danger-text);
+    }
+
+    .payment-partial {
+        background-color: var(--warning-bg);
+        color: var(--warning-text);
+    }
+
+    .payment-paid {
+        background-color: var(--success-bg);
+        color: var(--success-text);
+    }
+
+    /* Actions */
+    .action-icon {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        text-decoration: none;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .action-icon:hover {
+        background-color: #f3f4f6;
+        color: var(--primary-color);
+    }
+
+    .action-icon.delete:hover {
+        background-color: #fee2e2;
+        color: #ef4444;
+    }
+
+    /* Mobile Card View */
+    .mobile-card {
+        display: none;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
         padding: 1rem;
+        margin-bottom: 1rem;
     }
-    
-    .stat-value {
-        font-size: 1.25rem;
+
+    .mobile-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--border-color);
     }
-}
+
+    .mobile-card-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .mobile-card-label {
+        color: var(--text-muted);
+    }
+
+    .issue-tag {
+        display: inline-flex;
+        align-items: center;
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .issue-tag .remove-issue {
+        margin-right: 0.5rem;
+        cursor: pointer;
+        opacity: 0.6;
+    }
+
+    .issue-tag .remove-issue:hover {
+        opacity: 1;
+    }
+
+    /* Custom Grid System for Filters */
+    .custom-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -0.25rem;
+    }
+    .custom-col {
+        padding: 0.25rem;
+        box-sizing: border-box;
+    }
+    .col-16 {
+        width: 16.666%;
+        flex: 0 0 16.666%;
+    }
+    @media (max-width: 1200px) {
+        .col-16 {
+            width: 20%;
+            flex: 0 0 20%;
+        }
+    }
+    @media (max-width: 992px) {
+        .col-16 {
+            width: 25%;
+            flex: 0 0 25%;
+        }
+    }
+    @media (max-width: 768px) {
+        .col-16 {
+            width: 33.33%;
+            flex: 0 0 33.33%;
+        }
+    }
+    @media (max-width: 576px) {
+        .col-16 {
+            width: 50%;
+            flex: 0 0 50%;
+        }
+    }
+
+    /* Form Styling like Invoice Creation */
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        padding: 0.625rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        background-color: #fff;
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .form-control.form-control-sm, .form-select.form-control-sm {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary-custom {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: var(--primary-hover);
+        color: white;
+    }
+
+    .btn-primary-custom.btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
+    }
+
+    @media (max-width: 768px) {
+        .table-view-container {
+            display: none;
+        }
+
+        .mobile-card {
+            display: block;
+        }
+
+        .stats-container {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .page-header-custom {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .page-actions {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 {% endblock %}
 
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="page-header-custom">
+        <div class="page-title-wrapper">
+            <h1>
+                <i class="fas fa-file-invoice text-primary"></i>
+                {% if invoice_type == 'store' %}ãÏíÑíÊ İÇ˜ÊæÑåÇí İÑæÔÇå{% else %}ãÏíÑíÊ İÇ˜ÊæÑåÇ{% endif %}
+            </h1>
+            <p class="page-subtitle">{% if invoice_type == 'store' %}ãÔÇåÏå æ ãÏíÑíÊ İÇ˜ÊæÑåÇí İÑæÔÇå{% else %}ãÔÇåÏå æ
+                ãÏíÑíÊ ÊãÇãí İÇ˜ÊæÑåÇí ÓíÓÊã{% endif %}</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'invoice_register' %}" class="action-btn btn-primary-custom">
+                <i class="fas fa-plus"></i>
+                İÇ˜ÊæÑ ÌÏíÏ
+            </a>
+            <a href="{% url 'completed_orders_for_invoices' %}" class="action-btn btn-outline-custom">
+                <i class="fas fa-shopping-cart"></i>
+                İÇ˜ÊæÑ ÇÒ ÓİÇÑÔ
+            </a>
+            <button id="bulkPaymentBtn" class="action-btn btn-outline-custom text-success" style="display: none;">
+                <i class="fas fa-money-bill-wave"></i>
+                ÑÏÇÎÊ Ñæåí
+            </button>
+            <button id="bulkDeleteBtn" class="action-btn btn-outline-custom text-danger" style="display: none;">
+                <i class="fas fa-trash"></i>
+                ÍĞİ Ñæåí
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ invoices|length }}</h3>
+                <p>˜á İÇ˜ÊæÑåÇ</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon yellow">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="draftCount">-</h3>
+                <p>íÔäæíÓ</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="approvedCount">-</h3>
+                <p>ÊÃííÏ ÔÏå</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="paidCount">-</h3>
+                <p>ÑÏÇÎÊ ÔÏå</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filter-card">
+        <div class="filter-header">
+            <div class="filter-title">
+                <i class="fas fa-filter text-primary"></i>
+                İíáÊÑ æ ÌÓÊÌæ
+            </div>
+            <a href="{% url 'invoices_list' %}" class="text-danger text-decoration-none small">
+                <i class="fas fa-times"></i> Ç˜ ˜ÑÏä İíáÊÑåÇ
+            </a>
+        </div>
+        <form method="get">
+            <div class="custom-row">
+                <div class="custom-col col-16">
+                    <label for="search" class="form-label small text-muted mb-1">ÌÓÊÌæ</label>
+                    <input type="text" name="search" class="form-control form-control-sm"
+                        id="search" placeholder="ÔãÇÑå İÇ˜ÊæÑ íÇ ÊÃãíä˜ääÏå..." value="{{ search_query }}">
+                </div>
+                <div class="custom-col col-16">
+                    <label for="issue" class="form-label small text-muted mb-1">ÇíÑÇÏ</label>
+                    <select name="issue" class="form-control form-control-sm" id="issue" onchange="this.form.submit()">
+                        <option value="">åãå ÇíÑÇÏÇÊ</option>
+                        {% for issue in issues %}
+                        <option value="{{ issue.id }}" {% if selected_issue|stringformat:"s" == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="custom-col col-16">
+                    <label for="status" class="form-label small text-muted mb-1">æÖÚíÊ</label>
+                    <select name="status" class="form-control form-control-sm" id="status" onchange="this.form.submit()">
+                        <option value="">åãå æÖÚíÊåÇ</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="custom-col col-16">
+                    <label for="payment_status" class="form-label small text-muted mb-1">æÖÚíÊ ÑÏÇÎÊ</label>
+                    <select name="payment_status" class="form-control form-control-sm" id="payment_status" onchange="this.form.submit()">
+                        <option value="">åãå</option>
+                        {% for value, label in payment_status_choices %}
+                        <option value="{{ value }}" {% if selected_payment_status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="custom-col col-16">
+                    <label for="date_query" class="form-label small text-muted mb-1">ÊÇÑíÎ</label>
+                    <input type="date" name="date_query" class="form-control form-control-sm" id="date_query" value="{{ date_query }}">
+                </div>
+                <div class="custom-col col-16 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary-custom btn-sm w-100">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table View -->
+    <div class="table-view-container">
+        <div class="table-card">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAll">
+                        </th>
+                        <th>ÔãÇÑå İÇ˜ÊæÑ</th>
+                        <th>ÊÃãíä˜ääÏå</th>
+                        <th>ÊÇÑíÎ İÇ˜ÊæÑ</th>
+                        <th>ãÈáÛ (ÊæãÇä)</th>
+                        <th>æÖÚíÊ</th>
+                        <th>ÑÏÇÎÊ</th>
+                        <th>ÚãáíÇÊ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr data-status="{{ invoice.status }}">
+                        <td>
+                            {% if is_manager %}
+                            <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}"
+                                data-amount="{{ invoice.remaining_amount }}">
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'invoice_detail' invoice.id %}"
+                                class="text-primary font-weight-bold text-decoration-none">
+                                {{ invoice.invoice_number }}
+                            </a>
+                        </td>
+                        <td>{{ invoice.supplier.name|default:"äÇãÔÎÕ" }}</td>
+                        <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
+                        <td class="font-weight-bold">{{ invoice.total_amount|number_format }}</td>
+                        <td>
+                            <span class="badge-custom status-{{ invoice.status }}">
+                                {{ invoice.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge-custom payment-{{ invoice.payment_status }}">
+                                {{ invoice.get_payment_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'invoice_detail' invoice.id %}" class="action-icon" title="ãÔÇåÏå">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if invoice.status == 'draft' %}
+                                <a href="{% url 'invoice_update' invoice.id %}" class="action-icon" title="æíÑÇíÔ">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'invoice_send' invoice.id %}" class="action-icon" title="ÇÑÓÇá">
+                                    <i class="fas fa-paper-plane"></i>
+                                </a>
+                                {% endif %}
+                                {% if invoice.status == 'sent' %}
+                                <a href="{% url 'invoice_approve' invoice.id %}" class="action-icon text-success"
+                                    title="ÊÃííÏ">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                {% endif %}
+                                {% if invoice.status == 'approved' and invoice.can_add_payment %}
+                                <a href="{% url 'payment_create_for_invoice' invoice.id %}"
+                                    class="action-icon text-info" title="ÑÏÇÎÊ">
+                                    <i class="fas fa-credit-card"></i>
+                                </a>
+                                {% endif %}
+                                {% if is_manager %}
+                                <form method="post" action="{% url 'invoice_delete' invoice.id %}"
+                                    style="display: inline;"
+                                    onsubmit="return confirm('ÂíÇ ãØãÆä åÓÊíÏ ˜å ãíÎæÇåíÏ Çíä İÇ˜ÊæÑ ÑÇ ÍĞİ ˜äíÏ¿');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="action-icon delete" title="ÍĞİ">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+                            İÇ˜ÊæÑí íÇİÊ äÔÏ
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Mobile View -->
+    <div class="d-md-none">
+        {% for invoice in invoices %}
+        <div class="mobile-card">
+            <div class="mobile-card-header">
+                <div class="d-flex align-items-center gap-2">
+                    {% if is_manager %}
+                    <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
+                    {% endif %}
+                    <a href="{% url 'invoice_detail' invoice.id %}"
+                        class="font-weight-bold text-primary text-decoration-none">
+                        {{ invoice.invoice_number }}
+                    </a>
+                </div>
+                <span class="badge-custom status-{{ invoice.status }}">
+                    {{ invoice.get_status_display }}
+                </span>
+            </div>
+            <div class="mobile-card-body">
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">ÊÃãíä˜ääÏå:</span>
+                    <span>{{ invoice.supplier.name|default:"äÇãÔÎÕ" }}</span>
+                </div>
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">ÊÇÑíÎ:</span>
+                    <span>{{ invoice.invoice_date|date:"Y/m/d" }}</span>
+                </div>
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">ãÈáÛ:</span>
+                    <span class="font-weight-bold">{{ invoice.total_amount|number_format }} ÊæãÇä</span>
+                </div>
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">æÖÚíÊ ÑÏÇÎÊ:</span>
+                    <span class="badge-custom payment-{{ invoice.payment_status }}">
+                        {{ invoice.get_payment_status_display }}
+                    </span>
+                </div>
+            </div>
+            <div class="mobile-card-footer mt-3 pt-2 border-top d-flex justify-content-end gap-2">
+                <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-custom">ãÔÇåÏå</a>
+                {% if invoice.status == 'draft' %}
+                <a href="{% url 'invoice_update' invoice.id %}" class="btn btn-sm btn-outline-custom">æíÑÇíÔ</a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+            İÇ˜ÊæÑí íÇİÊ äÔÏ
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if invoices.has_other_pages %}
+    <div class="d-flex justify-content-center mt-4">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if invoices.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ invoices.previous_page_number }}">ŞÈáí</a>
+                </li>
+                {% endif %}
+
+                {% for num in invoices.paginator.page_range %}
+                {% if invoices.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > invoices.number|add:'-3' and num < invoices.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if invoices.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ invoices.next_page_number }}">ÈÚÏí</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+    // Update stats counts based on table data
+    document.addEventListener('DOMContentLoaded', function () {
+        const rows = document.querySelectorAll('tr[data-status]');
+        let draft = 0, approved = 0, paid = 0;
+
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            if (status === 'draft') draft++;
+            if (status === 'approved') approved++;
+
+            // Check payment status badge class
+            const paymentBadge = row.querySelector('.payment-paid');
+            if (paymentBadge) paid++;
+        });
+
+        document.getElementById('draftCount').textContent = draft;
+        document.getElementById('approvedCount').textContent = approved;
+        document.getElementById('paidCount').textContent = paid;
+
+        // Bulk selection logic
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.invoice-checkbox');
+        const bulkPaymentBtn = document.getElementById('bulkPaymentBtn');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checkboxes.forEach(cb => cb.checked = this.checked);
+                updateBulkActions();
+            });
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkActions);
+        });
+
+        function updateBulkActions() {
+            const checkedCount = document.querySelectorAll('.invoice-checkbox:checked').length;
+            if (bulkPaymentBtn) bulkPaymentBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+            if (bulkDeleteBtn) bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+        }
+
+
+    });
+
+    // Initialize Persian datepickers
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        new persianDatepicker(input, {
+            format: 'YYYY/MM/DD',
+            year: 1404,
+            month: 1,
+            day: 1,
+            observer: true,
+            altField: input,
+            altFormat: 'YYYY/MM/DD',
+            calendar: {
+                persian: {
+                    locale: 'fa'
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
