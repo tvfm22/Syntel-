@@ -1,11 +1,42 @@
-# Syntel - سیستم مدیریت مالی و خرید
+# 🏢 Syntel - سیستم مدیریت خرید و انبار
 
-[![Django](https://img.shields.io/badge/Django-5.2.8-green.svg)](https://djangoproject.com/)
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)](https://postgresql.org/)
+[![Django](https://img.shields.io/badge/Django-5.0.2-green.svg)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-سیستم مدیریت مالی Syntel یک راهکار جامع برای مدیریت فرآیند خرید، سفارش‌ها، فاکتورها و پرداخت‌های سازمان‌ها است.
+سیستم جامع مدیریت خرید، انبار، فاکتور و مالی با رابط کاربری فارسی - آماده برای استقرار روی سرور
+
+## 🚀 نصب سریع
+
+### با Docker (توصیه شده برای Production)
+
+```bash
+# کلون پروژه
+git clone https://github.com/tvfm22/Syntel-.git
+cd Syntel-/syntel
+
+# تنظیمات محیطی
+cp .env.example .env
+nano .env  # ویرایش و تکمیل متغیرها
+
+# استقرار خودکار
+chmod +x deploy.sh
+./deploy.sh
+```
+
+سایت روی http://localhost در دسترس خواهد بود.
+
+### نصب دستی (Development)
+
+```bash
+cd syntel
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
 
 ## ویژگی‌ها
 
