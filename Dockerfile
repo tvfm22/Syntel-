@@ -19,11 +19,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
+# Copy requirements from syntel/requirements.txt (relative to root)
+COPY syntel/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . .
+# Copy project files from syntel/ directory
+COPY syntel/ .
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash syntel \
