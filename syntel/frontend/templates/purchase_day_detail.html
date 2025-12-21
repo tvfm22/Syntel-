@@ -1,0 +1,248 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جزئیات لیست خرید - {{ role_name }} - {{ date|jalali_date }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Vazir, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info h1 {
+            font-size: 24px;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .header-info p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .back-link {
+            color: #3b82f6;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .actions {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-pdf {
+            background: #ef4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-pdf:hover {
+            background: #dc2626;
+        }
+
+        .items-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #1f2937;
+            color: white;
+        }
+
+        thead th {
+            padding: 16px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        tbody td {
+            padding: 14px 16px;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-purchased {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-from_stock {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-not_supplied {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .difference-positive {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .difference-zero {
+            color: #6b7280;
+        }
+
+        .difference-negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .difference-not-supplied {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-info">
+                <h1>لیست خرید {{ role_name }}</h1>
+                <p>تاریخ: {{ date|jalali_date }}</p>
+            </div>
+            <a href="{% url 'purchase_lists_by_date' %}" class="back-link">← بازگشت</a>
+        </div>
+
+        <div class="actions">
+            <a href="{% url 'export_purchase_day_pdf' %}?date={{ date|iso_date }}&role={{ role }}" class="btn-pdf">
+                📄 دانلود PDF
+            </a>
+        </div>
+
+        <div class="items-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>نام قلم</th>
+                        <th>مقدار درخواست شده</th>
+                        <th>مقدار خریداری شده</th>
+                        <th>وضعیت تامین</th>
+                        <th>مابه‌التفاوت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item_info in all_items %}
+                    <tr>
+                        <td>{{ item_info.item.name }}</td>
+                        <td>{{ item_info.item.quantity }} {{ item_info.item.unit }}</td>
+                        <td>{{ item_info.item.purchased_quantity|default:0 }} {{ item_info.item.unit }}</td>
+                        <td>
+                            {% if item_info.item.supply_status == 'purchased' %}
+                                <span class="status-badge status-purchased">🛒 خرید</span>
+                            {% elif item_info.item.supply_status == 'from_stock' %}
+                                <span class="status-badge status-from_stock">📦 تامین از انبار</span>
+                            {% elif item_info.item.supply_status == 'not_supplied' %}
+                                <span class="status-badge status-not_supplied">❌ تامین نشده</span>
+                            {% else %}
+                                <span class="status-badge status-pending">⏳ در انتظار</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item_info.item.supply_status == 'not_supplied' %}
+                                <span class="difference-not-supplied">-</span>
+                            {% elif item_info.difference == 0 %}
+                                <span class="difference-zero">0 {{ item_info.item.unit }}</span>
+                            {% elif item_info.difference > 0 %}
+                                <span class="difference-positive">-{{ item_info.difference }} {{ item_info.item.unit }}</span>
+                            {% else %}
+                                <span class="difference-negative">+{{ item_info.difference|abs_value }} {{ item_info.item.unit }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: #6b7280;">
+                            هیچ قلمی یافت نشد
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

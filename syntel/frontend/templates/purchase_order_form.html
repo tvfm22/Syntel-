@@ -68,8 +68,6 @@
                                         <th>نام کالا</th>
                                         <th>واحد</th>
                                         <th>مقدار</th>
-                                        <th>قیمت واحد (تومان)</th>
-                                        <th>مجموع قیمت (تومان)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -78,38 +76,9 @@
                                             <td>{{ item.name }}</td>
                                             <td>{{ item.unit }}</td>
                                             <td>{{ item.quantity }}</td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm"
-                                                       name="unit_price_{{ item.id }}"
-                                                       value="{% if purchase_order %}{{ item.unit_price|default:0 }}{% endif %}"
-                                                       step="0.01" min="0" onchange="calculateTotal(this, {{ item.quantity }})">
-                                            </td>
-                                            <td>
-                                                <span id="total_{{ item.id }}">
-                                                    {% if purchase_order %}
-                                                        {% load custom_filters %}
-                                                        {{ item.total_price|number_format }}
-                                                    {% else %}
-                                                        0
-                                                    {% endif %}
-                                                </span>
-                                            </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
-                                <tfoot>
-                                    <tr class="table-dark">
-                                        <th colspan="4" class="text-end">مجموع کل:</th>
-                                        <th id="grand_total">
-                                            {% if purchase_order %}
-                                                {% load custom_filters %}
-                                                {{ purchase_order.total_amount|number_format }}
-                                            {% else %}
-                                                0
-                                            {% endif %}
-                                        </th>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
 
@@ -179,30 +148,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endblock %}
 
-<script>
-function calculateTotal(input, quantity) {
-    const unitPrice = parseFloat(input.value) || 0;
-    const total = unitPrice * quantity;
-    const totalElement = document.getElementById('total_' + input.name.split('_')[2]);
-    totalElement.textContent = total.toLocaleString('fa-IR');
-
-    // Update grand total
-    updateGrandTotal();
-}
-
-function updateGrandTotal() {
-    let grandTotal = 0;
-    const totalElements = document.querySelectorAll('[id^="total_"]');
-    totalElements.forEach(element => {
-        const value = parseFloat(element.textContent.replace(/,/g, '')) || 0;
-        grandTotal += value;
-    });
-    document.getElementById('grand_total').textContent = grandTotal.toLocaleString('fa-IR');
-}
-
-// Initialize calculations on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateGrandTotal();
-});
-</script>
 {% endblock %}

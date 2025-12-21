@@ -75,11 +75,7 @@ def role_required(roles):
 
 
 def _get_departments():
-    return [
-        ("kitchen", "kitchen"),
-        ("purchasing", "purchasing"),
-        ("manager", "manager"),
-    ]
+    return User.ROLE_CHOICES
 
 
 def _parse_decimal(value):
@@ -101,6 +97,12 @@ def login_view(request: HttpRequest) -> HttpResponse:
         user = authenticate(request, username=username, password=password)
         if user and user.is_active:
             login(request, user)
+            # Redirect mobile users (kitchen, bar, counter, cashier, facilities) to mobile dashboard
+            if user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+                return redirect("mobile_dashboard")
+            # Redirect purchasing user to purchasing dashboard
+            elif user.role == 'purchasing':
+                return redirect("purchasing_dashboard")
             return redirect("dashboard")
         response = render(
             request,
@@ -122,6 +124,429 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 # ---------------------------------------------------------------------------
 # Dashboards
 # ---------------------------------------------------------------------------
+
+
+@custom_login_required
+@role_required(["kitchen", "bar", "counter", "cashier", "facilities"])
+def mobile_dashboard(request: HttpRequest) -> HttpResponse:
+    """Simple mobile-friendly dashboard for department users"""
+    return render(request, "mobile_dashboard.html", {"user": request.user})
+
+
+@custom_login_required
+@role_required(["purchasing"])
+def purchasing_dashboard(request: HttpRequest) -> HttpResponse:
+    """Dashboard for purchasing manager to review requests by department"""
+    # Count requests by role
+    departments = [
+        {'name': 'آشپزخانه', 'role': 'kitchen', 'icon': '🍳'},
+        {'name': 'بار', 'role': 'bar', 'icon': '🍸'},
+        {'name': 'کانتر', 'role': 'counter', 'icon': '🛎️'},
+        {'name': 'صندوق', 'role': 'cashier', 'icon': '💰'},
+        {'name': 'تاسیسات', 'role': 'facilities', 'icon': '🔧'},
+    ]
+    
+    for dept in departments:
+        dept['total'] = PurchaseRequest.objects.filter(user__role=dept['role']).count()
+        dept['pending'] = PurchaseRequest.objects.filter(
+            user__role=dept['role'], 
+            status='pending'
+        ).count()
+    
+    return render(request, "purchasing_dashboard.html", {
+        "user": request.user,
+        "departments": departments
+    })
+
+
+@custom_login_required
+@role_required(["purchasing"])
+def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
+    """List purchase requests filtered by department role and status"""
+    role = request.GET.get('role', '')
+    status = request.GET.get('status', '')
+    
+    requests = PurchaseRequest.objects.all().select_related('user').prefetch_related('items')
+    
+    # Filter by role
+    if role:
+        requests = requests.filter(user__role=role)
+    
+    # Filter by status
+    if status == 'pending':
+        requests = requests.filter(status='pending')
+    elif status == 'all':
+        pass  # Show all
+    
+    requests = requests.order_by('-created_at')
+    
+    # Get department name
+    department_names = {
+        'kitchen': 'آشپزخانه',
+        'bar': 'بار',
+        'counter': 'کانتر',
+        'cashier': 'صندوق',
+        'facilities': 'تاسیسات',
+    }
+    department_name = department_names.get(role, 'همه بخش‌ها')
+    
+    return render(request, "purchasing_requests_list.html", {
+        "requests": requests,
+        "role": role,
+        "status": status,
+        "department_name": department_name,
+    })
+
+
+@custom_login_required
+@role_required(["purchasing"])
+def process_purchase_request(request: HttpRequest, request_id: int) -> HttpResponse:
+    """Process purchase request items - set quantities and supply status"""
+    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    
+    if request.method == "POST":
+        # Process each item
+        for item in purchase_request.items.all():
+            purchased_qty = request.POST.get(f'purchased_qty_{item.id}', '')
+            supply_status = request.POST.get(f'supply_status_{item.id}', 'pending')
+            
+            if purchased_qty:
+                item.purchased_quantity = int(purchased_qty)
+            item.supply_status = supply_status
+            item.save()
+        
+        # Update request status if all items are processed
+        all_processed = all(
+            item.supply_status != 'pending' 
+            for item in purchase_request.items.all()
+        )
+        if all_processed:
+            purchase_request.status = 'purchased'
+            purchase_request.processed_by = request.user
+            purchase_request.processed_at = timezone.now()
+            purchase_request.save()
+            messages.success(request, 'درخواست با موفقیت پردازش شد')
+        
+        return redirect('purchasing_requests_list')
+    
+    return render(request, "process_purchase_request.html", {
+        "purchase_request": purchase_request,
+    })
+
+
+@custom_login_required
+@role_required(["manager", "purchasing"])
+def purchase_lists_by_date(request: HttpRequest) -> HttpResponse:
+    """Show purchase lists grouped by date and department"""
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate
+    
+    # Get all purchased requests with items
+    purchased_requests = PurchaseRequest.objects.filter(
+        status='purchased'
+    ).annotate(
+        date=TruncDate('processed_at')
+    ).values('date', 'user__role').annotate(
+        count=Count('id')
+    ).order_by('-date', 'user__role')
+    
+    # Group by date and role
+    purchase_days = {}
+    for req in purchased_requests:
+        date_obj = req['date']
+        if not date_obj:
+            continue
+        date_str = date_obj.strftime('%Y-%m-%d')  # Convert to string for URL
+        role = req['user__role']
+        
+        if date_str not in purchase_days:
+            purchase_days[date_str] = {
+                'date_obj': date_obj,  # Keep object for display
+                'departments': {}
+            }
+        
+        role_names = {
+            'kitchen': 'آشپزخانه',
+            'bar': 'بار',
+            'counter': 'کانتر',
+            'cashier': 'صندوق',
+            'facilities': 'تاسیسات',
+        }
+        
+        purchase_days[date_str]['departments'][role] = {
+            'name': role_names.get(role, role),
+            'count': req['count']
+        }
+    
+    return render(request, "purchase_lists_by_date.html", {
+        "purchase_days": purchase_days,
+    })
+
+
+@custom_login_required
+@role_required(["manager", "purchasing"])
+def purchase_day_detail(request: HttpRequest) -> HttpResponse:
+    """Show detailed purchase list for a specific date and department"""
+    from datetime import datetime
+    
+    date_str = request.GET.get('date')
+    role = request.GET.get('role')
+    
+    if not date_str or not role:
+        return redirect('purchase_lists_by_date')
+    
+    # Parse date
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    
+    # Get all purchased requests for this date and role
+    requests = PurchaseRequest.objects.filter(
+        status='purchased',
+        user__role=role,
+        processed_at__date=date_obj
+    ).prefetch_related('items', 'user', 'processed_by')
+    
+    # Collect all items
+    all_items = []
+    for req in requests:
+        for item in req.items.all():
+            all_items.append({
+                'request': req,
+                'item': item,
+                'difference': (item.quantity - (item.purchased_quantity or 0))
+            })
+    
+    role_names = {
+        'kitchen': 'آشپزخانه',
+        'bar': 'بار',
+        'counter': 'کانتر',
+        'cashier': 'صندوق',
+        'facilities': 'تاسیسات',
+    }
+    
+    return render(request, "purchase_day_detail.html", {
+        "date": date_obj,
+        "date_str": date_str,
+        "role": role,
+        "role_name": role_names.get(role, role),
+        "requests": requests,
+        "all_items": all_items,
+    })
+
+
+@custom_login_required
+@role_required(["manager", "purchasing"])
+def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
+    """Export purchase day detail as PDF - Persian RTL minimal design"""
+    from datetime import datetime
+    from io import BytesIO
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import jdatetime
+    import os
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    
+    date_str = request.GET.get('date')
+    role = request.GET.get('role')
+    
+    if not date_str or not role:
+        return redirect('purchase_lists_by_date')
+    
+    # Parse date
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    jalali_date = jdatetime.date.fromgregorian(date=date_obj)
+    jalali_months = {
+        1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
+        4: 'تیر', 5: 'مرداد', 6: 'شهریور',
+        7: 'مهر', 8: 'آبان', 9: 'آذر',
+        10: 'دی', 11: 'بهمن', 12: 'اسفند'
+    }
+    jalali_str = f"{jalali_date.day} {jalali_months[jalali_date.month]} {jalali_date.year}"
+    
+    # Get all purchased requests for this date and role
+    requests_qs = PurchaseRequest.objects.filter(
+        status='purchased',
+        user__role=role,
+        processed_at__date=date_obj
+    ).prefetch_related('items', 'user', 'processed_by')
+    
+    role_names = {
+        'kitchen': 'آشپزخانه',
+        'bar': 'بار',
+        'counter': 'کانتر',
+        'cashier': 'صندوق',
+        'facilities': 'تاسیسات',
+    }
+    role_name = role_names.get(role, role)
+    
+    # Collect all items
+    all_items = []
+    for req in requests_qs:
+        for item in req.items.all():
+            all_items.append(item)
+    
+    # Create PDF
+    buffer = BytesIO()
+    page_width, page_height = A4
+    c = canvas.Canvas(buffer, pagesize=A4)
+    
+    # Register Persian font (Vazir)
+    font_name = 'Helvetica'
+    try:
+        from django.conf import settings
+        font_path = os.path.join(settings.BASE_DIR, 'frontend', 'static', 'fonts', 'Vazir.ttf')
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont('Vazir', font_path))
+            font_name = 'Vazir'
+    except:
+        pass
+    
+    # Helper function to reshape Persian text for proper display
+    def persian(text):
+        """Reshape Persian text for correct display in PDF"""
+        if not text:
+            return ''
+        reshaped = arabic_reshaper.reshape(str(text))
+        return get_display(reshaped)
+    
+    # Page margins
+    margin = 2 * cm
+    content_width = page_width - 2 * margin
+    
+    # Header
+    y = page_height - margin
+    
+    # Title - centered
+    c.setFont(font_name, 18)
+    title = persian(f"لیست خرید {role_name}")
+    title_width = c.stringWidth(title, font_name, 18)
+    c.drawString((page_width - title_width) / 2, y, title)
+    
+    # Date - centered
+    y -= 30
+    c.setFont(font_name, 12)
+    date_text = persian(jalali_str)
+    date_width = c.stringWidth(date_text, font_name, 12)
+    c.drawString((page_width - date_width) / 2, y, date_text)
+    
+    # Separator line
+    y -= 20
+    c.setStrokeColor(colors.Color(0.85, 0.85, 0.85))
+    c.setLineWidth(0.5)
+    c.line(margin, y, page_width - margin, y)
+    
+    # Table setup - columns from LEFT to RIGHT (RTL: rightmost is name, leftmost is diff)
+    y -= 35
+    col_widths = [2.5*cm, 3*cm, 3.5*cm, 3.5*cm, 4.5*cm]
+    headers = ['تفاوت', 'وضعیت', 'خریداری شده', 'درخواستی', 'نام کالا']
+    
+    # Header background
+    c.setFillColor(colors.Color(0.93, 0.93, 0.93))
+    c.rect(margin, y - 8, content_width, 28, fill=1, stroke=0)
+    
+    # Draw headers from LEFT to RIGHT
+    c.setFillColor(colors.Color(0.2, 0.2, 0.2))
+    c.setFont(font_name, 11)
+    x = margin
+    for i, header in enumerate(headers):
+        header_text = persian(header)
+        text_width = c.stringWidth(header_text, font_name, 11)
+        col_center = x + col_widths[i] / 2
+        c.drawString(col_center - text_width / 2, y + 5, header_text)
+        x += col_widths[i]
+    
+    # Draw rows
+    y -= 28
+    status_map = {
+        'purchased': 'خرید شده',
+        'from_stock': 'از انبار',
+        'not_supplied': 'تامین نشده',
+        'pending': 'در انتظار'
+    }
+    
+    row_height = 24
+    
+    for idx, item in enumerate(all_items):
+        # Alternate row background
+        if idx % 2 == 1:
+            c.setFillColor(colors.Color(0.97, 0.97, 0.97))
+            c.rect(margin, y - 6, content_width, row_height, fill=1, stroke=0)
+        
+        c.setFillColor(colors.Color(0.15, 0.15, 0.15))
+        c.setFont(font_name, 10)
+        
+        difference = item.quantity - (item.purchased_quantity or 0)
+        if item.supply_status == 'not_supplied':
+            diff_text = '-'
+        elif difference == 0:
+            diff_text = '0'
+        elif difference > 0:
+            diff_text = f'{difference}-'
+        else:
+            diff_text = f'{abs(difference)}+'
+        
+        # Row data from LEFT to RIGHT (RTL: reversed so name appears on right)
+        row_data = [
+            diff_text,
+            status_map.get(item.supply_status, item.supply_status),
+            f"{item.purchased_quantity or 0} {item.unit}",
+            f"{item.quantity} {item.unit}",
+            item.name
+        ]
+        
+        x = margin
+        for i, cell in enumerate(row_data):
+            cell_text = persian(str(cell))
+            text_width = c.stringWidth(cell_text, font_name, 10)
+            col_center = x + col_widths[i] / 2
+            c.drawString(col_center - text_width / 2, y + 4, cell_text)
+            x += col_widths[i]
+        
+        y -= row_height
+        
+        # Check if we need a new page
+        if y < margin + 5*cm:
+            c.showPage()
+            c.setFont(font_name, 10)
+            y = page_height - margin - 30
+    
+    # Separator before signatures
+    y -= 30
+    c.setStrokeColor(colors.Color(0.85, 0.85, 0.85))
+    c.line(margin, y, page_width - margin, y)
+    
+    # Signature section - Two signatures side by side
+    y -= 50
+    c.setFont(font_name, 11)
+    c.setFillColor(colors.Color(0.3, 0.3, 0.3))
+    c.setStrokeColor(colors.Color(0.7, 0.7, 0.7))
+    
+    # Right side: امضا مسئول خرید
+    sig1_text = persian('امضا مسئول خرید:')
+    sig1_width = c.stringWidth(sig1_text, font_name, 11)
+    right_edge = page_width - margin
+    c.drawString(right_edge - sig1_width, y, sig1_text)
+    c.line(right_edge - sig1_width - 4.5*cm, y - 3, right_edge - sig1_width - 0.3*cm, y - 3)
+    
+    # Left side: امضا مسئول بخش
+    sig2_text = persian('امضا مسئول بخش:')
+    sig2_width = c.stringWidth(sig2_text, font_name, 11)
+    c.drawString(margin + 4.5*cm + 0.3*cm, y, sig2_text)
+    c.line(margin, y - 3, margin + 4.5*cm, y - 3)
+    
+    c.save()
+    
+    # Get PDF content
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="purchase_list_{date_str}_{role}.pdf"'
+    return response
 
 
 @custom_login_required
@@ -156,7 +581,7 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["kitchen", "purchasing", "manager"])
+@role_required(["kitchen", "bar", "counter", "cashier", "facilities", "purchasing", "manager"])
 def purchase_request_form(request):
     products = Product.objects.all()
 
@@ -231,8 +656,21 @@ def purchase_request_success(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
 def purchase_requests_list(request):
+    # For mobile users, show only their own requests
+    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+        requests_qs = (
+            PurchaseRequest.objects.filter(user=request.user)
+            .prefetch_related("items")
+            .order_by("-created_at")
+        )
+        context = {
+            "requests": list(requests_qs),
+            "is_mobile_user": True,
+        }
+        return render(request, "purchase_requests_list.html", context)
+    
+    # For purchasing/manager users
     selected_department = request.GET.get("department") or ""
     requests_qs = (
         PurchaseRequest.objects.select_related("user")
@@ -246,6 +684,7 @@ def purchase_requests_list(request):
         "requests": list(requests_qs),
         "departments": _get_departments(),
         "selected_department": selected_department,
+        "is_mobile_user": False,
     }
     
     if request.headers.get('HX-Request'):
@@ -254,15 +693,24 @@ def purchase_requests_list(request):
     return render(request, "purchase_requests_list.html", context)
 
 
+@custom_login_required
+@custom_login_required
 def purchase_request_detail(request, request_id):
     purchase_request = get_object_or_404(
         PurchaseRequest.objects.prefetch_related("items", "activities"), id=request_id
     )
-    return render(
-        request,
-        "purchase_request_detail.html",
-        {"purchase_request": purchase_request},
-    )
+    
+    # Check permissions: mobile users can only see their own requests
+    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+        if purchase_request.user != request.user:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
+    
+    context = {
+        "purchase_request": purchase_request,
+        "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities'],
+    }
+    return render(request, "purchase_request_detail.html", context)
 
 
 @custom_login_required
@@ -271,26 +719,6 @@ def update_purchase_request(request, request_id):
     purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
 
     if request.method == "POST":
-        if request.POST.get("status") == "rejected":
-            purchase_request.status = "rejected"
-            purchase_request.rejection_reason = request.POST.get(
-                "rejection_reason", ""
-            )
-            purchase_request.save()
-            ActivityLog.objects.create(
-                user=request.user,
-                request=purchase_request,
-                action="rejected",
-                description=purchase_request.rejection_reason,
-            )
-            Notification.objects.create(
-                recipient=purchase_request.user,
-                title="Request rejected",
-                message=purchase_request.rejection_reason or "",
-                notification_type="warning",
-            )
-            return redirect("purchase_requests_list")
-
         item_ids = request.POST.getlist("item_id")
         purchased_quantities = request.POST.getlist("purchased_quantity")
         for idx, item_id in enumerate(item_ids):
@@ -559,72 +987,6 @@ def system_health_check(request):
 
 
 # ---------------------------------------------------------------------------
-# Approvals and activity log
-# ---------------------------------------------------------------------------
-
-
-@custom_login_required
-@role_required(["manager"])
-def approvals_list(request):
-    requests_qs = PurchaseRequest.objects.filter(
-        status__in=["pending", "pending_approval"]
-    ).prefetch_related("items", "user")
-    return render(request, "approvals_list.html", {"requests": requests_qs})
-
-
-@custom_login_required
-@role_required(["manager"])
-def approve_request(request, request_id):
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    purchase_request.status = "approved"
-    purchase_request.approved_by = request.user
-    purchase_request.approved_at = timezone.now()
-    purchase_request.save()
-    ActivityLog.objects.create(
-        user=request.user,
-        request=purchase_request,
-        action="approved",
-        description="Request approved",
-    )
-    return redirect("approvals_list")
-
-
-@custom_login_required
-@role_required(["manager"])
-def reject_request(request, request_id):
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    if request.method == "POST":
-        purchase_request.status = "rejected"
-        purchase_request.rejection_reason = request.POST.get("comments", "")
-        purchase_request.save()
-        ActivityLog.objects.create(
-            user=request.user,
-            request=purchase_request,
-            action="rejected",
-            description=purchase_request.rejection_reason,
-        )
-        Notification.objects.create(
-            recipient=purchase_request.user,
-            title="Request rejected",
-            message=purchase_request.rejection_reason or "",
-            notification_type="warning",
-        )
-        return redirect("approvals_list")
-    return render(request, "reject_request.html", {"purchase_request": purchase_request})
-
-
-@custom_login_required
-def activity_log(request, request_id):
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    activities = purchase_request.activities.all()
-    return render(
-        request,
-        "activity_log.html",
-        {"purchase_request": purchase_request, "activities": activities},
-    )
-
-
-# ---------------------------------------------------------------------------
 # Products, units, categories, payment types
 # ---------------------------------------------------------------------------
 
@@ -633,7 +995,32 @@ def activity_log(request, request_id):
 @role_required(["purchasing", "manager"])
 def product_list(request):
     products = Product.objects.all()
-    return render(request, "product_list.html", {"products": products})
+    
+    # جستجو بر اساس نام
+    search = request.GET.get('search', '')
+    if search:
+        products = products.filter(name__icontains=search)
+    
+    # فیلتر بر اساس دسته‌بندی
+    category_id = request.GET.get('category', '')
+    if category_id:
+        products = products.filter(category_id=category_id)
+    
+    # فیلتر بر اساس وضعیت
+    is_active = request.GET.get('is_active', '')
+    if is_active == 'true':
+        products = products.filter(is_active=True)
+    elif is_active == 'false':
+        products = products.filter(is_active=False)
+    
+    categories = Category.objects.all()
+    return render(request, "product_list.html", {
+        "products": products,
+        "categories": categories,
+        "search": search,
+        "selected_category": category_id,
+        "selected_status": is_active
+    })
 
 
 @custom_login_required
@@ -878,8 +1265,11 @@ def user_create(request):
 def user_update(request, user_id):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
+        user_obj.first_name = request.POST.get("first_name", user_obj.first_name)
+        user_obj.last_name = request.POST.get("last_name", user_obj.last_name)
         user_obj.email = request.POST.get("email", user_obj.email)
         user_obj.role = request.POST.get("role", user_obj.role)
+        user_obj.is_active = request.POST.get("is_active", user_obj.is_active) not in ["False", "0", ""]
         user_obj.save()
         return redirect("user_list")
     return render(request, "user_form.html", {"user": user_obj, "roles": _get_departments()})

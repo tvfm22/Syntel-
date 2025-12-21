@@ -93,6 +93,32 @@ def create_default_users():
     except Exception as e:
         print(f"✗ Error creating counter user: {e}")
 
+    # Create cashier user
+    try:
+        cashier = User.objects.create_user(
+            username='cashier',
+            password='cashier123',
+            first_name='مسئول',
+            last_name='صندوق',
+            role='cashier'
+        )
+        print("✓ Created cashier user: cashier / cashier123")
+    except Exception as e:
+        print(f"✗ Error creating cashier user: {e}")
+
+    # Create facilities user
+    try:
+        facilities = User.objects.create_user(
+            username='facilities',
+            password='facilities123',
+            first_name='مسئول',
+            last_name='تاسیسات',
+            role='facilities'
+        )
+        print("✓ Created facilities user: facilities / facilities123")
+    except Exception as e:
+        print(f"✗ Error creating facilities user: {e}")
+
     print("\nDefault users created successfully!")
     print("You can now login with:")
     print("  Admin: admin / admin123")
@@ -100,6 +126,8 @@ def create_default_users():
     print("  Kitchen: kitchen / kitchen123")
     print("  Bar: bar / bar123")
     print("  Counter: counter / counter123")
+    print("  Cashier: cashier / cashier123")
+    print("  Facilities: facilities / facilities123")
 
 if __name__ == '__main__':
     create_default_users()

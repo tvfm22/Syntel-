@@ -665,13 +665,16 @@
         <div class="menu-items">
             {% if user.role == 'purchasing' %}
             <a href="{% url 'dashboard' %}" {% if request.path == '/dashboard/' %}class="active"{% endif %}>
-                <span>داشبورد</span>
+                <span>📊 داشبورد</span>
             </a>
             {% endif %}
             
-            {% if user.role in 'kitchen,bar,counter' %}
-            <a href="{% url 'purchase_request' %}" {% if 'purchase-request' in request.path %}class="active"{% endif %}>
-                <span>درخواست خرید</span>
+            {% if user.role in 'kitchen,bar,counter,cashier,facilities' %}
+            <a href="{% url 'purchase_request' %}" {% if 'purchase-request' in request.path and 'requests' not in request.path %}class="active"{% endif %}>
+                <span>📝 ثبت درخواست</span>
+            </a>
+            <a href="{% url 'purchase_requests_list' %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
+                <span>📋 درخواست‌های من</span>
             </a>
             {% endif %}
             
@@ -694,9 +697,6 @@
             <a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
                 <span>داشبورد مالی</span>
                     </a>
-                    <a href="{% url 'approvals_list' %}" {% if 'approvals' in request.path %}class="active"{% endif %}>
-                        <span>تأییدیه‌ها</span>
-                    </a>
                     <a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
                         <span>عملکرد تأمین‌کنندگان</span>
                     </a>
@@ -718,12 +718,10 @@
                     <a href="{% url 'system_monitoring' %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>
                         <span>مانیتورینگ سیستم</span>
                     </a>
-                    {% endif %}
-
-                    <!-- Temporary: Add finance dashboard to all users for testing -->
-                    <a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
-                        <span>[TEST] داشبورد مالی</span>
+                    <a href="{% url 'user_list' %}" {% if 'users' in request.path %}class="active"{% endif %}>
+                        <span>مدیریت کاربران</span>
                     </a>
+                    {% endif %}
 
                     <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
                         <form method="post" action="{% url 'logout' %}" style="margin: 0;">

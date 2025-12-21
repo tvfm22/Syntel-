@@ -1,0 +1,196 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مسئول خرید - سینتل</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Vazir, sans-serif;
+        }
+
+        body {
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .departments-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .department-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .department-card:active {
+            transform: scale(0.98);
+        }
+
+        .department-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .department-icon {
+            font-size: 32px;
+        }
+
+        .department-info h3 {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .department-stats {
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .stat-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .stat-total {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .stat-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .department-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            color: #374151;
+            font-size: 14px;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .action-btn:active {
+            background: #f9fafb;
+        }
+
+        .action-btn-all {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .action-btn-pending {
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .logout-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            color: #ef4444;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        @media (min-width: 640px) {
+            .departments-grid {
+                grid-template-columns: repeat(2, 1fr);
+                max-width: 800px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>داشبورد مسئول خرید</h1>
+        <p>{{ user.first_name }} {{ user.last_name }}</p>
+    </div>
+
+    <div class="departments-grid">
+        {% for dept in departments %}
+        <div class="department-card">
+            <div class="department-header">
+                <div class="department-icon">{{ dept.icon }}</div>
+                <div class="department-info">
+                    <h3>{{ dept.name }}</h3>
+                    <div class="department-stats">
+                        <span class="stat-badge stat-total">{{ dept.total }} کل</span>
+                        {% if dept.pending > 0 %}
+                        <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="department-actions">
+                <a href="{% url 'purchasing_requests_list' %}?role={{ dept.role }}&status=all" 
+                   class="action-btn action-btn-all">
+                    همه درخواست‌ها
+                </a>
+                <a href="{% url 'purchasing_requests_list' %}?role={{ dept.role }}&status=pending" 
+                   class="action-btn action-btn-pending">
+                    کامل نشده
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <a href="{% url 'logout' %}" class="logout-btn">خروج</a>
+</body>
+</html>

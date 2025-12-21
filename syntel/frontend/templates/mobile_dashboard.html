@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>پنل کاربری - {{ user.get_role_display }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-badge {
+            display: inline-block;
+            background: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #6b7280;
+            font-size: 0.875rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .menu-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .menu-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .menu-item:active {
+            transform: scale(0.98);
+            border-color: #6366f1;
+        }
+
+        .menu-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .menu-content {
+            flex: 1;
+        }
+
+        .menu-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .menu-subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .logout-btn {
+            display: block;
+            width: 100%;
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            font-family: 'Vazir', sans-serif;
+        }
+
+        .logout-btn:active {
+            transform: scale(0.98);
+            background: #e5e7eb;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .menu-item {
+                padding: 1.25rem;
+            }
+
+            .menu-icon {
+                font-size: 1.75rem;
+            }
+
+            .menu-title {
+                font-size: 0.9375rem;
+            }
+
+            .menu-subtitle {
+                font-size: 0.8125rem;
+            }
+        }
+
+        /* Landscape mode */
+        @media (max-height: 600px) and (orientation: landscape) {
+            body {
+                padding: 0.75rem;
+            }
+
+            .header {
+                margin-bottom: 1rem;
+            }
+
+            .menu-grid {
+                margin-bottom: 1rem;
+            }
+
+            .menu-item {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>سلام {{ user.first_name|default:user.username }}</h1>
+            <span class="user-badge">{{ user.get_role_display }}</span>
+        </div>
+
+        <div class="menu-grid">
+            <a href="{% url 'purchase_request' %}" class="menu-item">
+                <div class="menu-icon">📝</div>
+                <div class="menu-content">
+                    <div class="menu-title">ثبت درخواست</div>
+                    <div class="menu-subtitle">ثبت درخواست خرید جدید</div>
+                </div>
+            </a>
+
+            <a href="{% url 'purchase_requests_list' %}" class="menu-item">
+                <div class="menu-icon">📋</div>
+                <div class="menu-content">
+                    <div class="menu-title">درخواست‌های من</div>
+                    <div class="menu-subtitle">مشاهده درخواست‌ها</div>
+                </div>
+            </a>
+        </div>
+
+        <a href="{% url 'logout' %}" class="logout-btn">خروج</a>
+    </div>
+</body>
+</html>

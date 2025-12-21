@@ -12,7 +12,9 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('kitchen', 'آشپزخانه'),
         ('bar', 'بار'),
-        ('counter', 'صندوق'),
+        ('counter', 'کانتر'),
+        ('cashier', 'صندوق'),
+        ('facilities', 'تاسیسات'),
         ('purchasing', 'خرید'),
         ('manager', 'مدیر'),
     ]
@@ -52,19 +54,15 @@ class InvoiceIssue(models.Model):
 class PurchaseRequest(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
-        ('pending_approval', 'Pending Approval'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
         ('pending', 'Pending Purchase'),
         ('purchased', 'Purchased'),
         ('partial', 'Partial'),
     ]
     user: models.ForeignKey = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    status: models.CharField = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_approval')
-    approved_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests')
-    approved_at: models.DateTimeField = models.DateTimeField(null=True, blank=True)
-    rejection_reason: models.TextField = models.TextField(blank=True)
+    status: models.CharField = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    processed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_requests')
+    processed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
         return f"Request by {self.user.username} - {self.status}"
@@ -75,12 +73,19 @@ class PurchaseRequest(models.Model):
             models.Index(fields=['created_at']),
             models.Index(fields=['status']),
             models.Index(fields=['user', 'status']),
-            models.Index(fields=['approved_at']),
+            models.Index(fields=['processed_at']),
             models.Index(fields=['created_at', 'status']),
         ]
 
 # Purchase Items model
 class PurchaseItem(models.Model):
+    SUPPLY_STATUS_CHOICES = [
+        ('pending', 'در انتظار'),
+        ('purchased', 'خرید'),
+        ('from_stock', 'تامین از انبار'),
+        ('not_supplied', 'تامین نشده'),
+    ]
+    
     request = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
     name = models.CharField(max_length=100)
@@ -88,6 +93,7 @@ class PurchaseItem(models.Model):
     unit = models.CharField(max_length=20)
     description = models.TextField(blank=True)
     purchased_quantity = models.PositiveIntegerField(null=True, blank=True)  # Actual purchased
+    supply_status = models.CharField(max_length=20, choices=SUPPLY_STATUS_CHOICES, default='pending', verbose_name='وضعیت تامین')
 
     def __str__(self):
         return f"{self.name} - {self.quantity} {self.unit}"
@@ -111,8 +117,6 @@ class PurchaseInvoice(models.Model):
 class ActivityLog(models.Model):
     ACTION_CHOICES = [
         ('created', 'Created Request'),
-        ('approved', 'Approved Request'),
-        ('rejected', 'Rejected Request'),
         ('purchased', 'Marked as Purchased'),
         ('updated', 'Updated Request'),
     ]

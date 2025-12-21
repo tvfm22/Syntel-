@@ -66,3 +66,67 @@ class Command(BaseCommand):
                 self.stdout.write("  Role: kitchen")
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"Error creating kitchen user: {e}"))
+
+            # Create bar user
+            try:
+                bar = User.objects.create_user(
+                    username='bar',
+                    password='bar123',
+                    first_name='مسئول',
+                    last_name='بار',
+                    role='bar'
+                )
+                self.stdout.write(self.style.SUCCESS("Created bar user:"))
+                self.stdout.write("  Username: bar")
+                self.stdout.write("  Password: bar123")
+                self.stdout.write("  Role: bar")
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error creating bar user: {e}"))
+
+            # Create counter user
+            try:
+                counter = User.objects.create_user(
+                    username='counter',
+                    password='counter123',
+                    first_name='مسئول',
+                    last_name='کانتر',
+                    role='counter'
+                )
+                self.stdout.write(self.style.SUCCESS("Created counter user:"))
+                self.stdout.write("  Username: counter")
+                self.stdout.write("  Password: counter123")
+                self.stdout.write("  Role: counter")
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error creating counter user: {e}"))
+
+            # Create cashier user
+            try:
+                cashier = User.objects.create_user(
+                    username='cashier',
+                    password='cashier123',
+                    first_name='مسئول',
+                    last_name='صندوق',
+                    role='cashier'
+                )
+                self.stdout.write(self.style.SUCCESS("Created cashier user:"))
+                self.stdout.write("  Username: cashier")
+                self.stdout.write("  Password: cashier123")
+                self.stdout.write("  Role: cashier")
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error creating cashier user: {e}"))
+
+            # Create facilities user
+            try:
+                facilities = User.objects.create_user(
+                    username='facilities',
+                    password='facilities123',
+                    first_name='مسئول',
+                    last_name='تاسیسات',
+                    role='facilities'
+                )
+                self.stdout.write(self.style.SUCCESS("Created facilities user:"))
+                self.stdout.write("  Username: facilities")
+                self.stdout.write("  Password: facilities123")
+                self.stdout.write("  Role: facilities")
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error creating facilities user: {e}"))

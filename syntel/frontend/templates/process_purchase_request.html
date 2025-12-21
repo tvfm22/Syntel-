@@ -1,0 +1,308 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پردازش درخواست خرید</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Vazir, sans-serif;
+        }
+
+        body {
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #374151;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .header-info {
+            flex: 1;
+        }
+
+        .header-info h1 {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .header-info p {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .request-info {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: #1f2937;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .items-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .item-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .item-header {
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f3f4f6;
+            margin-bottom: 16px;
+        }
+
+        .item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .item-requested {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #374151;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: Vazir, sans-serif;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-option:has(input:checked) {
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-left: 10px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .radio-label {
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .submit-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 16px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: Vazir, sans-serif;
+            cursor: pointer;
+        }
+
+        .submit-btn:active {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="javascript:history.back()" class="back-btn">←</a>
+        <div class="header-info">
+            <h1>پردازش درخواست خرید</h1>
+            <p>شماره درخواست: {{ purchase_request.id }}</p>
+        </div>
+    </div>
+
+    <div class="request-info">
+        <div class="info-row">
+            <span class="info-label">درخواست کننده:</span>
+            <span class="info-value">{{ purchase_request.user.first_name }} {{ purchase_request.user.last_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">بخش:</span>
+            <span class="info-value">
+                {% if purchase_request.user.role == 'kitchen' %}آشپزخانه
+                {% elif purchase_request.user.role == 'bar' %}بار
+                {% elif purchase_request.user.role == 'counter' %}کانتر
+                {% elif purchase_request.user.role == 'cashier' %}صندوق
+                {% elif purchase_request.user.role == 'facilities' %}تاسیسات
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">تاریخ:</span>
+            <span class="info-value">{{ purchase_request.created_at|jalali_date }}</span>
+        </div>
+    </div>
+
+    <form method="post" class="items-form">
+        {% csrf_token %}
+        
+        {% for item in purchase_request.items.all %}
+        <div class="item-card">
+            <div class="item-header">
+                <div class="item-name">{{ item.name }}</div>
+                <div class="item-requested">مقدار درخواستی: {{ item.quantity }} {{ item.unit }}</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="purchased_qty_{{ item.id }}">
+                    مقدار خریداری شده
+                </label>
+                <input 
+                    type="number" 
+                    name="purchased_qty_{{ item.id }}" 
+                    id="purchased_qty_{{ item.id }}"
+                    class="form-input"
+                    min="0"
+                    value="{{ item.purchased_quantity|default:item.quantity }}"
+                    placeholder="مقدار خریداری شده را وارد کنید"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">وضعیت تامین</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input 
+                            type="radio" 
+                            name="supply_status_{{ item.id }}" 
+                            value="purchased"
+                            {% if item.supply_status == 'purchased' %}checked{% endif %}
+                        >
+                        <span class="radio-label">🛒 خرید</span>
+                    </label>
+                    <label class="radio-option">
+                        <input 
+                            type="radio" 
+                            name="supply_status_{{ item.id }}" 
+                            value="from_stock"
+                            {% if item.supply_status == 'from_stock' %}checked{% endif %}
+                        >
+                        <span class="radio-label">📦 تامین از انبار</span>
+                    </label>
+                    <label class="radio-option">
+                        <input 
+                            type="radio" 
+                            name="supply_status_{{ item.id }}" 
+                            value="not_supplied"
+                            {% if item.supply_status == 'not_supplied' %}checked{% endif %}
+                        >
+                        <span class="radio-label">❌ تامین نشده</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="submit-area">
+            <button type="submit" class="submit-btn">ثبت و تایید نهایی</button>
+        </div>
+    </form>
+</body>
+</html>

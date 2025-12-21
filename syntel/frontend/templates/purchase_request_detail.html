@@ -1,203 +1,285 @@
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>جزئیات درخواست - Syntel</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-            direction: rtl;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        .back-btn {
-            background: #9e9e9e;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .back-btn:hover {
-            background: #757575;
-        }
-        .request-info {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            border-right: 4px solid #2196F3;
-        }
-        .info-row {
-            display: grid;
-            grid-template-columns: 150px 1fr;
-            margin-bottom: 12px;
-        }
-        .info-label {
-            font-weight: 600;
-            color: #333;
-        }
-        .info-value {
-            color: #666;
-        }
-        h2 {
-            color: #333;
-            margin-bottom: 20px;
-            margin-top: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-        }
-        thead {
-            background: #f9f9f9;
-            border-bottom: 2px solid #ddd;
-        }
-        th {
-            padding: 12px;
-            text-align: right;
-            font-weight: 600;
-            color: #333;
-        }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        tr:hover {
-            background: #f9f9f9;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .status-purchased {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-partial {
-            background: #cfe2ff;
-            color: #084298;
-        }
-        .action-btn {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-        }
-        .action-btn:hover {
-            background: #45a049;
-        }
-        .no-items {
-            text-align: center;
-            padding: 30px;
-            color: #999;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>جزئیات درخواست</h1>
-            <a href="{% url 'purchase_requests_list' %}" class="back-btn">بازگشت</a>
-        </div>
+{% extends "base.html" %}
+{% load custom_filters %}
 
-        <div class="request-info">
-            <div class="info-row">
-                <span class="info-label">شناسه درخواست:</span>
-                <span class="info-value">#{{ purchase_request.id }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">بخش:</span>
+{% block extra_css %}
+<style>
+    .page-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .btn-back {
+        background: #f3f4f6;
+        color: #6b7280;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-back:hover {
+        background: #e5e7eb;
+    }
+
+    .info-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #9ca3af;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.875rem;
+        color: #1f2937;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        width: fit-content;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .section-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+    }
+
+    .items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .item-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .item-number {
+        background: #6366f1;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+
+    .item-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .item-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .item-detail-label {
+        font-size: 0.75rem;
+        color: #9ca3af;
+    }
+
+    .item-detail-value {
+        font-weight: 500;
+        color: #1f2937;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .page-container {
+            padding: 1rem;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .item-details {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>جزئیات درخواست #{{ purchase_request.id }}</h1>
+        <a href="{% url 'purchase_requests_list' %}" class="btn-back">← بازگشت</a>
+    </div>
+
+    <div class="info-card">
+        <div class="info-grid">
+            {% if not is_mobile_user %}
+            <div class="info-item">
+                <span class="info-label">بخش</span>
                 <span class="info-value">{{ purchase_request.user.get_role_display }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">کاربر:</span>
-                <span class="info-value">{{ purchase_request.user.username }}</span>
+            <div class="info-item">
+                <span class="info-label">کاربر</span>
+                <span class="info-value">{{ purchase_request.user.first_name }} {{ purchase_request.user.last_name }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">تاریخ ثبت:</span>
-                <span class="info-value">{{ purchase_request.created_at|date:"d/m/Y H:i" }}</span>
+            {% endif %}
+            <div class="info-item">
+                <span class="info-label">تاریخ ثبت</span>
+                <span class="info-value">{{ purchase_request.created_at|jalali_date }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">وضعیت:</span>
+            <div class="info-item">
+                <span class="info-label">ساعت ثبت</span>
+                <span class="info-value">{{ purchase_request.created_at|jalali_time }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">وضعیت</span>
                 <span class="status-badge status-{{ purchase_request.status }}">
-                    {% if purchase_request.status == 'pending' %}منتظر
-                    {% elif purchase_request.status == 'purchased' %}خریداری شد
-                    {% elif purchase_request.status == 'partial' %}کسری دارد
+                    {% if purchase_request.status == 'pending' %}
+                        در انتظار
+                    {% elif purchase_request.status == 'approved' %}
+                        تایید شده
+                    {% elif purchase_request.status == 'rejected' %}
+                        رد شده
+                    {% else %}
+                        {{ purchase_request.get_status_display }}
                     {% endif %}
                 </span>
             </div>
         </div>
+    </div>
 
-        <h2>اقلام درخواست</h2>
-        {% if items %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>نام کالا</th>
-                        <th>مقدار درخواست‌شده</th>
-                        <th>واحد</th>
-                        <th>توضیحات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                        <tr>
-                            <td>{{ item.name }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.unit }}</td>
-                            <td>{{ item.description|default:"---" }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="section-title">اقلام درخواست ({{ purchase_request.items.count }} قلم)</div>
 
-            <a href="{% url 'update_purchase_request' purchase_request.id %}" class="action-btn">ثبت خرید</a>
+    <div class="items-list">
+        {% if purchase_request.items.all %}
+            {% for item in purchase_request.items.all %}
+            <div class="item-card">
+                <div class="item-header">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="item-number">{{ forloop.counter }}</div>
+                        <div class="item-name">{{ item.product.name }}</div>
+                    </div>
+                </div>
+                <div class="item-details">
+                    <div class="item-detail">
+                        <span class="item-detail-label">مقدار</span>
+                        <span class="item-detail-value">{{ item.quantity }}</span>
+                    </div>
+                    <div class="item-detail">
+                        <span class="item-detail-label">واحد</span>
+                        <span class="item-detail-value">{{ item.product.unit.name }}</span>
+                    </div>
+                    <div class="item-detail">
+                        <span class="item-detail-label">دسته‌بندی</span>
+                        <span class="item-detail-value">{{ item.product.category.name }}</span>
+                    </div>
+                    {% if item.description %}
+                    <div class="item-detail" style="grid-column: 1 / -1;">
+                        <span class="item-detail-label">توضیحات</span>
+                        <span class="item-detail-value">{{ item.description }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
-            <div class="no-items">
-                <p>هیچ آیتمی برای این درخواست وجود ندارد</p>
+            <div class="empty-state">
+                هیچ قلمی یافت نشد
             </div>
         {% endif %}
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
