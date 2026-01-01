@@ -94,7 +94,7 @@ for product in products:
         
         # قیمت جدید
         new_price = current_price * (1 + change_percent / 100)
-        new_price = int(new_price / 1000) * 1000  # گرد کردن به هزار تومان
+        new_price = int(new_price / 1000) * 1000  # گرد کردن به هزار ریال
         
         # محاسبه درصد تغییر نسبت به قیمت قبلی
         if i == 0:

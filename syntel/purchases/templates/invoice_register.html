@@ -147,6 +147,42 @@
         vertical-align: middle;
     }
 
+    /* یکسان سازی ارتفاع تمام input ها و select ها در جدول */
+    .table-minimal .form-control,
+    .table-minimal .form-select,
+    .table-minimal .form-control-sm,
+    .table-minimal .form-select-sm {
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.875rem !important;
+        line-height: 1.5 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* یکسان سازی ارتفاع Select2 در جدول */
+    .table-minimal .select2-container .select2-selection--single {
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0.4rem 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+    }
+
+    .table-minimal .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 22px !important;
+        padding: 0 !important;
+        font-size: 0.875rem !important;
+    }
+
+    .table-minimal .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        top: 1px !important;
+    }
+
     .table-minimal tr:last-child td {
         border-bottom: none;
     }
@@ -255,13 +291,31 @@
         left: 0;
         right: 0;
         background-color: #fff;
-        max-height: 200px;
+        max-height: 300px;
         overflow-y: auto;
         border-radius: 0 0 6px 6px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
-    .autocomplete-items div {
+    .autocomplete-header {
+        padding: 8px 10px;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        color: #374151;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 2px solid #d1d5db;
+        cursor: default !important;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .autocomplete-header i {
+        color: #6b7280;
+        font-size: 0.8rem;
+    }
+
+    .autocomplete-items div.autocomplete-item {
         padding: 10px;
         cursor: pointer;
         background-color: #fff;
@@ -269,7 +323,7 @@
         font-size: 0.9rem;
     }
 
-    .autocomplete-items div:hover {
+    .autocomplete-items div.autocomplete-item:hover {
         background-color: #e9e9e9;
     }
 
@@ -545,6 +599,46 @@
                                 <span id="grand-total" class="text-primary">0 ریال</span>
                             </div>
 
+                            <!-- بخش پرداخت -->
+                            <div class="mt-4 pt-3 border-top">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="add-payment" name="add_payment">
+                                    <label class="form-check-label" for="add-payment">
+                                        ثبت پرداخت همراه با فاکتور
+                                    </label>
+                                </div>
+
+                                <div id="payment-section" style="display: none; max-width: 100%; margin-bottom: 30px;">
+                                    <div style="display: grid; grid-template-columns: 200px 200px; gap: 8px 6px; align-items: start;">
+                                        <div>
+                                            <label for="payment-amount" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">مبلغ پرداخت</label>
+                                            <input type="text" class="form-control form-control-sm" id="payment-amount" name="payment_amount" placeholder="مبلغ" style="height: 34px; font-size: 0.875rem; width: 200px;">
+                                            <small class="text-muted" style="font-size: 0.7rem; display: block; margin-top: 3px;">خالی = تمام مبلغ</small>
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="payment-type" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">محل پرداخت</label>
+                                            <select class="form-select form-select-sm" id="payment-type" name="payment_type_id" style="height: 34px; font-size: 0.875rem; width: 200px;">
+                                                <option value="">انتخاب کنید...</option>
+                                                {% for payment_type in payment_types %}
+                                                <option value="{{ payment_type.id }}">{{ payment_type.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    
+                                        <div>
+                                            <label for="payment-date" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">تاریخ پرداخت</label>
+                                            <input type="date" class="form-control form-control-sm" id="payment-date" name="payment_date" value="{{ today|date:'Y-m-d' }}" style="height: 34px; font-size: 0.875rem; width: 200px;">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="payment-notes" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">توضیحات</label>
+                                            <input type="text" class="form-control form-control-sm" id="payment-notes" name="payment_notes" placeholder="توضیحات..." style="height: 34px; font-size: 0.875rem; width: 200px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="mt-4 d-grid gap-2">
                                 <button type="submit" class="btn btn-primary-custom btn-block w-100">
                                     <i class="fas fa-check ml-2"></i> ثبت نهایی فاکتور
@@ -575,6 +669,150 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let itemCount = 1;
+    
+    // ============================================
+    // Issues Management (باید در اولویت باشد)
+    // ============================================
+    let selectedIssues = [];
+    
+    const addIssueBtn = document.getElementById('add-issue');
+    const issueSelect = document.getElementById('issue-select');
+    const issuesTagsContainer = document.getElementById('issues-tags');
+    const issuesInput = document.getElementById('issues-input');
+    
+    console.log('Issue elements:', {
+        addIssueBtn: addIssueBtn,
+        issueSelect: issueSelect,
+        issuesTagsContainer: issuesTagsContainer,
+        issuesInput: issuesInput
+    });
+    
+    if (addIssueBtn && issueSelect) {
+        addIssueBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add issue button clicked');
+            
+            const issueId = issueSelect.value;
+            const issueName = issueSelect.options[issueSelect.selectedIndex].text;
+            
+            console.log('Selected issue:', issueId, issueName);
+            
+            if (issueId && issueId !== '' && !selectedIssues.includes(issueId)) {
+                selectedIssues.push(issueId);
+                addIssueTag(issueId, issueName);
+                updateIssuesInput();
+                issueSelect.value = '';
+                console.log('Issue added successfully');
+            } else {
+                console.log('Issue not added - already exists or empty');
+            }
+        });
+    } else {
+        console.error('Issue elements not found!');
+    }
+    
+    function addIssueTag(id, name) {
+        if (!issuesTagsContainer) {
+            console.error('Issues tags container not found');
+            return;
+        }
+        
+        const tag = document.createElement('span');
+        tag.className = 'issue-tag';
+        tag.innerHTML = `${name} <span class="remove-issue" data-id="${id}">&times;</span>`;
+        issuesTagsContainer.appendChild(tag);
+        
+        const removeBtn = tag.querySelector('.remove-issue');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const issueId = this.getAttribute('data-id');
+                selectedIssues = selectedIssues.filter(id => id != issueId);
+                tag.remove();
+                updateIssuesInput();
+                console.log('Issue removed:', issueId);
+            });
+        }
+    }
+    
+    function updateIssuesInput() {
+        if (issuesInput) {
+            issuesInput.value = selectedIssues.join(',');
+            console.log('Updated issues input:', issuesInput.value);
+        }
+    }
+    
+    // ============================================
+    // Payment Section Toggle
+    // ============================================
+    const addPaymentCheckbox = document.getElementById('add-payment');
+    const paymentSection = document.getElementById('payment-section');
+    const paymentAmountInput = document.getElementById('payment-amount');
+    const grandTotalElement = document.getElementById('grand-total');
+    
+    if (addPaymentCheckbox && paymentSection) {
+        addPaymentCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                paymentSection.style.display = 'block';
+                // پر کردن خودکار مبلغ پرداخت با مبلغ کل فاکتور
+                if (paymentAmountInput && grandTotalElement) {
+                    const totalText = grandTotalElement.textContent.replace(/[^\d]/g, '');
+                    paymentAmountInput.value = totalText ? formatNumber(totalText) : '';
+                }
+            } else {
+                paymentSection.style.display = 'none';
+            }
+        });
+        
+        // فرمت‌دهی خودکار مبلغ پرداخت
+        if (paymentAmountInput) {
+            paymentAmountInput.addEventListener('input', function() {
+                this.value = formatNumber(this.value.replace(/[^\d]/g, ''));
+            });
+        }
+    }
+    
+    // ============================================
+    // Enter Key Navigation for Base Info Section
+    // ============================================
+    const baseInfoFields = [
+        'supplier_name',
+        'invoice_number',
+        'invoice_date',
+        'request_date',
+        'total_cash_discount',
+        'shipping_cost'
+    ];
+    
+    baseInfoFields.forEach((fieldId, index) => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    
+                    // Move to next field
+                    if (index < baseInfoFields.length - 1) {
+                        const nextFieldId = baseInfoFields[index + 1];
+                        const nextField = document.getElementById(nextFieldId);
+                        if (nextField) {
+                            nextField.focus();
+                            // Select text if it's an input field
+                            if (nextField.select) {
+                                nextField.select();
+                            }
+                        }
+                    } else {
+                        // If last field, focus on first item description
+                        const firstDescription = document.querySelector('.description-input');
+                        if (firstDescription) {
+                            firstDescription.focus();
+                        }
+                    }
+                }
+            });
+        }
+    });
     
     // ============================================
     // Initialize Select2 for Category Selects
@@ -769,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = this.closest('.item-row');
             
             closeAllLists();
-            if (!val || val.length < 2) { return false; }
+            if (!val || val.length < 1) { return false; }
             
             currentFocus = -1;
             
@@ -779,15 +1017,71 @@ document.addEventListener('DOMContentLoaded', function() {
             listDiv.setAttribute("class", "autocomplete-items");
             this.parentNode.appendChild(listDiv);
             
-            // Fetch suggestions from product autocomplete API
-            fetch(`{% url 'products_autocomplete' %}?q=${encodeURIComponent(val)}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Clear list if new data comes in
-                    listDiv.innerHTML = '';
+            // Create two promises for parallel fetching
+            const promises = [];
+            
+            // Fetch from supplier's previous products (higher priority)
+            if (supplierId) {
+                promises.push(
+                    fetch(`{% url 'search_supplier_products' %}?supplier_id=${supplierId}&q=${encodeURIComponent(val)}`)
+                        .then(response => response.json())
+                        .then(data => ({ type: 'supplier', data: data.results }))
+                        .catch(() => ({ type: 'supplier', data: [] }))
+                );
+            }
+            
+            // Fetch from general products database
+            if (val.length >= 2) {
+                promises.push(
+                    fetch(`{% url 'products_autocomplete' %}?q=${encodeURIComponent(val)}`)
+                        .then(response => response.json())
+                        .then(data => ({ type: 'products', data: data.results }))
+                        .catch(() => ({ type: 'products', data: [] }))
+                );
+            }
+            
+            // Wait for all promises to resolve
+            Promise.all(promises).then(results => {
+                // Clear list
+                listDiv.innerHTML = '';
+                
+                const supplierResults = results.find(r => r.type === 'supplier');
+                const productResults = results.find(r => r.type === 'products');
+                
+                // First show supplier's previous products
+                if (supplierResults && supplierResults.data.length > 0) {
+                    // Add section header
+                    const headerDiv = document.createElement("DIV");
+                    headerDiv.classList.add('autocomplete-header');
+                    headerDiv.innerHTML = '<i class="fas fa-history"></i> محصولات قبلی این تامین‌کننده';
+                    listDiv.appendChild(headerDiv);
                     
-                    // Show products with their categories
-                    data.results.forEach(item => {
+                    supplierResults.data.forEach(item => {
+                        const itemDiv = document.createElement("DIV");
+                        itemDiv.classList.add('autocomplete-item');
+                        const regex = new RegExp(`(${val})`, 'gi');
+                        itemDiv.innerHTML = `<div class="autocomplete-main">${item.replace(regex, "<strong>$1</strong>")}</div>`;
+                        itemDiv.dataset.productName = item;
+                        
+                        itemDiv.addEventListener("click", function(e) {
+                            input.value = this.dataset.productName;
+                            closeAllLists();
+                        });
+                        listDiv.appendChild(itemDiv);
+                    });
+                }
+                
+                // Then show general products with categories
+                if (productResults && productResults.data.length > 0) {
+                    // Add section header if we already have supplier results
+                    if (supplierResults && supplierResults.data.length > 0) {
+                        const headerDiv = document.createElement("DIV");
+                        headerDiv.classList.add('autocomplete-header');
+                        headerDiv.innerHTML = '<i class="fas fa-box"></i> سایر محصولات';
+                        listDiv.appendChild(headerDiv);
+                    }
+                    
+                    productResults.data.forEach(item => {
                         const itemDiv = document.createElement("DIV");
                         itemDiv.classList.add('autocomplete-item');
                         
@@ -833,33 +1127,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                         listDiv.appendChild(itemDiv);
                     });
-                    
-                    // Also fetch from supplier products (legacy support)
-                    if (supplierId) {
-                        fetch(`{% url 'search_supplier_products' %}?supplier_id=${supplierId}&q=${encodeURIComponent(val)}`)
-                            .then(response => response.json())
-                            .then(supplierData => {
-                                supplierData.results.forEach(item => {
-                                    const itemDiv = document.createElement("DIV");
-                                    itemDiv.classList.add('autocomplete-item');
-                                    const regex = new RegExp(`(${val})`, 'gi');
-                                    itemDiv.innerHTML = `<div class="autocomplete-main">${item.replace(regex, "<strong>$1</strong>")}</div>`;
-                                    itemDiv.innerHTML += `<input type='hidden' value='${item}'>`;
-                                    
-                                    itemDiv.addEventListener("click", function(e) {
-                                        input.value = this.getElementsByTagName("input")[0].value;
-                                        closeAllLists();
-                                    });
-                                    listDiv.appendChild(itemDiv);
-                                });
-                            });
-                    }
-                });
+                }
+                
+                // Show "no results" message if nothing found
+                if (listDiv.children.length === 0) {
+                    const noResultDiv = document.createElement("DIV");
+                    noResultDiv.classList.add('autocomplete-item', 'text-muted');
+                    noResultDiv.textContent = 'نتیجه‌ای یافت نشد';
+                    noResultDiv.style.cursor = 'default';
+                    listDiv.appendChild(noResultDiv);
+                }
+            });
         });
         
         input.addEventListener("keydown", function(e) {
             let x = document.getElementById(this.id + "autocomplete-list");
-            if (x) x = x.getElementsByTagName("div");
+            if (x) x = Array.from(x.getElementsByClassName("autocomplete-item"));
             if (e.keyCode == 40) { // DOWN
                 currentFocus++;
                 addActive(x);
@@ -869,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (e.keyCode == 13) { // ENTER
                 e.preventDefault();
                 if (currentFocus > -1) {
-                    if (x) x[currentFocus].click();
+                    if (x && x[currentFocus]) x[currentFocus].click();
                 }
             }
         });
@@ -879,7 +1162,9 @@ document.addEventListener('DOMContentLoaded', function() {
             removeActive(x);
             if (currentFocus >= x.length) currentFocus = 0;
             if (currentFocus < 0) currentFocus = (x.length - 1);
-            x[currentFocus].classList.add("autocomplete-active");
+            if (x[currentFocus]) {
+                x[currentFocus].classList.add("autocomplete-active");
+            }
         }
         
         function removeActive(x) {
@@ -1005,42 +1290,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
-    // Issues management
-    let selectedIssues = [];
-    
-    document.getElementById('add-issue').addEventListener('click', function() {
-        const select = document.getElementById('issue-select');
-        const issueId = select.value;
-        const issueName = select.options[select.selectedIndex].text;
-        
-        if (issueId && !selectedIssues.includes(issueId)) {
-            selectedIssues.push(issueId);
-            addIssueTag(issueId, issueName);
-            updateIssuesInput();
-        }
-        
-        select.value = '';
-    });
-    
-    function addIssueTag(id, name) {
-        const tagsContainer = document.getElementById('issues-tags');
-        const tag = document.createElement('span');
-        tag.className = 'issue-tag';
-        tag.innerHTML = `${name} <span class="remove-issue" data-id="${id}">&times;</span>`;
-        tagsContainer.appendChild(tag);
-        
-        tag.querySelector('.remove-issue').addEventListener('click', function() {
-            const issueId = this.getAttribute('data-id');
-            selectedIssues = selectedIssues.filter(id => id != issueId);
-            tag.remove();
-            updateIssuesInput();
-        });
-    }
-    
-    function updateIssuesInput() {
-        document.getElementById('issues-input').value = selectedIssues.join(',');
-    }
 });
 </script>
 {% endblock %}

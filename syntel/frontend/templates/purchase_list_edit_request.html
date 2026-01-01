@@ -1,0 +1,318 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ویرایش درخواست</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Vazir, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info h1 {
+            font-size: 24px;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .header-info p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .back-link {
+            color: #3b82f6;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .form-section {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .items-table th {
+            background: #1f2937;
+            color: white;
+            padding: 14px 16px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .items-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .items-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .btn-save {
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save:hover {
+            background: #059669;
+        }
+
+        .request-meta {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .meta-item label {
+            color: #6b7280;
+        }
+
+        .meta-item span {
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-purchased {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .confirmed-badge {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .not-confirmed-badge {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-info">
+                <h1>ویرایش درخواست</h1>
+                <p>ویرایش اقلام خریداری شده</p>
+            </div>
+            <a href="{% url 'purchase_day_detail' %}?date={{ date_str }}&role={{ role }}" class="back-link">← بازگشت</a>
+        </div>
+
+        <div class="form-section">
+            <div class="request-meta">
+                <div class="meta-item">
+                    <label>درخواست‌دهنده:</label>
+                    <span>{{ purchase_request.user.get_full_name|default:purchase_request.user.username }}</span>
+                </div>
+                <div class="meta-item">
+                    <label>تاریخ ایجاد:</label>
+                    <span>{{ purchase_request.created_at|jalali_datetime }}</span>
+                </div>
+                <div class="meta-item">
+                    <label>وضعیت:</label>
+                    <span class="status-badge {% if purchase_request.status == 'purchased' %}status-purchased{% else %}status-pending{% endif %}">
+                        {{ purchase_request.get_status_display }}
+                    </span>
+                </div>
+                <div class="meta-item">
+                    <label>تایید نهایی:</label>
+                    {% if purchase_request.manager_confirmed %}
+                        <span class="status-badge confirmed-badge">✓ تایید شده</span>
+                    {% else %}
+                        <span class="status-badge not-confirmed-badge">در انتظار تایید</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ date_str }}">
+                <input type="hidden" name="role" value="{{ role }}">
+
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>نام قلم</th>
+                            <th>مقدار درخواست شده</th>
+                            <th>مقدار خریداری شده</th>
+                            <th>وضعیت تامین</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in purchase_request.items.all %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }} {{ item.unit }}</td>
+                            <td>
+                                <input type="number" 
+                                       name="purchased_quantity_{{ item.id }}" 
+                                       value="{{ item.purchased_quantity|default:0 }}"
+                                       min="0"
+                                       class="form-input"
+                                       style="width: 100px;">
+                                {{ item.unit }}
+                            </td>
+                            <td>
+                                <select name="supply_status_{{ item.id }}" class="form-select" style="width: 160px;">
+                                    <option value="pending" {% if item.supply_status == 'pending' %}selected{% endif %}>⏳ در انتظار</option>
+                                    <option value="purchased" {% if item.supply_status == 'purchased' %}selected{% endif %}>🛒 خرید</option>
+                                    <option value="from_stock" {% if item.supply_status == 'from_stock' %}selected{% endif %}>📦 تامین از انبار</option>
+                                    <option value="not_supplied" {% if item.supply_status == 'not_supplied' %}selected{% endif %}>❌ تامین نشده</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px; color: #6b7280;">
+                                هیچ قلمی یافت نشد
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="form-actions">
+                    <a href="{% url 'purchase_day_detail' %}?date={{ date_str }}&role={{ role }}" class="btn-cancel">انصراف</a>
+                    <button type="submit" class="btn-save">💾 ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

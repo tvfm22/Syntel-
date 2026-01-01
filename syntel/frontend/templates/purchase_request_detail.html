@@ -252,6 +252,22 @@
                         <div class="item-number">{{ forloop.counter }}</div>
                         <div class="item-name">{{ item.product.name }}</div>
                     </div>
+                    {% if user.role == 'purchasing' and item.supply_status == 'pending' %}
+                    <form method="post" action="{% url 'mark_item_for_stock_supply' item.id %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-stock-supply" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            📦 تامین از انبار
+                        </button>
+                    </form>
+                    {% elif item.supply_status == 'from_stock' %}
+                    <span class="status-badge" style="padding: 0.5rem 1rem; background: #10b981; color: white; border-radius: 0.375rem; font-weight: 600;">
+                        ✅ تامین از انبار
+                    </span>
+                    {% elif item.supply_status == 'purchased' %}
+                    <span class="status-badge" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border-radius: 0.375rem; font-weight: 600;">
+                        🛒 خرید شده
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="item-details">
                     <div class="item-detail">
@@ -282,4 +298,12 @@
         {% endif %}
     </div>
 </div>
+
+<style>
+    .btn-stock-supply:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+</style>
+
 {% endblock %}

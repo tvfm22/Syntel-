@@ -216,6 +216,61 @@
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 }
 
+/* Stock Section Styles */
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.stats-card {
+    background: white;
+    padding: 1.25rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+}
+
+.bg-primary-custom {
+    background-color: #0d6efd !important;
+}
+
+.bg-warning-custom {
+    background-color: #ffc107 !important;
+}
+
+.bg-info-custom {
+    background-color: #0dcaf0 !important;
+}
+
+.bg-success-custom {
+    background-color: #198754 !important;
+}
+
+.quick-action-btn {
+    margin: 0.25rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.stock-section {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
 @media (max-width: 768px) {
     .finance-dashboard {
         padding: 0.5rem;
@@ -245,6 +300,7 @@
     }
 }
 </style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -275,6 +331,12 @@
                         <a href="{% url 'analytics_dashboard' %}" class="menu-link">
                             <span>📈</span>
                             آمار و تحلیل‌ها
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'price_dashboard' %}" class="menu-link">
+                            <span>💰</span>
+                            تغییرات قیمت محصولات
                         </a>
                     </li>
                 </ul>
@@ -315,20 +377,20 @@
         <div class="dashboard-card">
             <div class="card-header">
                 <span>🧾</span>
-                فاکتورها
+                فاکتورهای نقدی
             </div>
             <div class="card-body">
                 <ul class="menu-list">
                     <li class="menu-item">
                         <a href="{% url 'invoices_list' %}?type=store" class="menu-link">
                             <span>📋</span>
-                            لیست فاکتورها
+                            لیست فاکتورهای نقدی
                         </a>
                     </li>
                     <li class="menu-item">
                         <a href="{% url 'invoice_register' %}" class="menu-link">
                             <span>➕</span>
-                            فاکتور جدید (دستی)
+                            ثبت فاکتور نقدی
                         </a>
                     </li>
                     {% if user.role == 'manager' %}
@@ -342,6 +404,20 @@
                         <a href="{% url 'invoices_list' %}?type=store&payment_status=unpaid" class="menu-link">
                             <span>💰</span>
                             فاکتورهای پرداخت نشده
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="menu-item">
+                        <a href="{% url 'all_invoices_list' %}" class="menu-link">
+                            <span>📊</span>
+                            لیست تمامی فاکتورها
+                        </a>
+                    </li>
+                    {% if user.role == 'manager' %}
+                    <li class="menu-item">
+                        <a href="{% url 'finance_manager_edited_invoices' %}" class="menu-link">
+                            <span>✏️</span>
+                            فاکتورهای ویرایش شده مدیر مالی
                         </a>
                     </li>
                     {% endif %}
@@ -492,6 +568,37 @@
                 </ul>
             </div>
         </div>
+
+        <!-- Stock Management -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <span>📦</span>
+                مدیریت انبار
+            </div>
+            <div class="card-body">
+                <ul class="menu-list">
+                    <li class="menu-item">
+                        <a href="{% url 'stock_list' %}" class="menu-link">
+                            <span>📋</span>
+                            لیست موجودی انبار
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'initial_stock_register' %}" class="menu-link">
+                            <span>➕</span>
+                            ثبت موجودی جدید
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'stock_supply_list' %}" class="menu-link">
+                            <span>📦</span>
+                            لیست تامین از انبار
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}

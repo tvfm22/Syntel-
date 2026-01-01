@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}محصولات تامین شده از انبار{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937;">
+            📦 محصولات تامین شده از انبار
+        </h1>
+        <a href="{% url 'stock_list' %}" class="btn-primary" style="padding: 0.75rem 1.5rem; background: #6366f1; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+            📋 مشاهده موجودی انبار
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card" style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+        <form method="get" style="display: flex; gap: 1rem; align-items: end;">
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">وضعیت</label>
+                <select name="status" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
+                    <option value="">همه</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>در انتظار</option>
+                    <option value="fulfilled" {% if status_filter == 'fulfilled' %}selected{% endif %}>تامین شده</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>رد شده</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">تاریخ</label>
+                <input type="date" name="date" value="{{ date_filter|default:'' }}" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 0.75rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                🔍 جستجو
+            </button>
+            {% if status_filter or date_filter %}
+            <a href="{% url 'stock_supply_list' %}" class="btn-secondary" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+                ❌ حذف فیلترها
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Grouped Requests by Date -->
+    {% if grouped_requests %}
+        {% for date, requests in grouped_requests.items %}
+        <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #374151; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0.5rem; margin-bottom: 1rem;">
+                📅 {{ date|date:"Y/m/d" }}
+            </h2>
+            
+            <div style="display: grid; gap: 1rem;">
+                {% for req in requests %}
+                <div class="request-card" style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 4px solid {% if req.status == 'fulfilled' %}#10b981{% elif req.status == 'pending' %}#f59e0b{% else %}#ef4444{% endif %};">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <h3 style="font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem;">
+                                {{ req.purchase_item.name }}
+                            </h3>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <span style="color: #6b7280;">
+                                    📦 مقدار: <strong>{{ req.purchase_item.quantity }} {{ req.purchase_item.unit }}</strong>
+                                </span>
+                                <span style="color: #6b7280;">
+                                    👤 درخواست دهنده: <strong>{{ req.purchase_item.request.user.get_full_name|default:req.purchase_item.request.user.username }}</strong>
+                                </span>
+                                <span style="color: #6b7280;">
+                                    🏢 بخش: <strong>{{ req.purchase_item.request.user.get_role_display }}</strong>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: end; gap: 0.5rem;">
+                            <span class="status-badge" style="padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; color: white; background: {% if req.status == 'fulfilled' %}#10b981{% elif req.status == 'pending' %}#f59e0b{% elif req.status == 'approved' %}#3b82f6{% else %}#ef4444{% endif %};">
+                                {% if req.status == 'pending' %}در انتظار
+                                {% elif req.status == 'fulfilled' %}تامین شده
+                                {% elif req.status == 'approved' %}تایید شده
+                                {% else %}رد شده{% endif %}
+                            </span>
+                            
+                            {% if req.status == 'pending' %}
+                            <a href="{% url 'fulfill_stock_request' req.id %}" class="btn-fulfill" style="padding: 0.5rem 1rem; background: #10b981; color: white; text-decoration: none; border-radius: 0.375rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                                ✅ تامین کردن
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if req.notes %}
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; border-right: 2px solid #e5e7eb;">
+                        <strong style="color: #6b7280;">یادداشت:</strong>
+                        <p style="margin: 0.25rem 0 0 0; color: #374151;">{{ req.notes }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if req.items.all %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 0.5rem;">
+                        <strong style="color: #166534; display: block; margin-bottom: 0.5rem;">✅ اقلام تامین شده:</strong>
+                        {% for item in req.items.all %}
+                        <div style="padding: 0.5rem; background: white; border-radius: 0.375rem; margin-bottom: 0.5rem;">
+                            {{ item.stock_item.product.name }} - {{ item.quantity }} {{ item.unit.name }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 0.875rem; color: #9ca3af;">
+                        <span>درخواست: {{ req.requested_at|date:"Y/m/d H:i" }}</span>
+                        {% if req.fulfilled_at %}
+                        <span>تامین: {{ req.fulfilled_at|date:"Y/m/d H:i" }} توسط {{ req.fulfilled_by.get_full_name|default:req.fulfilled_by.username }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">📦</div>
+        <h3 style="color: #6b7280; margin-bottom: 0.5rem;">هیچ درخواستی برای تامین از انبار ثبت نشده است</h3>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .request-card {
+        transition: all 0.3s;
+    }
+    
+    .request-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-fulfill:hover {
+        background: #059669;
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,517 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}داشبورد مدیر مالی{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #0ea5e9;
+        --primary-hover: #0284c7;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --secondary-color: #64748b;
+        --border-color: #e2e8f0;
+        --bg-color: #f8fafc;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    
+    body {
+        background-color: var(--bg-color);
+    }
+    
+    .fm-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+    
+    /* Header */
+    .fm-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .fm-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    }
+    
+    .fm-header-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .fm-greeting {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+    
+    .fm-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .fm-subtitle {
+        font-size: 0.95rem;
+        opacity: 0.85;
+        margin-top: 0.5rem;
+    }
+    
+    .fm-date {
+        position: absolute;
+        left: 2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        text-align: left;
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+    
+    .fm-date-day {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    
+    /* Stats Grid */
+    .fm-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .fm-stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .fm-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .fm-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .fm-stat-icon.blue { background: #e0f2fe; color: #0284c7; }
+    .fm-stat-icon.green { background: #d1fae5; color: #059669; }
+    .fm-stat-icon.yellow { background: #fef3c7; color: #d97706; }
+    .fm-stat-icon.purple { background: #ede9fe; color: #7c3aed; }
+    
+    .fm-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+    }
+    
+    .fm-stat-label {
+        font-size: 0.8125rem;
+        color: var(--secondary-color);
+    }
+    
+    /* Menu Grid */
+    .fm-menu-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+    
+    .fm-menu-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+    
+    .fm-menu-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .fm-menu-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.125rem;
+    }
+    
+    .fm-menu-icon.invoices { background: #dbeafe; color: #2563eb; }
+    .fm-menu-icon.payments { background: #d1fae5; color: #059669; }
+    .fm-menu-icon.suppliers { background: #fce7f3; color: #db2777; }
+    
+    .fm-menu-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+    
+    .fm-menu-body {
+        padding: 0;
+    }
+    
+    .fm-menu-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .fm-menu-item {
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .fm-menu-item:last-child {
+        border-bottom: none;
+    }
+    
+    .fm-menu-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1.25rem;
+        color: #475569;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    
+    .fm-menu-link:hover {
+        background: #f8fafc;
+        color: var(--primary-color);
+        padding-right: 1.5rem;
+    }
+    
+    .fm-menu-link i {
+        font-size: 1rem;
+        width: 24px;
+        text-align: center;
+    }
+    
+    .fm-menu-link span {
+        flex: 1;
+    }
+    
+    .fm-menu-link .badge {
+        background: #e0f2fe;
+        color: #0284c7;
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    /* Quick Actions */
+    .fm-quick-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .fm-action-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .fm-action-btn.primary {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .fm-action-btn.primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+    
+    .fm-action-btn.secondary {
+        background: white;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+    }
+    
+    .fm-action-btn.secondary:hover {
+        background: #f8fafc;
+        color: #1e293b;
+    }
+    
+    /* User Info */
+    .fm-user-info {
+        position: absolute;
+        left: 2rem;
+        bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .fm-user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+    
+    .fm-user-name {
+        font-weight: 500;
+    }
+    
+    .fm-user-role {
+        font-size: 0.8rem;
+        opacity: 0.85;
+    }
+    
+    /* Notice */
+    .fm-notice {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .fm-notice i {
+        color: #d97706;
+        font-size: 1.5rem;
+    }
+    
+    .fm-notice p {
+        margin: 0;
+        color: #92400e;
+        font-weight: 500;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .fm-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .fm-menu-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .fm-date {
+            display: none;
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .fm-stats {
+            grid-template-columns: 1fr;
+        }
+        
+        .fm-quick-actions {
+            flex-direction: column;
+        }
+        
+        .fm-header {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fm-container">
+    <!-- Header -->
+    <div class="fm-header">
+        <div class="fm-header-content">
+            <p class="fm-greeting">سلام، {{ request.user.get_full_name|default:request.user.username }}</p>
+            <h1 class="fm-title">داشبورد مدیر مالی</h1>
+            <p class="fm-subtitle">مدیریت فاکتورها، پرداخت‌ها و تأمین‌کنندگان</p>
+        </div>
+        <div class="fm-date">
+            <div class="fm-date-day">{{ today.day }}</div>
+            <div>{{ today|date:"F Y" }}</div>
+        </div>
+    </div>
+    
+    <!-- Stats -->
+    <div class="fm-stats">
+        <div class="fm-stat-card">
+            <div class="fm-stat-icon blue">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div class="fm-stat-value">{{ stats.total_invoices|default:0 }}</div>
+            <div class="fm-stat-label">کل فاکتورها</div>
+        </div>
+        <div class="fm-stat-card">
+            <div class="fm-stat-icon green">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="fm-stat-value">{{ stats.total_payments|default:0 }}</div>
+            <div class="fm-stat-label">کل پرداخت‌ها</div>
+        </div>
+        <div class="fm-stat-card">
+            <div class="fm-stat-icon yellow">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="fm-stat-value">{{ stats.pending_invoices|default:0 }}</div>
+            <div class="fm-stat-label">فاکتورهای در انتظار</div>
+        </div>
+        <div class="fm-stat-card">
+            <div class="fm-stat-icon purple">
+                <i class="fas fa-truck"></i>
+            </div>
+            <div class="fm-stat-value">{{ stats.total_suppliers|default:0 }}</div>
+            <div class="fm-stat-label">تأمین‌کنندگان</div>
+        </div>
+    </div>
+    
+    <!-- Menu Grid -->
+    <div class="fm-menu-grid">
+        <!-- Invoices Management -->
+        <div class="fm-menu-card">
+            <div class="fm-menu-header">
+                <div class="fm-menu-icon invoices">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <h3 class="fm-menu-title">مدیریت فاکتورها</h3>
+            </div>
+            <div class="fm-menu-body">
+                <ul class="fm-menu-list">
+                    <li class="fm-menu-item">
+                        <a href="{% url 'invoices_list' %}?type=store" class="fm-menu-link">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>فاکتورهای فروشگاهی</span>
+                            {% if stats.total_invoices %}<span class="badge">{{ stats.total_invoices }}</span>{% endif %}
+                        </a>
+                    </li>
+                    <li class="fm-menu-item">
+                        <a href="{% url 'all_invoices_list' %}" class="fm-menu-link">
+                            <i class="fas fa-list"></i>
+                            <span>همه فاکتورها</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Payments Management -->
+        <div class="fm-menu-card">
+            <div class="fm-menu-header">
+                <div class="fm-menu-icon payments">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <h3 class="fm-menu-title">مدیریت پرداخت‌ها</h3>
+            </div>
+            <div class="fm-menu-body">
+                <ul class="fm-menu-list">
+                    <li class="fm-menu-item">
+                        <a href="{% url 'payment_list' %}" class="fm-menu-link">
+                            <i class="fas fa-list"></i>
+                            <span>لیست پرداخت‌ها</span>
+                            {% if stats.total_payments %}<span class="badge">{{ stats.total_payments }}</span>{% endif %}
+                        </a>
+                    </li>
+                    <li class="fm-menu-item">
+                        <a href="{% url 'payment_create' %}" class="fm-menu-link">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>ثبت پرداخت جدید</span>
+                        </a>
+                    </li>
+                    <li class="fm-menu-item">
+                        <a href="{% url 'payment_location_list' %}" class="fm-menu-link">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>محل‌های پرداخت</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Suppliers Management -->
+        <div class="fm-menu-card">
+            <div class="fm-menu-header">
+                <div class="fm-menu-icon suppliers">
+                    <i class="fas fa-truck"></i>
+                </div>
+                <h3 class="fm-menu-title">مدیریت تأمین‌کنندگان</h3>
+            </div>
+            <div class="fm-menu-body">
+                <ul class="fm-menu-list">
+                    <li class="fm-menu-item">
+                        <a href="{% url 'supplier_select' %}" class="fm-menu-link">
+                            <i class="fas fa-hand-pointer"></i>
+                            <span>انتخاب تأمین‌کننده</span>
+                        </a>
+                    </li>
+                    <li class="fm-menu-item">
+                        <a href="{% url 'supplier_list' %}" class="fm-menu-link">
+                            <i class="fas fa-list"></i>
+                            <span>لیست تأمین‌کنندگان</span>
+                            {% if stats.total_suppliers %}<span class="badge">{{ stats.total_suppliers }}</span>{% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="fm-quick-actions">
+        <a href="{% url 'invoices_list' %}?type=store" class="fm-action-btn primary">
+            <i class="fas fa-file-invoice-dollar"></i>
+            فاکتورهای فروشگاهی
+        </a>
+        <a href="{% url 'payment_list' %}" class="fm-action-btn primary">
+            <i class="fas fa-credit-card"></i>
+            پرداخت‌ها
+        </a>
+        <a href="{% url 'supplier_select' %}" class="fm-action-btn secondary">
+            <i class="fas fa-hand-pointer"></i>
+            انتخاب تأمین‌کننده
+        </a>
+    </div>
+</div>
+{% endblock %}

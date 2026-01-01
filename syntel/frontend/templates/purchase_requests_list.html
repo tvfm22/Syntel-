@@ -32,15 +32,19 @@
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         padding: 1rem;
-        text-decoration: none;
-        color: inherit;
         transition: border-color 0.2s, box-shadow 0.2s;
-        display: block;
     }
 
     .request-card:hover {
         border-color: #6366f1;
         box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .request-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        flex: 1;
     }
 
     .request-header {
@@ -129,6 +133,29 @@
         background: #4f46e5;
     }
 
+    .request-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .btn-edit {
+        padding: 0.5rem 1rem;
+        background: #f59e0b;
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: background 0.2s;
+    }
+
+    .btn-edit:hover {
+        background: #d97706;
+    }
+
     /* Filters for purchasing/manager */
     .filters {
         background: #f9fafb;
@@ -209,46 +236,53 @@
     <div class="requests-list" id="requests-container">
         {% if requests %}
             {% for req in requests %}
-            <a href="{% url 'purchase_request_detail' req.id %}" class="request-card">
-                <div class="request-header">
-                    <span class="request-id">درخواست #{{ req.id }}</span>
-                    <span class="status-badge status-{{ req.status }}">
-                        {% if req.status == 'pending' %}
-                            در انتظار
-                        {% elif req.status == 'approved' %}
-                            تایید شده
-                        {% elif req.status == 'rejected' %}
-                            رد شده
-                        {% else %}
-                            {{ req.get_status_display }}
+            <div class="request-card">
+                <a href="{% url 'purchase_request_detail' req.id %}" class="request-card-link">
+                    <div class="request-header">
+                        <span class="request-id">درخواست #{{ req.id }}</span>
+                        <span class="status-badge status-{{ req.status }}">
+                            {% if req.status == 'pending' %}
+                                در انتظار
+                            {% elif req.status == 'approved' %}
+                                تایید شده
+                            {% elif req.status == 'rejected' %}
+                                رد شده
+                            {% else %}
+                                {{ req.get_status_display }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="request-info">
+                        {% if not is_mobile_user %}
+                        <div class="info-row">
+                            <span class="info-label">بخش:</span>
+                            <span>{{ req.user.get_role_display }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">کاربر:</span>
+                            <span>{{ req.user.first_name }} {{ req.user.last_name }}</span>
+                        </div>
                         {% endif %}
-                    </span>
+                        <div class="info-row">
+                            <span class="info-label">تاریخ:</span>
+                            <span>{{ req.created_at|jalali_date }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">ساعت:</span>
+                            <span>{{ req.created_at|jalali_time }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">تعداد اقلام:</span>
+                            <span>{{ req.items.count }} قلم</span>
+                        </div>
+                    </div>
+                </a>
+                {% if user.role == 'purchasing' %}
+                <div class="request-actions">
+                    <a href="{% url 'update_purchase_request' req.id %}" class="btn-edit">✏️ ویرایش</a>
                 </div>
-                <div class="request-info">
-                    {% if not is_mobile_user %}
-                    <div class="info-row">
-                        <span class="info-label">بخش:</span>
-                        <span>{{ req.user.get_role_display }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">کاربر:</span>
-                        <span>{{ req.user.first_name }} {{ req.user.last_name }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="info-row">
-                        <span class="info-label">تاریخ:</span>
-                        <span>{{ req.created_at|jalali_date }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">ساعت:</span>
-                        <span>{{ req.created_at|jalali_time }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">تعداد اقلام:</span>
-                        <span>{{ req.items.count }} قلم</span>
-                    </div>
-                </div>
-            </a>
+                {% endif %}
+            </div>
             {% endfor %}
         {% else %}
             <div class="empty-state">

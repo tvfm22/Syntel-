@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}لیست موجودی انبار{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937;">
+            📦 موجودی انبار
+        </h1>
+        <div style="display: flex; gap: 1rem;">
+            <a href="{% url 'initial_stock_register' %}" class="btn-add" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                ➕ ثبت موجودی جدید
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card" style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+        <form method="get" style="display: flex; gap: 1rem; align-items: end;">
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">جستجو</label>
+                <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="نام محصول یا دسته‌بندی..." style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
+            </div>
+            <div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #fef3c7; border-radius: 0.5rem;">
+                    <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %} style="width: 18px; height: 18px;">
+                    <span style="font-weight: 600; color: #92400e;">⚠️ فقط موجودی کم</span>
+                </label>
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 0.75rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                🔍 جستجو
+            </button>
+            {% if search_query or show_low_stock %}
+            <a href="{% url 'stock_list' %}" class="btn-secondary" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+                ❌ حذف فیلترها
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Stock Items Grid -->
+    {% if page_obj %}
+    <div class="stock-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+        {% for item in page_obj %}
+        <div class="stock-card {% if item.is_low_stock %}low-stock{% endif %}" style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 4px solid {% if item.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">
+                        {{ item.product.name }}
+                    </h3>
+                    {% if item.product.category %}
+                    <span style="display: inline-block; padding: 0.25rem 0.75rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.875rem;">
+                        {{ item.product.category.name }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% if item.is_low_stock %}
+                <span style="font-size: 1.5rem;">⚠️</span>
+                {% endif %}
+            </div>
+            
+            <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="color: #6b7280; font-weight: 500;">موجودی فعلی:</span>
+                    <span style="font-size: 1.5rem; font-weight: 700; color: {% if item.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
+                        {{ item.quantity|floatformat:2 }} {{ item.unit.name }}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #6b7280; font-weight: 500;">حداقل موجودی:</span>
+                    <span style="font-weight: 600; color: #374151;">
+                        {{ item.min_quantity|floatformat:2 }} {{ item.unit.name }}
+                    </span>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <small style="color: #9ca3af;">
+                    آخرین بروزرسانی: {{ item.last_updated|date:"Y/m/d H:i" }}
+                </small>
+                <a href="{% url 'stock_transactions' item.id %}" style="color: #6366f1; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                    📊 تاریخچه
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; padding: 2rem 0;">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
+        {% endif %}
+        
+        <span class="page-info" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; font-weight: 600;">
+            صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">📦</div>
+        <h3 style="color: #6b7280; margin-bottom: 1rem;">هیچ موجودی ثبت نشده است</h3>
+        <a href="{% url 'initial_stock_register' %}" style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+            ➕ ثبت اولین موجودی
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .btn-add:hover, .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s;
+    }
+    
+    .stock-card {
+        transition: all 0.3s;
+    }
+    
+    .stock-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .page-link:hover {
+        background: #f3f4f6;
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+</style>
+{% endblock %}

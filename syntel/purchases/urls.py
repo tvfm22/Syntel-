@@ -14,6 +14,7 @@ urlpatterns = [
     path('purchasing/requests/', views.purchasing_requests_list, name='purchasing_requests_list'),
     path('purchasing/request/<int:request_id>/process/', views.process_purchase_request, name='process_purchase_request'),
     path('finance-dashboard/', views.finance_dashboard, name='finance_dashboard'),
+    path('finance-manager-dashboard/', views.finance_manager_dashboard, name='finance_manager_dashboard'),
     path('purchase-request/', views.purchase_request_form, name='purchase_request'),
     path('purchase-request-success/', views.purchase_request_success, name='purchase_request_success'),
     path('purchase-requests/', views.purchase_requests_list, name='purchase_requests_list'),
@@ -37,6 +38,8 @@ urlpatterns = [
     path('purchase-lists/', views.purchase_lists_by_date, name='purchase_lists_by_date'),
     path('purchase-lists/detail/', views.purchase_day_detail, name='purchase_day_detail'),
     path('purchase-lists/export-pdf/', views.export_purchase_day_pdf, name='export_purchase_day_pdf'),
+    path('purchase-lists/request/<int:request_id>/edit/', views.purchase_list_edit_request, name='purchase_list_edit_request'),
+    path('purchase-lists/request/<int:request_id>/confirm/', views.purchase_list_confirm_request, name='purchase_list_confirm_request'),
     # Product Management URLs
     path('products/', views.product_list, name='product_list'),
     path('products/create/', views.product_create, name='product_create'),
@@ -78,6 +81,7 @@ urlpatterns = [
     path('approved-requests-for-orders/', views.approved_requests_for_orders, name='approved_requests_for_orders'),
     # Invoice Management URLs
     path('invoices/', views.invoices_list, name='invoices_list'),
+    path('all-invoices/', views.all_invoices_list, name='all_invoices_list'),
     path('invoices/bulk-delete/', views.invoice_bulk_delete, name='invoice_bulk_delete'),
     path('invoices/register/', views.invoice_register, name='invoice_register'),
     path('invoices/search-products/', views.search_supplier_products, name='search_supplier_products'),
@@ -92,6 +96,7 @@ urlpatterns = [
     path('invoices/<int:invoice_id>/request-revision/', views.invoice_request_revision, name='invoice_request_revision'),
     path('invoices/<int:invoice_id>/cancel/', views.invoice_cancel, name='invoice_cancel'),
     path('invoices/<int:invoice_id>/delete/', views.invoice_delete, name='invoice_delete'),
+    path('invoices/finance-manager-edited/', views.finance_manager_edited_invoices, name='finance_manager_edited_invoices'),
     path('pending-approvals/', views.pending_invoice_approvals, name='pending_invoice_approvals'),
     path('approval-history/', views.approval_history, name='approval_history'),
     path('completed-orders-for-invoices/', views.completed_orders_for_invoices, name='completed_orders_for_invoices'),
@@ -159,4 +164,12 @@ urlpatterns = [
     path('api/dashboard/stats/', views_dashboard.DashboardStatsAPIView.as_view(), name='api_dashboard_stats'),
     path('api/dashboard/filters/', views_dashboard.DashboardFiltersAPIView.as_view(), name='api_dashboard_filters'),
     path('api/dashboard/export/', views_dashboard.DashboardExportAPIView.as_view(), name='api_dashboard_export'),
+    
+    # Stock Management URLs (مدیریت انبار)
+    path('stock/initial-register/', views.initial_stock_register, name='initial_stock_register'),
+    path('stock/list/', views.stock_list, name='stock_list'),
+    path('stock/<int:stock_id>/transactions/', views.stock_transactions, name='stock_transactions'),
+    path('stock/item/<int:item_id>/mark-for-supply/', views.mark_item_for_stock_supply, name='mark_item_for_stock_supply'),
+    path('stock/supply-list/', views.stock_supply_list, name='stock_supply_list'),
+    path('stock/request/<int:request_id>/fulfill/', views.fulfill_stock_request, name='fulfill_stock_request'),
 ]

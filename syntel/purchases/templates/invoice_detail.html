@@ -1,495 +1,463 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}جزئیات فاکتور {{ invoice.invoice_number }}{% endblock %}
+{% block title %}مشاهده فاکتور {{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --bg-color: #f9fafb;
+        --card-bg: #ffffff;
+        --text-main: #111827;
+        --text-muted: #6b7280;
+        --border-color: #e5e7eb;
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    }
+
+    .minimal-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border-color);
+        padding: 0;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .card-header-custom {
+        background-color: #f8fafc;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .card-body-custom {
+        padding: 1.5rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control-static {
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        padding: 0.625rem 1rem;
+        font-size: 0.95rem;
+        background-color: #f9fafb;
+        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+
+    .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    .grid-5 {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .grid-2, .grid-3, .grid-4, .grid-5 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .invoice-item-row {
+        background-color: #fafafa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .summary-panel {
+        background-color: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+    }
+
+    .summary-row.total {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border-color);
+        font-weight: 700;
+        color: var(--text-main);
+        font-size: 1.2rem;
+    }
+
+    .btn-primary-custom {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        border: none;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+        color: white;
+    }
+
+    .btn-outline-custom {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-outline-custom:hover {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
+        color: var(--text-main);
+    }
+
+    .issue-tag {
+        display: inline-flex;
+        align-items: center;
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .status-badge.draft {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .status-badge.sent {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-badge.approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.paid {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">فاکتور {{ invoice.invoice_number }}</h3>
-                    <div class="card-tools">
-                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
-                        </a>
-                        {% if invoice.status == 'draft' %}
-                        <a href="{% url 'invoice_update' invoice.id %}" class="btn btn-warning btn-sm">
-                            <i class="fas fa-edit"></i> ویرایش
-                        </a>
-                        <a href="{% url 'invoice_send' invoice.id %}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-paper-plane"></i> ارسال
-                        </a>
-                        {% endif %}
-                        {% if invoice.status == 'sent' and user.role == 'manager' %}
-                        <a href="{% url 'invoice_approve' invoice.id %}" class="btn btn-success btn-sm">
-                            <i class="fas fa-check"></i> تأیید
-                        </a>
-                        {% endif %}
-                        {% if invoice.status == 'approved' and user.role == 'manager' %}
-                        <a href="{% url 'payment_create_for_invoice' invoice.id %}" class="btn btn-success btn-sm">
-                            <i class="fas fa-money-bill-wave"></i> پرداخت
-                        </a>
-                        {% endif %}
-                    </div>
+<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <span>📄</span>
+            مشاهده فاکتور
+        </h1>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'invoices_list' %}" class="btn-outline-custom">
+                بازگشت به لیست
+            </a>
+            {% if invoice.status == 'draft' %}
+            <a href="{% url 'invoice_update' invoice.id %}" class="btn-primary-custom">
+                ✏️ ویرایش
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Basic Information Card -->
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h3 class="section-title">
+                <span>ℹ️</span>
+                اطلاعات پایه
+            </h3>
+            <span class="status-badge {{ invoice.status }}">
+                {{ invoice.get_status_display }}
+            </span>
+        </div>
+        <div class="card-body-custom">
+            <div class="grid-3">
+                <div>
+                    <label class="form-label">شماره فاکتور</label>
+                    <div class="form-control-static">{{ invoice.invoice_number|default:"-" }}</div>
                 </div>
-                <div class="card-body">
-                    <!-- Invoice Status -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="info-box">
-                                <span class="info-box-icon bg-info"><i class="fas fa-file-invoice"></i></span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">وضعیت فاکتور</span>
-                                    <span class="info-box-number">{{ invoice.get_status_display }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-box">
-                                <span class="info-box-icon bg-success"><i class="fas fa-money-bill-wave"></i></span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">وضعیت پرداخت</span>
-                                    <span class="info-box-number">{{ invoice.get_payment_status_display }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="btn-group" role="group">
-                                {% if invoice.status == 'draft' and user.role == 'purchasing' %}
-                                <a href="{% url 'invoice_update' invoice.id %}" class="btn btn-warning">
-                                    <i class="fas fa-edit"></i> ویرایش
-                                </a>
-                                <a href="{% url 'invoice_send' invoice.id %}" class="btn btn-primary">
-                                    <i class="fas fa-paper-plane"></i> ارسال برای تأیید
-                                </a>
-                                {% endif %}
-                                
-                                {% if invoice.status == 'sent' and user.role in 'manager,ceo' %}
-                                {% for approval in invoice.approvals.all %}
-                                {% if approval.approver == user and approval.status == 'pending' %}
-                                <button class="btn btn-success" data-toggle="modal" data-target="#approveModal{{ approval.id }}">
-                                    <i class="fas fa-check"></i> تأیید
-                                </button>
-                                <button class="btn btn-danger" data-toggle="modal" data-target="#rejectModal{{ approval.id }}">
-                                    <i class="fas fa-times"></i> رد
-                                </button>
-                                <button class="btn btn-warning" data-toggle="modal" data-target="#revisionModal{{ approval.id }}">
-                                    <i class="fas fa-edit"></i> درخواست بازبینی
-                                </button>
-                                {% endif %}
-                                {% endfor %}
-                                {% endif %}
-                                
-                                {% if invoice.status == 'approved' and user.role == 'manager' %}
-                                <a href="{% url 'payment_create_for_invoice' invoice.id %}" class="btn btn-success">
-                                    <i class="fas fa-money-bill-wave"></i> پرداخت
-                                </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Invoice Header Information -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th>شماره فاکتور:</th>
-                                    <td>{{ invoice.invoice_number }}</td>
-                                </tr>
-                                <tr>
-                                    <th>تاریخ فاکتور:</th>
-                                    <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
-                                </tr>
-                                <tr>
-                                    <th>تاریخ سررسید:</th>
-                                    <td>{{ invoice.due_date|date:"Y/m/d" }}</td>
-                                </tr>
-                                <tr>
-                                    <th>شرایط پرداخت:</th>
-                                    <td>{{ invoice.payment_terms|default:"-" }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th>تأمین‌کننده:</th>
-                                    <td>{{ invoice.supplier_name }}</td>
-                                </tr>
-                                {% if invoice.purchase_order %}
-                                <tr>
-                                    <th>شماره سفارش خرید:</th>
-                                    <td>
-                                        <a href="{% url 'purchase_order_detail' invoice.purchase_order.id %}">
-                                            {{ invoice.purchase_order.order_number }}
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                <tr>
-                                    <th>ایجاد کننده:</th>
-                                    <td>{{ invoice.created_by.get_full_name }}</td>
-                                </tr>
-                                {% if invoice.approved_by %}
-                                <tr>
-                                    <th>تأیید کننده:</th>
-                                    <td>{{ invoice.approved_by.get_full_name }}</td>
-                                </tr>
-                                {% endif %}
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Invoice Items -->
-                    <div class="row">
-                        <div class="col-12">
-                            <h4>اقلام فاکتور</h4>
-                            <div class="table-responsive">
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>شرح کالا</th>
-                                            <th>واحد</th>
-                                            <th>تعداد</th>
-                                            <th>قیمت واحد</th>
-                                            <th>مجموع</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in items %}
-                                        <tr>
-                                            <td>{{ item.description }}</td>
-                                            <td>
-                                                {% if item.order_item %}
-                                                    {{ item.order_item.request_item.unit.name }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ item.quantity }}</td>
-                                            <td>{{ item.unit_price|floatformat:0 }} تومان</td>
-                                            <td>{{ item.line_total|floatformat:0 }} تومان</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="4" class="text-left"><strong>جمع کل اقلام:</strong></td>
-                                            <td><strong>{{ invoice.subtotal|floatformat:0 }} تومان</strong></td>
-                                        </tr>
-                                        {% if invoice.discount_amount > 0 %}
-                                        <tr>
-                                            <td colspan="4" class="text-left">تخفیف ({{ invoice.discount_rate }}%):</td>
-                                            <td>-{{ invoice.discount_amount|floatformat:0 }} تومان</td>
-                                        </tr>
-                                        {% endif %}
-                                        <tr>
-                                            <td colspan="4" class="text-left">مالیات ({{ invoice.tax_rate }}%):</td>
-                                            <td>{{ invoice.tax_amount|floatformat:0 }} تومان</td>
-                                        </tr>
-                                        {% if invoice.shipping_cost > 0 %}
-                                        <tr>
-                                            <td colspan="4" class="text-left">هزینه حمل و نقل:</td>
-                                            <td>{{ invoice.shipping_cost|floatformat:0 }} تومان</td>
-                                        </tr>
-                                        {% endif %}
-                                        <tr class="table-primary">
-                                            <td colspan="4" class="text-left"><strong>مجموع کل:</strong></td>
-                                            <td><strong>{{ invoice.total_amount|floatformat:0 }} تومان</strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notes -->
-                    {% if invoice.notes %}
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">یادداشت‌ها</h5>
-                                </div>
-                                <div class="card-body">
-                                    {{ invoice.notes|linebreaks }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Approval Workflow -->
-                    {% if invoice.approvals.exists %}
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">فرآیند تأیید</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="timeline">
-                                        {% for approval in invoice.approvals.all|dictsort:"order" %}
-                                        <div class="time-label">
-                                            <span class="bg-{% if approval.status == 'approved' %}success{% elif approval.status == 'rejected' %}danger{% elif approval.status == 'revision_requested' %}warning{% else %}primary{% endif %}">
-                                                {{ approval.get_approval_level_display }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <i class="fas fa-{% if approval.status == 'approved' %}check-circle bg-success{% elif approval.status == 'rejected' %}times-circle bg-danger{% elif approval.status == 'revision_requested' %}exclamation-triangle bg-warning{% else %}clock bg-primary{% endif %}"></i>
-                                            <div class="timeline-item">
-                                                <span class="time">
-                                                    <i class="fas fa-clock"></i> 
-                                                    {% if approval.responded_at %}
-                                                        {{ approval.responded_at|date:"H:i" }}
-                                                    {% else %}
-                                                        {{ approval.requested_at|date:"H:i" }}
-                                                    {% endif %}
-                                                </span>
-                                                <h3 class="timeline-header">
-                                                    <a href="#">{{ approval.approver.get_full_name }}</a> - {{ approval.get_status_display }}
-                                                </h3>
-                                                <div class="timeline-body">
-                                                    {% if approval.comments %}
-                                                    <strong>نظرات:</strong> {{ approval.comments }}<br>
-                                                    {% endif %}
-                                                    {% if approval.rejection_reason %}
-                                                    <strong>دلیل رد:</strong> {{ approval.rejection_reason }}<br>
-                                                    {% endif %}
-                                                    {% if approval.revision_notes %}
-                                                    <strong>نکات بازبینی:</strong> {{ approval.revision_notes }}<br>
-                                                    {% endif %}
-                                                    <small class="text-muted">
-                                                        درخواست: {{ approval.requested_at|date:"Y/m/d H:i" }}
-                                                        {% if approval.responded_at %}
-                                                        | پاسخ: {{ approval.responded_at|date:"Y/m/d H:i" }}
-                                                        {% endif %}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Payment History -->
-                    {% if invoice.payments.exists %}
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">تاریخچه پرداخت‌ها</h5>
-                                    <div class="card-tools">
-                                        <a href="{% url 'payment_create' %}?invoice={{ invoice.id }}" class="btn btn-success btn-sm">
-                                            <i class="fas fa-plus"></i> افزودن پرداخت
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>شماره پرداخت</th>
-                                                    <th>تاریخ پرداخت</th>
-                                                    <th>محل پرداخت</th>
-                                                    <th>مبلغ</th>
-                                                    <th>وضعیت</th>
-                                                    <th>شماره مرجع</th>
-                                                    <th>عملیات</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for payment in invoice.payments.all %}
-                                                <tr>
-                                                    <td>
-                                                        <a href="{% url 'payment_detail' payment.id %}">
-                                                            {{ payment.payment_number }}
-                                                        </a>
-                                                    </td>
-                                                    <td>{{ payment.payment_date|date:'Y/m/d' }}</td>
-                                                    <td>{{ payment.payment_location.name }}</td>
-                                                    <td>{{ payment.amount|floatformat:0 }} تومان</td>
-                                                    <td>
-                                                        <span class="badge badge-{{ payment.payment_status|lower }}">
-                                                            {{ payment.get_payment_status_display }}
-                                                        </span>
-                                                    </td>
-                                                    <td>{{ payment.reference_number|default:'-' }}</td>
-                                                    <td>
-                                                        <a href="{% url 'payment_detail' payment.id %}" class="btn btn-info btn-sm">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        <a href="{% url 'payment_update' payment.id %}" class="btn btn-warning btn-sm">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                            <tfoot>
-                                                <tr class="table-primary">
-                                                    <td colspan="3" class="text-left"><strong>مجموع پرداخت شده:</strong></td>
-                                                    <td><strong>{{ invoice.get_paid_amount|floatformat:0 }} تومان</strong></td>
-                                                    <td colspan="3">
-                                                        <strong>{{ invoice.get_payment_percentage|floatformat:1 }}% از کل فاکتور</strong>
-                                                    </td>
-                                                </tr>
-                                                {% if invoice.get_remaining_amount > 0 %}
-                                                <tr class="table-warning">
-                                                    <td colspan="3" class="text-left"><strong>مانده:</strong></td>
-                                                    <td><strong>{{ invoice.get_remaining_amount|floatformat:0 }} تومان</strong></td>
-                                                    <td colspan="3"></td>
-                                                </tr>
-                                                {% endif %}
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% else %}
-                    {% if invoice.status == 'approved' %}
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">پرداخت‌ها</h5>
-                                </div>
-                                <div class="card-body text-center">
-                                    <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
-                                    <h5 class="text-muted">هنوز پرداختی ثبت نشده</h5>
-                                    <p class="text-muted">برای ثبت اولین پرداخت این فاکتور کلیک کنید.</p>
-                                    <a href="{% url 'payment_create' %}?invoice={{ invoice.id }}" class="btn btn-success">
-                                        <i class="fas fa-plus"></i> ثبت پرداخت جدید
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endif %}
+                <div>
+                    <label class="form-label">تاریخ فاکتور</label>
+                    <div class="form-control-static">{{ invoice.invoice_date|date:"Y/m/d" }}</div>
+                </div>
+                <div>
+                    <label class="form-label">تاریخ سررسید</label>
+                    <div class="form-control-static">{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</div>
+                </div>
+            </div>
+            <div class="grid-2" style="margin-top: 1rem;">
+                <div>
+                    <label class="form-label">تأمین‌کننده</label>
+                    <div class="form-control-static">{{ invoice.supplier_name }}</div>
+                </div>
+                <div>
+                    <label class="form-label">شرایط پرداخت</label>
+                    <div class="form-control-static">{{ invoice.payment_terms|default:"-" }}</div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Approval Modals -->
-{% for approval in invoice.approvals.all %}
-{% if approval.approver == user and approval.status == 'pending' %}
-
-<!-- Approve Modal -->
-<div class="modal fade" id="approveModal{{ approval.id }}" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">تأیید فاکتور {{ invoice.invoice_number }}</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+    <!-- Invoice Items Card -->
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h3 class="section-title">
+                <span>📦</span>
+                اقلام فاکتور
+            </h3>
+        </div>
+        <div class="card-body-custom">
+            {% for item in items %}
+            <div class="invoice-item-row">
+                <div class="grid-5">
+                    <div>
+                        <label class="form-label">شرح محصول</label>
+                        <div class="form-control-static">{{ item.description }}</div>
+                    </div>
+                    <div>
+                        <label class="form-label">واحد</label>
+                        <div class="form-control-static">
+                            {% if item.order_item %}
+                                {{ item.order_item.request_item.unit.name }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">تعداد</label>
+                        <div class="form-control-static">{{ item.quantity }}</div>
+                    </div>
+                    <div>
+                        <label class="form-label">قیمت واحد (ریال)</label>
+                        <div class="form-control-static">{{ item.unit_price|floatformat:0 }}</div>
+                    </div>
+                    <div>
+                        <label class="form-label">مبلغ کل (ریال)</label>
+                        <div class="form-control-static">{{ item.line_total|floatformat:0 }}</div>
+                    </div>
+                </div>
             </div>
-            <form method="post" action="{% url 'invoice_approve' invoice.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="approval_id" value="{{ approval.id }}">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="comments{{ approval.id }}">نظرات (اختیاری)</label>
-                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="3" placeholder="نظرات خود را وارد کنید..."></textarea>
-                    </div>
-                    <div class="alert alert-info">
-                        <strong>اطلاعات فاکتور:</strong><br>
-                        تأمین‌کننده: {{ invoice.purchase_order.supplier_name }}<br>
-                        مبلغ کل: {{ invoice.total_amount|floatformat:0 }} تومان<br>
-                        سطح تأیید: {{ approval.get_approval_level_display }}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-success">تأیید فاکتور</button>
-                </div>
-            </form>
+            {% endfor %}
         </div>
     </div>
-</div>
 
-<!-- Reject Modal -->
-<div class="modal fade" id="rejectModal{{ approval.id }}" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">رد فاکتور {{ invoice.invoice_number }}</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+    <!-- Financial Summary Card -->
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h3 class="section-title">
+                <span>💰</span>
+                خلاصه مالی
+            </h3>
+        </div>
+        <div class="card-body-custom">
+            <div class="grid-3">
+                <div>
+                    <label class="form-label">نرخ تخفیف (%)</label>
+                    <div class="form-control-static">{{ invoice.discount_rate|floatformat:2 }}</div>
+                </div>
+                <div>
+                    <label class="form-label">مبلغ تخفیف (ریال)</label>
+                    <div class="form-control-static">{{ invoice.discount_amount|floatformat:0 }}</div>
+                </div>
+                <div>
+                    <label class="form-label">نرخ مالیات (%)</label>
+                    <div class="form-control-static">{{ invoice.tax_rate|floatformat:2 }}</div>
+                </div>
+                <div>
+                    <label class="form-label">مبلغ مالیات (ریال)</label>
+                    <div class="form-control-static">{{ invoice.tax_amount|floatformat:0 }}</div>
+                </div>
+                <div>
+                    <label class="form-label">هزینه حمل (ریال)</label>
+                    <div class="form-control-static">{{ invoice.shipping_cost|floatformat:0 }}</div>
+                </div>
             </div>
-            <form method="post" action="{% url 'invoice_reject' invoice.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="approval_id" value="{{ approval.id }}">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="rejection_reason{{ approval.id }}">دلیل رد *</label>
-                        <textarea class="form-control" id="rejection_reason{{ approval.id }}" name="rejection_reason" rows="3" required placeholder="دلیل رد فاکتور را توضیح دهید..."></textarea>
+            <div style="margin-top: 1.5rem;">
+                <div class="summary-panel">
+                    <div class="summary-row">
+                        <span>جمع اقلام:</span>
+                        <span>{{ invoice.subtotal|floatformat:0 }} ریال</span>
                     </div>
-                    <div class="form-group">
-                        <label for="comments{{ approval.id }}">نظرات اضافی (اختیاری)</label>
-                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="2" placeholder="نظرات خود را وارد کنید..."></textarea>
+                    {% if invoice.discount_amount > 0 %}
+                    <div class="summary-row">
+                        <span>تخفیف:</span>
+                        <span>-{{ invoice.discount_amount|floatformat:0 }} ریال</span>
+                    </div>
+                    {% endif %}
+                    <div class="summary-row">
+                        <span>مالیات:</span>
+                        <span>{{ invoice.tax_amount|floatformat:0 }} ریال</span>
+                    </div>
+                    {% if invoice.shipping_cost > 0 %}
+                    <div class="summary-row">
+                        <span>هزینه حمل:</span>
+                        <span>{{ invoice.shipping_cost|floatformat:0 }} ریال</span>
+                    </div>
+                    {% endif %}
+                    <div class="summary-row total">
+                        <span>مبلغ کل:</span>
+                        <span>{{ invoice.total_amount|floatformat:0 }} ریال</span>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-danger">رد فاکتور</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Revision Modal -->
-<div class="modal fade" id="revisionModal{{ approval.id }}" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">درخواست بازبینی فاکتور {{ invoice.invoice_number }}</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+    <!-- Additional Information Card -->
+    {% if invoice.notes or invoice.issues.exists %}
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h3 class="section-title">
+                <span>📝</span>
+                اطلاعات تکمیلی
+            </h3>
+        </div>
+        <div class="card-body-custom">
+            {% if invoice.notes %}
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">توضیحات</label>
+                <div class="form-control-static" style="min-height: 80px; align-items: flex-start;">
+                    {{ invoice.notes|linebreaks }}
+                </div>
             </div>
-            <form method="post" action="{% url 'invoice_request_revision' invoice.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="approval_id" value="{{ approval.id }}">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="revision_notes{{ approval.id }}">نکات بازبینی *</label>
-                        <textarea class="form-control" id="revision_notes{{ approval.id }}" name="revision_notes" rows="4" required placeholder="نکات و تغییرات مورد نیاز را توضیح دهید..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="comments{{ approval.id }}">نظرات اضافی (اختیاری)</label>
-                        <textarea class="form-control" id="comments{{ approval.id }}" name="comments" rows="2" placeholder="نظرات خود را وارد کنید..."></textarea>
-                    </div>
+            {% endif %}
+            {% if invoice.issues.exists %}
+            <div>
+                <label class="form-label">ایرادات ثبت شده</label>
+                <div style="margin-top: 0.5rem;">
+                    {% for issue in invoice.issues.all %}
+                    <span class="issue-tag">{{ issue.name }}</span>
+                    {% endfor %}
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-warning">درخواست بازبینی</button>
-                </div>
-            </form>
+            </div>
+            {% endif %}
         </div>
     </div>
+    {% endif %}
+
+    <!-- Payment Information -->
+    {% if invoice.payments.exists %}
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h3 class="section-title">
+                <span>💳</span>
+                اطلاعات پرداخت
+            </h3>
+        </div>
+        <div class="card-body-custom">
+            <div class="summary-panel">
+                <div class="summary-row">
+                    <span>مبلغ پرداخت شده:</span>
+                    <span>{{ invoice.paid_amount|floatformat:0 }} ریال</span>
+                </div>
+                <div class="summary-row">
+                    <span>مانده:</span>
+                    <span>{{ invoice.remaining_amount|floatformat:0 }} ریال</span>
+                </div>
+                <div class="summary-row">
+                    <span>وضعیت پرداخت:</span>
+                    <span class="status-badge {{ invoice.payment_status }}">
+                        {{ invoice.get_payment_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
-
-{% endif %}
-{% endfor %}
-
 {% endblock %}

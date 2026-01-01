@@ -17,7 +17,8 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, F
+from django.db import models
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse, HttpRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -40,6 +41,10 @@ from .models import (
     Supplier,
     SupplierEvaluation,
     Unit,
+    StockItem,
+    StockTransaction,
+    StockRequest,
+    StockRequestItem,
 )
 
 User = get_user_model()
@@ -103,6 +108,9 @@ def login_view(request: HttpRequest) -> HttpResponse:
             # Redirect purchasing user to purchasing dashboard
             elif user.role == 'purchasing':
                 return redirect("purchasing_dashboard")
+            # Redirect finance manager to finance manager dashboard
+            elif user.role == 'finance_manager':
+                return redirect("finance_manager_dashboard")
             return redirect("dashboard")
         response = render(
             request,
@@ -142,6 +150,7 @@ def purchasing_dashboard(request: HttpRequest) -> HttpResponse:
         {'name': 'آشپزخانه', 'role': 'kitchen', 'icon': '🍳'},
         {'name': 'بار', 'role': 'bar', 'icon': '🍸'},
         {'name': 'کانتر', 'role': 'counter', 'icon': '🛎️'},
+        {'name': 'انبار', 'role': 'store', 'icon': '📦'},
         {'name': 'صندوق', 'role': 'cashier', 'icon': '💰'},
         {'name': 'تاسیسات', 'role': 'facilities', 'icon': '🔧'},
     ]
@@ -185,6 +194,7 @@ def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
         'kitchen': 'آشپزخانه',
         'bar': 'بار',
         'counter': 'کانتر',
+        'store': 'انبار',
         'cashier': 'صندوق',
         'facilities': 'تاسیسات',
     }
@@ -568,11 +578,64 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 @custom_login_required
 @role_required(["manager"])
 def finance_dashboard(request: HttpRequest) -> HttpResponse:
+    from datetime import date
+    
+    # آمار اصلی
     stats = {
         "invoices": Invoice.objects.count(),
         "payments": Payment.objects.count(),
     }
-    return render(request, "finance_dashboard.html", {"stats": stats})
+    
+    # آمار انبار
+    stock_stats = {
+        "total_items": StockItem.objects.count(),
+        "low_stock_items": StockItem.objects.filter(quantity__lte=F('min_quantity')).count(),
+        "total_stock_value": 0,
+        "pending_stock_requests": StockRequest.objects.filter(status='pending').count(),
+        "fulfilled_today": StockRequest.objects.filter(
+            status='fulfilled',
+            fulfilled_at__date=date.today()
+        ).count(),
+    }
+    
+    # موجودی‌های کم
+    low_stock_items = StockItem.objects.select_related('product', 'unit').filter(
+        quantity__lte=F('min_quantity')
+    )[:10]
+    
+    # آخرین تراکنش‌های انبار
+    recent_transactions = StockTransaction.objects.select_related(
+        'stock_item__product',
+        'created_by'
+    ).order_by('-created_at')[:10]
+    
+    return render(request, "finance_dashboard.html", {
+        "stats": stats,
+        "stock_stats": stock_stats,
+        "low_stock_items": low_stock_items,
+        "recent_transactions": recent_transactions,
+        "today": date.today(),
+    })
+
+
+@custom_login_required
+@role_required(["finance_manager"])
+def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
+    """داشبورد اختصاصی مدیر مالی"""
+    from datetime import date
+    
+    stats = {
+        "total_invoices": Invoice.objects.count(),
+        "total_payments": Payment.objects.count(),
+        "pending_invoices": Invoice.objects.filter(status='pending').count(),
+        "unpaid_invoices": Invoice.objects.filter(payment_status='unpaid').count(),
+        "total_suppliers": Supplier.objects.count(),
+    }
+    
+    return render(request, "finance_manager_dashboard.html", {
+        "stats": stats,
+        "today": date.today(),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -582,9 +645,14 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
 
 @custom_login_required
 @role_required(["kitchen", "bar", "counter", "cashier", "facilities", "purchasing", "manager"])
+@custom_login_required
+@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing"])
 def purchase_request_form(request):
     products = Product.objects.all()
-
+    
+    # Get department parameter if purchasing user wants to create request for specific department
+    department = request.GET.get('department', '')
+    
     if request.method == "POST":
         # Basic CSRF check for the explicit test case
         if "HTTP_X_CSRFTOKEN" in request.META and not request.META.get(
@@ -595,6 +663,9 @@ def purchase_request_form(request):
         product_ids = request.POST.getlist("product_id")
         quantities = request.POST.getlist("item_quantity")
         descriptions = request.POST.getlist("item_description")
+        
+        # Get department from POST if provided
+        selected_department = request.POST.get('department', department)
 
         items_data = []
         errors = []
@@ -615,6 +686,7 @@ def purchase_request_form(request):
                     "products": products,
                     "errors": errors,
                     "error_message": "quantity",
+                    "department": selected_department,
                 },
                 status=200,
             )
@@ -647,7 +719,10 @@ def purchase_request_form(request):
         )
         return redirect("purchase_request_success")
 
-    return render(request, "purchase_request_form.html", {"products": products})
+    return render(request, "purchase_request_form.html", {
+        "products": products,
+        "department": department
+    })
 
 
 @custom_login_required
@@ -987,6 +1062,82 @@ def system_health_check(request):
 
 
 # ---------------------------------------------------------------------------
+# Purchase List Edit and Confirm
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(["manager"])
+def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpResponse:
+    """Edit a purchased request - allows manager to modify items"""
+    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    
+    if request.method == 'POST':
+        # Update each item
+        for item in purchase_request.items.all():
+            purchased_qty_key = f'purchased_quantity_{item.id}'
+            supply_status_key = f'supply_status_{item.id}'
+            
+            if purchased_qty_key in request.POST:
+                try:
+                    item.purchased_quantity = int(request.POST.get(purchased_qty_key, 0))
+                except (ValueError, TypeError):
+                    item.purchased_quantity = 0
+            
+            if supply_status_key in request.POST:
+                item.supply_status = request.POST.get(supply_status_key, 'pending')
+            
+            item.save()
+        
+        # Get the date and role for redirect
+        date_str = request.POST.get('date', '')
+        role = request.POST.get('role', '')
+        
+        if date_str and role:
+            return redirect(f"{reverse('purchase_day_detail')}?date={date_str}&role={role}")
+        return redirect('purchase_lists_by_date')
+    
+    # GET request - show edit form
+    date_str = request.GET.get('date', '')
+    role = request.GET.get('role', '')
+    
+    return render(request, "purchase_list_edit_request.html", {
+        "purchase_request": purchase_request,
+        "date_str": date_str,
+        "role": role,
+    })
+
+
+@custom_login_required
+@role_required(["manager"])
+def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> HttpResponse:
+    """Confirm a purchased request by manager"""
+    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    
+    if request.method == 'POST':
+        # Toggle confirmation status
+        if purchase_request.manager_confirmed:
+            purchase_request.manager_confirmed = False
+            purchase_request.manager_confirmed_at = None
+            purchase_request.manager_confirmed_by = None
+        else:
+            purchase_request.manager_confirmed = True
+            purchase_request.manager_confirmed_at = timezone.now()
+            purchase_request.manager_confirmed_by = request.user
+        
+        purchase_request.save()
+        
+        # Get the date and role for redirect
+        date_str = request.POST.get('date', '')
+        role = request.POST.get('role', '')
+        
+        if date_str and role:
+            return redirect(f"{reverse('purchase_day_detail')}?date={date_str}&role={role}")
+        return redirect('purchase_lists_by_date')
+    
+    return redirect('purchase_lists_by_date')
+
+
+# ---------------------------------------------------------------------------
 # Products, units, categories, payment types
 # ---------------------------------------------------------------------------
 
@@ -1226,7 +1377,10 @@ def payment_type_delete(request, payment_type_id):
 @role_required(["manager"])
 def user_list(request):
     users = User.objects.all()
-    return render(request, "user_list.html", {"users": users})
+    return render(request, "user_list.html", {
+        "users": users,
+        "role_choices": User.ROLE_CHOICES,
+    })
 
 
 @custom_login_required
@@ -1423,7 +1577,7 @@ def approved_requests_for_orders(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoices_list(request):
     # Ensure default issues exist
     default_issues = ['فاکتور رسمی نیست', 'فاکتور مهر ندارد', 'فاکتور ناقص است']
@@ -1516,7 +1670,98 @@ def invoices_list(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["manager", "purchasing", "finance_manager"])
+def all_invoices_list(request: HttpRequest) -> HttpResponse:
+    """Show all invoices in a table format with filtering capabilities"""
+    # Ensure default issues exist
+    default_issues = ['فاکتور رسمی نیست', 'فاکتور مهر ندارد', 'فاکتور ناقص است']
+    for issue in default_issues:
+        InvoiceIssue.objects.get_or_create(name=issue)
+
+    # Get filter parameters
+    search_query = request.GET.get('search', '').strip()
+    selected_status = request.GET.get('status', '')
+    selected_payment_status = request.GET.get('payment_status', '')
+    date_search_type = request.GET.get('date_search_type', '')
+    date_query = request.GET.get('date_query', '').strip()
+
+    # Handle single issue selection
+    selected_issue = request.GET.get('issue', '').strip()
+
+    # Base queryset - ALL invoices (no type filtering)
+    invoices = Invoice.objects.select_related("purchase_order", "supplier").all()
+
+    # Apply filters
+    if search_query:
+        invoices = invoices.filter(
+            Q(invoice_number__icontains=search_query) |
+            Q(supplier__name__icontains=search_query) |
+            Q(store_name__icontains=search_query) |
+            Q(purchase_order__order_number__icontains=search_query)
+        )
+
+    if selected_status:
+        invoices = invoices.filter(status=selected_status)
+
+    if selected_payment_status:
+        invoices = invoices.filter(payment_status=selected_payment_status)
+
+    if selected_issue:
+        try:
+            issue_id = int(selected_issue)
+            invoices = invoices.filter(issues__id=issue_id).distinct()
+        except ValueError:
+            pass
+
+    # Apply date filter
+    if date_query and date_search_type:
+        try:
+            search_date = datetime.fromisoformat(date_query).date()
+            if date_search_type == 'invoice_date':
+                invoices = invoices.filter(invoice_date=search_date)
+            elif date_search_type == 'request_date':
+                invoices = invoices.filter(due_date=search_date)
+        except ValueError:
+            pass  # Invalid date format, ignore filter
+
+    # Order by creation date (newest first)
+    invoices = invoices.order_by('-created_at')
+
+    # Pagination
+    paginator = Paginator(invoices, 25)  # 25 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Status choices for filter dropdown
+    status_choices = Invoice.STATUS_CHOICES
+    payment_status_choices = Invoice.PAYMENT_STATUS_CHOICES
+    issues = InvoiceIssue.objects.all()
+
+    is_manager = request.user.role == 'manager'
+
+    context = {
+        'invoices': page_obj,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'selected_status': selected_status,
+        'selected_payment_status': selected_payment_status,
+        'date_search_type': date_search_type,
+        'date_query': date_query,
+        'status_choices': status_choices,
+        'payment_status_choices': payment_status_choices,
+        'is_manager': is_manager,
+        'invoice_type': 'all',  # Indicate this is the all invoices view
+        'issues': issues,
+        'selected_issue': selected_issue,
+        'selected_issues_str': selected_issue,
+        'page_title': 'لیست تمامی فاکتورها',
+    }
+
+    return render(request, "all_invoices_list.html", context)
+
+
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_register(request):
     """ایجاد فاکتور دستی بدون نیاز به سفارش"""
     if request.method == "POST":
@@ -1617,20 +1862,7 @@ def invoice_register(request):
 
         # بررسی شماره فاکتور
         invoice_number = request.POST.get("invoice_number")
-        if invoice_number:
-            # بررسی اینکه شماره فاکتور تکراری نباشد
-            if Invoice.objects.filter(invoice_number=invoice_number).exists():
-                messages.error(request, f"شماره فاکتور '{invoice_number}' قبلاً استفاده شده است. لطفاً شماره دیگری انتخاب کنید.")
-                # بازگشت به فرم با داده‌های وارد شده
-                context = {
-                    'suppliers': Supplier.objects.filter(status='active'),
-                    'categories': Category.objects.filter(is_active=True),
-                    'manual_invoice': True,
-                    'form_data': request.POST,
-                    'items_data': items_data,
-                }
-                return render(request, "invoice_register.html", context)
-        else:
+        if not invoice_number:
             # تولید شماره فاکتور خودکار اگر وارد نشده
             invoice_number = f"INV-{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
@@ -1650,6 +1882,7 @@ def invoice_register(request):
             total_amount=total_amount,
             notes=request.POST.get("notes", ""),
             created_by=request.user,
+            updated_by=request.user,
         )
         
         # ایجاد اقلام فاکتور
@@ -1673,6 +1906,50 @@ def invoice_register(request):
             issues = InvoiceIssue.objects.filter(id__in=issues_ids)
             invoice.issues.set(issues)
         
+        # ثبت پرداخت اگر انتخاب شده باشد
+        if request.POST.get('add_payment'):
+            payment_amount = parse_money(request.POST.get('payment_amount', 0))
+            if not payment_amount or payment_amount <= 0:
+                payment_amount = total_amount  # اگر مبلغ وارد نشده، کل مبلغ فاکتور
+            
+            payment_type_id = request.POST.get('payment_type_id')
+            payment_date_str = request.POST.get('payment_date')
+            payment_notes = request.POST.get('payment_notes', '')
+            
+            if payment_type_id:
+                try:
+                    payment_type = PaymentType.objects.get(id=payment_type_id)
+                    
+                    # پردازش تاریخ پرداخت
+                    try:
+                        payment_date = datetime.fromisoformat(payment_date_str).date() if payment_date_str else timezone.now().date()
+                    except ValueError:
+                        payment_date = timezone.now().date()
+                    
+                    # ایجاد پرداخت
+                    payment = Payment.objects.create(
+                        invoice=invoice,
+                        amount=payment_amount,
+                        payment_type=payment_type,
+                        payment_date=payment_date,
+                        notes=payment_notes,
+                        created_by=request.user
+                    )
+                    
+                    # بروزرسانی وضعیت پرداخت فاکتور
+                    total_paid = invoice.payments.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+                    if total_paid >= invoice.total_amount:
+                        invoice.payment_status = 'paid'
+                    elif total_paid > 0:
+                        invoice.payment_status = 'partial'
+                    else:
+                        invoice.payment_status = 'unpaid'
+                    invoice.save()
+                    
+                    messages.success(request, f"پرداخت به مبلغ {payment_amount:,} ریال ثبت شد.")
+                except PaymentType.DoesNotExist:
+                    messages.warning(request, "نوع پرداخت معتبر نیست.")
+        
         messages.success(request, f"فاکتور {invoice.invoice_number} با موفقیت ایجاد شد.")
         return redirect("invoice_detail", invoice_id=invoice.id)
 
@@ -1692,6 +1969,8 @@ def invoice_register(request):
         'categories': categories,
         'requesters': Requester.objects.all(),
         'issues': InvoiceIssue.objects.all(),
+        'payment_types': PaymentType.objects.filter(is_active=True),
+        'today': timezone.now().date(),
         'manual_invoice': True,
         'default_supplier': default_supplier,
     }
@@ -1699,7 +1978,7 @@ def invoice_register(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_create(request, order_id):
     order = get_object_or_404(PurchaseOrder, id=order_id)
     if request.method == "POST":
@@ -1713,12 +1992,7 @@ def invoice_create(request, order_id):
 
         # بررسی شماره فاکتور
         invoice_number = request.POST.get("invoice_number")
-        if invoice_number:
-            # بررسی اینکه شماره فاکتور تکراری نباشد
-            if Invoice.objects.filter(invoice_number=invoice_number).exists():
-                messages.error(request, f"شماره فاکتور '{invoice_number}' قبلاً استفاده شده است. لطفاً شماره دیگری انتخاب کنید.")
-                return render(request, "invoice_form.html", {"order": order, "error": f"شماره فاکتور '{invoice_number}' تکراری است"})
-        else:
+        if not invoice_number:
             # تولید شماره فاکتور خودکار اگر وارد نشده
             invoice_number = f"INV-{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
@@ -1735,24 +2009,150 @@ def invoice_create(request, order_id):
     return render(request, "invoice_form.html", {"order": order})
 
 
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_detail(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
-    return render(request, "invoice_detail.html", {"invoice": invoice})
+    items = invoice.invoice_items.all()
+    return render(request, "invoice_detail.html", {
+        "invoice": invoice,
+        "items": items
+    })
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_update(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
+    order = invoice.purchase_order
+    categories = Category.objects.all().order_by('name')
+    
     if request.method == "POST":
+        # بروزرسانی اطلاعات فاکتور
+        invoice_number = request.POST.get("invoice_number")
+        if invoice_number:
+            invoice.invoice_number = invoice_number
+        
+        # تاریخ فاکتور
+        invoice_date_str = request.POST.get("invoice_date")
+        if invoice_date_str:
+            try:
+                # پشتیبانی از فرمت شمسی
+                if '/' in invoice_date_str:
+                    parts = invoice_date_str.split('/')
+                    if len(parts) == 3:
+                        # تبدیل به میلادی (فقط نگهداری به عنوان رشته)
+                        invoice.invoice_date = datetime.now().date()
+                else:
+                    invoice.invoice_date = datetime.fromisoformat(invoice_date_str).date()
+            except ValueError:
+                pass
+        
+        # تاریخ سررسید
+        due_date_str = request.POST.get("due_date")
+        if due_date_str:
+            try:
+                if '/' in due_date_str:
+                    parts = due_date_str.split('/')
+                    if len(parts) == 3:
+                        invoice.due_date = datetime.now().date()
+                else:
+                    invoice.due_date = datetime.fromisoformat(due_date_str).date()
+            except ValueError:
+                pass
+        
+        # اطلاعات مالی
+        invoice.tax_rate = _parse_decimal(request.POST.get("tax_rate")) or invoice.tax_rate
+        invoice.discount_rate = _parse_decimal(request.POST.get("discount_rate")) or 0
+        # حذف کاما از مقادیر پولی
+        shipping_cost_str = request.POST.get("shipping_cost", "0").replace(",", "")
+        invoice.shipping_cost = _parse_decimal(shipping_cost_str) or 0
+        invoice.payment_terms = request.POST.get("payment_terms", invoice.payment_terms)
         invoice.notes = request.POST.get("notes", invoice.notes)
+        
+        # بروزرسانی اقلام موجود فاکتور
+        for item in invoice.invoice_items.all():
+            description_key = f"description_{item.id}"
+            quantity_key = f"quantity_{item.id}"
+            unit_price_key = f"unit_price_{item.id}"
+            category_key = f"category_{item.id}"
+            tax_amount_key = f"tax_amount_{item.id}"
+            discount_amount_key = f"discount_amount_{item.id}"
+            
+            if description_key in request.POST:
+                item.description = request.POST.get(description_key, item.description)
+            if quantity_key in request.POST:
+                item.quantity = _parse_decimal(request.POST.get(quantity_key)) or item.quantity
+            if unit_price_key in request.POST:
+                unit_price_str = request.POST.get(unit_price_key, "0").replace(",", "")
+                item.unit_price = _parse_decimal(unit_price_str) or item.unit_price
+            if category_key in request.POST:
+                category_id = request.POST.get(category_key)
+                if category_id:
+                    item.category_id = int(category_id)
+            if tax_amount_key in request.POST:
+                tax_str = request.POST.get(tax_amount_key, "0").replace(",", "")
+                item.tax_amount = _parse_decimal(tax_str) or 0
+            if discount_amount_key in request.POST:
+                discount_str = request.POST.get(discount_amount_key, "0").replace(",", "")
+                item.discount_amount = _parse_decimal(discount_str) or 0
+            
+            item.line_total = (item.quantity * item.unit_price) + (item.tax_amount or 0) - (item.discount_amount or 0)
+            item.save()
+        
+        # افزودن اقلام جدید
+        i = 0
+        while f"description_new_{i}" in request.POST:
+            description = request.POST.get(f"description_new_{i}")
+            quantity_str = request.POST.get(f"quantity_new_{i}", "0")
+            unit_price_str = request.POST.get(f"unit_price_new_{i}", "0").replace(",", "")
+            category_id = request.POST.get(f"category_new_{i}")
+            tax_str = request.POST.get(f"tax_amount_new_{i}", "0").replace(",", "")
+            discount_str = request.POST.get(f"discount_amount_new_{i}", "0").replace(",", "")
+            
+            if description and quantity_str:
+                quantity = _parse_decimal(quantity_str) or 0
+                unit_price = _parse_decimal(unit_price_str) or 0
+                tax_amount = _parse_decimal(tax_str) or 0
+                discount_amount = _parse_decimal(discount_str) or 0
+                line_total = (quantity * unit_price) + tax_amount - discount_amount
+                
+                new_item = InvoiceItem.objects.create(
+                    invoice=invoice,
+                    description=description,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    tax_amount=tax_amount,
+                    discount_amount=discount_amount,
+                    line_total=line_total,
+                    category_id=int(category_id) if category_id else None
+                )
+            i += 1
+        
+        # محاسبه مجدد مبالغ
+        invoice.subtotal = sum(item.line_total or 0 for item in invoice.invoice_items.all())
+        invoice.tax_amount = (invoice.subtotal * invoice.tax_rate / 100) if invoice.tax_rate else 0
+        invoice.discount_amount = (invoice.subtotal * invoice.discount_rate / 100) if invoice.discount_rate else 0
+        invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount + (invoice.shipping_cost or 0)
+        
+        # ثبت کاربری که فاکتور را ویرایش کرده
+        invoice.updated_by = request.user
         invoice.save()
+        messages.success(request, "فاکتور با موفقیت بروزرسانی شد.")
         return redirect("invoice_detail", invoice_id=invoice.id)
-    return render(request, "invoice_form.html", {"invoice": invoice})
+    
+    # GET request - نمایش فرم با داده‌های موجود
+    items = invoice.invoice_items.all()
+    return render(request, "invoice_form.html", {
+        "invoice": invoice,
+        "order": order,
+        "items": items,
+        "categories": categories,
+    })
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_send(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "sent"
@@ -1761,7 +2161,7 @@ def invoice_send(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_approve(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "approved"
@@ -1770,7 +2170,66 @@ def invoice_approve(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
+def invoice_reject(request, invoice_id):
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+
+
+@custom_login_required
+@role_required(["manager"])
+def finance_manager_edited_invoices(request):
+    """نمایش فاکتورهای ویرایش شده یا ثبت شده توسط مدیر مالی"""
+    # فاکتورهایی که مدیر مالی آنها را ایجاد یا ویرایش کرده
+    finance_managers = User.objects.filter(role='finance_manager')
+    
+    edited_invoices = Invoice.objects.filter(
+        Q(created_by__in=finance_managers) | Q(updated_by__in=finance_managers)
+    ).select_related('supplier', 'created_by', 'updated_by').order_by('-updated_at')
+    
+    # فیلترها
+    search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    if search_query:
+        edited_invoices = edited_invoices.filter(
+            Q(invoice_number__icontains=search_query) |
+            Q(supplier__name__icontains=search_query) |
+            Q(store_name__icontains=search_query)
+        )
+    
+    if status_filter:
+        edited_invoices = edited_invoices.filter(status=status_filter)
+    
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+            edited_invoices = edited_invoices.filter(invoice_date__gte=date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+            edited_invoices = edited_invoices.filter(invoice_date__lte=date_to_obj)
+        except ValueError:
+            pass
+    
+    context = {
+        'invoices': edited_invoices,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': Invoice.STATUS_CHOICES,
+    }
+    
+    return render(request, 'finance_manager_edited_invoices.html', context)
+
+
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_reject(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "draft"
@@ -1779,7 +2238,7 @@ def invoice_reject(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_request_revision(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "draft"
@@ -1788,7 +2247,7 @@ def invoice_request_revision(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_cancel(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "cancelled"
@@ -1797,7 +2256,7 @@ def invoice_cancel(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def invoice_delete(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     if request.method == "POST":
@@ -1807,7 +2266,7 @@ def invoice_delete(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def invoice_bulk_delete(request):
     if request.method == 'POST':
         invoice_ids = request.POST.getlist('invoice_ids')
@@ -1854,19 +2313,71 @@ def completed_orders_for_invoices(request):
 
 
 @custom_login_required
-@role_required(["manager", "purchasing"])
+@role_required(["manager", "purchasing", "finance_manager"])
 def payment_list(request):
     payments = Payment.objects.select_related("invoice", "payment_location").all()
     methods = PaymentLocation.objects.all()
+    
+    # Filter by date range
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    if date_from:
+        try:
+            # پشتیبانی از فرمت شمسی (1404/01/01) و میلادی
+            if '/' in date_from:
+                parts = date_from.split('/')
+                if len(parts) == 3:
+                    # فرض می‌کنیم تاریخ میلادی است (برای سادگی)
+                    from datetime import datetime
+                    date_from_obj = datetime.strptime(date_from.replace('/', '-'), '%Y-%m-%d').date()
+                    payments = payments.filter(payment_date__gte=date_from_obj)
+            else:
+                from datetime import datetime
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+                payments = payments.filter(payment_date__gte=date_from_obj)
+        except:
+            pass
+    
+    if date_to:
+        try:
+            if '/' in date_to:
+                parts = date_to.split('/')
+                if len(parts) == 3:
+                    from datetime import datetime
+                    date_to_obj = datetime.strptime(date_to.replace('/', '-'), '%Y-%m-%d').date()
+                    payments = payments.filter(payment_date__lte=date_to_obj)
+            else:
+                from datetime import datetime
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+                payments = payments.filter(payment_date__lte=date_to_obj)
+        except:
+            pass
+    
+    # Filter by payment location
+    location_id = request.GET.get('location', '')
+    if location_id:
+        payments = payments.filter(payment_location_id=location_id)
+    
+    # Calculate total
+    total_amount = payments.aggregate(total=Sum('amount'))['total'] or 0
+    
     return render(
         request,
         "payment_list.html",
-        {"payments": payments, "payment_methods": methods},
+        {
+            "payments": payments.order_by('-payment_date', '-created_at'),
+            "payment_locations": methods,
+            "date_from": date_from,
+            "date_to": date_to,
+            "selected_location": location_id,
+            "total_amount": total_amount,
+        },
     )
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_create(request, invoice_id=None):
     invoices = Invoice.objects.all()
     methods = PaymentLocation.objects.all()
@@ -1950,14 +2461,14 @@ def payment_create(request, invoice_id=None):
 
 
 @custom_login_required
-@role_required(["manager", "purchasing"])
+@role_required(["manager", "purchasing", "finance_manager"])
 def payment_detail(request, payment_id):
     payment = get_object_or_404(Payment, id=payment_id)
     return render(request, "payment_detail.html", {"payment": payment})
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_update(request, payment_id):
     payment = get_object_or_404(Payment, id=payment_id)
     if request.method == "POST":
@@ -1968,7 +2479,7 @@ def payment_update(request, payment_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_delete(request, payment_id):
     payment = get_object_or_404(Payment, id=payment_id)
     if request.method == "POST":
@@ -1978,14 +2489,14 @@ def payment_delete(request, payment_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_location_list(request):
     payment_methods = PaymentLocation.objects.all()
     return render(request, "payment_method_list.html", {"payment_methods": payment_methods})
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_location_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
@@ -1996,7 +2507,7 @@ def payment_location_create(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "finance_manager"])
 def payment_location_update(request, method_id):
     payment_method = get_object_or_404(PaymentLocation, id=method_id)
     if request.method == "POST":
@@ -2012,36 +2523,156 @@ def payment_location_update(request, method_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_list(request):
     suppliers = Supplier.objects.all()
     return render(request, "supplier_list.html", {"suppliers": suppliers})
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_select(request):
     suppliers = Supplier.objects.filter(status='active')
     selected_supplier = None
     invoices = []
     total_owed = 0
+    payment_methods = PaymentLocation.objects.all()
     
-    supplier_id = request.GET.get('supplier_id')
+    supplier_id = request.GET.get('supplier_id') or request.POST.get('supplier_id')
+    
+    # Handle payment submission
+    if request.method == 'POST' and supplier_id:
+        try:
+            selected_supplier = Supplier.objects.get(id=supplier_id, status='active')
+            payment_mode = request.POST.get('payment_mode')  # 'manual' or 'auto'
+            amount = _parse_decimal(request.POST.get('amount') or 0)
+            payment_location_id = request.POST.get('payment_location')
+            reference_number = request.POST.get('reference_number', '')
+            notes = request.POST.get('notes', '')
+            
+            if amount > 0:
+                payment_location = PaymentLocation.objects.filter(id=payment_location_id).first()
+                
+                if payment_mode == 'manual':
+                    # Manual mode: user selects specific invoices
+                    selected_invoice_ids = request.POST.getlist('selected_invoices')
+                    selected_invoices = Invoice.objects.filter(
+                        id__in=selected_invoice_ids,
+                        supplier=selected_supplier
+                    )
+                    
+                    if selected_invoices.exists():
+                        payment = Payment.objects.create(
+                            amount=amount,
+                            payment_date=timezone.now().date(),
+                            payment_location=payment_location,
+                            reference_number=reference_number,
+                            notes=notes,
+                            created_by=request.user,
+                            payment_status='completed'
+                        )
+                        payment.invoices.add(*selected_invoices)
+                        messages.success(request, f'پرداخت {amount:,} ریال برای {selected_invoices.count()} فاکتور ثبت شد.')
+                else:
+                    # Auto mode: automatically settle oldest unpaid/partially paid invoices
+                    all_invoices = Invoice.objects.filter(
+                        supplier=selected_supplier
+                    ).order_by('invoice_date', 'created_at')
+                    
+                    # Filter to get only invoices with remaining balance
+                    unpaid_invoices = []
+                    for inv in all_invoices:
+                        paid_amount = Payment.objects.filter(
+                            Q(invoice=inv) | Q(invoices=inv),
+                            payment_status='completed'
+                        ).aggregate(total=Sum('amount'))['total'] or 0
+                        inv_remaining = (inv.total_amount or 0) - paid_amount
+                        if inv_remaining > 0:
+                            unpaid_invoices.append((inv, inv_remaining))
+                    
+                    remaining_amount = amount
+                    settled_invoices = []
+                    
+                    for invoice, invoice_remaining in unpaid_invoices:
+                        if remaining_amount <= 0:
+                            break
+                        
+                        settled_invoices.append(invoice)
+                        remaining_amount -= invoice_remaining
+                    
+                    if settled_invoices:
+                        payment = Payment.objects.create(
+                            amount=amount,
+                            payment_date=timezone.now().date(),
+                            payment_location=payment_location,
+                            reference_number=reference_number,
+                            notes=f'تسویه خودکار - {notes}' if notes else 'تسویه خودکار از قدیمی‌ترین فاکتورها',
+                            created_by=request.user,
+                            payment_status='completed'
+                        )
+                        payment.invoices.add(*settled_invoices)
+                        
+                        if remaining_amount > 0:
+                            messages.success(request, f'پرداخت {amount:,} ریال ثبت شد. {len(settled_invoices)} فاکتور تسویه شد. اضافه پرداخت: {remaining_amount:,} ریال')
+                        elif remaining_amount < 0:
+                            messages.warning(request, f'پرداخت {amount:,} ریال ثبت شد. {len(settled_invoices)} فاکتور تسویه شد (بخشی از آخرین فاکتور). کسری: {abs(remaining_amount):,} ریال')
+                        else:
+                            messages.success(request, f'پرداخت {amount:,} ریال ثبت شد. {len(settled_invoices)} فاکتور کاملاً تسویه شد.')
+                    else:
+                        messages.warning(request, 'هیچ فاکتور پرداخت‌نشده‌ای برای تسویه یافت نشد.')
+                
+                return redirect(f'?supplier_id={supplier_id}')
+            else:
+                messages.error(request, 'مبلغ پرداخت باید بیشتر از صفر باشد.')
+        except Supplier.DoesNotExist:
+            messages.error(request, 'تأمین‌کننده یافت نشد.')
+        except Exception as e:
+            messages.error(request, f'خطا در ثبت پرداخت: {str(e)}')
+    
     if supplier_id:
         try:
             selected_supplier = Supplier.objects.get(id=supplier_id, status='active')
             # Get all invoices for this supplier
-            invoices = Invoice.objects.filter(supplier=selected_supplier).select_related('purchase_order').order_by('-created_at')
+            invoices = Invoice.objects.filter(supplier=selected_supplier).select_related('purchase_order').prefetch_related('issues').order_by('invoice_date', 'created_at')
             
-            # Calculate total owed (total_amount - paid amounts)
+            # Apply filters
+            search_query = request.GET.get('search', '')
+            payment_status = request.GET.get('payment_status', '')
+            issue_id = request.GET.get('issue', '')
+            date_from = request.GET.get('date_from', '')
+            date_to = request.GET.get('date_to', '')
+            
+            if search_query:
+                invoices = invoices.filter(
+                    Q(invoice_number__icontains=search_query) |
+                    Q(total_amount__icontains=search_query)
+                )
+            
+            if payment_status:
+                invoices = invoices.filter(payment_status=payment_status)
+            
+            if issue_id:
+                invoices = invoices.filter(issues__id=issue_id)
+            
+            if date_from:
+                try:
+                    date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+                    invoices = invoices.filter(invoice_date__gte=date_from_obj)
+                except ValueError:
+                    pass
+            
+            if date_to:
+                try:
+                    date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+                    invoices = invoices.filter(invoice_date__lte=date_to_obj)
+                except ValueError:
+                    pass
+            
+            # Calculate total owed using the invoice's remaining_amount property
             for invoice in invoices:
-                paid_amount = Payment.objects.filter(
-                    Q(invoice=invoice) | Q(invoices=invoice),
-                    payment_status='completed'
-                ).aggregate(total=Sum('amount'))['total'] or 0
-                total_owed += max(0, invoice.total_amount - paid_amount) if invoice.total_amount else 0
+                total_owed += max(0, invoice.remaining_amount)
         except Supplier.DoesNotExist:
             pass
     
@@ -2050,14 +2681,16 @@ def supplier_select(request):
         'selected_supplier': selected_supplier,
         'invoices': invoices,
         'total_owed': total_owed,
+        'payment_methods': payment_methods,
+        'issues': InvoiceIssue.objects.all(),
     }
     return render(request, "supplier_select.html", context)
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
@@ -2083,14 +2716,14 @@ def supplier_create(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_detail(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     return render(request, "supplier_detail.html", {"supplier": supplier})
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_update(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     if request.method == "POST":
@@ -2111,7 +2744,7 @@ def supplier_update(request, supplier_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_delete(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     if request.method == "POST":
@@ -2187,7 +2820,7 @@ def invoice_issue_delete(request, issue_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_activate(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     supplier.status = "active"
@@ -2196,7 +2829,7 @@ def supplier_activate(request, supplier_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_deactivate(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     supplier.status = "inactive"
@@ -2205,7 +2838,7 @@ def supplier_deactivate(request, supplier_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_evaluation_list(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     evaluations = SupplierEvaluation.objects.filter(supplier=supplier)
@@ -2217,7 +2850,7 @@ def supplier_evaluation_list(request, supplier_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_evaluation_create(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     if request.method == "POST":
@@ -2235,7 +2868,7 @@ def supplier_evaluation_create(request, supplier_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_evaluation_all_list(request):
     evaluations = SupplierEvaluation.objects.select_related("supplier")
     return render(
@@ -2246,7 +2879,7 @@ def supplier_evaluation_all_list(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_evaluation_create_general(request):
     suppliers = Supplier.objects.all()
     if request.method == "POST":
@@ -2266,7 +2899,7 @@ def supplier_evaluation_create_general(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_performance_report(request):
     evaluations = SupplierEvaluation.objects.select_related("supplier")
     return render(request, "supplier_performance_report.html", {"evaluations": evaluations})
@@ -2314,7 +2947,7 @@ def financial_analytics(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "finance_manager"])
 def supplier_analytics(request):
     return render(request, "analytics_dashboard.html")
 
@@ -2561,4 +3194,267 @@ def search_categories_autocomplete(request):
         })
     
     return JsonResponse({'results': results})
+
+
+# ---------------------------------------------------------------------------
+# Stock Management Views (انبارداری)
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager'])
+def initial_stock_register(request: HttpRequest) -> HttpResponse:
+    """ثبت موجودی اولیه انبار"""
+    from .forms import InitialStockForm
+    
+    if request.method == 'POST':
+        form = InitialStockForm(request.POST)
+        if form.is_valid():
+            product = form.cleaned_data['product']
+            quantity = form.cleaned_data['quantity']
+            unit = form.cleaned_data.get('unit') or product.unit
+            min_quantity = form.cleaned_data.get('min_quantity', 0)
+            description = form.cleaned_data.get('description', '')
+            
+            # بررسی اینکه آیا موجودی برای این محصول وجود دارد
+            stock_item, created = StockItem.objects.get_or_create(
+                product=product,
+                defaults={
+                    'quantity': 0,
+                    'unit': unit,
+                    'min_quantity': min_quantity
+                }
+            )
+            
+            if not created:
+                messages.warning(request, f'موجودی برای {product.name} قبلاً ثبت شده است.')
+                return redirect('initial_stock_register')
+            
+            # ثبت تراکنش موجودی اولیه
+            previous_qty = stock_item.quantity
+            stock_item.quantity = quantity
+            stock_item.min_quantity = min_quantity
+            stock_item.unit = unit
+            stock_item.save()
+            
+            StockTransaction.objects.create(
+                stock_item=stock_item,
+                transaction_type='initial',
+                quantity=quantity,
+                unit=unit,
+                reference_type='initial',
+                description=description or 'ثبت موجودی اولیه',
+                created_by=request.user,
+                previous_quantity=previous_qty,
+                new_quantity=quantity
+            )
+            
+            messages.success(request, f'موجودی اولیه {product.name} با موفقیت ثبت شد.')
+            return redirect('stock_list')
+    else:
+        form = InitialStockForm()
+    
+    return render(request, 'stock/initial_stock_register.html', {'form': form})
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager'])
+def stock_list(request: HttpRequest) -> HttpResponse:
+    """لیست موجودی‌های انبار"""
+    stock_items = StockItem.objects.select_related('product', 'unit').all().order_by('product__name')
+    
+    # فیلتر بر اساس موجودی کم
+    show_low_stock = request.GET.get('low_stock')
+    if show_low_stock:
+        stock_items = [item for item in stock_items if item.is_low_stock]
+    
+    # جستجو
+    search_query = request.GET.get('search')
+    if search_query:
+        stock_items = stock_items.filter(
+            Q(product__name__icontains=search_query) |
+            Q(product__category__name__icontains=search_query)
+        )
+    
+    # صفحه‌بندی
+    paginator = Paginator(stock_items, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'stock/stock_list.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'show_low_stock': show_low_stock
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager'])
+def stock_transactions(request: HttpRequest, stock_id: int) -> HttpResponse:
+    """تاریخچه تراکنش‌های یک موجودی"""
+    stock_item = get_object_or_404(StockItem, id=stock_id)
+    transactions = stock_item.transactions.select_related('created_by').all()
+    
+    # صفحه‌بندی
+    paginator = Paginator(transactions, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'stock/stock_transactions.html', {
+        'stock_item': stock_item,
+        'page_obj': page_obj
+    })
+
+
+@custom_login_required
+@role_required(['purchasing', 'manager'])
+def mark_item_for_stock_supply(request: HttpRequest, item_id: int) -> HttpResponse:
+    """مشخص کردن قلم برای تامین از انبار"""
+    item = get_object_or_404(PurchaseItem, id=item_id)
+    
+    if request.method == 'POST':
+        # تغییر وضعیت به "تامین از انبار"
+        item.supply_status = 'from_stock'
+        item.save()
+        
+        # ایجاد درخواست تامین از انبار
+        stock_request = StockRequest.objects.create(
+            purchase_item=item,
+            requested_by=request.user,
+            status='pending',
+            notes=request.POST.get('notes', '')
+        )
+        
+        messages.success(request, f'قلم "{item.name}" برای تامین از انبار مشخص شد.')
+        return redirect('stock_supply_list')
+    
+    return redirect('purchase_request_detail', request_id=item.request.id)
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager'])
+def stock_supply_list(request: HttpRequest) -> HttpResponse:
+    """لیست محصولات تامین شده از انبار"""
+    # دریافت درخواست‌های تامین از انبار
+    stock_requests = StockRequest.objects.select_related(
+        'purchase_item__request__user',
+        'requested_by',
+        'fulfilled_by'
+    ).prefetch_related('items').all().order_by('-requested_at')
+    
+    # فیلتر بر اساس وضعیت
+    status_filter = request.GET.get('status')
+    if status_filter:
+        stock_requests = stock_requests.filter(status=status_filter)
+    
+    # فیلتر بر اساس تاریخ
+    date_filter = request.GET.get('date')
+    if date_filter:
+        from datetime import datetime
+        date_obj = datetime.strptime(date_filter, '%Y-%m-%d').date()
+        stock_requests = stock_requests.filter(requested_at__date=date_obj)
+    
+    # گروه‌بندی بر اساس روز
+    from itertools import groupby
+    from datetime import datetime
+    
+    grouped_requests = {}
+    for date, items in groupby(stock_requests, key=lambda x: x.requested_at.date()):
+        grouped_requests[date] = list(items)
+    
+    # صفحه‌بندی
+    paginator = Paginator(stock_requests, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'stock/stock_supply_list.html', {
+        'page_obj': page_obj,
+        'grouped_requests': grouped_requests,
+        'status_filter': status_filter,
+        'date_filter': date_filter
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager'])
+def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse:
+    """تامین درخواست از انبار"""
+    stock_request = get_object_or_404(StockRequest, id=request_id)
+    
+    if request.method == 'POST':
+        # دریافت محصولات و مقادیر از فرم
+        product_ids = request.POST.getlist('product_id[]')
+        quantities = request.POST.getlist('quantity[]')
+        
+        if not product_ids:
+            messages.error(request, 'لطفاً حداقل یک محصول را انتخاب کنید.')
+            return redirect('fulfill_stock_request', request_id=request_id)
+        
+        # تایید تامین
+        stock_request.status = 'fulfilled'
+        stock_request.fulfilled_by = request.user
+        stock_request.fulfilled_at = timezone.now()
+        stock_request.save()
+        
+        # ثبت اقلام و کاهش از موجودی
+        for product_id, quantity in zip(product_ids, quantities):
+            if not product_id or not quantity:
+                continue
+                
+            try:
+                from decimal import Decimal
+                quantity = Decimal(quantity)
+                product = get_object_or_404(Product, id=int(product_id))
+                stock_item = get_object_or_404(StockItem, product=product)
+                
+                # بررسی موجودی کافی
+                if stock_item.quantity < quantity:
+                    messages.warning(request, f'موجودی {product.name} کافی نیست!')
+                    continue
+                
+                # کاهش از موجودی
+                previous_qty = stock_item.quantity
+                stock_item.quantity -= quantity
+                stock_item.save()
+                
+                # ثبت تراکنش خروج
+                StockTransaction.objects.create(
+                    stock_item=stock_item,
+                    transaction_type='out',
+                    quantity=quantity,
+                    unit=stock_item.unit,
+                    reference_type='stock_request',
+                    reference_id=stock_request.id,
+                    description=f'تامین درخواست #{stock_request.purchase_item.request.id} - {stock_request.purchase_item.name}',
+                    created_by=request.user,
+                    previous_quantity=previous_qty,
+                    new_quantity=stock_item.quantity
+                )
+                
+                # ثبت قلم تامین شده
+                StockRequestItem.objects.create(
+                    stock_request=stock_request,
+                    stock_item=stock_item,
+                    quantity=quantity,
+                    unit=stock_item.unit
+                )
+                
+            except Exception as e:
+                messages.error(request, f'خطا در پردازش محصول: {str(e)}')
+                continue
+        
+        # بروزرسانی وضعیت قلم درخواست
+        stock_request.purchase_item.supply_status = 'from_stock'
+        stock_request.purchase_item.save()
+        
+        messages.success(request, 'درخواست با موفقیت تامین شد.')
+        return redirect('stock_supply_list')
+    
+    # دریافت لیست موجودی‌های انبار
+    stock_items = StockItem.objects.select_related('product', 'unit').filter(quantity__gt=0).order_by('product__name')
+    
+    return render(request, 'stock/fulfill_stock_request.html', {
+        'stock_request': stock_request,
+        'stock_items': stock_items
+    })
+
 

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}تامین از انبار{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="card" style="background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem; border-radius: 0.75rem 0.75rem 0 0;">
+            <h2 style="margin: 0; font-size: 1.5rem;">
+                ✅ تامین از انبار
+            </h2>
+        </div>
+        
+        <div class="card-body" style="padding: 2rem;">
+            <!-- Request Info -->
+            <div style="background: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 2rem; border-right: 4px solid #10b981;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem;">
+                    اطلاعات درخواست
+                </h3>
+                <div style="display: grid; gap: 0.75rem;">
+                    <div>
+                        <strong style="color: #6b7280;">نام محصول:</strong>
+                        <span style="color: #1f2937;">{{ stock_request.purchase_item.name }}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #6b7280;">مقدار درخواستی:</strong>
+                        <span style="color: #1f2937;">{{ stock_request.purchase_item.quantity }} {{ stock_request.purchase_item.unit }}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #6b7280;">درخواست دهنده:</strong>
+                        <span style="color: #1f2937;">{{ stock_request.purchase_item.request.user.get_full_name|default:stock_request.purchase_item.request.user.username }}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #6b7280;">بخش:</strong>
+                        <span style="color: #1f2937;">{{ stock_request.purchase_item.request.user.get_role_display }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fulfill Form -->
+            <form method="post" action="{% url 'fulfill_stock_request' stock_request.id %}" id="fulfillForm">
+                {% csrf_token %}
+                
+                <h3 style="font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 1rem;">
+                    انتخاب محصولات از انبار
+                </h3>
+                
+                <div id="products-container">
+                    <div class="product-row" style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; margin-bottom: 1rem; align-items: end;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">محصول</label>
+                            <select name="product_id[]" class="form-control product-select" required style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
+                                <option value="">انتخاب محصول</option>
+                                {% for item in stock_items %}
+                                <option value="{{ item.product.id }}" data-quantity="{{ item.quantity }}" data-unit="{{ item.unit.name }}">
+                                    {{ item.product.name }} (موجودی: {{ item.quantity|floatformat:2 }} {{ item.unit.name }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">مقدار</label>
+                            <input type="number" name="quantity[]" step="0.01" min="0.01" class="form-control quantity-input" required placeholder="مقدار" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
+                        </div>
+                        
+                        <button type="button" class="btn-remove" onclick="removeProductRow(this)" style="padding: 0.75rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                            🗑️ حذف
+                        </button>
+                    </div>
+                </div>
+                
+                <button type="button" onclick="addProductRow()" class="btn-add" style="width: 100%; padding: 0.75rem; margin-bottom: 2rem; background: #6b7280; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                    ➕ افزودن محصول
+                </button>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn-primary" style="flex: 1; padding: 1rem; border: none; border-radius: 0.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 600; font-size: 1.125rem; cursor: pointer;">
+                        ✅ تایید تامین
+                    </button>
+                    <a href="{% url 'stock_supply_list' %}" class="btn-secondary" style="flex: 1; padding: 1rem; border: none; border-radius: 0.5rem; background: #6b7280; color: white; font-weight: 600; font-size: 1.125rem; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                        ❌ انصراف
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function addProductRow() {
+    const container = document.getElementById('products-container');
+    const firstRow = container.querySelector('.product-row');
+    const newRow = firstRow.cloneNode(true);
+    
+    // Reset values
+    newRow.querySelector('.product-select').value = '';
+    newRow.querySelector('.quantity-input').value = '';
+    
+    container.appendChild(newRow);
+}
+
+function removeProductRow(btn) {
+    const container = document.getElementById('products-container');
+    const rows = container.querySelectorAll('.product-row');
+    
+    if (rows.length > 1) {
+        btn.closest('.product-row').remove();
+    } else {
+        alert('حداقل یک محصول باید وجود داشته باشد');
+    }
+}
+
+// Validation for quantity
+document.getElementById('fulfillForm').addEventListener('submit', function(e) {
+    const productRows = document.querySelectorAll('.product-row');
+    let isValid = true;
+    
+    productRows.forEach(row => {
+        const select = row.querySelector('.product-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        
+        if (select.value && quantityInput.value) {
+            const option = select.options[select.selectedIndex];
+            const availableQty = parseFloat(option.dataset.quantity);
+            const requestedQty = parseFloat(quantityInput.value);
+            
+            if (requestedQty > availableQty) {
+                alert(`موجودی ${option.text.split(' (موجودی')[0]} کافی نیست!`);
+                isValid = false;
+            }
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+    }
+});
+</script>
+
+<style>
+    .btn-add:hover, .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-remove:hover {
+        background: #dc2626;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+</style>
+{% endblock %}

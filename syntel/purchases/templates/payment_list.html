@@ -3,148 +3,651 @@
 
 {% block title %}لیست پرداخت‌ها{% endblock %}
 
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">لیست پرداخت‌ها</h3>
-                    <div class="card-tools">
-                        <a href="{% url 'payment_create' %}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus"></i> پرداخت جدید
-                        </a>
-                        <a href="{% url 'payment_location_list' %}" class="btn btn-info btn-sm">
-                            <i class="fas fa-cogs"></i> روش‌های پرداخت
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Filters -->
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <form method="get" class="d-flex">
-                                <input type="text" name="search" class="form-control" placeholder="جستجو بر اساس فاکتور، تأمین‌کننده یا شماره مرجع" value="{{ search_query }}">
-                                <button type="submit" class="btn btn-outline-secondary ml-2">جستجو</button>
-                            </form>
-                        </div>
-                        <div class="col-md-2">
-                            <select name="payment_method" class="form-control" onchange="this.form.submit()">
-                                <option value="">همه روش‌ها</option>
-                                {% for method in payment_locations %}
-                                <option value="{{ method.id }}" {% if selected_method|add:'' == method.id|add:'' %}selected{% endif %}>{{ method.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select name="payment_status" class="form-control" onchange="this.form.submit()">
-                                <option value="">همه وضعیت‌ها</option>
-                                {% for value, label in payment_status_choices %}
-                                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="date" name="date_from" class="form-control" value="{{ date_from }}" placeholder="از تاریخ">
-                        </div>
-                        <div class="col-md-2">
-                            <input type="date" name="date_to" class="form-control" value="{{ date_to }}" placeholder="تا تاریخ">
-                        </div>
-                        <div class="col-md-1">
-                            <a href="{% url 'payment_list' %}" class="btn btn-outline-secondary">پاک کردن</a>
-                        </div>
-                    </div>
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --secondary-color: #6b7280;
+        --border-color: #e5e7eb;
+        --bg-color: #f9fafb;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    body {
+        background-color: var(--bg-color);
+    }
+    
+    .page-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 0;
+        margin-bottom: 1.5rem;
+    }
+    
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .page-subtitle {
+        color: var(--secondary-color);
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .minimal-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1rem;
+    }
+    
+    .card-header-custom {
+        padding: 0.875rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-header-custom h5 {
+        margin: 0;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .card-header-custom i {
+        color: var(--primary-color);
+        font-size: 1rem;
+    }
+    
+    .card-body-custom {
+        padding: 1.25rem;
+    }
+    
+    /* Filter Section */
+    .filter-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+    
+    .filter-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 180px;
+    }
+    
+    .filter-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-bottom: 0.375rem;
+        display: block;
+        opacity: 0.9;
+    }
+    
+    .filter-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        font-size: 0.875rem;
+        transition: all 0.15s ease;
+    }
+    
+    .filter-input::placeholder {
+        color: rgba(255,255,255,0.6);
+    }
+    
+    .filter-input:focus {
+        outline: none;
+        background: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.4);
+    }
+    
+    .filter-select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+    
+    .filter-select option {
+        background: #4f46e5;
+        color: white;
+    }
+    
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-filter {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: all 0.15s ease;
+    }
+    
+    .btn-filter-apply {
+        background: white;
+        color: var(--primary-color);
+    }
+    
+    .btn-filter-apply:hover {
+        background: #f3f4f6;
+    }
+    
+    .btn-filter-clear {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    
+    .btn-filter-clear:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    
+    /* Summary Card */
+    .summary-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 8px;
+        padding: 1.25rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+    
+    .summary-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .summary-info h3 {
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin: 0 0 0.25rem 0;
+        opacity: 0.9;
+    }
+    
+    .summary-amount {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .summary-count {
+        font-size: 0.8125rem;
+        opacity: 0.85;
+        margin-top: 0.25rem;
+    }
+    
+    .summary-icon {
+        background: rgba(255,255,255,0.2);
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .summary-icon i {
+        font-size: 1.5rem;
+    }
+    
+    /* Table Styles */
+    .table-minimal {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table-minimal thead th {
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border-color);
+        padding: 0.75rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        text-align: right;
+    }
+    
+    .table-minimal tbody td {
+        padding: 0.875rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: 0.875rem;
+    }
+    
+    .table-minimal tbody tr:hover {
+        background: #fafbfc;
+    }
+    
+    /* Buttons */
+    .btn-primary-custom {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: background 0.15s ease;
+        text-decoration: none;
+    }
+    
+    .btn-primary-custom:hover {
+        background: var(--primary-hover);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-secondary-custom {
+        background: white;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: all 0.15s ease;
+        text-decoration: none;
+    }
+    
+    .btn-secondary-custom:hover {
+        background: var(--bg-color);
+        color: #374151;
+        text-decoration: none;
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    
+    .btn-icon-view {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+    
+    .btn-icon-view:hover {
+        background: #dbeafe;
+    }
+    
+    .btn-icon-edit {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .btn-icon-edit:hover {
+        background: #fde68a;
+    }
+    
+    .btn-icon-delete {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .btn-icon-delete:hover {
+        background: #fecaca;
+    }
+    
+    /* Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .status-cancelled {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    
+    .location-badge {
+        background: #ede9fe;
+        color: #6d28d9;
+        padding: 0.25rem 0.625rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    /* Invoice Link */
+    .invoice-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .invoice-link:hover {
+        text-decoration: underline;
+    }
+    
+    /* Amount */
+    .amount-cell {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--secondary-color);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .empty-state h4 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        color: #374151;
+    }
+    
+    .empty-state p {
+        font-size: 0.875rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filter-group {
+            min-width: 100%;
+        }
+        
+        .summary-amount {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
 
-                    <!-- Payments Table -->
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>شماره فاکتور</th>
-                                    <th>تأمین‌کننده</th>
-                                    <th>مبلغ</th>
-                                    <th>روش پرداخت</th>
-                                    <th>تاریخ پرداخت</th>
-                                    <th>وضعیت</th>
-                                    <th>شماره مرجع</th>
-                                    <th>عملیات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in payments %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'invoice_detail' payment.invoice.id %}">{{ payment.invoice.invoice_number }}</a>
-                                    </td>
-                                    <td>{{ payment.invoice.purchase_order.supplier_name }}</td>
-                                    <td>{{ payment.amount|floatformat:0 }} تومان</td>
-                                    <td>
-                                        <span class="badge badge-secondary">{{ payment.payment_location.name }}</span>
-                                    </td>
-                                    <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
-                                    <td>
-                                        {% if payment.payment_status == 'completed' %}
-                                            <span class="badge badge-success">{{ payment.get_payment_status_display }}</span>
-                                        {% elif payment.payment_status == 'pending' %}
-                                            <span class="badge badge-warning">{{ payment.get_payment_status_display }}</span>
-                                        {% elif payment.payment_status == 'failed' %}
-                                            <span class="badge badge-danger">{{ payment.get_payment_status_display }}</span>
-                                        {% else %}
-                                            <span class="badge badge-secondary">{{ payment.get_payment_status_display }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ payment.reference_number|default:"-" }}</td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'payment_detail' payment.id %}" class="btn btn-info btn-sm" title="مشاهده">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{% url 'payment_update' payment.id %}" class="btn btn-warning btn-sm" title="ویرایش">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{% url 'payment_delete' payment.id %}" class="btn btn-danger btn-sm" title="حذف">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="8" class="text-center">هیچ پرداختی یافت نشد</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-money-bill-wave ml-2"></i>
+                    مدیریت پرداخت‌ها
+                </h1>
+                <p class="page-subtitle">مشاهده و مدیریت تمامی پرداخت‌ها</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'payment_create' %}" class="btn-primary-custom">
+                    <i class="fas fa-plus"></i> پرداخت جدید
+                </a>
+                <a href="{% url 'payment_location_list' %}" class="btn-secondary-custom">
+                    <i class="fas fa-cogs"></i> محل‌های پرداخت
+                </a>
             </div>
         </div>
     </div>
 </div>
-{% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+
+<div class="container-fluid">
+    <!-- Filter Section -->
+    <form method="get" id="filter-form">
+        <div class="filter-section">
+            <div class="filter-title">
+                <i class="fas fa-filter"></i>
+                فیلتر پرداخت‌ها
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">از تاریخ</label>
+                    <input type="text" name="date_from" class="filter-input date-input" 
+                           value="{{ date_from }}" placeholder="1404/01/01">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">تا تاریخ</label>
+                    <input type="text" name="date_to" class="filter-input date-input" 
+                           value="{{ date_to }}" placeholder="1404/12/29">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">محل پرداخت</label>
+                    <select name="location" class="filter-select">
+                        <option value="">همه محل‌های پرداخت</option>
+                        {% for location in payment_locations %}
+                        <option value="{{ location.id }}" {% if selected_location == location.id|stringformat:"s" %}selected{% endif %}>
+                            {{ location.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-buttons">
+                    <button type="submit" class="btn-filter btn-filter-apply">
+                        <i class="fas fa-search"></i> اعمال فیلتر
+                    </button>
+                    <a href="{% url 'payment_list' %}" class="btn-filter btn-filter-clear">
+                        <i class="fas fa-times"></i> پاک کردن
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <!-- Summary Card -->
+    <div class="summary-card">
+        <div class="summary-content">
+            <div class="summary-info">
+                <h3>مجموع پرداخت‌ها</h3>
+                <p class="summary-amount">{{ total_amount|floatformat:0|default:"0" }} <small>ریال</small></p>
+                <p class="summary-count">{{ payments|length }} پرداخت</p>
+            </div>
+            <div class="summary-icon">
+                <i class="fas fa-wallet"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payments Table -->
+    <div class="minimal-card">
+        <div class="card-header-custom">
+            <h5>
+                <i class="fas fa-list"></i>
+                لیست پرداخت‌ها
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table-minimal">
+                <thead>
+                    <tr>
+                        <th>فاکتور</th>
+                        <th>تأمین‌کننده</th>
+                        <th>مبلغ</th>
+                        <th>محل پرداخت</th>
+                        <th>تاریخ</th>
+                        <th>وضعیت</th>
+                        <th>شماره مرجع</th>
+                        <th style="width: 120px;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr>
+                        <td>
+                            {% if payment.invoice %}
+                            <a href="{% url 'invoice_detail' payment.invoice.id %}" class="invoice-link">
+                                {{ payment.invoice.invoice_number }}
+                            </a>
+                            {% elif payment.invoices.exists %}
+                            <span class="text-muted">{{ payment.invoices.count }} فاکتور</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payment.invoice and payment.invoice.purchase_order %}
+                                {{ payment.invoice.purchase_order.supplier_name }}
+                            {% elif payment.invoices.exists %}
+                                {{ payment.invoices.first.purchase_order.supplier_name|default:"-" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="amount-cell">{{ payment.amount|floatformat:0 }} ریال</td>
+                        <td>
+                            {% if payment.payment_location %}
+                            <span class="location-badge">{{ payment.payment_location.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
+                        <td>
+                            {% if payment.payment_status == 'completed' %}
+                                <span class="status-badge status-completed">
+                                    <i class="fas fa-check-circle"></i> تکمیل شده
+                                </span>
+                            {% elif payment.payment_status == 'pending' %}
+                                <span class="status-badge status-pending">
+                                    <i class="fas fa-clock"></i> در انتظار
+                                </span>
+                            {% elif payment.payment_status == 'failed' %}
+                                <span class="status-badge status-failed">
+                                    <i class="fas fa-times-circle"></i> ناموفق
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-cancelled">
+                                    {{ payment.get_payment_status_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ payment.reference_number|default:"-" }}</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'payment_detail' payment.id %}" class="btn-icon btn-icon-view" title="مشاهده">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'payment_update' payment.id %}" class="btn-icon btn-icon-edit" title="ویرایش">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'payment_delete' payment.id %}" class="btn-icon btn-icon-delete" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <h4>پرداختی یافت نشد</h4>
+                                <p>هنوز هیچ پرداختی ثبت نشده یا فیلتر شما نتیجه‌ای نداشته است</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+<script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Persian datepickers
-    document.querySelectorAll('input[type="date"]').forEach(function(input) {
-        new persianDatepicker(input, {
-            format: 'YYYY/MM/DD',
-            year: 1404,
-            month: 1,
-            day: 1,
-            observer: true,
-            altField: input,
-            altFormat: 'YYYY/MM/DD',
-            calendar: {
-                persian: {
-                    locale: 'fa'
-                }
+    $('.date-input').pDatepicker({
+        format: 'YYYY/MM/DD',
+        autoClose: true,
+        initialValue: false,
+        calendar: {
+            persian: {
+                locale: 'fa'
             }
-        });
+        },
+        toolbox: {
+            enabled: true,
+            calendarSwitch: {
+                enabled: false
+            }
+        }
     });
 });
 </script>

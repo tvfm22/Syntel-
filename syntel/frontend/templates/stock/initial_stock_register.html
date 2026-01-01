@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ثبت موجودی اولیه انبار{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 2rem auto;">
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 0.75rem 0.75rem 0 0;">
+            <h2 style="margin: 0; font-size: 1.5rem;">
+                📦 ثبت موجودی اولیه انبار
+            </h2>
+        </div>
+        
+        <div class="card-body" style="padding: 2rem;">
+            <form method="post" action="{% url 'initial_stock_register' %}">
+                {% csrf_token %}
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="{{ form.product.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">محصول *</label>
+                    {{ form.product }}
+                    {% if form.product.errors %}
+                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
+                            {{ form.product.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label for="{{ form.quantity.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">مقدار *</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}
+                            <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
+                                {{ form.quantity.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.unit.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">واحد</label>
+                        {{ form.unit }}
+                        {% if form.unit.errors %}
+                            <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
+                                {{ form.unit.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="{{ form.min_quantity.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">حداقل موجودی</label>
+                    {{ form.min_quantity }}
+                    <small style="color: #6b7280; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+                        هنگامی که موجودی به این مقدار برسد، هشدار داده می‌شود
+                    </small>
+                    {% if form.min_quantity.errors %}
+                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
+                            {{ form.min_quantity.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="{{ form.description.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">توضیحات</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
+                            {{ form.description.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 0.75rem; border: none; border-radius: 0.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                        ✅ ثبت موجودی
+                    </button>
+                    <a href="{% url 'stock_list' %}" class="btn btn-secondary" style="flex: 1; padding: 0.75rem; border: none; border-radius: 0.5rem; background: #6b7280; color: white; font-weight: 600; text-align: center; text-decoration: none; transition: all 0.3s;">
+                        ❌ انصراف
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-family: 'Vazir', sans-serif;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    select.form-control {
+        cursor: pointer;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #6941a3 100%);
+    }
+    
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+    
+    .card {
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}

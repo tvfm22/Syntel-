@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}تاریخچه تراکنش‌های {{ stock_item.product.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <!-- Header -->
+    <div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem;">
+                    📊 تاریخچه تراکنش‌ها
+                </h1>
+                <h2 style="font-size: 1.25rem; color: #6b7280;">
+                    {{ stock_item.product.name }}
+                </h2>
+            </div>
+            <div style="text-align: left;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 0.5rem; color: white;">
+                    <div style="font-size: 0.875rem; margin-bottom: 0.25rem;">موجودی فعلی</div>
+                    <div style="font-size: 2rem; font-weight: 700;">{{ stock_item.quantity|floatformat:2 }}</div>
+                    <div style="font-size: 0.875rem;">{{ stock_item.unit.name }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Timeline -->
+    {% if page_obj %}
+    <div class="timeline-container" style="background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        {% for transaction in page_obj %}
+        <div class="transaction-item" style="display: flex; gap: 1.5rem; padding: 1.5rem; margin-bottom: 1rem; background: #f9fafb; border-radius: 0.5rem; border-right: 4px solid {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#10b981{% elif transaction.transaction_type == 'out' %}#ef4444{% else %}#f59e0b{% endif %};">
+            <div style="flex-shrink: 0; width: 60px; height: 60px; border-radius: 50%; background: {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#d1fae5{% elif transaction.transaction_type == 'out' %}#fee2e2{% else %}#fef3c7{% endif %}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                {% if transaction.transaction_type == 'in' %}
+                    ⬆️
+                {% elif transaction.transaction_type == 'out' %}
+                    ⬇️
+                {% elif transaction.transaction_type == 'initial' %}
+                    📦
+                {% else %}
+                    ⚙️
+                {% endif %}
+            </div>
+            
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                    <div>
+                        <h3 style="font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">
+                            {{ transaction.get_transaction_type_display }}
+                        </h3>
+                        <span style="font-size: 0.875rem; color: #6b7280;">
+                            {{ transaction.created_at|date:"Y/m/d H:i" }}
+                        </span>
+                    </div>
+                    <div style="text-align: left;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#10b981{% elif transaction.transaction_type == 'out' %}#ef4444{% else %}#f59e0b{% endif %};">
+                            {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}+{% elif transaction.transaction_type == 'out' %}-{% endif %}{{ transaction.quantity|floatformat:2 }} {{ transaction.unit.name }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div style="background: white; padding: 0.75rem; border-radius: 0.375rem;">
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">موجودی قبل</div>
+                        <div style="font-weight: 600; color: #374151;">{{ transaction.previous_quantity|floatformat:2 }} {{ transaction.unit.name }}</div>
+                    </div>
+                    <div style="background: white; padding: 0.75rem; border-radius: 0.375rem;">
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">موجودی جدید</div>
+                        <div style="font-weight: 600; color: #374151;">{{ transaction.new_quantity|floatformat:2 }} {{ transaction.unit.name }}</div>
+                    </div>
+                </div>
+                
+                {% if transaction.description %}
+                <div style="margin-top: 1rem; padding: 0.75rem; background: white; border-radius: 0.375rem; border-right: 2px solid #e5e7eb;">
+                    <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">توضیحات:</div>
+                    <div style="color: #374151;">{{ transaction.description }}</div>
+                </div>
+                {% endif %}
+                
+                {% if transaction.created_by %}
+                <div style="margin-top: 0.75rem; font-size: 0.875rem; color: #6b7280;">
+                    👤 توسط: {{ transaction.created_by.get_full_name|default:transaction.created_by.username }}
+                </div>
+                {% endif %}
+                
+                {% if transaction.reference_type and transaction.reference_id %}
+                <div style="margin-top: 0.5rem; font-size: 0.875rem;">
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
+                        مرجع: {{ transaction.reference_type }} #{{ transaction.reference_id }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
+        {% endif %}
+        
+        <span class="page-info" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; font-weight: 600;">
+            صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+        <h3 style="color: #6b7280;">هیچ تراکنشی ثبت نشده است</h3>
+    </div>
+    {% endif %}
+    
+    <!-- Back Button -->
+    <div style="margin-top: 2rem; text-align: center;">
+        <a href="{% url 'stock_list' %}" class="btn-back" style="display: inline-block; padding: 0.75rem 2rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+            ← بازگشت به لیست موجودی
+        </a>
+    </div>
+</div>
+
+<style>
+    .transaction-item {
+        transition: all 0.3s;
+    }
+    
+    .transaction-item:hover {
+        transform: translateX(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .page-link:hover {
+        background: #f3f4f6;
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+    
+    .btn-back:hover {
+        background: #4b5563;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+</style>
+{% endblock %}

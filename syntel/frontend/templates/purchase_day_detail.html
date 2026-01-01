@@ -175,6 +175,133 @@
             color: #9ca3af;
             font-style: italic;
         }
+
+        .request-section {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .request-header {
+            background: #f9fafb;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .request-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .request-info span {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .request-info strong {
+            color: #374151;
+        }
+
+        .confirmed-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #d1fae5;
+            color: #065f46;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .not-confirmed-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+        }
+
+        .btn-confirm {
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-confirm:hover {
+            background: #059669;
+        }
+
+        .btn-unconfirm {
+            background: #f59e0b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-unconfirm:hover {
+            background: #d97706;
+        }
+
+        .request-table {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -193,8 +320,36 @@
             </a>
         </div>
 
-        <div class="items-table">
-            <table>
+        {% for request in requests %}
+        <div class="request-section">
+            <div class="request-header">
+                <div class="request-info">
+                    <span><strong>درخواست‌دهنده:</strong> {{ request.user.get_full_name|default:request.user.username }}</span>
+                    <span><strong>زمان پردازش:</strong> {{ request.processed_at|jalali_datetime }}</span>
+                    {% if request.manager_confirmed %}
+                        <span class="confirmed-badge">✓ تایید شده</span>
+                    {% else %}
+                        <span class="not-confirmed-badge">⏳ در انتظار تایید</span>
+                    {% endif %}
+                </div>
+                <div class="request-actions">
+                    <a href="{% url 'purchase_list_edit_request' request.id %}?date={{ date_str }}&role={{ role }}" class="btn-edit">
+                        ✏️ ویرایش
+                    </a>
+                    <form method="post" action="{% url 'purchase_list_confirm_request' request.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="date" value="{{ date_str }}">
+                        <input type="hidden" name="role" value="{{ role }}">
+                        {% if request.manager_confirmed %}
+                            <button type="submit" class="btn-unconfirm">↩️ لغو تایید</button>
+                        {% else %}
+                            <button type="submit" class="btn-confirm">✓ تایید نهایی</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <table class="request-table">
                 <thead>
                     <tr>
                         <th>نام قلم</th>
@@ -205,32 +360,34 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item_info in all_items %}
+                    {% for item in request.items.all %}
                     <tr>
-                        <td>{{ item_info.item.name }}</td>
-                        <td>{{ item_info.item.quantity }} {{ item_info.item.unit }}</td>
-                        <td>{{ item_info.item.purchased_quantity|default:0 }} {{ item_info.item.unit }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.quantity }} {{ item.unit }}</td>
+                        <td>{{ item.purchased_quantity|default:0 }} {{ item.unit }}</td>
                         <td>
-                            {% if item_info.item.supply_status == 'purchased' %}
+                            {% if item.supply_status == 'purchased' %}
                                 <span class="status-badge status-purchased">🛒 خرید</span>
-                            {% elif item_info.item.supply_status == 'from_stock' %}
+                            {% elif item.supply_status == 'from_stock' %}
                                 <span class="status-badge status-from_stock">📦 تامین از انبار</span>
-                            {% elif item_info.item.supply_status == 'not_supplied' %}
+                            {% elif item.supply_status == 'not_supplied' %}
                                 <span class="status-badge status-not_supplied">❌ تامین نشده</span>
                             {% else %}
                                 <span class="status-badge status-pending">⏳ در انتظار</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if item_info.item.supply_status == 'not_supplied' %}
+                            {% with diff=item.quantity|add:"-"|add:item.purchased_quantity|default:item.quantity %}
+                            {% if item.supply_status == 'not_supplied' %}
                                 <span class="difference-not-supplied">-</span>
-                            {% elif item_info.difference == 0 %}
-                                <span class="difference-zero">0 {{ item_info.item.unit }}</span>
-                            {% elif item_info.difference > 0 %}
-                                <span class="difference-positive">-{{ item_info.difference }} {{ item_info.item.unit }}</span>
+                            {% elif item.purchased_quantity == item.quantity %}
+                                <span class="difference-zero">0 {{ item.unit }}</span>
+                            {% elif item.purchased_quantity < item.quantity %}
+                                <span class="difference-positive">-{{ item.quantity|add:"-"|add:item.purchased_quantity|default:item.quantity }} {{ item.unit }}</span>
                             {% else %}
-                                <span class="difference-negative">+{{ item_info.difference|abs_value }} {{ item_info.item.unit }}</span>
+                                <span class="difference-negative">+{{ item.purchased_quantity|add:"-"|add:item.quantity }} {{ item.unit }}</span>
                             {% endif %}
+                            {% endwith %}
                         </td>
                     </tr>
                     {% empty %}
@@ -243,6 +400,13 @@
                 </tbody>
             </table>
         </div>
+        {% empty %}
+        <div class="items-table">
+            <p style="text-align: center; padding: 40px; color: #6b7280;">
+                هیچ درخواستی یافت نشد
+            </p>
+        </div>
+        {% endfor %}
     </div>
 </body>
 </html>

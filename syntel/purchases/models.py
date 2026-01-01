@@ -17,6 +17,9 @@ class User(AbstractUser):
         ('facilities', 'تاسیسات'),
         ('purchasing', 'خرید'),
         ('manager', 'مدیر'),
+        ('accounting', 'دفتر حسابداری'),
+        ('finance_manager', 'مدیر مالی'),
+        ('ceo', 'مدیرعامل'),
     ]
     role: models.CharField = models.CharField(max_length=20, choices=ROLE_CHOICES, default='kitchen')
 
@@ -29,6 +32,7 @@ class Requester(models.Model):
         ('kitchen', 'آشپزخانه'),
         ('bar', 'بار'),
         ('facilities', 'تاسیسات'),
+        ('store', 'انبار'),
     ]
     name = models.CharField(max_length=50, choices=REQUESTER_CHOICES, unique=True, verbose_name='نام درخواست‌کننده')
 
@@ -63,6 +67,9 @@ class PurchaseRequest(models.Model):
     status: models.CharField = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     processed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_requests')
     processed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True)
+    manager_confirmed: models.BooleanField = models.BooleanField(default=False, verbose_name='تایید نهایی مدیر')
+    manager_confirmed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تایید مدیر')
+    manager_confirmed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='confirmed_requests', verbose_name='تایید کننده')
 
     def __str__(self) -> str:
         return f"Request by {self.user.username} - {self.status}"
@@ -434,6 +441,7 @@ class Invoice(models.Model):
     
     # Audit fields
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='created_invoices', verbose_name='ایجاد شده توسط')
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='updated_invoices', verbose_name='ویرایش شده توسط')
     approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='approved_invoices', verbose_name='تأیید شده توسط')
     approved_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تأیید')
     
@@ -1468,3 +1476,110 @@ class PriceHistory(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.price} ({self.date.date()})"
+
+
+# Stock Item model - موجودی انبار
+class StockItem(models.Model):
+    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='stock_item', verbose_name='محصول')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='موجودی')
+    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
+    min_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='حداقل موجودی')
+    last_updated = models.DateTimeField(auto_now=True, verbose_name='آخرین بروزرسانی')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    def __str__(self):
+        return f"{self.product.name} - موجودی: {self.quantity} {self.unit}"
+
+    @property
+    def is_low_stock(self):
+        """بررسی اینکه موجودی کمتر از حداقل است"""
+        return self.quantity <= self.min_quantity
+
+    class Meta:
+        verbose_name = 'موجودی انبار'
+        verbose_name_plural = 'موجودی‌های انبار'
+        indexes = [
+            models.Index(fields=['product']),
+            models.Index(fields=['last_updated']),
+        ]
+
+
+# Stock Transaction model - تراکنش‌های انبار (ورود/خروج)
+class StockTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ('in', 'ورود به انبار'),
+        ('out', 'خروج از انبار'),
+        ('initial', 'موجودی اولیه'),
+        ('adjustment', 'تعدیل موجودی'),
+    ]
+    
+    stock_item = models.ForeignKey(StockItem, on_delete=models.CASCADE, related_name='transactions', verbose_name='موجودی')
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES, verbose_name='نوع تراکنش')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار')
+    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
+    reference_type = models.CharField(max_length=50, blank=True, verbose_name='نوع مرجع')  # 'invoice', 'stock_request', 'initial'
+    reference_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='شناسه مرجع')
+    description = models.TextField(blank=True, verbose_name='توضیحات')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='ایجاد شده توسط')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ تراکنش')
+    previous_quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='موجودی قبل')
+    new_quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='موجودی جدید')
+
+    def __str__(self):
+        return f"{self.get_transaction_type_display()} - {self.stock_item.product.name} - {self.quantity}"
+
+    class Meta:
+        verbose_name = 'تراکنش انبار'
+        verbose_name_plural = 'تراکنش‌های انبار'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['stock_item', '-created_at']),
+            models.Index(fields=['transaction_type']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['reference_type', 'reference_id']),
+        ]
+
+
+# Stock Request model - درخواست تامین از انبار
+class StockRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'در انتظار'),
+        ('approved', 'تایید شده'),
+        ('rejected', 'رد شده'),
+        ('fulfilled', 'تامین شده'),
+    ]
+    
+    purchase_item = models.ForeignKey(PurchaseItem, on_delete=models.CASCADE, related_name='stock_requests', verbose_name='قلم درخواست')
+    requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='درخواست دهنده')
+    requested_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ درخواست')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='وضعیت')
+    fulfilled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='fulfilled_stock_requests', verbose_name='تامین شده توسط')
+    fulfilled_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تامین')
+    notes = models.TextField(blank=True, verbose_name='یادداشت‌ها')
+
+    def __str__(self):
+        return f"تامین از انبار - {self.purchase_item.name}"
+
+    class Meta:
+        verbose_name = 'درخواست تامین از انبار'
+        verbose_name_plural = 'درخواست‌های تامین از انبار'
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['status', '-requested_at']),
+            models.Index(fields=['purchase_item']),
+        ]
+
+
+# Stock Request Item model - اقلام تامین شده از انبار
+class StockRequestItem(models.Model):
+    stock_request = models.ForeignKey(StockRequest, on_delete=models.CASCADE, related_name='items', verbose_name='درخواست انبار')
+    stock_item = models.ForeignKey(StockItem, on_delete=models.CASCADE, verbose_name='موجودی انبار')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار')
+    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
+
+    def __str__(self):
+        return f"{self.stock_item.product.name} - {self.quantity}"
+
+    class Meta:
+        verbose_name = 'قلم تامین از انبار'
+        verbose_name_plural = 'اقلام تامین از انبار'

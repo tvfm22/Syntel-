@@ -1,245 +1,908 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{% if invoice %}ویرایش فاکتور{% else %}ایجاد فاکتور{% endif %}{% endblock %}
+{% block title %}{% if invoice %}ویرایش فاکتور {{ invoice.invoice_number }}{% else %}ایجاد فاکتور{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --secondary-color: #6b7280;
+        --border-color: #e5e7eb;
+        --bg-color: #f9fafb;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    body {
+        background-color: var(--bg-color);
+    }
+    
+    .page-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 0;
+        margin-bottom: 1.5rem;
+    }
+    
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .page-subtitle {
+        color: var(--secondary-color);
+        font-size: 0.875rem;
+        margin: 0;
+    }
+    
+    .minimal-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1rem;
+    }
+    
+    .card-header-custom {
+        padding: 0.875rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .card-header-custom h5 {
+        margin: 0;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    
+    .card-header-custom i {
+        color: var(--primary-color);
+        font-size: 1rem;
+    }
+    
+    .card-body-custom {
+        padding: 1.25rem;
+    }
+    
+    /* Custom Row - 20% Columns */
+    .custom-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -0.5rem;
+    }
+    
+    .custom-col {
+        padding: 0.5rem;
+    }
+    
+    .col-20 {
+        width: 20%;
+    }
+    
+    .col-25 {
+        width: 25%;
+    }
+    
+    .col-50 {
+        width: 50%;
+    }
+    
+    .col-100 {
+        width: 100%;
+    }
+    
+    @media (max-width: 992px) {
+        .col-20, .col-25 {
+            width: 50%;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .col-20, .col-25, .col-50 {
+            width: 100%;
+        }
+    }
+    
+    /* Form Styles */
+    .form-label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #4b5563;
+        margin-bottom: 0.375rem;
+        display: block;
+    }
+    
+    .form-control, .form-select {
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .form-control-sm, .form-select-sm {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.8125rem;
+    }
+    
+    /* Table Styles */
+    .table-minimal {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table-minimal thead th {
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border-color);
+        padding: 0.75rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        text-align: right;
+    }
+    
+    .table-minimal tbody td {
+        padding: 0.625rem 0.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    
+    .table-minimal tbody tr:hover {
+        background: #fafbfc;
+    }
+    
+    /* Item Row */
+    .item-row .form-control, .item-row .form-select {
+        border-color: transparent;
+        background: #f9fafb;
+    }
+    
+    .item-row .form-control:focus, .item-row .form-select:focus {
+        border-color: var(--primary-color);
+        background: white;
+    }
+    
+    /* Buttons */
+    .btn-primary-custom {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.625rem 1.25rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.15s ease;
+    }
+    
+    .btn-primary-custom:hover {
+        background: var(--primary-hover);
+        color: white;
+    }
+    
+    .btn-secondary-custom {
+        background: white;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+        padding: 0.625rem 1.25rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.15s ease;
+    }
+    
+    .btn-secondary-custom:hover {
+        background: var(--bg-color);
+        color: #374151;
+    }
+    
+    .btn-action {
+        background: none;
+        border: none;
+        padding: 0.375rem;
+        cursor: pointer;
+        color: var(--secondary-color);
+        border-radius: 4px;
+        transition: all 0.15s ease;
+    }
+    
+    .btn-action:hover {
+        background: #fee2e2;
+        color: var(--danger-color);
+    }
+    
+    .btn-add-item {
+        background: #f0fdf4;
+        color: var(--success-color);
+        border: 1px dashed var(--success-color);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        transition: all 0.15s ease;
+    }
+    
+    .btn-add-item:hover {
+        background: var(--success-color);
+        color: white;
+        border-style: solid;
+    }
+    
+    /* Summary Panel */
+    .summary-panel {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        padding: 1.25rem;
+        color: white;
+    }
+    
+    .summary-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        font-size: 0.875rem;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+    
+    .summary-row.total {
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 2px solid rgba(255,255,255,0.2);
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+    
+    .line-total {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    /* Autocomplete */
+    .input-wrapper {
+        position: relative;
+    }
+    
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        z-index: 99;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .autocomplete-item {
+        padding: 0.625rem 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .autocomplete-item:hover, .autocomplete-active {
+        background: var(--bg-color);
+    }
+    
+    .autocomplete-main {
+        font-size: 0.875rem;
+        color: #1f2937;
+    }
+    
+    .autocomplete-sub {
+        font-size: 0.75rem;
+        color: var(--secondary-color);
+        margin-top: 0.125rem;
+    }
+    
+    /* Select2 Override */
+    .select2-container--default .select2-selection--single {
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        height: auto;
+        padding: 0.25rem;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 0.8125rem;
+        color: #374151;
+        padding-right: 0.5rem;
+    }
+    
+    /* Order Info Box */
+    .order-info-box {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .order-info-box h6 {
+        color: #0369a1;
+        font-size: 0.875rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .order-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+    
+    .order-info-item {
+        font-size: 0.8125rem;
+    }
+    
+    .order-info-item strong {
+        color: #0c4a6e;
+    }
+    
+    /* Issues Section */
+    .issue-select-wrapper {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .issue-select-wrapper select {
+        flex: 1;
+    }
+    
+    .issues-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+    
+    .issue-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        background: #ede9fe;
+        color: #6d28d9;
+        padding: 0.25rem 0.625rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .issue-tag .remove-issue {
+        cursor: pointer;
+        color: #7c3aed;
+        font-weight: bold;
+    }
+    
+    .issue-tag .remove-issue:hover {
+        color: var(--danger-color);
+    }
+    
+    /* Status Badge */
+    .badge-edit {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        {% if invoice %}ویرایش فاکتور {{ invoice.invoice_number }}{% else %}ایجاد فاکتور جدید{% endif %}
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{% url 'invoices_list' %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <!-- Invoice Header Information -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="invoice_number">شماره فاکتور *</label>
-                                    <input type="text" class="form-control" id="invoice_number" name="invoice_number" 
-                                           value="{% if invoice %}{{ invoice.invoice_number }}{% endif %}" required>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="invoice_date">تاریخ فاکتور *</label>
-                                    <input type="date" class="form-control" id="invoice_date" name="invoice_date" 
-                                           value="{% if invoice %}{{ invoice.invoice_date|date:'Y-m-d' }}{% else %}1404/01/01{% endif %}" required>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="due_date">تاریخ سررسید</label>
-                                    <input type="date" class="form-control" id="due_date" name="due_date" 
-                                           value="{% if invoice %}{{ invoice.due_date|date:'Y-m-d' }}{% else %}1404/01/01{% endif %}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Purchase Order Information -->
-                        {% if purchase_order %}
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="alert alert-info">
-                                    <h5>اطلاعات سفارش خرید</h5>
-                                    <p><strong>شماره سفارش:</strong> {{ purchase_order.order_number }}</p>
-                                    <p><strong>تأمین‌کننده:</strong> {{ purchase_order.supplier_name }}</p>
-                                    <p><strong>تاریخ سفارش:</strong> {{ purchase_order.created_at|date:"Y/m/d" }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-
-                        <!-- Financial Information -->
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="tax_rate">نرخ مالیات (%)</label>
-                                    <input type="number" step="0.01" class="form-control" id="tax_rate" name="tax_rate" 
-                                           value="{% if invoice %}{{ invoice.tax_rate }}{% else %}9{% endif %}">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="discount_rate">نرخ تخفیف (%)</label>
-                                    <input type="number" step="0.01" class="form-control" id="discount_rate" name="discount_rate" 
-                                           value="{% if invoice %}{{ invoice.discount_rate }}{% endif %}">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="shipping_cost">هزینه حمل و نقل</label>
-                                    <input type="number" step="0.01" class="form-control" id="shipping_cost" name="shipping_cost" 
-                                           value="{% if invoice %}{{ invoice.shipping_cost }}{% endif %}">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="payment_terms">شرایط پرداخت</label>
-                                    <input type="text" class="form-control" id="payment_terms" name="payment_terms" 
-                                           value="{% if invoice %}{{ invoice.payment_terms }}{% endif %}" placeholder="مثال: 30 روز">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Invoice Items -->
-                        <div class="row">
-                            <div class="col-12">
-                                <h4>اقلام فاکتور</h4>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="invoice-items-table">
-                                        <thead>
-                                            <tr>
-                                                <th>شرح کالا</th>
-                                                <th>واحد</th>
-                                                <th>تعداد</th>
-                                                <th>قیمت واحد</th>
-                                                <th>مجموع</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for item in items %}
-                                            <tr>
-                                                <td>
-                                                    <input type="text" class="form-control" name="description_{{ item.id }}" 
-                                                           value="{{ item.description }}" readonly>
-                                                </td>
-                                                <td>{{ item.order_item.request_item.unit.name }}</td>
-                                                <td>
-                                                    <input type="number" step="0.01" class="form-control quantity-input" 
-                                                           name="quantity_{{ item.id }}" value="{{ item.quantity }}" readonly>
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="0.01" class="form-control unit-price-input" 
-                                                           name="unit_price_{{ item.id }}" value="{{ item.unit_price }}">
-                                                </td>
-                                                <td>
-                                                    <span class="line-total">{{ item.line_total|floatformat:0 }}</span> تومان
-                                                </td>
-                                            </tr>
-                                            {% empty %}
-                                            {% for order_item in order_items %}
-                                            <tr>
-                                                <td>{{ order_item.request_item.name }}</td>
-                                                <td>{{ order_item.request_item.unit.name }}</td>
-                                                <td>{{ order_item.quantity }}</td>
-                                                <td>
-                                                    <input type="number" step="0.01" class="form-control unit-price-input" 
-                                                           name="unit_price_new_{{ forloop.counter }}" value="{{ order_item.unit_price }}">
-                                                </td>
-                                                <td>
-                                                    <span class="line-total">0</span> تومان
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                            {% endfor %}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="4" class="text-left"><strong>جمع کل:</strong></td>
-                                                <td><strong id="grand-total">0 تومان</strong></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="notes">یادداشت‌ها</label>
-                                    <textarea class="form-control" id="notes" name="notes" rows="3">{% if invoice %}{{ invoice.notes }}{% endif %}</textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Submit Buttons -->
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> {% if invoice %}به‌روزرسانی{% else %}ایجاد{% endif %} فاکتور
-                                </button>
-                                <a href="{% url 'invoices_list' %}" class="btn btn-secondary ml-2">انصراف</a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-edit ml-2"></i>
+                    ویرایش فاکتور
+                    <span class="badge-edit">{{ invoice.invoice_number }}</span>
+                </h1>
+                <p class="page-subtitle">
+                    {% if invoice.purchase_order %}
+                    سفارش: {{ invoice.purchase_order.order_number }} | تأمین‌کننده: {{ invoice.purchase_order.supplier_name }}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'invoice_detail' invoice.id %}" class="btn-secondary-custom">
+                    <i class="fas fa-eye"></i> مشاهده فاکتور
+                </a>
+                <a href="{% url 'invoices_list' %}" class="btn-secondary-custom">
+                    <i class="fas fa-arrow-right"></i> بازگشت
+                </a>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+<div class="container-fluid">
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle ml-2"></i>{{ error }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <form method="post" id="invoice-edit-form">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-lg-9">
+                <!-- Invoice Info Card -->
+                <div class="minimal-card">
+                    <div class="card-header-custom">
+                        <i class="fas fa-file-invoice"></i>
+                        <h5>اطلاعات فاکتور</h5>
+                    </div>
+                    <div class="card-body-custom">
+                        <div class="custom-row">
+                            <div class="custom-col col-20">
+                                <label class="form-label">شماره فاکتور *</label>
+                                <input type="text" class="form-control" id="invoice_number" name="invoice_number" 
+                                       value="{{ invoice.invoice_number }}" required>
+                            </div>
+                            <div class="custom-col col-20">
+                                <label class="form-label">تاریخ فاکتور *</label>
+                                <input type="text" class="form-control" id="invoice_date" name="invoice_date" 
+                                       value="{{ invoice.invoice_date|date:'Y/m/d' }}" required>
+                            </div>
+                            <div class="custom-col col-20">
+                                <label class="form-label">تاریخ سررسید</label>
+                                <input type="text" class="form-control" id="due_date" name="due_date" 
+                                       value="{% if invoice.due_date %}{{ invoice.due_date|date:'Y/m/d' }}{% endif %}">
+                            </div>
+                            <div class="custom-col col-20">
+                                <label class="form-label">نرخ مالیات (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="tax_rate" name="tax_rate" 
+                                       value="{{ invoice.tax_rate|default:'9' }}">
+                            </div>
+                            <div class="custom-col col-20">
+                                <label class="form-label">نرخ تخفیف (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="discount_rate" name="discount_rate" 
+                                       value="{{ invoice.discount_rate|default:'0' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="custom-row mt-3">
+                            <div class="custom-col col-20">
+                                <label class="form-label">هزینه حمل</label>
+                                <input type="text" class="form-control money-input" id="shipping_cost" name="shipping_cost" 
+                                       value="{{ invoice.shipping_cost|floatformat:0|default:'0' }}">
+                            </div>
+                            <div class="custom-col col-20">
+                                <label class="form-label">شرایط پرداخت</label>
+                                <input type="text" class="form-control" id="payment_terms" name="payment_terms" 
+                                       value="{{ invoice.payment_terms|default:'' }}" placeholder="مثال: 30 روز">
+                            </div>
+                            <div class="custom-col" style="flex: 1;">
+                                <label class="form-label">یادداشت</label>
+                                <input type="text" class="form-control" id="notes" name="notes" 
+                                       value="{{ invoice.notes|default:'' }}" placeholder="توضیحات...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Purchase Order Info (if exists) -->
+                {% if invoice.purchase_order %}
+                <div class="order-info-box">
+                    <h6><i class="fas fa-shopping-cart"></i> اطلاعات سفارش خرید</h6>
+                    <div class="order-info-grid">
+                        <div class="order-info-item">
+                            <strong>شماره سفارش:</strong> {{ invoice.purchase_order.order_number }}
+                        </div>
+                        <div class="order-info-item">
+                            <strong>تأمین‌کننده:</strong> {{ invoice.purchase_order.supplier_name }}
+                        </div>
+                        <div class="order-info-item">
+                            <strong>تاریخ سفارش:</strong> {{ invoice.purchase_order.created_at|date:"Y/m/d" }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Items Card -->
+                <div class="minimal-card">
+                    <div class="card-header-custom d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-list"></i>
+                            <h5>اقلام فاکتور</h5>
+                        </div>
+                        <button type="button" class="btn-add-item" id="add-item">
+                            <i class="fas fa-plus"></i> افزودن قلم
+                        </button>
+                    </div>
+                    <div class="card-body-custom p-0">
+                        <div class="table-responsive">
+                            <table class="table-minimal" id="items-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%">شرح کالا</th>
+                                        <th style="width: 12%">دسته‌بندی</th>
+                                        <th style="width: 10%">تعداد</th>
+                                        <th style="width: 14%">قیمت واحد</th>
+                                        <th style="width: 12%">مالیات</th>
+                                        <th style="width: 12%">تخفیف</th>
+                                        <th style="width: 12%">جمع</th>
+                                        <th style="width: 3%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-tbody">
+                                    {% for item in items %}
+                                    <tr class="item-row" data-item-id="{{ item.id }}">
+                                        <td>
+                                            <div class="input-wrapper">
+                                                <input type="text" class="form-control form-control-sm description-input" 
+                                                       name="description_{{ item.id }}" value="{{ item.description }}" 
+                                                       placeholder="شرح کالا" required autocomplete="off">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm category-select" name="category_{{ item.id }}">
+                                                <option value="">انتخاب...</option>
+                                                {% for category in categories %}
+                                                <option value="{{ category.id }}" {% if item.category_id == category.id %}selected{% endif %}>
+                                                    {% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" class="form-control form-control-sm quantity-input" 
+                                                   name="quantity_{{ item.id }}" value="{{ item.quantity|floatformat:0 }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input unit-price-input" 
+                                                   name="unit_price_{{ item.id }}" value="{{ item.unit_price|floatformat:0 }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input tax-input" 
+                                                   name="tax_amount_{{ item.id }}" value="{{ item.tax_amount|floatformat:0|default:'0' }}">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input discount-input" 
+                                                   name="discount_amount_{{ item.id }}" value="{{ item.discount_amount|floatformat:0|default:'0' }}">
+                                        </td>
+                                        <td>
+                                            <span class="line-total">{{ item.line_total|floatformat:0 }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn-action remove-item">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr class="item-row">
+                                        <td>
+                                            <div class="input-wrapper">
+                                                <input type="text" class="form-control form-control-sm description-input" 
+                                                       name="description_new_0" placeholder="شرح کالا" required autocomplete="off">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm category-select" name="category_new_0">
+                                                <option value="">انتخاب...</option>
+                                                {% for category in categories %}
+                                                <option value="{{ category.id }}">
+                                                    {% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" class="form-control form-control-sm quantity-input" 
+                                                   name="quantity_new_0" placeholder="0" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input unit-price-input" 
+                                                   name="unit_price_new_0" placeholder="0" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input tax-input" 
+                                                   name="tax_amount_new_0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm money-input discount-input" 
+                                                   name="discount_amount_new_0" placeholder="0">
+                                        </td>
+                                        <td>
+                                            <span class="line-total">0</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn-action remove-item">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Submit Buttons -->
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn-primary-custom">
+                        <i class="fas fa-save"></i> ذخیره تغییرات
+                    </button>
+                    <a href="{% url 'invoice_detail' invoice.id %}" class="btn-secondary-custom">
+                        <i class="fas fa-times"></i> انصراف
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Summary Panel -->
+            <div class="col-lg-3">
+                <div class="summary-panel">
+                    <div class="summary-title">
+                        <i class="fas fa-calculator ml-2"></i> خلاصه فاکتور
+                    </div>
+                    <div class="summary-row">
+                        <span>جمع جزء:</span>
+                        <span id="summary-subtotal">{{ invoice.subtotal|floatformat:0 }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>تخفیف (<span id="summary-discount-rate">{{ invoice.discount_rate|default:'0' }}</span>%):</span>
+                        <span id="summary-discount">- {{ invoice.discount_amount|floatformat:0|default:'0' }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>مالیات (<span id="summary-tax-rate">{{ invoice.tax_rate|default:'9' }}</span>%):</span>
+                        <span id="summary-tax">+ {{ invoice.tax_amount|floatformat:0|default:'0' }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>هزینه حمل:</span>
+                        <span id="summary-shipping">+ {{ invoice.shipping_cost|floatformat:0|default:'0' }}</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>جمع کل:</span>
+                        <span id="summary-total">{{ invoice.total_amount|floatformat:0 }}</span>
+                    </div>
+                </div>
+                
+                <!-- Quick Info -->
+                <div class="minimal-card mt-3">
+                    <div class="card-body-custom">
+                        <div class="text-muted mb-2" style="font-size: 0.75rem;">
+                            <i class="fas fa-info-circle ml-1"></i> اطلاعات
+                        </div>
+                        <div style="font-size: 0.8125rem; line-height: 1.8;">
+                            <div><strong>ایجاد:</strong> {{ invoice.created_at|date:"Y/m/d H:i" }}</div>
+                            {% if invoice.created_by %}
+                            <div><strong>توسط:</strong> {{ invoice.created_by.get_name_display|default:invoice.created_by.username }}</div>
+                            {% endif %}
+                            {% if invoice.status %}
+                            <div><strong>وضعیت:</strong> {{ invoice.get_status_display }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
-<script>
-$(document).ready(function() {
-    function calculateTotals() {
-        let grandTotal = 0;
-        
-        $('#invoice-items-table tbody tr').each(function() {
-            const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
-            const unitPrice = parseFloat($(this).find('.unit-price-input').val()) || 0;
-            const lineTotal = quantity * unitPrice;
-            
-            $(this).find('.line-total').text(lineTotal.toLocaleString() + ' تومان');
-            grandTotal += lineTotal;
-        });
-        
-        // Apply discount and tax
-        const discountRate = parseFloat($('#discount_rate').val()) || 0;
-        const taxRate = parseFloat($('#tax_rate').val()) || 0;
-        const shippingCost = parseFloat($('#shipping_cost').val()) || 0;
-        
-        const discountAmount = grandTotal * (discountRate / 100);
-        const subtotalAfterDiscount = grandTotal - discountAmount;
-        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
-        const finalTotal = subtotalAfterDiscount + taxAmount + shippingCost;
-        
-        $('#grand-total').text(finalTotal.toLocaleString() + ' تومان');
+document.addEventListener('DOMContentLoaded', function() {
+    let itemCount = {{ items|length|default:1 }};
+    
+    // Format number with commas
+    function formatNumber(num) {
+        if (!num) return '0';
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
     
-    // Calculate on input change
-    $(document).on('input', '.unit-price-input, #discount_rate, #tax_rate, #shipping_cost', calculateTotals);
+    // Parse number from formatted string
+    function parseNumber(str) {
+        if (!str) return 0;
+        return parseFloat(str.toString().replace(/,/g, '')) || 0;
+    }
     
-    // Initial calculation
-    calculateTotals();
-
-    // Initialize Persian datepickers
-    document.querySelectorAll('input[type="date"]').forEach(function(input) {
-        new persianDatepicker(input, {
-            format: 'YYYY/MM/DD',
-            year: 1404,
-            month: 1,
-            day: 1,
-            observer: true,
-            altField: input,
-            altFormat: 'YYYY/MM/DD',
-            calendar: {
-                persian: {
-                    locale: 'fa'
-                }
-            }
+    // Setup money input formatting
+    function setupMoneyInputs() {
+        document.querySelectorAll('.money-input').forEach(input => {
+            // Format existing value
+            const value = parseNumber(input.value);
+            input.value = formatNumber(value);
+            
+            // Remove existing listeners
+            input.removeEventListener('input', handleMoneyInput);
+            input.removeEventListener('blur', handleMoneyBlur);
+            
+            // Add new listeners
+            input.addEventListener('input', handleMoneyInput);
+            input.addEventListener('blur', handleMoneyBlur);
         });
+    }
+    
+    function handleMoneyInput(e) {
+        const cursorPos = e.target.selectionStart;
+        const oldLength = e.target.value.length;
+        const value = parseNumber(e.target.value);
+        e.target.value = formatNumber(value);
+        const newLength = e.target.value.length;
+        const newPos = cursorPos + (newLength - oldLength);
+        e.target.setSelectionRange(newPos, newPos);
+        calculateTotals();
+    }
+    
+    function handleMoneyBlur(e) {
+        const value = parseNumber(e.target.value);
+        e.target.value = formatNumber(value);
+    }
+    
+    // Calculate totals
+    function calculateTotals() {
+        let subtotal = 0;
+        
+        document.querySelectorAll('.item-row').forEach(row => {
+            const quantity = parseFloat(row.querySelector('.quantity-input')?.value) || 0;
+            const unitPrice = parseNumber(row.querySelector('.unit-price-input')?.value);
+            const taxAmount = parseNumber(row.querySelector('.tax-input')?.value);
+            const discountAmount = parseNumber(row.querySelector('.discount-input')?.value);
+            
+            const lineTotal = (quantity * unitPrice) + taxAmount - discountAmount;
+            const lineTotalEl = row.querySelector('.line-total');
+            if (lineTotalEl) {
+                lineTotalEl.textContent = formatNumber(lineTotal);
+            }
+            subtotal += lineTotal;
+        });
+        
+        // Get rates
+        const discountRate = parseFloat(document.getElementById('discount_rate')?.value) || 0;
+        const taxRate = parseFloat(document.getElementById('tax_rate')?.value) || 0;
+        const shippingCost = parseNumber(document.getElementById('shipping_cost')?.value);
+        
+        // Calculate amounts
+        const discountAmount = subtotal * (discountRate / 100);
+        const subtotalAfterDiscount = subtotal - discountAmount;
+        const taxAmount = subtotalAfterDiscount * (taxRate / 100);
+        const grandTotal = subtotalAfterDiscount + taxAmount + shippingCost;
+        
+        // Update summary panel
+        document.getElementById('summary-subtotal').textContent = formatNumber(subtotal);
+        document.getElementById('summary-discount-rate').textContent = discountRate;
+        document.getElementById('summary-discount').textContent = '- ' + formatNumber(discountAmount);
+        document.getElementById('summary-tax-rate').textContent = taxRate;
+        document.getElementById('summary-tax').textContent = '+ ' + formatNumber(taxAmount);
+        document.getElementById('summary-shipping').textContent = '+ ' + formatNumber(shippingCost);
+        document.getElementById('summary-total').textContent = formatNumber(grandTotal);
+    }
+    
+    // Calculate on input changes
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('.quantity-input, .unit-price-input, .tax-input, .discount-input, #discount_rate, #tax_rate, #shipping_cost')) {
+            calculateTotals();
+        }
     });
+    
+    // Build category options HTML
+    function getCategoryOptions() {
+        let options = '<option value="">انتخاب...</option>';
+        {% for category in categories %}
+        options += '<option value="{{ category.id }}">{% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}</option>';
+        {% endfor %}
+        return options;
+    }
+    
+    // Add new item row
+    const addItemBtn = document.getElementById('add-item');
+    if (addItemBtn) {
+        addItemBtn.addEventListener('click', function() {
+            const tbody = document.getElementById('items-tbody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'item-row';
+            newRow.innerHTML = `
+                <td>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-control form-control-sm description-input" name="description_new_${itemCount}" placeholder="شرح کالا" required autocomplete="off">
+                    </div>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm category-select" name="category_new_${itemCount}">
+                        ${getCategoryOptions()}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm quantity-input" name="quantity_new_${itemCount}" placeholder="0" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm money-input unit-price-input" name="unit_price_new_${itemCount}" placeholder="0" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm money-input tax-input" name="tax_amount_new_${itemCount}" placeholder="0">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm money-input discount-input" name="discount_amount_new_${itemCount}" placeholder="0">
+                </td>
+                <td>
+                    <span class="line-total font-weight-bold text-primary">0</span>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn-action remove-item">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(newRow);
+            itemCount++;
+            
+            // Setup money inputs for new row
+            setupMoneyInputs();
+        });
+    }
+    
+    // Remove item row
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
+            const rows = document.querySelectorAll('.item-row');
+            if (rows.length > 1) {
+                const row = e.target.closest('.item-row');
+                if (row) {
+                    row.remove();
+                    calculateTotals();
+                }
+            } else {
+                alert('حداقل یک آیتم باید وجود داشته باشد');
+            }
+        }
+    });
+    
+    // Initial setup
+    setupMoneyInputs();
+    calculateTotals();
 });
 </script>
 {% endblock %}
