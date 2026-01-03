@@ -248,14 +248,15 @@ def process_purchase_request(request: HttpRequest, request_id: int) -> HttpRespo
 @role_required(["manager", "purchasing"])
 def purchase_lists_by_date(request: HttpRequest) -> HttpResponse:
     """Show purchase lists grouped by date and department"""
-    from django.db.models import Count
-    from django.db.models.functions import TruncDate
+    from django.db.models import Count, Q
+    from django.db.models.functions import TruncDate, Coalesce
     
     # Get all purchased requests with items
+    # Use processed_at if available, otherwise fallback to created_at
     purchased_requests = PurchaseRequest.objects.filter(
         status='purchased'
     ).annotate(
-        date=TruncDate('processed_at')
+        date=TruncDate(Coalesce('processed_at', 'created_at'))
     ).values('date', 'user__role').annotate(
         count=Count('id')
     ).order_by('-date', 'user__role')
@@ -2931,7 +2932,7 @@ def inventory_reports(request):
 @custom_login_required
 @role_required(["purchasing", "manager", "manager"])
 def analytics_dashboard(request):
-    return render(request, "analytics_dashboard.html")
+    return render(request, "analytics_bubble.html")
 
 
 @custom_login_required

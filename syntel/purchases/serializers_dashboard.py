@@ -27,3 +27,47 @@ class ProductChangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'category_name', 'current_price', 'previous_price', 'percent_change', 'last_update', 'supplier_name']
+
+
+# Serializers for Bubble Chart Analytics
+class BubbleDataSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(max_length=200)
+    value = serializers.DecimalField(max_digits=15, decimal_places=2)
+    change_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    previous_value = serializers.DecimalField(max_digits=15, decimal_places=2)
+    item_count = serializers.IntegerField(required=False)
+    request_count = serializers.IntegerField(required=False)
+
+
+class DepartmentExpenseSerializer(serializers.Serializer):
+    bubbles = BubbleDataSerializer(many=True)
+    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
+    period = serializers.CharField(max_length=50)
+
+
+class CategoryExpenseSerializer(serializers.Serializer):
+    department_id = serializers.IntegerField()
+    department_name = serializers.CharField(max_length=200)
+    bubbles = BubbleDataSerializer(many=True)
+    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
+    period = serializers.CharField(max_length=50)
+
+
+class ProductDetailSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(max_length=200)
+    category_name = serializers.CharField(max_length=200)
+    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
+    change_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
+    unit = serializers.CharField(max_length=50)
+    average_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class ProductListResponseSerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField(max_length=200)
+    products = ProductDetailSerializer(many=True)
+    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
+    period = serializers.CharField(max_length=50)

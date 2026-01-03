@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحلیل هزینه‌ها</title>
+    
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--light-color);
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            color: var(--dark-color);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .menu-link:hover {
+            background: var(--light-color);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .menu-link i {
+            width: 20px;
+            font-size: 1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-nav {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .breadcrumb-content {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .breadcrumb-content {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .current-date {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+
+        .current-date i {
+            color: var(--primary-color);
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            font-family: 'Vazir', sans-serif;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger-color);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .breadcrumb-list {
+            display: flex;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            font-size: 0.875rem;
+        }
+
+        .breadcrumb-list li {
+            color: #6b7280;
+        }
+
+        .breadcrumb-list li.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .breadcrumb-list li:not(:last-child)::after {
+            content: '/';
+            margin-left: 0.5rem;
+            color: #d1d5db;
+        }
+
+        .breadcrumb-list a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .breadcrumb-list a:hover {
+            text-decoration: underline;
+        }
+
+        /* Top Header Row */
+        .top-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.25rem 1.75rem;
+        }
+
+        /* Filter */
+        .filter-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: var(--dark-color);
+            font-size: 0.875rem;
+        }
+
+        .period-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.625rem;
+        }
+
+        .period-btn {
+            padding: 0.625rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            background: white;
+            color: var(--dark-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .period-btn:hover {
+            background: var(--light-color);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .period-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Stat Section */
+        .stat-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        /* Chart */
+        .chart-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0;
+        }
+
+        .chart-body {
+            padding: 2rem;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: var(--radius-md);
+        }
+
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid var(--light-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Table */
+        .table-box {
+            display: none;
+        }
+
+        .table-box.show {
+            display: block;
+        }
+
+        .table-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0;
+        }
+
+        .table-body {
+            padding: 2rem;
+        }
+
+        .data-table {
+            width: 100%;
+            font-size: 0.875rem;
+            border-collapse: collapse;
+        }
+
+        .data-table thead th {
+            background: var(--light-color);
+            padding: 1rem;
+            text-align: right;
+            font-weight: 700;
+            color: var(--dark-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-table tbody td {
+            padding: 1rem;
+            color: #6b7280;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--light-color);
+        }
+
+        .badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        @media (max-width: 768px) {
+            .layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-left: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .top-header {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .chart-wrapper {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">منو</div>
+            </div>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="{% url 'dashboard' %}" class="menu-link">
+                        <i class="fas fa-home"></i>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_dashboard' %}" class="menu-link active">
+                        <i class="fas fa-chart-bubble"></i>
+                        <span>تحلیل حبابی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>روند هزینه‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>مقایسه</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'logout' %}" class="menu-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <nav class="breadcrumb-nav">
+                <div class="breadcrumb-content">
+                    <ol class="breadcrumb-list" id="breadcrumb">
+                        <li><a href="{% url 'dashboard' %}">داشبورد</a></li>
+                        <li class="active">دپارتمان‌ها</li>
+                    </ol>
+                </div>
+                <div class="breadcrumb-content">
+                    <div class="current-date">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span id="persianDate"></span>
+                    </div>
+                    <a href="{% url 'logout' %}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="top-header">
+                <div class="header-section stat-section">
+                    <div class="stat-value" id="totalExpense">0</div>
+                    <div class="stat-label">مجموع هزینه‌ها</div>
+                </div>
+
+                <div class="header-section">
+                    <label class="filter-label">بازه زمانی</label>
+                    <div class="period-buttons">
+                        <button class="period-btn" data-period="weekly">هفتگی</button>
+                        <button class="period-btn active" data-period="monthly">ماهانه</button>
+                        <button class="period-btn" data-period="quarterly">فصلی</button>
+                        <button class="period-btn" data-period="yearly">سالانه</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Chart Container -->
+            <div class="card" id="department-chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title" id="chartTitle">هزینه‌های دپارتمان‌ها</h3>
+                </div>
+                <div class="chart-body">
+                    <div class="chart-wrapper">
+                        <canvas id="departmentBubbleChart"></canvas>
+                        <div class="loading-overlay" id="department-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Chart Container -->
+            <div class="card" id="category-chart-container" style="display: none;">
+                <div class="chart-header">
+                    <h3 class="chart-title" id="categoryChartTitle">هزینه‌های دسته‌بندی‌ها</h3>
+                    <button class="btn btn-sm btn-outline-primary" id="back-to-departments" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
+                        <i class="fas fa-arrow-right"></i> بازگشت به بخش‌ها
+                    </button>
+                </div>
+                <div class="chart-body">
+                    <div class="chart-wrapper">
+                        <canvas id="categoryBubbleChart"></canvas>
+                        <div class="loading-overlay" id="category-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subcategory Chart Container -->
+            <div class="card" id="subcategory-chart-container" style="display: none;">
+                <div class="chart-header">
+                    <h3 class="chart-title" id="subcategoryChartTitle">زیر دسته‌بندی‌ها</h3>
+                    <button class="btn btn-sm btn-outline-primary" id="back-to-categories" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
+                        <i class="fas fa-arrow-right"></i> بازگشت به دسته‌بندی‌ها
+                    </button>
+                </div>
+                <div class="chart-body">
+                    <div class="chart-wrapper">
+                        <canvas id="subcategoryBubbleChart"></canvas>
+                        <div class="loading-overlay" id="subcategory-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product List Container -->
+            <div class="card table-box" id="product-list-container" style="display: none;">
+                <div class="table-header">
+                    <h3 class="table-title" id="productListTitle">لیست محصولات</h3>
+                    <button class="btn btn-sm btn-outline-primary" id="back-from-products" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
+                        <i class="fas fa-arrow-right"></i> بازگشت
+                    </button>
+                </div>
+                <div class="table-body">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ردیف</th>
+                                    <th>نام محصول</th>
+                                    <th>مقدار</th>
+                                    <th>قیمت واحد</th>
+                                    <th>قیمت کل</th>
+                                    <th>درصد رشد</th>
+                                    <th>فروشنده</th>
+                                    <th>تاریخ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/analytics_bubble.js"></script>
+    <script>
+        // نمایش تاریخ شمسی
+        function getPersianDate() {
+            const date = new Date();
+            return date.toLocaleDateString('fa-IR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+        }
+        
+        document.getElementById('persianDate').textContent = getPersianDate();
+    </script>
+</body>
+</html>

@@ -2,6 +2,7 @@ from django.urls import path
 from django.shortcuts import redirect
 from . import views
 from . import views_dashboard
+from . import views_analytics
 
 urlpatterns = [
     path('', lambda request: redirect('login'), name='home'),
@@ -142,6 +143,17 @@ urlpatterns = [
     path('analytics/suppliers/', views.supplier_analytics, name='supplier_analytics'),
     path('analytics/inventory/', views.inventory_analytics, name='inventory_analytics'),
     path('analytics/executive/', views.executive_summary, name='executive_summary'),
+
+    # Analytics API URLs (Original)
+    path('api/analytics/expenses/departments/', views_analytics.department_expenses_api, name='api_department_expenses_old'),
+    path('api/analytics/expenses/categories/<int:department_id>/', views_analytics.category_expenses_api, name='api_category_expenses_old'),
+    path('api/analytics/expenses/products/<int:department_id>/<int:category_id>/', views_analytics.product_list_api, name='api_product_list_old'),
+    
+    # New Bubble Chart Analytics API URLs
+    path('api/analytics/departments/expenses/', views_analytics.api_department_expenses, name='api_analytics_departments'),
+    path('api/analytics/department/<int:dept_id>/categories/', views_analytics.api_department_categories, name='api_analytics_categories'),
+    path('api/analytics/category/<int:cat_id>/subcategories/', views_analytics.api_category_subcategories, name='api_analytics_subcategories'),
+    path('api/analytics/category/<int:cat_id>/products/', views_analytics.api_category_products, name='api_analytics_products'),
     # System Monitoring URLs
     path('system/monitoring/', views.system_monitoring, name='system_monitoring'),
     path('system/monitoring/api/', views.system_monitoring_api, name='system_monitoring_api'),
