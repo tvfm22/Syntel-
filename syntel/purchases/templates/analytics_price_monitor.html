@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظارت بر قیمت - تحلیل</title>
+    
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--light-color);
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            color: var(--dark-color);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .menu-link:hover {
+            background: var(--light-color);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .menu-link i {
+            width: 20px;
+            font-size: 1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .page-header {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .page-title i {
+            color: var(--warning-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .current-date {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+
+        .current-date i {
+            color: var(--primary-color);
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            font-family: 'Vazir', sans-serif;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        /* Filters */
+        .filters-container {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--dark-color);
+        }
+
+        .filter-select, .filter-input {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .stat-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .stat-icon.primary {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-color);
+        }
+
+        .stat-icon.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value.danger { color: var(--danger-color); }
+        .stat-value.success { color: var(--success-color); }
+        .stat-value.primary { color: var(--primary-color); }
+        .stat-value.warning { color: var(--warning-color); }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .stat-sublabel {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        /* Table Card */
+        .table-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-title i {
+            color: var(--warning-color);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .search-box i {
+            color: #9ca3af;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            outline: none;
+            width: 200px;
+        }
+
+        .table-body {
+            padding: 0;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table thead {
+            background: var(--light-color);
+        }
+
+        .data-table th {
+            padding: 1rem 1.25rem;
+            text-align: right;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .data-table td {
+            padding: 1rem 1.25rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table tbody tr {
+            transition: all 0.2s;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--light-color);
+        }
+
+        .badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .badge-neutral {
+            background: var(--light-color);
+            color: #6b7280;
+        }
+
+        .chart-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .chart-link:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Alert Section */
+        .alert-section {
+            display: none;
+        }
+
+        .alert-section.show {
+            display: block;
+        }
+
+        .alert-header {
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .alert-header .table-title {
+            color: var(--danger-color);
+        }
+
+        .alert-header .table-title i {
+            color: var(--danger-color);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 800px;
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--dark-color);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .chart-wrapper {
+            height: 350px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-left: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">منو تحلیل</div>
+            </div>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="{% url 'dashboard' %}" class="menu-link">
+                        <i class="fas fa-home"></i>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_dashboard' %}" class="menu-link">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>تحلیل حبابی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_line_chart' %}" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>روند هزینه‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_price_monitor' %}" class="menu-link active">
+                        <i class="fas fa-tags"></i>
+                        <span>نظارت بر قیمت</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'logout' %}" class="menu-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-tags"></i>
+                    نظارت بر قیمت
+                </h1>
+                <div class="header-actions">
+                    <div class="current-date">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span id="persianDate"></span>
+                    </div>
+                    <a href="{% url 'logout' %}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-container">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">دسته‌بندی</label>
+                        <select class="filter-select" id="categoryFilter">
+                            <option value="">همه دسته‌بندی‌ها</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">فروشگاه/تامین‌کننده</label>
+                        <select class="filter-select" id="storeFilter">
+                            <option value="">همه فروشگاه‌ها</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">بازه زمانی</label>
+                        <select class="filter-select" id="daysFilter">
+                            <option value="30">30 روز اخیر</option>
+                            <option value="90">3 ماه اخیر</option>
+                            <option value="180">6 ماه اخیر</option>
+                            <option value="365">1 سال اخیر</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex-direction: row; gap: 0.5rem; align-items: end;">
+                        <button onclick="refreshData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            رفرش
+                        </button>
+                        <button onclick="exportToExcel()" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i>
+                            خروجی Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon danger">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="stat-value danger" id="increasedCount">۰</div>
+                    <div class="stat-label">افزایش قیمت</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="stat-value success" id="decreasedCount">۰</div>
+                    <div class="stat-label">کاهش قیمت</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-percent"></i>
+                    </div>
+                    <div class="stat-value primary" id="avgChange">۰٪</div>
+                    <div class="stat-label">میانگین تغییرات</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-value warning" id="maxIncreasePercent">۰٪</div>
+                    <div class="stat-label">بیشترین افزایش</div>
+                    <div class="stat-sublabel" id="maxIncreaseName">-</div>
+                </div>
+            </div>
+
+            <!-- Alerts Table -->
+            <div class="table-card alert-section" id="alertsSection">
+                <div class="table-header alert-header">
+                    <h3 class="table-title">
+                        <i class="fas fa-exclamation-circle"></i>
+                        هشدارها (افزایش بیش از ۵٪)
+                    </h3>
+                </div>
+                <div class="table-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>محصول</th>
+                                <th>دسته‌بندی</th>
+                                <th>قیمت قبلی</th>
+                                <th>قیمت فعلی</th>
+                                <th>تغییر</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h3 class="table-title">
+                        <i class="fas fa-list"></i>
+                        تغییرات قیمت
+                    </h3>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="جستجوی محصول...">
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>محصول</th>
+                                <th>دسته‌بندی</th>
+                                <th>آخرین بروزرسانی</th>
+                                <th>قیمت فعلی</th>
+                                <th>تغییر</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem;">
+                                    <i class="fas fa-spinner fa-spin"></i> در حال بارگذاری...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart Modal -->
+    <div class="modal-overlay" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">تاریخچه قیمت</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-wrapper">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CSRF Token Setup
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+        if (csrftoken) {
+            axios.defaults.headers.common['X-CSRFToken'] = csrftoken;
+        }
+
+        // State
+        let chartInstance = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Persian date
+            document.getElementById('persianDate').textContent = getPersianDate();
+            
+            // Load initial data
+            loadFilters();
+            loadStats();
+            loadAlerts();
+            loadProducts();
+
+            // Event Listeners
+            document.getElementById('categoryFilter').addEventListener('change', refreshData);
+            document.getElementById('storeFilter').addEventListener('change', refreshData);
+            document.getElementById('daysFilter').addEventListener('change', refreshData);
+            document.getElementById('searchInput').addEventListener('input', debounce(loadProducts, 500));
+
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                loadStats();
+                loadAlerts();
+            }, 30000);
+        });
+
+        function getPersianDate() {
+            const date = new Date();
+            return date.toLocaleDateString('fa-IR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+        }
+
+        function refreshData() {
+            loadStats();
+            loadAlerts();
+            loadProducts();
+        }
+
+        // API Calls
+        async function loadFilters() {
+            try {
+                const response = await axios.get('/api/dashboard/filters/');
+                const { categories, suppliers } = response.data;
+                
+                const catSelect = document.getElementById('categoryFilter');
+                categories.forEach(c => {
+                    catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+
+                const storeSelect = document.getElementById('storeFilter');
+                suppliers.forEach(s => {
+                    storeSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading filters:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const params = {
+                    category: document.getElementById('categoryFilter').value,
+                    store: document.getElementById('storeFilter').value,
+                    days: document.getElementById('daysFilter').value
+                };
+                
+                const response = await axios.get('/api/dashboard/stats/', { params });
+                const data = response.data;
+                
+                document.getElementById('increasedCount').textContent = formatNumber(data.increased_count);
+                document.getElementById('decreasedCount').textContent = formatNumber(data.decreased_count);
+                document.getElementById('avgChange').textContent = `${parseFloat(data.avg_change).toFixed(1)}٪`;
+                
+                if (data.max_increase) {
+                    document.getElementById('maxIncreaseName').textContent = data.max_increase.name;
+                    document.getElementById('maxIncreasePercent').textContent = `+${parseFloat(data.max_increase.percent).toFixed(1)}٪`;
+                } else {
+                    document.getElementById('maxIncreaseName').textContent = '-';
+                    document.getElementById('maxIncreasePercent').textContent = '۰٪';
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadAlerts() {
+            try {
+                const params = {
+                    category: document.getElementById('categoryFilter').value,
+                    store: document.getElementById('storeFilter').value,
+                    days: document.getElementById('daysFilter').value
+                };
+                
+                const response = await axios.get('/api/dashboard/products/high-increase/', { params });
+                
+                const tbody = document.getElementById('alertsTableBody');
+                const section = document.getElementById('alertsSection');
+                tbody.innerHTML = '';
+
+                if (response.data.length > 0) {
+                    section.classList.add('show');
+                    response.data.forEach(product => {
+                        const row = `
+                            <tr>
+                                <td style="font-weight: 600;">${product.name}</td>
+                                <td>${product.category_name || '-'}</td>
+                                <td style="color: #9ca3af;">${formatPrice(product.previous_price)}</td>
+                                <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
+                                <td><span class="badge badge-danger">+${parseFloat(product.percent_change).toFixed(1)}٪</span></td>
+                                <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="chart-link"><i class="fas fa-chart-line"></i> نمودار</a></td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                } else {
+                    section.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+
+        async function loadProducts() {
+            try {
+                const params = {
+                    category: document.getElementById('categoryFilter').value,
+                    store: document.getElementById('storeFilter').value,
+                    days: document.getElementById('daysFilter').value,
+                    search: document.getElementById('searchInput').value
+                };
+
+                const response = await axios.get('/api/dashboard/products/changes/', { params });
+                
+                const tbody = document.getElementById('productsTableBody');
+                tbody.innerHTML = '';
+
+                if (response.data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">
+                                <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                هیچ محصولی یافت نشد
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                response.data.forEach(product => {
+                    let badgeClass = 'badge-neutral';
+                    let changeSign = '';
+                    if (product.percent_change > 0) {
+                        badgeClass = 'badge-danger';
+                        changeSign = '+';
+                    } else if (product.percent_change < 0) {
+                        badgeClass = 'badge-success';
+                    }
+                    
+                    const row = `
+                        <tr>
+                            <td style="font-weight: 600;">${product.name}</td>
+                            <td>${product.category_name || '-'}</td>
+                            <td style="color: #9ca3af; font-size: 0.8125rem;">${new Date(product.last_update).toLocaleDateString('fa-IR')}</td>
+                            <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
+                            <td><span class="badge ${badgeClass}">${changeSign}${parseFloat(product.percent_change).toFixed(1)}٪</span></td>
+                            <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="chart-link"><i class="fas fa-chart-line"></i> نمودار</a></td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('productsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                            خطا در بارگذاری داده‌ها
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function showHistory(productId, productName) {
+            document.getElementById('modalTitle').textContent = `تاریخچه قیمت: ${productName}`;
+            document.getElementById('chartModal').classList.add('show');
+
+            try {
+                const response = await axios.get(`/api/dashboard/products/${productId}/history/`);
+                const history = response.data;
+
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: history.map(h => new Date(h.date).toLocaleDateString('fa-IR')),
+                        datasets: [{
+                            label: 'قیمت',
+                            data: history.map(h => h.price),
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: 'rgba(99, 102, 241, 1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                rtl: true,
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: { family: 'Vazir', size: 14 },
+                                bodyFont: { family: 'Vazir', size: 12 },
+                                callbacks: {
+                                    label: function(context) {
+                                        return formatPrice(context.raw);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: {
+                                    font: { family: 'Vazir', size: 11 },
+                                    callback: value => formatCompact(value)
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { family: 'Vazir', size: 11 },
+                                    maxRotation: 45
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('chartModal').classList.remove('show');
+        }
+
+        // Utilities
+        function formatPrice(price) {
+            if (!price) return '-';
+            return parseInt(price).toLocaleString('fa-IR') + ' ریال';
+        }
+
+        function formatNumber(num) {
+            if (!num) return '۰';
+            return num.toLocaleString('fa-IR');
+        }
+
+        function formatCompact(value) {
+            if (value >= 1000000000) {
+                return (value / 1000000000).toFixed(1) + ' میلیارد';
+            } else if (value >= 1000000) {
+                return (value / 1000000).toFixed(1) + ' میلیون';
+            } else if (value >= 1000) {
+                return (value / 1000).toFixed(0) + ' هزار';
+            }
+            return value;
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function exportToExcel() {
+            const params = new URLSearchParams({
+                category: document.getElementById('categoryFilter').value,
+                store: document.getElementById('storeFilter').value,
+                days: document.getElementById('daysFilter').value,
+                search: document.getElementById('searchInput').value
+            });
+            window.location.href = `/api/dashboard/export/?${params.toString()}`;
+        }
+
+        // Close modal on outside click
+        document.getElementById('chartModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

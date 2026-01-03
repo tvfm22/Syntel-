@@ -2943,6 +2943,13 @@ def analytics_line_chart(request):
 
 
 @custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
+def analytics_price_monitor(request):
+    """صفحه نظارت بر قیمت در بخش تحلیل"""
+    return render(request, "analytics_price_monitor.html")
+
+
+@custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_analytics(request):
     return render(request, "analytics_dashboard.html")

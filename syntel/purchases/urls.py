@@ -162,6 +162,10 @@ urlpatterns = [
     
     # Analytics Page: Line Chart (صفحه نمودار خطی)
     path('analytics/line-chart/', views.analytics_line_chart, name='analytics_line_chart'),
+    
+    # Analytics Page: Price Monitor (صفحه نظارت بر قیمت)
+    path('analytics/prices/', views.analytics_price_monitor, name='analytics_price_monitor'),
+    
     # System Monitoring URLs
     path('system/monitoring/', views.system_monitoring, name='system_monitoring'),
     path('system/monitoring/api/', views.system_monitoring_api, name='system_monitoring_api'),
