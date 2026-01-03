@@ -154,6 +154,14 @@ urlpatterns = [
     path('api/analytics/department/<int:dept_id>/categories/', views_analytics.api_department_categories, name='api_analytics_categories'),
     path('api/analytics/category/<int:cat_id>/subcategories/', views_analytics.api_category_subcategories, name='api_analytics_subcategories'),
     path('api/analytics/category/<int:cat_id>/products/', views_analytics.api_category_products, name='api_analytics_products'),
+    
+    # Line Chart Analytics API URLs (نمودار خطی)
+    path('api/analytics/trend/', views_analytics.api_expense_trend, name='api_expense_trend'),
+    path('api/analytics/department/<int:dept_id>/trend/', views_analytics.api_department_trend, name='api_department_trend'),
+    path('api/analytics/comparison/', views_analytics.api_comparison_trend, name='api_comparison_trend'),
+    
+    # Analytics Page: Line Chart (صفحه نمودار خطی)
+    path('analytics/line-chart/', views.analytics_line_chart, name='analytics_line_chart'),
     # System Monitoring URLs
     path('system/monitoring/', views.system_monitoring, name='system_monitoring'),
     path('system/monitoring/api/', views.system_monitoring_api, name='system_monitoring_api'),

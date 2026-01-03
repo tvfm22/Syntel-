@@ -710,3 +710,293 @@ def api_category_products(request, cat_id):
 	cache.set(cache_key, response_data, 60 * 5)
 	
 	return Response(response_data)
+
+
+# ============================================================================
+# Line Chart API - روند هزینه‌ها
+# ============================================================================
+
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
+from collections import defaultdict
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_expense_trend(request):
+	"""
+	API برگرداندن روند هزینه‌ها برای نمودار خطی
+	فیلتر بر اساس:
+	- period: بازه زمانی (weekly, monthly, quarterly, yearly)
+	- department_id: فیلتر بر اساس بخش (اختیاری)
+	- category_id: فیلتر بر اساس دسته‌بندی (اختیاری)
+	- granularity: دقت زمانی (daily, weekly, monthly)
+	"""
+	period = request.GET.get('period', 'monthly')
+	department_id = request.GET.get('department_id')
+	category_id = request.GET.get('category_id')
+	granularity = request.GET.get('granularity', 'daily')
+	
+	# تولید cache_key
+	cache_key = get_cache_key('expense_trend', period=period, dept=department_id or 'all', cat=category_id or 'all', granularity=granularity)
+	cached_data = cache.get(cache_key)
+	
+	if cached_data is not None:
+		return Response(cached_data)
+	
+	start, end, prev_start, prev_end = get_date_range(period)
+	
+	# فیلتر پایه
+	items_qs = _invoice_items_for_period(start=start, end=end)
+	
+	# فیلتر بر اساس بخش
+	department = None
+	if department_id:
+		try:
+			department = Requester.objects.get(id=department_id)
+			items_qs = items_qs.filter(
+				Q(requester=department) | 
+				Q(invoice__purchase_order__request__user__role=department.name)
+			)
+		except Requester.DoesNotExist:
+			pass
+	
+	# فیلتر بر اساس دسته‌بندی
+	category = None
+	if category_id:
+		try:
+			category = Category.objects.get(id=category_id)
+			items_qs = items_qs.filter(product__category=category)
+		except Category.DoesNotExist:
+			pass
+	
+	# انتخاب دقت زمانی برای گروه‌بندی
+	if granularity == 'weekly':
+		trunc_func = TruncWeek
+	elif granularity == 'monthly':
+		trunc_func = TruncMonth
+	else:  # daily
+		trunc_func = TruncDate
+	
+	# گروه‌بندی بر اساس تاریخ
+	trend_data = items_qs.annotate(
+		date=trunc_func('invoice__created_at')
+	).values('date').annotate(
+		total=Sum('line_total'),
+		count=Sum('quantity')
+	).order_by('date')
+	
+	# تبدیل به لیست برای JSON
+	labels = []
+	values = []
+	counts = []
+	
+	for item in trend_data:
+		if item['date']:
+			labels.append(item['date'].strftime('%Y-%m-%d'))
+			values.append(float(item['total']) if item['total'] else 0)
+			counts.append(float(item['count']) if item['count'] else 0)
+	
+	# محاسبه خلاصه آماری
+	total_expense = sum(values)
+	avg_expense = total_expense / len(values) if values else 0
+	max_expense = max(values) if values else 0
+	min_expense = min(values) if values else 0
+	
+	response_data = {
+		'labels': labels,
+		'datasets': [
+			{
+				'label': 'هزینه‌ها',
+				'data': values,
+				'borderColor': 'rgba(99, 102, 241, 1)',
+				'backgroundColor': 'rgba(99, 102, 241, 0.1)',
+				'fill': True,
+				'tension': 0.4
+			},
+			{
+				'label': 'تعداد اقلام',
+				'data': counts,
+				'borderColor': 'rgba(16, 185, 129, 1)',
+				'backgroundColor': 'rgba(16, 185, 129, 0.1)',
+				'fill': False,
+				'tension': 0.4,
+				'yAxisID': 'y1'
+			}
+		],
+		'summary': {
+			'total': total_expense,
+			'average': avg_expense,
+			'max': max_expense,
+			'min': min_expense,
+			'data_points': len(values)
+		},
+		'filters': {
+			'period': period,
+			'department': department.get_name_display() if department else 'همه بخش‌ها',
+			'category': category.name if category else 'همه دسته‌ها',
+			'granularity': granularity
+		}
+	}
+	
+	cache.set(cache_key, response_data, 60 * 5)
+	
+	return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_department_trend(request, dept_id):
+	"""
+	API برگرداندن روند هزینه‌های یک بخش خاص
+	"""
+	try:
+		department = Requester.objects.get(id=dept_id)
+	except Requester.DoesNotExist:
+		return Response({'error': 'بخش یافت نشد'}, status=404)
+	
+	period = request.GET.get('period', 'monthly')
+	granularity = request.GET.get('granularity', 'daily')
+	
+	cache_key = get_cache_key('dept_trend', dept_id=dept_id, period=period, granularity=granularity)
+	cached_data = cache.get(cache_key)
+	
+	if cached_data is not None:
+		return Response(cached_data)
+	
+	start, end, prev_start, prev_end = get_date_range(period)
+	
+	items_qs = _invoice_items_for_period(start=start, end=end).filter(
+		Q(requester=department) | 
+		Q(invoice__purchase_order__request__user__role=department.name)
+	)
+	
+	# انتخاب دقت زمانی
+	if granularity == 'weekly':
+		trunc_func = TruncWeek
+	elif granularity == 'monthly':
+		trunc_func = TruncMonth
+	else:
+		trunc_func = TruncDate
+	
+	trend_data = items_qs.annotate(
+		date=trunc_func('invoice__created_at')
+	).values('date').annotate(
+		total=Sum('line_total')
+	).order_by('date')
+	
+	labels = []
+	values = []
+	
+	for item in trend_data:
+		if item['date']:
+			labels.append(item['date'].strftime('%Y-%m-%d'))
+			values.append(float(item['total']) if item['total'] else 0)
+	
+	response_data = {
+		'department': {
+			'id': department.id,
+			'name': department.get_name_display()
+		},
+		'labels': labels,
+		'values': values,
+		'total': sum(values),
+		'period': period,
+		'granularity': granularity
+	}
+	
+	cache.set(cache_key, response_data, 60 * 5)
+	
+	return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_comparison_trend(request):
+	"""
+	API برای مقایسه روند هزینه‌های بخش‌های مختلف
+	"""
+	period = request.GET.get('period', 'monthly')
+	granularity = request.GET.get('granularity', 'daily')
+	
+	cache_key = get_cache_key('comparison_trend', period=period, granularity=granularity)
+	cached_data = cache.get(cache_key)
+	
+	if cached_data is not None:
+		return Response(cached_data)
+	
+	start, end, prev_start, prev_end = get_date_range(period)
+	
+	# انتخاب دقت زمانی
+	if granularity == 'weekly':
+		trunc_func = TruncWeek
+	elif granularity == 'monthly':
+		trunc_func = TruncMonth
+	else:
+		trunc_func = TruncDate
+	
+	requesters = Requester.objects.all().order_by('name')
+	
+	# رنگ‌های ثابت برای هر بخش
+	colors = [
+		'rgba(99, 102, 241, 1)',    # بنفش
+		'rgba(16, 185, 129, 1)',    # سبز
+		'rgba(239, 68, 68, 1)',     # قرمز
+		'rgba(245, 158, 11, 1)',    # نارنجی
+		'rgba(59, 130, 246, 1)',    # آبی
+		'rgba(168, 85, 247, 1)',    # بنفش روشن
+		'rgba(236, 72, 153, 1)',    # صورتی
+	]
+	
+	datasets = []
+	all_dates = set()
+	
+	for idx, req in enumerate(requesters):
+		items_qs = _invoice_items_for_period(start=start, end=end).filter(
+			Q(requester=req) | 
+			Q(invoice__purchase_order__request__user__role=req.name)
+		)
+		
+		trend_data = items_qs.annotate(
+			date=trunc_func('invoice__created_at')
+		).values('date').annotate(
+			total=Sum('line_total')
+		).order_by('date')
+		
+		dept_data = {}
+		for item in trend_data:
+			if item['date']:
+				date_str = item['date'].strftime('%Y-%m-%d')
+				all_dates.add(date_str)
+				dept_data[date_str] = float(item['total']) if item['total'] else 0
+		
+		color = colors[idx % len(colors)]
+		
+		datasets.append({
+			'department_id': req.id,
+			'label': req.get_name_display(),
+			'data': dept_data,
+			'borderColor': color,
+			'backgroundColor': color.replace('1)', '0.1)'),
+			'fill': False,
+			'tension': 0.4
+		})
+	
+	# مرتب‌سازی تاریخ‌ها
+	sorted_dates = sorted(list(all_dates))
+	
+	# تکمیل داده‌های ناقص با صفر
+	for ds in datasets:
+		values = []
+		for date in sorted_dates:
+			values.append(ds['data'].get(date, 0))
+		ds['data'] = values
+	
+	response_data = {
+		'labels': sorted_dates,
+		'datasets': datasets,
+		'period': period,
+		'granularity': granularity
+	}
+	
+	cache.set(cache_key, response_data, 60 * 5)
+	
+	return Response(response_data)

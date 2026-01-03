@@ -2936,6 +2936,13 @@ def analytics_dashboard(request):
 
 
 @custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
+def analytics_line_chart(request):
+    """صفحه نمودار خطی روند هزینه‌ها"""
+    return render(request, "analytics_line_chart.html")
+
+
+@custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_analytics(request):
     return render(request, "analytics_dashboard.html")
