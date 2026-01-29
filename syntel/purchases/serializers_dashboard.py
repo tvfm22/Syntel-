@@ -23,10 +23,21 @@ class ProductChangeSerializer(serializers.ModelSerializer):
     percent_change = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
     last_update = serializers.DateTimeField(read_only=True)
     supplier_name = serializers.CharField(read_only=True)
+    supplier_notes = serializers.CharField(read_only=True)
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # اگر فروشنده فروشگاه نقدی است، نام نمایشی را تغییر دهیم
+        if data.get('supplier_notes') and 'فروشگاه نقدی' in data['supplier_notes']:
+            # نام واقعی فروشگاه را نگه می‌داریم
+            data['supplier_display_name'] = 'فروشگاه نقدی'
+        else:
+            data['supplier_display_name'] = data.get('supplier_name', '-')
+        return data
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category_name', 'current_price', 'previous_price', 'percent_change', 'last_update', 'supplier_name']
+        fields = ['id', 'name', 'category_name', 'current_price', 'previous_price', 'percent_change', 'last_update', 'supplier_name', 'supplier_notes']
 
 
 # Serializers for Bubble Chart Analytics

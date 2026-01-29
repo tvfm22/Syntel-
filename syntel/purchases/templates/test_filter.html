@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فیلتر</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        select, button { padding: 10px; margin: 10px; font-size: 16px; }
+        #log { background: #f0f0f0; padding: 10px; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>تست فیلتر دسته‌بندی</h1>
+    
+    <div>
+        <label>دسته‌بندی:</label>
+        <select id="category">
+            <option value="">-- انتخاب --</option>
+            <option value="1">تره بار</option>
+            <option value="6">لبنیات</option>
+            <option value="10">گوشت و پروتئین</option>
+            <option value="53">گوشت</option>
+        </select>
+    </div>
+    
+    <div>
+        <label>زیردسته‌بندی:</label>
+        <select id="subcategory">
+            <option value="">-- ابتدا دسته را انتخاب کنید --</option>
+        </select>
+    </div>
+    
+    <button onclick="testAPI()">تست مستقیم API</button>
+    
+    <div id="log"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const className = type === 'error' ? 'error' : (type === 'success' ? 'success' : '');
+            logDiv.innerHTML += `<div class="${className}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const categorySelect = document.getElementById('category');
+        const subcategorySelect = document.getElementById('subcategory');
+        
+        log('صفحه بارگذاری شد');
+        log('CSRF Token: ' + (getCookie('csrftoken') ? 'موجود است' : 'یافت نشد'), getCookie('csrftoken') ? 'success' : 'error');
+        
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            log(`دسته‌بندی ${categoryId} انتخاب شد`);
+            
+            subcategorySelect.innerHTML = '<option value="">در حال بارگذاری...</option>';
+            
+            if (!categoryId) {
+                subcategorySelect.innerHTML = '<option value="">-- ابتدا دسته را انتخاب کنید --</option>';
+                return;
+            }
+            
+            const url = `/api/invoices/subcategories/?category_id=${categoryId}`;
+            log(`درخواست به: ${url}`);
+            
+            fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                log(`وضعیت پاسخ: ${response.status}`, response.ok ? 'success' : 'error');
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        log(`خطا: ${text}`, 'error');
+                        throw new Error(`HTTP ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                log(`داده دریافت شد: ${JSON.stringify(data)}`, 'success');
+                
+                subcategorySelect.innerHTML = '<option value="">-- انتخاب زیردسته --</option>';
+                
+                if (data.subcategories && data.subcategories.length > 0) {
+                    data.subcategories.forEach(subcat => {
+                        const option = document.createElement('option');
+                        option.value = subcat.id;
+                        option.textContent = subcat.name;
+                        subcategorySelect.appendChild(option);
+                    });
+                    log(`${data.subcategories.length} زیردسته اضافه شد`, 'success');
+                } else {
+                    log('هیچ زیردسته‌ای یافت نشد', 'error');
+                }
+            })
+            .catch(error => {
+                log(`خطا: ${error.message}`, 'error');
+                subcategorySelect.innerHTML = '<option value="">خطا در بارگذاری</option>';
+            });
+        });
+        
+        function testAPI() {
+            const categoryId = categorySelect.value;
+            if (!categoryId) {
+                alert('لطفا یک دسته‌بندی انتخاب کنید');
+                return;
+            }
+            
+            log('=== شروع تست مستقیم API ===');
+            
+            const url = `/api/invoices/subcategories/?category_id=${categoryId}`;
+            
+            fetch(url, {
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                log('نتیجه تست: ' + JSON.stringify(data, null, 2), 'success');
+            })
+            .catch(err => {
+                log('خطای تست: ' + err.message, 'error');
+            });
+        }
+    </script>
+</body>
+</html>

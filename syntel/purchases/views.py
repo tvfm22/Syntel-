@@ -2968,6 +2968,156 @@ def supplier_analytics(request):
 
 
 @custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
+def purchase_category_analysis(request):
+    """
+    صفحه تحلیل خرید بر اساس دسته‌بندی و فروشنده
+    با فیلتر آبشاری: تاریخ -> دسته اصلی -> زیردسته -> فروشنده
+    """
+    # دریافت فیلترها از URL
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    category_id = request.GET.get('category', '')
+    subcategory_id = request.GET.get('subcategory', '')
+    supplier_id = request.GET.get('supplier', '')
+    
+    # دسته‌بندی‌های اصلی (بدون والد)
+    main_categories = Category.objects.filter(
+        parent__isnull=True,
+        is_active=True
+    ).order_by('name')
+    
+    # زیردسته‌ها (اگر دسته اصلی انتخاب شده)
+    subcategories = []
+    if category_id:
+        subcategories = Category.objects.filter(
+            parent_id=category_id,
+            is_active=True
+        ).order_by('name')
+    
+    # فروشندگان فیلتر شده بر اساس زیردسته
+    if subcategory_id:
+        # فقط فروشندگانی که محصولات این زیردسته را فروخته‌اند
+        invoice_items_qs = InvoiceItem.objects.filter(
+            product__category_id=subcategory_id,
+            invoice__status__in=['sent', 'approved', 'partially_paid', 'paid', 'overdue'],
+            invoice__supplier__isnull=False
+        )
+        
+        # اعمال فیلتر تاریخ
+        if start_date:
+            invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__gte=start_date)
+        if end_date:
+            invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__lte=end_date)
+        
+        # دریافت فروشندگان منحصر به فرد
+        supplier_ids = invoice_items_qs.values_list('invoice__supplier_id', flat=True).distinct()
+        suppliers = Supplier.objects.filter(
+            id__in=supplier_ids,
+            status='active'
+        ).order_by('name')
+    else:
+        # اگر زیردسته انتخاب نشده، همه فروشندگان فعال را نمایش بده
+        suppliers = Supplier.objects.filter(status='active').order_by('name')
+    
+    # محصولات و داده‌های فیلتر شده
+    products_data = []
+    summary = {
+        'total_items': 0,
+        'total_amount': Decimal('0'),
+        'unique_products': 0,
+        'unique_suppliers': 0
+    }
+    
+    if subcategory_id:  # فقط زمانی که زیردسته انتخاب شده
+        # Query اولیه
+        invoice_items = InvoiceItem.objects.filter(
+            product__category_id=subcategory_id,
+            invoice__status__in=['sent', 'approved', 'partially_paid', 'paid', 'overdue']
+        ).select_related('product', 'invoice', 'invoice__supplier')
+        
+        # اعمال فیلترهای تاریخ
+        if start_date:
+            invoice_items = invoice_items.filter(invoice__invoice_date__gte=start_date)
+        if end_date:
+            invoice_items = invoice_items.filter(invoice__invoice_date__lte=end_date)
+        
+        # اعمال فیلتر فروشنده
+        if supplier_id:
+            invoice_items = invoice_items.filter(invoice__supplier_id=supplier_id)
+        
+        # گروه‌بندی بر اساس محصول و فروشنده
+        from django.db.models import Count, F, ExpressionWrapper
+        
+        products_summary = invoice_items.values(
+            'product__id',
+            'product__name',
+            'product__unit__name',
+            'invoice__supplier__id',
+            'invoice__supplier__name'
+        ).annotate(
+            total_quantity=Sum('quantity'),
+            total_amount=Sum('line_total'),
+            weighted_price_sum=Sum(F('quantity') * F('unit_price')),
+            purchase_count=Count('id')
+        ).order_by('-total_amount')
+        
+        products_data = list(products_summary)
+        
+        # محاسبه میانگین وزنی برای هر محصول
+        for product in products_data:
+            if product['total_quantity'] and product['total_quantity'] > 0:
+                product['weighted_avg_price'] = product['weighted_price_sum'] / product['total_quantity']
+            else:
+                product['weighted_avg_price'] = 0
+        
+        # محاسبه خلاصه
+        summary['total_items'] = invoice_items.count()
+        summary['total_amount'] = invoice_items.aggregate(
+            total=Sum('line_total')
+        )['total'] or Decimal('0')
+        summary['unique_products'] = len(products_data)
+        summary['unique_suppliers'] = invoice_items.values('invoice__supplier').distinct().count()
+        
+        # محاسبه میانگین کل (average of all unit prices)
+        avg_result = invoice_items.aggregate(avg_price=Sum('unit_price'))
+        count = invoice_items.count()
+        if count > 0 and avg_result['avg_price']:
+            summary['avg_price'] = avg_result['avg_price'] / count
+        else:
+            summary['avg_price'] = Decimal('0')
+        
+        # محاسبه میانگین وزنی (weighted average: sum(quantity * unit_price) / sum(quantity))
+        total_quantity = invoice_items.aggregate(total_qty=Sum('quantity'))['total_qty'] or Decimal('0')
+        weighted_sum = invoice_items.aggregate(
+            weighted=Sum(F('quantity') * F('unit_price'))
+        )['weighted'] or Decimal('0')
+        
+        summary['total_quantity'] = total_quantity
+        
+        if total_quantity > 0:
+            summary['weighted_avg_price'] = weighted_sum / total_quantity
+        else:
+            summary['weighted_avg_price'] = Decimal('0')
+    
+    context = {
+        'main_categories': main_categories,
+        'subcategories': subcategories,
+        'suppliers': suppliers,
+        'products_data': products_data,
+        'summary': summary,
+        # مقادیر فیلتر برای نگه داشتن در فرم
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_category': category_id,
+        'selected_subcategory': subcategory_id,
+        'selected_supplier': supplier_id,
+    }
+    
+    return render(request, 'purchase_category_analysis.html', context)
+
+
+@custom_login_required
 @role_required(["purchasing", "manager"])
 def inventory_analytics(request):
     return render(request, "analytics_dashboard.html")
@@ -2977,6 +3127,12 @@ def inventory_analytics(request):
 @role_required(["purchasing", "manager"])
 def executive_summary(request):
     return render(request, "analytics_dashboard.html")
+
+
+@custom_login_required
+def test_filter_page(request):
+    """صفحه تست فیلترها"""
+    return render(request, "test_filter.html")
 
 
 # ---------------------------------------------------------------------------

@@ -41,7 +41,7 @@ def add_to_stock_on_store_invoice(sender, instance, created, **kwargs):
     # فقط برای فاکتورهای تایید شده
     if instance.status == 'approved' and instance.approved_at:
         # بررسی اینکه درخواست‌کننده انبار باشد
-        if instance.requester:
+        if hasattr(instance, 'requester') and instance.requester:
             try:
                 store_requester = Requester.objects.get(name='store')
                 if instance.requester == store_requester:

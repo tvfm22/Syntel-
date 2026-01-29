@@ -5,8 +5,10 @@ from decimal import Decimal
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 
 from .models import Category, InvoiceItem, Product, PurchaseItem, Requester
@@ -1000,3 +1002,153 @@ def api_comparison_trend(request):
 	cache.set(cache_key, response_data, 60 * 5)
 	
 	return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_invoice_subcategories(request):
+	"""
+	API برای دریافت لیست زیردسته‌بندی‌های یک دسته‌بندی اصلی
+	GET /api/invoices/subcategories/?category_id=X
+	"""
+	if not request.user.is_authenticated:
+		return Response({'error': 'Authentication required'}, status=401)
+	category_id = request.GET.get('category_id')
+	
+	if not category_id:
+		return Response({'error': 'category_id is required'}, status=400)
+	
+	try:
+		parent_category = Category.objects.get(id=category_id, is_active=True)
+	except Category.DoesNotExist:
+		return Response({'error': 'Category not found'}, status=404)
+	
+	# دریافت زیردسته‌ها
+	subcategories = Category.objects.filter(
+		parent=parent_category,
+		is_active=True
+	).values('id', 'name').order_by('name')
+	
+	return Response({
+		'parent_category': {
+			'id': parent_category.id,
+			'name': parent_category.name
+		},
+		'subcategories': list(subcategories)
+	})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_invoice_suppliers(request):
+	"""
+	API برای دریافت لیست فروشندگان فیلتر شده بر اساس زیردسته و تاریخ
+	GET /api/invoices/suppliers/?subcategory_id=Y&start_date=...&end_date=...
+	"""
+	if not request.user.is_authenticated:
+		return Response({'error': 'Authentication required'}, status=401)
+	from .models import Supplier
+	from django.db.models import Count
+	
+	subcategory_id = request.GET.get('subcategory_id')
+	start_date = request.GET.get('start_date')
+	end_date = request.GET.get('end_date')
+	
+	if not subcategory_id:
+		return Response({'error': 'subcategory_id is required'}, status=400)
+	
+	# فیلتر اولیه: فاکتورهایی که محصولاتشان در این زیردسته هستند
+	invoice_items_qs = InvoiceItem.objects.filter(
+		product__category_id=subcategory_id,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	)
+	
+	# اعمال فیلتر تاریخ
+	if start_date:
+		invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__gte=start_date)
+	if end_date:
+		invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__lte=end_date)
+	
+	# دریافت فروشندگان منحصر به فرد
+	supplier_ids = invoice_items_qs.filter(
+		invoice__supplier__isnull=False
+	).values_list('invoice__supplier_id', flat=True).distinct()
+	
+	suppliers = Supplier.objects.filter(
+		id__in=supplier_ids,
+		status='active'
+	).values('id', 'name', 'supplier_code').order_by('name')
+	
+	return Response({
+		'suppliers': list(suppliers),
+		'count': len(suppliers)
+	})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_product_purchase_history(request):
+	"""
+	API برای دریافت تاریخچه خرید یک محصول (برای نمایش و نمودار)
+	GET /api/invoices/product-history/?product_id=Z&supplier_id=X&start_date=...&end_date=...
+	"""
+	if not request.user.is_authenticated:
+		return Response({'error': 'Authentication required'}, status=401)
+	product_id = request.GET.get('product_id')
+	supplier_id = request.GET.get('supplier_id')
+	start_date = request.GET.get('start_date')
+	end_date = request.GET.get('end_date')
+	
+	if not product_id:
+		return Response({'error': 'product_id is required'}, status=400)
+	
+	# فیلتر اولیه
+	history_qs = InvoiceItem.objects.filter(
+		product_id=product_id,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	).select_related('invoice', 'invoice__supplier')
+	
+	# فیلتر براساس فروشنده (اگر ارسال شده باشد)
+	if supplier_id:
+		history_qs = history_qs.filter(invoice__supplier_id=supplier_id)
+	
+	# اعمال فیلتر تاریخ
+	if start_date:
+		history_qs = history_qs.filter(invoice__invoice_date__gte=start_date)
+	if end_date:
+		history_qs = history_qs.filter(invoice__invoice_date__lte=end_date)
+	
+	# همه خریدها برای نمودار (مرتب شده از قدیمی به جدید)
+	all_purchases = history_qs.order_by('invoice__invoice_date')
+	
+	# 3 آخرین خرید برای نمایش
+	latest_purchases = history_qs.order_by('-invoice__invoice_date')[:3]
+	
+	history_data = []
+	for item in latest_purchases:
+		history_data.append({
+			'quantity': float(item.quantity),
+			'unit_price': float(item.unit_price),
+			'line_total': float(item.line_total),
+			'invoice_date': item.invoice.invoice_date.strftime('%Y-%m-%d'),
+			'invoice_number': item.invoice.invoice_number,
+			'supplier_name': item.invoice.supplier.name if item.invoice.supplier else item.invoice.store_name or 'نامشخص'
+		})
+	
+	# تمام داده‌ها برای نمودار
+	chart_data = []
+	for item in all_purchases:
+		chart_data.append({
+			'quantity': float(item.quantity),
+			'unit_price': float(item.unit_price),
+			'line_total': float(item.line_total),
+			'invoice_date': item.invoice.invoice_date.strftime('%Y-%m-%d'),
+			'supplier_name': item.invoice.supplier.name if item.invoice.supplier else item.invoice.store_name or 'نامشخص'
+		})
+	
+	return Response({
+		'product_id': product_id,
+		'supplier_id': supplier_id,
+		'history': history_data,
+		'chart_data': chart_data
+	})

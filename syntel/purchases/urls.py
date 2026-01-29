@@ -143,6 +143,7 @@ urlpatterns = [
     path('analytics/suppliers/', views.supplier_analytics, name='supplier_analytics'),
     path('analytics/inventory/', views.inventory_analytics, name='inventory_analytics'),
     path('analytics/executive/', views.executive_summary, name='executive_summary'),
+    path('analytics/category-analysis/', views.purchase_category_analysis, name='purchase_category_analysis'),
 
     # Analytics API URLs (Original)
     path('api/analytics/expenses/departments/', views_analytics.department_expenses_api, name='api_department_expenses_old'),
@@ -165,6 +166,14 @@ urlpatterns = [
     
     # Analytics Page: Price Monitor (صفحه نظارت بر قیمت)
     path('analytics/prices/', views.analytics_price_monitor, name='analytics_price_monitor'),
+    
+    # Invoice Analysis API URLs (تحلیل خرید بر اساس دسته‌بندی)
+    path('api/invoices/subcategories/', views_analytics.api_invoice_subcategories, name='api_invoice_subcategories'),
+    path('api/invoices/suppliers/', views_analytics.api_invoice_suppliers, name='api_invoice_suppliers'),
+    path('api/invoices/product-history/', views_analytics.api_product_purchase_history, name='api_product_purchase_history'),
+    
+    # Test page
+    path('test/filter/', views.test_filter_page, name='test_filter_page'),
     
     # System Monitoring URLs
     path('system/monitoring/', views.system_monitoring, name='system_monitoring'),

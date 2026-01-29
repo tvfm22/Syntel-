@@ -21,9 +21,26 @@ class DashboardFiltersAPIView(APIView):
     def get(self, request):
         categories = Category.objects.filter(is_active=True)
         suppliers = Supplier.objects.filter(status='active')
+        
+        # ساخت لیست فروشندگان با گزینه فروشگاه‌های نقدی
+        suppliers_list = list(SupplierSerializer(suppliers, many=True).data)
+        
+        # اضافه کردن گزینه "فروشگاه‌های نقدی"
+        cash_stores_count = Supplier.objects.filter(
+            status='active',
+            notes__icontains='فروشگاه نقدی'
+        ).count()
+        
+        if cash_stores_count > 0:
+            suppliers_list.insert(0, {
+                'id': 'cash_stores',
+                'name': f'فروشگاه‌های نقدی ({cash_stores_count})',
+                'supplier_code': 'CASH_GROUP'
+            })
+        
         return Response({
             'categories': CategorySerializer(categories, many=True).data,
-            'suppliers': SupplierSerializer(suppliers, many=True).data
+            'suppliers': suppliers_list
         })
 
 class ProductChangeListAPIView(generics.ListAPIView):
@@ -40,6 +57,8 @@ class ProductChangeListAPIView(generics.ListAPIView):
             percent_change=Subquery(latest_history.values('percent_change')[:1]),
             last_update=Subquery(latest_history.values('date')[:1]),
             supplier_name=Subquery(latest_history.values('supplier__name')[:1]),
+            supplier_id=Subquery(latest_history.values('supplier__id')[:1]),
+            supplier_notes=Subquery(latest_history.values('supplier__notes')[:1]),
             previous_price=Subquery(latest_history.values('price')[1:2])
         ).filter(current_price__isnull=False)
 
@@ -52,8 +71,13 @@ class ProductChangeListAPIView(generics.ListAPIView):
             queryset = queryset.filter(category_id=category_id)
         
         if supplier_id:
-            # Filter by the supplier of the latest price history
-            queryset = queryset.filter(supplier_name=Supplier.objects.get(id=supplier_id).name)
+            # فیلتر ویژه برای فروشگاه‌های نقدی
+            if supplier_id == 'cash_stores':
+                # فیلتر محصولاتی که از فروشگاه‌های نقدی خریداری شده‌اند
+                queryset = queryset.filter(supplier_notes__icontains='فروشگاه نقدی')
+            else:
+                # Filter by the supplier of the latest price history
+                queryset = queryset.filter(supplier_id=supplier_id)
 
         if days:
             start_date = timezone.now() - timedelta(days=int(days))
@@ -75,6 +99,8 @@ class HighIncreaseProductsAPIView(generics.ListAPIView):
             percent_change=Subquery(latest_history.values('percent_change')[:1]),
             last_update=Subquery(latest_history.values('date')[:1]),
             supplier_name=Subquery(latest_history.values('supplier__name')[:1]),
+            supplier_id=Subquery(latest_history.values('supplier__id')[:1]),
+            supplier_notes=Subquery(latest_history.values('supplier__notes')[:1]),
             previous_price=Subquery(latest_history.values('price')[1:2])
         ).filter(
             percent_change__gt=5
@@ -89,7 +115,10 @@ class HighIncreaseProductsAPIView(generics.ListAPIView):
             queryset = queryset.filter(category_id=category_id)
         
         if supplier_id:
-            queryset = queryset.filter(supplier_name=Supplier.objects.get(id=supplier_id).name)
+            if supplier_id == 'cash_stores':
+                queryset = queryset.filter(supplier_notes__icontains='فروشگاه نقدی')
+            else:
+                queryset = queryset.filter(supplier_id=supplier_id)
         
         if days:
             start_date = timezone.now() - timedelta(days=int(days))
