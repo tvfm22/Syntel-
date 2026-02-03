@@ -26,12 +26,14 @@ INVOICE_STATUS_INCLUDED = [
 ]
 
 
-def _invoice_items_for_period(*, start, end, end_inclusive=True):
+def _invoice_items_for_period(*, start, end, end_inclusive=True, cafe=None):
 	created_at_filter = {
 		'invoice__created_at__gte': start,
 		('invoice__created_at__lte' if end_inclusive else 'invoice__created_at__lt'): end,
 		'invoice__status__in': INVOICE_STATUS_INCLUDED,
 	}
+	if cafe:
+		created_at_filter['invoice__cafe'] = cafe
 	return InvoiceItem.objects.filter(**created_at_filter)
 
 
@@ -96,17 +98,21 @@ def department_expenses_api(request):
 	"""
 	period = request.GET.get('period', 'weekly')
 	current_start, current_end, previous_start, previous_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 
-	requesters = Requester.objects.all().order_by('id')
+	requester_qs = Requester.objects.all()
+	if cafe:
+		requester_qs = requester_qs.filter(cafe=cafe)
+	requesters = requester_qs.order_by('id')
 	bubbles_data = []
 	total_expense = Decimal('0.00')
 
 	for requester in requesters:
-		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end).filter(
+		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end, cafe=cafe).filter(
 			Q(requester=requester) |
 			Q(requester__isnull=True, invoice__purchase_order__request__user__role=requester.name)
 		)
-		previous_items_qs = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False).filter(
+		previous_items_qs = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False, cafe=cafe).filter(
 			Q(requester=requester) |
 			Q(requester__isnull=True, invoice__purchase_order__request__user__role=requester.name)
 		)
@@ -161,24 +167,28 @@ def category_expenses_api(request, department_id):
 	"""Bubble data per category for a department."""
 	period = request.GET.get('period', 'weekly')
 	current_start, current_end, previous_start, previous_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 
 	try:
 		requester = Requester.objects.get(id=department_id)
 	except Requester.DoesNotExist:
 		return Response({'error': 'Department not found'}, status=404)
 
-	categories = Category.objects.filter(is_active=True).order_by('id')
+	category_qs = Category.objects.filter(is_active=True)
+	if cafe:
+		category_qs = category_qs.filter(cafe=cafe)
+	categories = category_qs.order_by('id')
 	bubbles_data = []
 	total_expense = Decimal('0.00')
 
 	for category in categories:
-		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end).filter(
+		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end, cafe=cafe).filter(
 			product__category=category
 		).filter(
 			Q(requester=requester) |
 			Q(requester__isnull=True, invoice__purchase_order__request__user__role=requester.name)
 		)
-		previous_items_qs = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False).filter(
+		previous_items_qs = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False, cafe=cafe).filter(
 			product__category=category
 		).filter(
 			Q(requester=requester) |
@@ -238,6 +248,7 @@ def product_list_api(request, department_id, category_id):
 	"""Product list for a category in a department."""
 	period = request.GET.get('period', 'weekly')
 	current_start, current_end, previous_start, previous_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 
 	try:
 		requester = Requester.objects.get(id=department_id)
@@ -245,12 +256,15 @@ def product_list_api(request, department_id, category_id):
 	except (Requester.DoesNotExist, Category.DoesNotExist):
 		return Response({'error': 'Department or Category not found'}, status=404)
 
-	products = Product.objects.filter(category=category, is_active=True).order_by('id')
+	product_qs = Product.objects.filter(category=category, is_active=True)
+	if cafe:
+		product_qs = product_qs.filter(cafe=cafe)
+	products = product_qs.order_by('id')
 	products_data = []
 	total_expense = Decimal('0.00')
 
 	for product in products:
-		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end).filter(
+		current_items_qs = _invoice_items_for_period(start=current_start, end=current_end, cafe=cafe).filter(
 			product=product
 		).filter(
 			Q(requester=requester) |
@@ -265,7 +279,7 @@ def product_list_api(request, department_id, category_id):
 		current_expense = current_data['total_expense'] or Decimal('0.00')
 		current_quantity = current_data['total_quantity'] or Decimal('0.00')
 
-		previous_expense = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False).filter(
+		previous_expense = _invoice_items_for_period(start=previous_start, end=previous_end, end_inclusive=False, cafe=cafe).filter(
 			product=product
 		).filter(
 			Q(requester=requester) |
@@ -356,8 +370,11 @@ def api_department_expenses(request):
 	"""
 	period = request.GET.get('period', 'weekly')
 	
-	# بررسی cache
-	cache_key = get_cache_key('dept_expenses', period=period)
+	# دریافت کافه از request
+	cafe = get_cafe_from_request(request)
+	
+	# بررسی cache با cafe_id
+	cache_key = get_cache_key('dept_expenses', period=period, cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
@@ -366,14 +383,17 @@ def api_department_expenses(request):
 	# محاسبه داده‌ها
 	start, end, prev_start, prev_end = get_date_range(period)
 	
-	# بهینه‌سازی: یک بار requesters را بگیر
-	requesters = Requester.objects.all().order_by('name')
+	# بهینه‌سازی: یک بار requesters را بگیر با فیلتر cafe
+	requester_qs = Requester.objects.all()
+	if cafe:
+		requester_qs = requester_qs.filter(cafe=cafe)
+	requesters = requester_qs.order_by('name')
 	departments = []
 	
 	for req in requesters:
 		# بهینه‌سازی: استفاده از select_related
 		# دسترسی به requester از طریق InvoiceItem مستقیم یا از طریق مسیر invoice -> purchase_order -> request -> user -> role
-		current_items = _invoice_items_for_period(start=start, end=end)
+		current_items = _invoice_items_for_period(start=start, end=end, cafe=cafe)
 		current = current_items.filter(
 			Q(requester=req) | 
 			Q(invoice__purchase_order__request__user__role=req.name)
@@ -381,7 +401,7 @@ def api_department_expenses(request):
 			total=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField()))
 		)['total'] or Decimal('0.00')
 		
-		previous_items = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False)
+		previous_items = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False, cafe=cafe)
 		previous = previous_items.filter(
 			Q(requester=req) | 
 			Q(invoice__purchase_order__request__user__role=req.name)
@@ -409,12 +429,12 @@ def api_department_expenses(request):
 	return Response(response_data)
 
 
-def _get_category_expense(category, department, start, end, include_subcategories=True):
+def _get_category_expense(category, department, start, end, include_subcategories=True, cafe=None):
 	"""
 	محاسبه هزینه یک دسته‌بندی با یا بدون زیردسته‌ها
 	"""
 	# گرفتن همه آیتم‌های فاکتور برای این بازه
-	items = _invoice_items_for_period(start=start, end=end)
+	items = _invoice_items_for_period(start=start, end=end, cafe=cafe)
 	
 	if include_subcategories:
 		# شامل زیردسته‌ها
@@ -469,8 +489,8 @@ def api_department_categories(request, dept_id):
 	
 	for cat in main_categories:
 		# محاسبه هزینه شامل زیردسته‌ها
-		current = _get_category_expense(cat, department, start, end, include_subcategories=True)
-		previous = _get_category_expense(cat, department, prev_start, prev_end, include_subcategories=True)
+		current = _get_category_expense(cat, department, start, end, include_subcategories=True, cafe=cafe)
+		previous = _get_category_expense(cat, department, prev_start, prev_end, include_subcategories=True, cafe=cafe)
 		
 		# بررسی تعداد زیردسته‌ها
 		subcategory_count = cat.subcategories.filter(is_active=True).count()
@@ -526,6 +546,7 @@ def api_category_subcategories(request, cat_id):
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 	
 	# گرفتن زیردسته‌ها
 	subcategories = parent_category.subcategories.filter(is_active=True).order_by('name')
@@ -540,10 +561,11 @@ def api_category_subcategories(request, cat_id):
 	
 	subcats_data = []
 	
+	cafe = get_cafe_from_request(request)
 	for subcat in subcategories:
 		# محاسبه هزینه
-		items = _invoice_items_for_period(start=start, end=end).filter(product__category=subcat)
-		prev_items = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False).filter(product__category=subcat)
+		items = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(product__category=subcat)
+		prev_items = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False, cafe=cafe).filter(product__category=subcat)
 		
 		if department:
 			items = items.filter(
@@ -577,7 +599,7 @@ def api_category_subcategories(request, cat_id):
 			})
 	
 	# همچنین محصولات مستقیم دسته‌بندی اصلی (بدون زیردسته)
-	direct_items = _invoice_items_for_period(start=start, end=end).filter(product__category=parent_category)
+	direct_items = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(product__category=parent_category)
 	if department:
 		direct_items = direct_items.filter(
 			Q(requester=department) | 
@@ -619,10 +641,10 @@ def api_category_products(request, cat_id):
 	# تولید cache_key
 	cache_key = get_cache_key('cat_products', cat_id=cat_id, period=period, dept_id=department_id or 'all')
 	
-	start, end, prev_start, prev_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 	
 	# فیلتر بر اساس دسته‌بندی
-	items_qs = _invoice_items_for_period(start=start, end=end).filter(
+	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(
 		product__category=category
 	)
 	
@@ -656,7 +678,7 @@ def api_category_products(request, cat_id):
 		)['total'] or Decimal('0.00')
 		
 		# محاسبه مجموع دوره قبلی برای نرخ رشد
-		prev_items_qs = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False).filter(
+		prev_items_qs = _invoice_items_for_period(start=prev_start, end=prev_end, end_inclusive=False, cafe=cafe).filter(
 			product__category=category,
 			product=product
 		)
@@ -750,9 +772,10 @@ def api_expense_trend(request):
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 	
 	# فیلتر پایه
-	items_qs = _invoice_items_for_period(start=start, end=end)
+	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe)
 	
 	# فیلتر بر اساس بخش
 	department = None
@@ -870,8 +893,9 @@ def api_department_trend(request, dept_id):
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
+	cafe = get_cafe_from_request(request)
 	
-	items_qs = _invoice_items_for_period(start=start, end=end).filter(
+	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(
 		Q(requester=department) | 
 		Q(invoice__purchase_order__request__user__role=department.name)
 	)
@@ -923,8 +947,9 @@ def api_comparison_trend(request):
 	"""
 	period = request.GET.get('period', 'monthly')
 	granularity = request.GET.get('granularity', 'daily')
+	cafe = get_cafe_from_request(request)
 	
-	cache_key = get_cache_key('comparison_trend', period=period, granularity=granularity)
+	cache_key = get_cache_key('comparison_trend', period=period, granularity=granularity, cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
@@ -940,7 +965,10 @@ def api_comparison_trend(request):
 	else:
 		trunc_func = TruncDate
 	
-	requesters = Requester.objects.all().order_by('name')
+	requester_qs = Requester.objects.all()
+	if cafe:
+		requester_qs = requester_qs.filter(cafe=cafe)
+	requesters = requester_qs.order_by('name')
 	
 	# رنگ‌های ثابت برای هر بخش
 	colors = [
@@ -957,7 +985,7 @@ def api_comparison_trend(request):
 	all_dates = set()
 	
 	for idx, req in enumerate(requesters):
-		items_qs = _invoice_items_for_period(start=start, end=end).filter(
+		items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(
 			Q(requester=req) | 
 			Q(invoice__purchase_order__request__user__role=req.name)
 		)
