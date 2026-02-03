@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>انتخاب کافه - Syntel</title>
+    
+    <!-- Vazir Font -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        .header {
+            color: white;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .user-info {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px 25px;
+            margin-bottom: 30px;
+            display: inline-block;
+            color: white;
+        }
+        .user-info span {
+            font-weight: bold;
+        }
+        .cafes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        .cafe-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .cafe-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        .cafe-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .cafe-icon svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+        .cafe-card h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .cafe-card p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .cafe-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-family: 'Vazir', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .cafe-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .logout-link {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 30px;
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .logout-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        .error-message {
+            background: #ff5252;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        /* Icons */
+        .icon-coffee {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M2 21v-2h18v2H2zm2-4v-6h2v6H4zm4 0v-6h2v6H8zm4 0v-6h2v6h-2zm4 0v-6h2v6h-2zM3 9V7h18v2H3zm1-4V3h2v2H4zm6 0V3h4v2h-4zm6 0V3h2v2h-2z'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 سیستم مدیریت خرید</h1>
+            <p>لطفاً کافه مورد نظر خود را انتخاب کنید</p>
+        </div>
+        
+        <div class="user-info">
+            خوش آمدید، <span>{{ user.get_full_name|default:user.username }}</span>
+            ({{ user.get_role_display }})
+        </div>
+        
+        {% if messages %}
+        <div class="error-message">
+            {% for message in messages %}
+            {{ message }}
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="cafes-grid">
+            {% for cafe in cafes %}
+            <form method="post" class="cafe-card-form">
+                {% csrf_token %}
+                <input type="hidden" name="cafe_code" value="{{ cafe.code }}">
+                <div class="cafe-card" onclick="this.closest('form').submit();">
+                    <div class="cafe-icon">
+                        {% if cafe.code == 'local' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M2 21v-2h20v2H2zm2-4a5 5 0 01-2-4V7h14v6a5 5 0 01-2 4v0H4zm1-9v5a4 4 0 004 4h4a4 4 0 004-4V8H5zm13-1h3a2 2 0 012 2v2a2 2 0 01-2 2h-3V7z"/>
+                        </svg>
+                        {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <h2>{{ cafe.name }}</h2>
+                    <p>{{ cafe.address|default:"آدرس ثبت نشده" }}</p>
+                    <button type="submit" class="cafe-btn">ورود به این کافه</button>
+                </div>
+            </form>
+            {% empty %}
+            <div class="cafe-card">
+                <h2>کافه‌ای یافت نشد</h2>
+                <p>لطفاً با مدیر سیستم تماس بگیرید</p>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <a href="{% url 'logout' %}" class="logout-link">خروج از سیستم</a>
+    </div>
+</body>
+</html>

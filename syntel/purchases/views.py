@@ -25,6 +25,7 @@ from django.utils import timezone
 
 from .models import (
     ActivityLog,
+    Cafe,
     Category,
     Invoice,
     InvoiceIssue,
@@ -46,8 +47,67 @@ from .models import (
     StockRequest,
     StockRequestItem,
 )
+from .middleware import get_current_cafe, get_cafe_code
 
 User = get_user_model()
+
+
+# ---------------------------------------------------------------------------
+# Cafe Helpers and Decorators
+# ---------------------------------------------------------------------------
+
+def cafe_view(view_func):
+    """
+    Decorator که پارامتر cafe_code را از URL می‌گیرد و نادیده می‌گیرد.
+    اطلاعات کافه از middleware در request.cafe قرار دارد.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # حذف cafe_code از kwargs چون middleware آن را handle می‌کند
+        kwargs.pop('cafe_code', None)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def get_cafe_from_request(request):
+    """گرفتن کافه فعلی از request یا session"""
+    if hasattr(request, 'cafe') and request.cafe:
+        return request.cafe
+    
+    cafe_id = request.session.get('selected_cafe_id')
+    if cafe_id:
+        try:
+            return Cafe.objects.get(id=cafe_id)
+        except Cafe.DoesNotExist:
+            return None
+    return None
+
+
+def filter_by_cafe(queryset, request):
+    """فیلتر کردن queryset بر اساس کافه فعلی"""
+    cafe = get_cafe_from_request(request)
+    if cafe and hasattr(queryset.model, 'cafe'):
+        return queryset.filter(cafe=cafe)
+    return queryset
+
+
+def get_cafe_redirect_url(url_name, request, **kwargs):
+    """ساخت URL با cafe_code"""
+    cafe_code = get_cafe_code(request)
+    if cafe_code:
+        kwargs['cafe_code'] = cafe_code
+    return redirect(url_name, **kwargs)
+
+
+def cafe_context(request):
+    """اضافه کردن اطلاعات کافه به context"""
+    cafe = get_cafe_from_request(request)
+    return {
+        'current_cafe': cafe,
+        'cafe_code': cafe.code if cafe else None,
+        'can_switch_cafe': request.user.is_authenticated and request.user.can_switch_cafe,
+        'all_cafes': Cafe.objects.filter(is_active=True) if request.user.is_authenticated and request.user.can_switch_cafe else [],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -102,16 +162,34 @@ def login_view(request: HttpRequest) -> HttpResponse:
         user = authenticate(request, username=username, password=password)
         if user and user.is_active:
             login(request, user)
-            # Redirect mobile users (kitchen, bar, counter, cashier, facilities) to mobile dashboard
+            
+            # کاربران با نقش‌های ادمین به صفحه انتخاب کافه می‌روند
+            if user.needs_cafe_selection:
+                return redirect("select_cafe")
+            
+            # کاربران عادی - بررسی اینکه کافه دارند
+            if not user.cafe:
+                # کاربر عادی بدون کافه - نمایش خطا
+                logout(request)
+                return render(
+                    request,
+                    "login.html",
+                    {"error": "کافه برای کاربر شما تعریف نشده است. با مدیر تماس بگیرید."},
+                )
+            
+            # تنظیم کافه در session
+            request.session['selected_cafe_id'] = user.cafe_id
+            request.session['selected_cafe_code'] = user.cafe.code
+            cafe_code = user.cafe.code
+            
+            # Redirect based on role
             if user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
-                return redirect("mobile_dashboard")
-            # Redirect purchasing user to purchasing dashboard
+                return redirect("mobile_dashboard", cafe_code=cafe_code)
             elif user.role == 'purchasing':
-                return redirect("purchasing_dashboard")
-            # Redirect finance manager to finance manager dashboard
+                return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
-                return redirect("finance_manager_dashboard")
-            return redirect("dashboard")
+                return redirect("finance_manager_dashboard", cafe_code=cafe_code)
+            return redirect("dashboard", cafe_code=cafe_code)
         response = render(
             request,
             "login.html",
@@ -124,7 +202,50 @@ def login_view(request: HttpRequest) -> HttpResponse:
     return render(request, "login.html")
 
 
+@custom_login_required
+def select_cafe(request: HttpRequest) -> HttpResponse:
+    """صفحه انتخاب کافه برای کاربران ادمین"""
+    from .models import Cafe
+    
+    # بررسی اینکه کاربر نیاز به انتخاب کافه دارد
+    if not request.user.needs_cafe_selection:
+        # کاربر عادی - redirect به داشبورد کافه خودش
+        if request.user.cafe:
+            return redirect("dashboard", cafe_code=request.user.cafe.code)
+        else:
+            logout(request)
+            return redirect("login")
+    
+    cafes = Cafe.objects.filter(is_active=True)
+    
+    if request.method == "POST":
+        cafe_code = request.POST.get("cafe_code")
+        try:
+            cafe = Cafe.objects.get(code=cafe_code, is_active=True)
+            request.session['selected_cafe_id'] = cafe.id
+            request.session['selected_cafe_code'] = cafe.code
+            
+            # Redirect based on role
+            user = request.user
+            if user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+                return redirect("mobile_dashboard", cafe_code=cafe_code)
+            elif user.role == 'purchasing':
+                return redirect("purchasing_dashboard", cafe_code=cafe_code)
+            elif user.role == 'finance_manager':
+                return redirect("finance_manager_dashboard", cafe_code=cafe_code)
+            return redirect("dashboard", cafe_code=cafe_code)
+        except Cafe.DoesNotExist:
+            messages.error(request, "کافه انتخاب شده یافت نشد.")
+    
+    return render(request, "select_cafe.html", {"cafes": cafes})
+
+
 def logout_view(request: HttpRequest) -> HttpResponse:
+    # پاک کردن اطلاعات کافه از session
+    if 'selected_cafe_id' in request.session:
+        del request.session['selected_cafe_id']
+    if 'selected_cafe_code' in request.session:
+        del request.session['selected_cafe_code']
     logout(request)
     return redirect("login")
 
@@ -155,12 +276,13 @@ def purchasing_dashboard(request: HttpRequest) -> HttpResponse:
         {'name': 'تاسیسات', 'role': 'facilities', 'icon': '🔧'},
     ]
     
+    cafe = get_cafe_from_request(request)
     for dept in departments:
-        dept['total'] = PurchaseRequest.objects.filter(user__role=dept['role']).count()
-        dept['pending'] = PurchaseRequest.objects.filter(
-            user__role=dept['role'], 
-            status='pending'
-        ).count()
+        qs = PurchaseRequest.objects.filter(user__role=dept['role'])
+        if cafe:
+            qs = qs.filter(cafe=cafe)
+        dept['total'] = qs.count()
+        dept['pending'] = qs.filter(status='pending').count()
     
     return render(request, "purchasing_dashboard.html", {
         "user": request.user,
@@ -176,6 +298,11 @@ def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
     status = request.GET.get('status', '')
     
     requests = PurchaseRequest.objects.all().select_related('user').prefetch_related('items')
+    
+    # Filter by cafe
+    cafe = get_cafe_from_request(request)
+    if cafe:
+        requests = requests.filter(cafe=cafe)
     
     # Filter by role
     if role:
@@ -200,11 +327,15 @@ def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
     }
     department_name = department_names.get(role, 'همه بخش‌ها')
     
+    # Get cafe_code for template URLs
+    cafe_code = cafe.code if cafe else 'local'
+    
     return render(request, "purchasing_requests_list.html", {
         "requests": requests,
         "role": role,
         "status": status,
         "department_name": department_name,
+        "cafe_code": cafe_code,
     })
 
 
@@ -251,11 +382,15 @@ def purchase_lists_by_date(request: HttpRequest) -> HttpResponse:
     from django.db.models import Count, Q
     from django.db.models.functions import TruncDate, Coalesce
     
+    cafe = get_cafe_from_request(request)
     # Get all purchased requests with items
     # Use processed_at if available, otherwise fallback to created_at
     purchased_requests = PurchaseRequest.objects.filter(
         status='purchased'
-    ).annotate(
+    )
+    if cafe:
+        purchased_requests = purchased_requests.filter(cafe=cafe)
+    purchased_requests = purchased_requests.annotate(
         date=TruncDate(Coalesce('processed_at', 'created_at'))
     ).values('date', 'user__role').annotate(
         count=Count('id')
@@ -309,12 +444,16 @@ def purchase_day_detail(request: HttpRequest) -> HttpResponse:
     # Parse date
     date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
     
+    cafe = get_cafe_from_request(request)
     # Get all purchased requests for this date and role
     requests = PurchaseRequest.objects.filter(
         status='purchased',
         user__role=role,
         processed_at__date=date_obj
-    ).prefetch_related('items', 'user', 'processed_by')
+    )
+    if cafe:
+        requests = requests.filter(cafe=cafe)
+    requests = requests.prefetch_related('items', 'user', 'processed_by')
     
     # Collect all items
     all_items = []
@@ -378,12 +517,16 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     }
     jalali_str = f"{jalali_date.day} {jalali_months[jalali_date.month]} {jalali_date.year}"
     
+    cafe = get_cafe_from_request(request)
     # Get all purchased requests for this date and role
     requests_qs = PurchaseRequest.objects.filter(
         status='purchased',
         user__role=role,
         processed_at__date=date_obj
-    ).prefetch_related('items', 'user', 'processed_by')
+    )
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+    requests_qs = requests_qs.prefetch_related('items', 'user', 'processed_by')
     
     role_names = {
         'kitchen': 'آشپزخانه',
@@ -563,11 +706,12 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
 @custom_login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
     # Keep logic simple while providing useful context to templates/tests
-    user_requests = (
-        PurchaseRequest.objects.filter(user=request.user)
-        if request.user.role == "kitchen"
-        else PurchaseRequest.objects.all()
-    )
+    cafe = get_cafe_from_request(request)
+    user_requests = PurchaseRequest.objects.all()
+    if request.user.role == "kitchen":
+        user_requests = user_requests.filter(user=request.user)
+    if cafe:
+        user_requests = user_requests.filter(cafe=cafe)
     context = {
         "user": request.user,
         "role": request.user.role,
@@ -582,8 +726,12 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
     from datetime import date
     
     # آمار اصلی
+    cafe = get_cafe_from_request(request)
+    invoice_qs = Invoice.objects.all()
+    if cafe:
+        invoice_qs = invoice_qs.filter(cafe=cafe)
     stats = {
-        "invoices": Invoice.objects.count(),
+        "invoices": invoice_qs.count(),
         "payments": Payment.objects.count(),
     }
     
@@ -625,12 +773,18 @@ def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
     """داشبورد اختصاصی مدیر مالی"""
     from datetime import date
     
+    cafe = get_cafe_from_request(request)
+    invoice_qs = Invoice.objects.all()
+    supplier_qs = Supplier.objects.all()
+    if cafe:
+        invoice_qs = invoice_qs.filter(cafe=cafe)
+        supplier_qs = supplier_qs.filter(cafe=cafe)
     stats = {
-        "total_invoices": Invoice.objects.count(),
+        "total_invoices": invoice_qs.count(),
         "total_payments": Payment.objects.count(),
-        "pending_invoices": Invoice.objects.filter(status='pending').count(),
-        "unpaid_invoices": Invoice.objects.filter(payment_status='unpaid').count(),
-        "total_suppliers": Supplier.objects.count(),
+        "pending_invoices": invoice_qs.filter(status='pending').count(),
+        "unpaid_invoices": invoice_qs.filter(payment_status='unpaid').count(),
+        "total_suppliers": supplier_qs.count(),
     }
     
     return render(request, "finance_manager_dashboard.html", {
@@ -649,7 +803,7 @@ def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
 @custom_login_required
 @role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing"])
 def purchase_request_form(request):
-    products = Product.objects.all()
+    cafe = get_cafe_from_request(request)
     
     # Get department parameter if purchasing user wants to create request for specific department
     department = request.GET.get('department', '')
@@ -661,8 +815,10 @@ def purchase_request_form(request):
         ):
             return HttpResponseForbidden("CSRF token missing")
 
-        product_ids = request.POST.getlist("product_id")
+        # Get product names (free text input from user)
+        product_names = request.POST.getlist("product_name")
         quantities = request.POST.getlist("item_quantity")
+        units = request.POST.getlist("item_unit")
         descriptions = request.POST.getlist("item_description")
         
         # Get department from POST if provided
@@ -670,39 +826,45 @@ def purchase_request_form(request):
 
         items_data = []
         errors = []
-        for idx, pid in enumerate(product_ids):
+        for idx, name in enumerate(product_names):
+            name = name.strip() if name else ""
+            if not name:
+                errors.append("product_name")
+                continue
             qty_raw = quantities[idx] if idx < len(quantities) else ""
             qty_val = _parse_decimal(qty_raw)
             if qty_val is None or qty_val <= 0 or qty_val > 2147483647:
                 errors.append("quantity")
                 continue
+            unit_val = units[idx].strip() if idx < len(units) and units[idx] else "عدد"
             desc_val = descriptions[idx] if idx < len(descriptions) else ""
-            items_data.append((pid, qty_val, desc_val))
+            items_data.append((name, qty_val, unit_val, desc_val))
 
         if errors:
             return render(
                 request,
                 "purchase_request_form.html",
                 {
-                    "products": products,
                     "errors": errors,
-                    "error_message": "quantity",
+                    "error_message": "quantity" if "quantity" in errors else "product_name",
                     "department": selected_department,
                 },
                 status=200,
             )
 
+        cafe = get_cafe_from_request(request)
         purchase_request = PurchaseRequest.objects.create(
-            user=request.user, status="pending"
+            user=request.user, status="pending", cafe=cafe
         )
-        for index, (pid, qty, desc) in enumerate(items_data, start=1):
-            product = Product.objects.filter(id=pid).first()
+        for index, (name, qty, unit, desc) in enumerate(items_data, start=1):
+            # Try to find matching product by name (optional)
+            product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
             PurchaseItem.objects.create(
                 request=purchase_request,
                 product=product,
-                name=product.name if product else f"Item {index}",
+                name=name,
                 quantity=int(qty),
-                unit=(product.unit.symbol if product and product.unit else "unit"),
+                unit=unit,
                 description=desc or "",
             )
 
@@ -721,7 +883,6 @@ def purchase_request_form(request):
         return redirect("purchase_request_success")
 
     return render(request, "purchase_request_form.html", {
-        "products": products,
         "department": department
     })
 
@@ -733,13 +894,13 @@ def purchase_request_success(request):
 
 @custom_login_required
 def purchase_requests_list(request):
+    cafe = get_cafe_from_request(request)
     # For mobile users, show only their own requests
     if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
-        requests_qs = (
-            PurchaseRequest.objects.filter(user=request.user)
-            .prefetch_related("items")
-            .order_by("-created_at")
-        )
+        requests_qs = PurchaseRequest.objects.filter(user=request.user)
+        if cafe:
+            requests_qs = requests_qs.filter(cafe=cafe)
+        requests_qs = requests_qs.prefetch_related("items").order_by("-created_at")
         context = {
             "requests": list(requests_qs),
             "is_mobile_user": True,
@@ -748,11 +909,10 @@ def purchase_requests_list(request):
     
     # For purchasing/manager users
     selected_department = request.GET.get("department") or ""
-    requests_qs = (
-        PurchaseRequest.objects.select_related("user")
-        .prefetch_related("items")
-        .order_by("-created_at")
-    )
+    requests_qs = PurchaseRequest.objects.select_related("user").prefetch_related("items")
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+    requests_qs = requests_qs.order_by("-created_at")
     if selected_department:
         requests_qs = requests_qs.filter(user__role=selected_department)
 
@@ -772,9 +932,11 @@ def purchase_requests_list(request):
 @custom_login_required
 @custom_login_required
 def purchase_request_detail(request, request_id):
-    purchase_request = get_object_or_404(
-        PurchaseRequest.objects.prefetch_related("items", "activities"), id=request_id
-    )
+    cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.prefetch_related("items", "activities")
+    if cafe:
+        pr_qs = pr_qs.filter(cafe=cafe)
+    purchase_request = get_object_or_404(pr_qs, id=request_id)
     
     # Check permissions: mobile users can only see their own requests
     if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
@@ -792,7 +954,11 @@ def purchase_request_detail(request, request_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def update_purchase_request(request, request_id):
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.all()
+    if cafe:
+        pr_qs = pr_qs.filter(cafe=cafe)
+    purchase_request = get_object_or_404(pr_qs, id=request_id)
 
     if request.method == "POST":
         item_ids = request.POST.getlist("item_id")
@@ -835,10 +1001,16 @@ def update_purchase_request(request, request_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def reports_dashboard(request):
+    cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.all()
+    inv_qs = Invoice.objects.all()
+    if cafe:
+        pr_qs = pr_qs.filter(cafe=cafe)
+        inv_qs = inv_qs.filter(cafe=cafe)
     stats = {
-        "total_requests": PurchaseRequest.objects.count(),
+        "total_requests": pr_qs.count(),
         "completed_orders": PurchaseOrder.objects.filter(status="completed").count(),
-        "paid_invoices": Invoice.objects.filter(status="paid").count(),
+        "paid_invoices": inv_qs.filter(status="paid").count(),
     }
     return render(request, "reports_dashboard.html", {"stats": stats})
 
@@ -846,9 +1018,13 @@ def reports_dashboard(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def export_to_excel(request):
+    cafe = get_cafe_from_request(request)
     output = io.BytesIO()
     output.write(b"Request ID,Status\n")
-    for pr in PurchaseRequest.objects.all()[:500]:
+    pr_qs = PurchaseRequest.objects.all()
+    if cafe:
+        pr_qs = pr_qs.filter(cafe=cafe)
+    for pr in pr_qs[:500]:
         output.write(f"{pr.id},{pr.status}\n".encode("utf-8"))
 
     response = HttpResponse(
@@ -889,13 +1065,21 @@ def export_analytics_to_pdf(request, analytics_type):
 @custom_login_required
 @role_required(["manager"])
 def backup_management(request):
+    cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.all()
+    inv_qs = Invoice.objects.all()
+    sup_qs = Supplier.objects.all()
+    if cafe:
+        pr_qs = pr_qs.filter(cafe=cafe)
+        inv_qs = inv_qs.filter(cafe=cafe)
+        sup_qs = sup_qs.filter(cafe=cafe)
     context = {
         "title": "مدیریت پشتیبان‌گیری و داده‌ها",
         "total_users": User.objects.count(),
-        "total_requests": PurchaseRequest.objects.count(),
-        "total_invoices": Invoice.objects.count(),
+        "total_requests": pr_qs.count(),
+        "total_invoices": inv_qs.count(),
         "total_payments": Payment.objects.count(),
-        "total_suppliers": Supplier.objects.count(),
+        "total_suppliers": sup_qs.count(),
         "database_name": settings.DATABASES['default']['NAME'],
         "database_host": settings.DATABASES['default']['HOST'] or 'localhost',
     }
@@ -953,10 +1137,14 @@ def export_data_csv(request):
     response.write(u'\ufeff'.encode('utf8'))  # BOM for Excel compatibility
     
     writer = csv.writer(response)
+    cafe = get_cafe_from_request(request)
     
     if model_name == 'products':
         writer.writerow(['ID', 'Name', 'Category', 'Unit', 'Price', 'Stock', 'Description'])
-        for obj in Product.objects.select_related('category', 'unit').all():
+        products_qs = Product.objects.select_related('category', 'unit').all()
+        if cafe:
+            products_qs = products_qs.filter(cafe=cafe)
+        for obj in products_qs:
             writer.writerow([
                 obj.id, 
                 obj.name, 
@@ -969,7 +1157,10 @@ def export_data_csv(request):
             
     elif model_name == 'suppliers':
         writer.writerow(['ID', 'Name', 'Contact Person', 'Phone', 'Email', 'Address', 'Rating'])
-        for obj in Supplier.objects.all():
+        suppliers_qs = Supplier.objects.all()
+        if cafe:
+            suppliers_qs = suppliers_qs.filter(cafe=cafe)
+        for obj in suppliers_qs:
             writer.writerow([
                 obj.id, 
                 obj.name, 
@@ -982,7 +1173,10 @@ def export_data_csv(request):
             
     elif model_name == 'purchases':
         writer.writerow(['ID', 'Requester', 'Status', 'Date Created', 'Total Items'])
-        for obj in PurchaseRequest.objects.select_related('requester').prefetch_related('items').all():
+        purchases_qs = PurchaseRequest.objects.select_related('requester').prefetch_related('items').all()
+        if cafe:
+            purchases_qs = purchases_qs.filter(cafe=cafe)
+        for obj in purchases_qs:
             writer.writerow([
                 obj.id, 
                 obj.requester.username, 
@@ -993,7 +1187,10 @@ def export_data_csv(request):
             
     elif model_name == 'invoices':
         writer.writerow(['ID', 'Invoice Number', 'Supplier', 'Amount', 'Status', 'Date'])
-        for obj in Invoice.objects.select_related('supplier').all():
+        invoices_qs = Invoice.objects.select_related('supplier').all()
+        if cafe:
+            invoices_qs = invoices_qs.filter(cafe=cafe)
+        for obj in invoices_qs:
             writer.writerow([
                 obj.id,
                 obj.invoice_number,
@@ -1146,7 +1343,10 @@ def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> Http
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def product_list(request):
+    cafe = get_cafe_from_request(request)
     products = Product.objects.all()
+    if cafe:
+        products = products.filter(cafe=cafe)
     
     # جستجو بر اساس نام
     search = request.GET.get('search', '')
@@ -1166,6 +1366,8 @@ def product_list(request):
         products = products.filter(is_active=False)
     
     categories = Category.objects.all()
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     return render(request, "product_list.html", {
         "products": products,
         "categories": categories,
@@ -1178,6 +1380,7 @@ def product_list(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def product_create(request):
+    cafe = get_cafe_from_request(request)
     if request.method == "POST":
         name = request.POST.get("name")
         category = Category.objects.filter(id=request.POST.get("category")).first()
@@ -1188,27 +1391,35 @@ def product_create(request):
                 category=category,
                 unit=unit,
                 min_stock=int(request.POST.get("min_stock") or 0),
+                cafe=cafe,
             )
             return redirect("product_list")
+    categories = Category.objects.all()
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     return render(
         request,
         "product_form.html",
-        {"categories": Category.objects.all(), "units": Unit.objects.all()},
+        {"categories": categories, "units": Unit.objects.all()},
     )
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def product_update(request, product_id):
+    cafe = get_cafe_from_request(request)
     product = get_object_or_404(Product, id=product_id)
     if request.method == "POST":
         product.name = request.POST.get("name", product.name)
         product.save()
         return redirect("product_list")
+    categories = Category.objects.all()
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     return render(
         request,
         "product_form.html",
-        {"product": product, "categories": Category.objects.all(), "units": Unit.objects.all()},
+        {"product": product, "categories": categories, "units": Unit.objects.all()},
     )
 
 
@@ -1266,13 +1477,17 @@ def unit_delete(request, unit_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_list(request):
+    cafe = get_cafe_from_request(request)
     categories = Category.objects.all()
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     return render(request, "category_list.html", {"categories": categories})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_create(request):
+    cafe = get_cafe_from_request(request)
     if request.method == "POST":
         name = request.POST.get("name")
         parent_id = request.POST.get("parent")
@@ -1284,18 +1499,22 @@ def category_create(request):
             Category.objects.create(
                 name=name, 
                 parent=parent,
-                description=description
+                description=description,
+                cafe=cafe,
             )
             return redirect("category_list")
     
     # Get all parent categories (categories without a parent)
     parent_categories = Category.objects.filter(parent__isnull=True, is_active=True)
+    if cafe:
+        parent_categories = parent_categories.filter(cafe=cafe)
     return render(request, "category_form.html", {"parent_categories": parent_categories})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_update(request, category_id):
+    cafe = get_cafe_from_request(request)
     category = get_object_or_404(Category, id=category_id)
     if request.method == "POST":
         category.name = request.POST.get("name", category.name)
@@ -1313,6 +1532,8 @@ def category_update(request, category_id):
         parent__isnull=True, 
         is_active=True
     ).exclude(id=category_id)
+    if cafe:
+        parent_categories = parent_categories.filter(cafe=cafe)
     
     return render(request, "category_form.html", {
         "category": category,
@@ -1468,8 +1689,11 @@ def purchase_orders_list(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_order_create(request, request_id):
+    cafe = get_cafe_from_request(request)
     purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
     suppliers = Supplier.objects.all()
+    if cafe:
+        suppliers = suppliers.filter(cafe=cafe)
     if request.method == "POST":
         supplier = Supplier.objects.filter(id=request.POST.get("supplier")).first()
         order_number = request.POST.get("order_number") or f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}"
@@ -1564,7 +1788,10 @@ def purchase_order_cancel(request, order_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def approved_requests_for_orders(request):
+    cafe = get_cafe_from_request(request)
     approved_requests = PurchaseRequest.objects.filter(status__in=["approved", "purchased"])
+    if cafe:
+        approved_requests = approved_requests.filter(cafe=cafe)
     return render(
         request,
         "approved_requests_for_orders.html",
@@ -1597,7 +1824,10 @@ def invoices_list(request):
     selected_issue = request.GET.get('issue', '').strip()
     
     # Base queryset
+    cafe = get_cafe_from_request(request)
     invoices = Invoice.objects.select_related("purchase_order", "supplier").all()
+    if cafe:
+        invoices = invoices.filter(cafe=cafe)
     
     # Filter by type
     if invoice_type == 'store':
@@ -1690,7 +1920,10 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
     selected_issue = request.GET.get('issue', '').strip()
 
     # Base queryset - ALL invoices (no type filtering)
+    cafe = get_cafe_from_request(request)
     invoices = Invoice.objects.select_related("purchase_order", "supplier").all()
+    if cafe:
+        invoices = invoices.filter(cafe=cafe)
 
     # Apply filters
     if search_query:
@@ -1868,6 +2101,7 @@ def invoice_register(request):
             invoice_number = f"INV-{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         # ایجاد فاکتور
+        cafe = get_cafe_from_request(request)
         invoice = Invoice.objects.create(
             purchase_order=None,
             supplier=supplier,
@@ -1884,6 +2118,7 @@ def invoice_register(request):
             notes=request.POST.get("notes", ""),
             created_by=request.user,
             updated_by=request.user,
+            cafe=cafe,
         )
         
         # ایجاد اقلام فاکتور
@@ -1955,7 +2190,10 @@ def invoice_register(request):
         return redirect("invoice_detail", invoice_id=invoice.id)
 
     # نمایش فرم ایجاد فاکتور دستی
+    cafe = get_cafe_from_request(request)
     categories = Category.objects.filter(is_active=True).select_related('parent').order_by('parent__name', 'name')
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     
     # اگر supplier_id در GET وجود دارد، تامین‌کننده را پیش‌فرض کن
     default_supplier = None
@@ -2024,9 +2262,12 @@ def invoice_detail(request, invoice_id):
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def invoice_update(request, invoice_id):
+    cafe = get_cafe_from_request(request)
     invoice = get_object_or_404(Invoice, id=invoice_id)
     order = invoice.purchase_order
     categories = Category.objects.all().order_by('name')
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     
     if request.method == "POST":
         # بروزرسانی اطلاعات فاکتور
@@ -2290,14 +2531,20 @@ def invoice_bulk_delete(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def pending_invoice_approvals(request):
+    cafe = get_cafe_from_request(request)
     invoices = Invoice.objects.filter(status="sent")
+    if cafe:
+        invoices = invoices.filter(cafe=cafe)
     return render(request, "invoice_approval_list.html", {"invoices": invoices})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def approval_history(request):
+    cafe = get_cafe_from_request(request)
     invoices = Invoice.objects.all()
+    if cafe:
+        invoices = invoices.filter(cafe=cafe)
     return render(request, "invoice_approval_history.html", {"invoices": invoices})
 
 
@@ -2380,7 +2627,10 @@ def payment_list(request):
 @custom_login_required
 @role_required(["manager", "finance_manager"])
 def payment_create(request, invoice_id=None):
+    cafe = get_cafe_from_request(request)
     invoices = Invoice.objects.all()
+    if cafe:
+        invoices = invoices.filter(cafe=cafe)
     methods = PaymentLocation.objects.all()
     target_invoice = Invoice.objects.filter(id=invoice_id).first() if invoice_id else None
 
@@ -2528,14 +2778,20 @@ def payment_location_update(request, method_id):
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def supplier_list(request):
+    cafe = get_cafe_from_request(request)
     suppliers = Supplier.objects.all()
+    if cafe:
+        suppliers = suppliers.filter(cafe=cafe)
     return render(request, "supplier_list.html", {"suppliers": suppliers})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def supplier_select(request):
+    cafe = get_cafe_from_request(request)
     suppliers = Supplier.objects.filter(status='active')
+    if cafe:
+        suppliers = suppliers.filter(cafe=cafe)
     selected_supplier = None
     invoices = []
     total_owed = 0
@@ -2693,6 +2949,7 @@ def supplier_select(request):
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def supplier_create(request):
+    cafe = get_cafe_from_request(request)
     if request.method == "POST":
         name = request.POST.get("name")
         supplier_type = request.POST.get("supplier_type")
@@ -2706,6 +2963,7 @@ def supplier_create(request):
                     phone=request.POST.get("phone", ""),
                     mobile=request.POST.get("mobile", ""),
                     address=request.POST.get("address", ""),
+                    cafe=cafe,
                 )
                 messages.success(request, f'تأمین‌کننده "{name}" با موفقیت ایجاد شد.')
                 return redirect("supplier_list")
@@ -2882,7 +3140,10 @@ def supplier_evaluation_all_list(request):
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def supplier_evaluation_create_general(request):
+    cafe = get_cafe_from_request(request)
     suppliers = Supplier.objects.all()
+    if cafe:
+        suppliers = suppliers.filter(cafe=cafe)
     if request.method == "POST":
         supplier = Supplier.objects.filter(id=request.POST.get("supplier")).first()
         if supplier:
@@ -2974,6 +3235,8 @@ def purchase_category_analysis(request):
     صفحه تحلیل خرید بر اساس دسته‌بندی و فروشنده
     با فیلتر آبشاری: تاریخ -> دسته اصلی -> زیردسته -> فروشنده
     """
+    cafe = get_cafe_from_request(request)
+    
     # دریافت فیلترها از URL
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
@@ -2985,7 +3248,10 @@ def purchase_category_analysis(request):
     main_categories = Category.objects.filter(
         parent__isnull=True,
         is_active=True
-    ).order_by('name')
+    )
+    if cafe:
+        main_categories = main_categories.filter(cafe=cafe)
+    main_categories = main_categories.order_by('name')
     
     # زیردسته‌ها (اگر دسته اصلی انتخاب شده)
     subcategories = []
@@ -2993,7 +3259,10 @@ def purchase_category_analysis(request):
         subcategories = Category.objects.filter(
             parent_id=category_id,
             is_active=True
-        ).order_by('name')
+        )
+        if cafe:
+            subcategories = subcategories.filter(cafe=cafe)
+        subcategories = subcategories.order_by('name')
     
     # فروشندگان فیلتر شده بر اساس زیردسته
     if subcategory_id:
@@ -3015,10 +3284,16 @@ def purchase_category_analysis(request):
         suppliers = Supplier.objects.filter(
             id__in=supplier_ids,
             status='active'
-        ).order_by('name')
+        )
+        if cafe:
+            suppliers = suppliers.filter(cafe=cafe)
+        suppliers = suppliers.order_by('name')
     else:
         # اگر زیردسته انتخاب نشده، همه فروشندگان فعال را نمایش بده
-        suppliers = Supplier.objects.filter(status='active').order_by('name')
+        suppliers = Supplier.objects.filter(status='active')
+        if cafe:
+            suppliers = suppliers.filter(cafe=cafe)
+        suppliers = suppliers.order_by('name')
     
     # محصولات و داده‌های فیلتر شده
     products_data = []
@@ -3190,6 +3465,7 @@ def system_monitoring_api(request):
     }
 
     activity_count = ActivityLog.objects.count()
+    cafe = get_cafe_from_request(request)
     if activity_count >= 5:
         recent_activity = [
             {
@@ -3202,10 +3478,15 @@ def system_monitoring_api(request):
             for act in ActivityLog.objects.select_related("user").order_by("-created_at")[:10]
         ]
     else:
+        pr_qs = PurchaseRequest.objects.all()
+        inv_qs = Invoice.objects.all()
+        if cafe:
+            pr_qs = pr_qs.filter(cafe=cafe)
+            inv_qs = inv_qs.filter(cafe=cafe)
         recent_activity = {
-            "new_requests": PurchaseRequest.objects.count(),
+            "new_requests": pr_qs.count(),
             "new_orders": PurchaseOrder.objects.count(),
-            "new_invoices": Invoice.objects.count(),
+            "new_invoices": inv_qs.count(),
             "new_payments": Payment.objects.count(),
         }
 
@@ -3310,10 +3591,14 @@ def search_products_autocomplete(request):
     if not query or len(query) < 2:
         return JsonResponse({'results': []})
     
+    cafe = get_cafe_from_request(request)
     products = Product.objects.filter(
         models.Q(name__icontains=query) | models.Q(category__name__icontains=query),
         is_active=True
-    ).select_related('category', 'category__parent')[:15]
+    ).select_related('category', 'category__parent')
+    if cafe:
+        products = products.filter(cafe=cafe)
+    products = products[:15]
     
     results = []
     for product in products:
@@ -3343,10 +3628,13 @@ def search_categories_autocomplete(request):
     if not query or len(query) < 2:
         return JsonResponse({'results': []})
     
+    cafe = get_cafe_from_request(request)
     categories = Category.objects.filter(
         name__icontains=query,
         is_active=True
     ).select_related('parent')
+    if cafe:
+        categories = categories.filter(cafe=cafe)
     
     if parent_id:
         categories = categories.filter(parent_id=parent_id)

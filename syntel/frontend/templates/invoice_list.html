@@ -509,11 +509,11 @@
             <p class="page-subtitle">{% if invoice_type == 'store' %}مدیریت و مشاهده صورتحساب‌های فروشگاه{% else %}مدیریت و مشاهده صورتحساب‌ها{% endif %}</p>
         </div>
         <div class="page-actions">
-            <a href="{% url 'invoice_register' %}" class="action-btn btn-primary-custom">
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="action-btn btn-primary-custom">
                 <i class="fas fa-plus"></i>
                 افزودن صورتحساب
             </a>
-            <a href="{% url 'completed_orders_for_invoices' %}" class="action-btn btn-outline-custom">
+            <a href="{% url 'completed_orders_for_invoices' cafe_code=cafe_code %}" class="action-btn btn-outline-custom">
                 <i class="fas fa-shopping-cart"></i>
                 سفارش‌های تکمیل شده
             </a>
@@ -575,7 +575,7 @@
                 <i class="fas fa-filter text-primary"></i>
                 فیلترها و جستجو
             </div>
-            <a href="{% url 'invoices_list' %}" class="text-danger text-decoration-none small">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="text-danger text-decoration-none small">
                 <i class="fas fa-times"></i> پاک کردن فیلترها
             </a>
         </div>
@@ -654,7 +654,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'invoice_detail' invoice.id %}"
+                            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
                                 class="text-primary font-weight-bold text-decoration-none">
                                 {{ invoice.invoice_number }}
                             </a>
@@ -674,31 +674,31 @@
                         </td>
                         <td>
                             <div class="d-flex gap-1">
-                                <a href="{% url 'invoice_detail' invoice.id %}" class="action-icon" title="مشاهده">
+                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="مشاهده">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if invoice.status == 'draft' %}
-                                <a href="{% url 'invoice_update' invoice.id %}" class="action-icon" title="ویرایش">
+                                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="ویرایش">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'invoice_send' invoice.id %}" class="action-icon" title="ارسال">
+                                <a href="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="ارسال">
                                     <i class="fas fa-paper-plane"></i>
                                 </a>
                                 {% endif %}
                                 {% if invoice.status == 'sent' %}
-                                <a href="{% url 'invoice_approve' invoice.id %}" class="action-icon text-success"
+                                <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon text-success"
                                     title="تایید">
                                     <i class="fas fa-check"></i>
                                 </a>
                                 {% endif %}
                                 {% if invoice.status == 'approved' and invoice.can_add_payment %}
-                                <a href="{% url 'payment_create_for_invoice' invoice.id %}"
+                                <a href="{% url 'payment_create_for_invoice' cafe_code=cafe_code invoice_id=invoice.id %}"
                                     class="action-icon text-info" title="افزودن پرداخت">
                                     <i class="fas fa-credit-card"></i>
                                 </a>
                                 {% endif %}
                                 {% if is_manager %}
-                                <form method="post" action="{% url 'invoice_delete' invoice.id %}"
+                                <form method="post" action="{% url 'invoice_delete' cafe_code=cafe_code invoice_id=invoice.id %}"
                                     style="display: inline;"
                                     onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این صورتحساب را حذف کنید؟');">
                                     {% csrf_token %}
@@ -732,7 +732,7 @@
                     {% if is_manager %}
                     <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
                     {% endif %}
-                    <a href="{% url 'invoice_detail' invoice.id %}"
+                    <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
                         class="font-weight-bold text-primary text-decoration-none">
                         {{ invoice.invoice_number }}
                     </a>
@@ -762,9 +762,9 @@
                 </div>
             </div>
             <div class="mobile-card-footer mt-3 pt-2 border-top d-flex justify-content-end gap-2">
-                <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-custom">مشاهده</a>
+                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">مشاهده</a>
                 {% if invoice.status == 'draft' %}
-                <a href="{% url 'invoice_update' invoice.id %}" class="btn btn-sm btn-outline-custom">ویرایش</a>
+                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">ویرایش</a>
                 {% endif %}
             </div>
         </div>

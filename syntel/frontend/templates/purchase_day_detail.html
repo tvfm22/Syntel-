@@ -311,11 +311,11 @@
                 <h1>لیست خرید {{ role_name }}</h1>
                 <p>تاریخ: {{ date|jalali_date }}</p>
             </div>
-            <a href="{% url 'purchase_lists_by_date' %}" class="back-link">← بازگشت</a>
+            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="back-link">← بازگشت</a>
         </div>
 
         <div class="actions">
-            <a href="{% url 'export_purchase_day_pdf' %}?date={{ date|iso_date }}&role={{ role }}" class="btn-pdf">
+            <a href="{% url 'export_purchase_day_pdf' cafe_code=cafe_code %}?date={{ date|iso_date }}&role={{ role }}" class="btn-pdf">
                 📄 دانلود PDF
             </a>
         </div>
@@ -333,10 +333,10 @@
                     {% endif %}
                 </div>
                 <div class="request-actions">
-                    <a href="{% url 'purchase_list_edit_request' request.id %}?date={{ date_str }}&role={{ role }}" class="btn-edit">
+                    <a href="{% url 'purchase_list_edit_request' cafe_code=cafe_code request_id=request.id %}?date={{ date_str }}&role={{ role }}" class="btn-edit">
                         ✏️ ویرایش
                     </a>
-                    <form method="post" action="{% url 'purchase_list_confirm_request' request.id %}" style="display: inline;">
+                    <form method="post" action="{% url 'purchase_list_confirm_request' cafe_code=cafe_code request_id=request.id %}" style="display: inline;">
                         {% csrf_token %}
                         <input type="hidden" name="date" value="{{ date_str }}">
                         <input type="hidden" name="role" value="{{ role }}">

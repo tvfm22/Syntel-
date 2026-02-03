@@ -408,7 +408,7 @@
                     <i class="fas fa-file-invoice text-primary"></i>
                     <span>ثبت فاکتور جدید</span>
                 </div>
-                <a href="{% url 'invoices_list' %}" class="btn btn-outline-custom btn-sm">
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn btn-outline-custom btn-sm">
                     <i class="fas fa-arrow-left ml-2"></i> بازگشت
                 </a>
             </div>
@@ -646,7 +646,7 @@
                                 <button type="submit" name="save_draft" class="btn btn-outline-custom btn-block w-100">
                                     <i class="fas fa-save ml-2"></i> ذخیره پیش‌نویس
                                 </button>
-                                <a href="{% url 'invoices_list' %}" class="btn btn-link text-muted text-decoration-none text-center w-100">
+                                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn btn-link text-muted text-decoration-none text-center w-100">
                                     انصراف
                                 </a>
                             </div>
@@ -1023,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Fetch from supplier's previous products (higher priority)
             if (supplierId) {
                 promises.push(
-                    fetch(`{% url 'search_supplier_products' %}?supplier_id=${supplierId}&q=${encodeURIComponent(val)}`)
+                    fetch(`{% url 'search_supplier_products' cafe_code=cafe_code %}?supplier_id=${supplierId}&q=${encodeURIComponent(val)}`)
                         .then(response => response.json())
                         .then(data => ({ type: 'supplier', data: data.results }))
                         .catch(() => ({ type: 'supplier', data: [] }))
@@ -1033,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Fetch from general products database
             if (val.length >= 2) {
                 promises.push(
-                    fetch(`{% url 'products_autocomplete' %}?q=${encodeURIComponent(val)}`)
+                    fetch(`{% url 'products_autocomplete' cafe_code=cafe_code %}?q=${encodeURIComponent(val)}`)
                         .then(response => response.json())
                         .then(data => ({ type: 'products', data: data.results }))
                         .catch(() => ({ type: 'products', data: [] }))

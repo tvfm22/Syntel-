@@ -220,7 +220,7 @@
     <div class="filters">
         <form class="filter-group" style="display: flex; gap: 1rem; align-items: center; width: 100%;">
             <label for="department">فیلتر بخش:</label>
-            <select name="department" id="department" hx-get="{% url 'purchase_requests_list' %}"
+            <select name="department" id="department" hx-get="{% url 'purchase_requests_list' cafe_code=cafe_code %}"
                 hx-target="#requests-container" hx-trigger="change">
                 <option value="">همه</option>
                 {% for dept_key, dept_name in departments %}
@@ -237,7 +237,7 @@
         {% if requests %}
             {% for req in requests %}
             <div class="request-card">
-                <a href="{% url 'purchase_request_detail' req.id %}" class="request-card-link">
+                <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
                     <div class="request-header">
                         <span class="request-id">درخواست #{{ req.id }}</span>
                         <span class="status-badge status-{{ req.status }}">
@@ -279,7 +279,7 @@
                 </a>
                 {% if user.role == 'purchasing' %}
                 <div class="request-actions">
-                    <a href="{% url 'update_purchase_request' req.id %}" class="btn-edit">✏️ ویرایش</a>
+                    <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="btn-edit">✏️ ویرایش</a>
                 </div>
                 {% endif %}
             </div>
@@ -289,7 +289,7 @@
                 <div class="empty-state-icon">📋</div>
                 <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
                 {% if is_mobile_user %}
-                <a href="{% url 'purchase_request' %}" class="btn-primary">ثبت درخواست جدید</a>
+                <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn-primary">ثبت درخواست جدید</a>
                 {% endif %}
             </div>
         {% endif %}

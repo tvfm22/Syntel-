@@ -11,12 +11,13 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 
-from .models import Category, InvoiceItem, Product, PurchaseItem, Requester
+from .models import Category, InvoiceItem, Product, PurchaseItem, Requester, Supplier
 from .serializers_dashboard import (
 	CategoryExpenseSerializer,
 	DepartmentExpenseSerializer,
 	ProductListResponseSerializer,
 )
+from .views import get_cafe_from_request
 
 
 INVOICE_STATUS_INCLUDED = [
@@ -459,7 +460,11 @@ def api_department_categories(request, dept_id):
 	start, end, prev_start, prev_end = get_date_range(period)
 	
 	# فقط دسته‌بندی‌های اصلی (بدون والد)
-	main_categories = Category.objects.filter(parent__isnull=True, is_active=True).order_by('name')
+	cafe = get_cafe_from_request(request)
+	main_categories = Category.objects.filter(parent__isnull=True, is_active=True)
+	if cafe:
+		main_categories = main_categories.filter(cafe=cafe)
+	main_categories = main_categories.order_by('name')
 	categories = []
 	
 	for cat in main_categories:
@@ -1074,10 +1079,14 @@ def api_invoice_suppliers(request):
 		invoice__supplier__isnull=False
 	).values_list('invoice__supplier_id', flat=True).distinct()
 	
+	cafe = get_cafe_from_request(request)
 	suppliers = Supplier.objects.filter(
 		id__in=supplier_ids,
 		status='active'
-	).values('id', 'name', 'supplier_code').order_by('name')
+	)
+	if cafe:
+		suppliers = suppliers.filter(cafe=cafe)
+	suppliers = suppliers.values('id', 'name', 'supplier_code').order_by('name')
 	
 	return Response({
 		'suppliers': list(suppliers),

@@ -235,7 +235,7 @@
             <button type="submit" class="btn btn-primary">
                 ارسال درخواست
             </button>
-            <a href="{% url 'mobile_dashboard' %}" class="btn btn-secondary">
+            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
                 انصراف
             </a>
         </div>
@@ -248,14 +248,7 @@
 <script>
         let itemCount = 0;
 
-        function onProductChange(selectElement, itemId) {
-            const selectedOption = selectElement.options[selectElement.selectedIndex];
-            const unit = selectedOption.getAttribute('data-unit') || '';
-            const unitInput = document.querySelector(`#item-${itemId} input[name="item_unit_display"]`);
-            if (unitInput) {
-                unitInput.value = unit;
-            }
-        }
+        // Product name field - no preset selection needed
 
         function addItem() {
             itemCount++;
@@ -267,15 +260,8 @@
                     </div>
                     <div class="item-fields">
                         <div class="form-group">
-                            <label>کالا *</label>
-                            <select name="product_id" onchange="onProductChange(this, ${itemCount})" required>
-                                <option value="">انتخاب...</option>
-                                {% for product in products %}
-                                <option value="{{ product.id }}" data-unit="{{ product.unit.name }}">
-                                    {{ product.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <label>نام کالا *</label>
+                            <input type="text" name="product_name" class="form-control" placeholder="نام کالا را وارد کنید..." required>
                         </div>
                         <div class="form-group">
                             <label>مقدار *</label>
@@ -283,7 +269,23 @@
                         </div>
                         <div class="form-group">
                             <label>واحد</label>
-                            <input type="text" name="item_unit_display" class="form-control" readonly placeholder="-">
+                            <select name="item_unit" class="form-control">
+                                <option value="عدد">عدد</option>
+                                <option value="کیلوگرم">کیلوگرم</option>
+                                <option value="گرم">گرم</option>
+                                <option value="لیتر">لیتر</option>
+                                <option value="بسته">بسته</option>
+                                <option value="کارتن">کارتن</option>
+                                <option value="جعبه">جعبه</option>
+                                <option value="شیشه">شیشه</option>
+                                <option value="قوطی">قوطی</option>
+                                <option value="بطری">بطری</option>
+                                <option value="پاکت">پاکت</option>
+                                <option value="متر">متر</option>
+                                <option value="سانتی‌متر">سانتی‌متر</option>
+                                <option value="دست">دست</option>
+                                <option value="جفت">جفت</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 0.75rem;">
@@ -338,12 +340,12 @@
             // Check if all required fields are filled
             let allValid = true;
             items.forEach(item => {
-                const productSelect = item.querySelector('select[name="product_id"]');
+                const productNameInput = item.querySelector('input[name="product_name"]');
                 const quantityInput = item.querySelector('input[name="item_quantity"]');
                 
-                if (!productSelect || !productSelect.value) {
+                if (!productNameInput || !productNameInput.value.trim()) {
                     allValid = false;
-                    productSelect.style.borderColor = 'var(--danger-color)';
+                    productNameInput.style.borderColor = 'var(--danger-color)';
                 }
                 if (!quantityInput || !quantityInput.value) {
                     allValid = false;

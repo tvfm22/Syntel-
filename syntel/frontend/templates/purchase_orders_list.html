@@ -30,7 +30,7 @@
                             </form>
                         </div>
                         <div class="col-md-5 text-end">
-                            <a href="{% url 'approved_requests_for_orders' %}" class="btn btn-success">
+                            <a href="{% url 'approved_requests_for_orders' cafe_code=cafe_code %}" class="btn btn-success">
                                 <i class="fas fa-plus"></i> ایجاد سفارش خرید جدید
                             </a>
                         </div>
@@ -54,7 +54,7 @@
                                 {% for order in orders %}
                                     <tr>
                                         <td>
-                                            <a href="{% url 'purchase_order_detail' order.id %}" class="text-decoration-none">
+                                            <a href="{% url 'purchase_order_detail' cafe_code=cafe_code order_id=order.id %}" class="text-decoration-none">
                                                 {{ order.order_number }}
                                             </a>
                                         </td>
@@ -87,41 +87,41 @@
                                         <td>{{ order.created_at|date:"Y/m/d H:i" }}</td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <a href="{% url 'purchase_order_detail' order.id %}" class="btn btn-outline-primary" title="مشاهده">
+                                                <a href="{% url 'purchase_order_detail' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-primary" title="مشاهده">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 {% if order.status == 'draft' %}
-                                                    <a href="{% url 'purchase_order_update' order.id %}" class="btn btn-outline-warning" title="ویرایش">
+                                                    <a href="{% url 'purchase_order_update' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-warning" title="ویرایش">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
                                                 {% endif %}
                                                 {% if order.can_be_sent %}
-                                                    <a href="{% url 'purchase_order_send' order.id %}" class="btn btn-outline-success" title="ارسال" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
+                                                    <a href="{% url 'purchase_order_send' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-success" title="ارسال" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
                                                         <i class="fas fa-paper-plane"></i>
                                                     </a>
                                                 {% elif order.can_be_confirmed %}
-                                                    <a href="{% url 'purchase_order_confirm' order.id %}" class="btn btn-outline-info" title="تأیید" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
+                                                    <a href="{% url 'purchase_order_confirm' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-info" title="تأیید" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
                                                         <i class="fas fa-check"></i>
                                                     </a>
                                                 {% elif order.status == 'confirmed' %}
-                                                    <a href="{% url 'purchase_order_mark_in_transit' order.id %}" class="btn btn-outline-primary" title="در حال حمل" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
+                                                    <a href="{% url 'purchase_order_mark_in_transit' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-primary" title="در حال حمل" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
                                                         <i class="fas fa-truck"></i>
                                                     </a>
                                                 {% elif order.can_be_delivered %}
-                                                    <a href="{% url 'purchase_order_deliver' order.id %}" class="btn btn-outline-success" title="تحویل" onclick="return confirm('آیا مطمئن هستید که سفارش تحویل شده است؟')">
+                                                    <a href="{% url 'purchase_order_deliver' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-success" title="تحویل" onclick="return confirm('آیا مطمئن هستید که سفارش تحویل شده است؟')">
                                                         <i class="fas fa-box-open"></i>
                                                     </a>
                                                 {% elif order.can_be_inspected %}
-                                                    <a href="{% url 'purchase_order_inspect' order.id %}" class="btn btn-outline-warning" title="بازرسی" onclick="return confirm('آیا مطمئن هستید که می‌خواهید بازرسی کیفیت را شروع کنید؟')">
+                                                    <a href="{% url 'purchase_order_inspect' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-warning" title="بازرسی" onclick="return confirm('آیا مطمئن هستید که می‌خواهید بازرسی کیفیت را شروع کنید؟')">
                                                         <i class="fas fa-search"></i>
                                                     </a>
                                                 {% elif order.can_be_completed %}
-                                                    <a href="{% url 'purchase_order_complete' order.id %}" class="btn btn-outline-success" title="تکمیل" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
+                                                    <a href="{% url 'purchase_order_complete' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-success" title="تکمیل" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
                                                         <i class="fas fa-check-double"></i>
                                                     </a>
                                                 {% endif %}
                                                 {% if order.status in 'draft,sent' %}
-                                                    <a href="{% url 'purchase_order_cancel' order.id %}" class="btn btn-outline-danger" title="لغو" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
+                                                    <a href="{% url 'purchase_order_cancel' cafe_code=cafe_code order_id=order.id %}" class="btn btn-outline-danger" title="لغو" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
                                                         <i class="fas fa-times"></i>
                                                     </a>
                                                 {% endif %}

@@ -11,7 +11,7 @@
                 <div class="card-header">
                     <h3 class="card-title">تأییدهای در انتظار</h3>
                     <div class="card-tools">
-                        <a href="{% url 'approval_history' %}" class="btn btn-info btn-sm">
+                        <a href="{% url 'approval_history' cafe_code=cafe_code %}" class="btn btn-info btn-sm">
                             <i class="fas fa-history"></i> تاریخچه تأییدها
                         </a>
                     </div>
@@ -34,7 +34,7 @@
                                     {% for approval in pending_approvals %}
                                     <tr>
                                         <td>
-                                            <a href="{% url 'invoice_detail' approval.invoice.id %}">{{ approval.invoice.invoice_number }}</a>
+                                            <a href="{% url 'invoice_detail' approval.invoice.id cafe_code=cafe_code %}">{{ approval.invoice.invoice_number }}</a>
                                         </td>
                                         <td>{{ approval.invoice.purchase_order.supplier_name }}</td>
                                         <td>{{ approval.invoice.total_amount|floatformat:0 }} ریال</td>
@@ -85,7 +85,7 @@
                     <span>&times;</span>
                 </button>
             </div>
-            <form method="post" action="{% url 'invoice_approve' approval.invoice.id %}">
+            <form method="post" action="{% url 'invoice_approve' approval.invoice.id cafe_code=cafe_code %}">
                 {% csrf_token %}
                 <input type="hidden" name="approval_id" value="{{ approval.id }}">
                 <div class="modal-body">
@@ -119,7 +119,7 @@
                     <span>&times;</span>
                 </button>
             </div>
-            <form method="post" action="{% url 'invoice_reject' approval.invoice.id %}">
+            <form method="post" action="{% url 'invoice_reject' approval.invoice.id cafe_code=cafe_code %}">
                 {% csrf_token %}
                 <input type="hidden" name="approval_id" value="{{ approval.id }}">
                 <div class="modal-body">
@@ -151,7 +151,7 @@
                     <span>&times;</span>
                 </button>
             </div>
-            <form method="post" action="{% url 'invoice_request_revision' approval.invoice.id %}">
+            <form method="post" action="{% url 'invoice_request_revision' approval.invoice.id cafe_code=cafe_code %}">
                 {% csrf_token %}
                 <input type="hidden" name="approval_id" value="{{ approval.id }}">
                 <div class="modal-body">

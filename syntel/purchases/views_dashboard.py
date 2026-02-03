@@ -8,28 +8,36 @@ from django.http import HttpResponse
 from datetime import timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill
-from .models import Product, PriceHistory, Category, Supplier
+from .models import Product, PriceHistory, Category, Supplier, Cafe
 from .serializers_dashboard import (
     ProductChangeSerializer, 
     PriceHistorySerializer,
     CategorySerializer,
     SupplierSerializer
 )
+from .views import get_cafe_from_request
 
 class DashboardFiltersAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
+        cafe = get_cafe_from_request(request)
         categories = Category.objects.filter(is_active=True)
         suppliers = Supplier.objects.filter(status='active')
+        if cafe:
+            categories = categories.filter(cafe=cafe)
+            suppliers = suppliers.filter(cafe=cafe)
         
         # ساخت لیست فروشندگان با گزینه فروشگاه‌های نقدی
         suppliers_list = list(SupplierSerializer(suppliers, many=True).data)
         
         # اضافه کردن گزینه "فروشگاه‌های نقدی"
-        cash_stores_count = Supplier.objects.filter(
+        cash_stores_qs = Supplier.objects.filter(
             status='active',
             notes__icontains='فروشگاه نقدی'
-        ).count()
+        )
+        if cafe:
+            cash_stores_qs = cash_stores_qs.filter(cafe=cafe)
+        cash_stores_count = cash_stores_qs.count()
         
         if cash_stores_count > 0:
             suppliers_list.insert(0, {
@@ -48,6 +56,7 @@ class ProductChangeListAPIView(generics.ListAPIView):
     serializer_class = ProductChangeSerializer
 
     def get_queryset(self):
+        cafe = get_cafe_from_request(self.request)
         latest_history = PriceHistory.objects.filter(
             product=OuterRef('pk')
         ).order_by('-date')
@@ -61,6 +70,10 @@ class ProductChangeListAPIView(generics.ListAPIView):
             supplier_notes=Subquery(latest_history.values('supplier__notes')[:1]),
             previous_price=Subquery(latest_history.values('price')[1:2])
         ).filter(current_price__isnull=False)
+        
+        # Filter by cafe
+        if cafe:
+            queryset = queryset.filter(cafe=cafe)
 
         # Filters
         category_id = self.request.query_params.get('category')
@@ -90,6 +103,7 @@ class HighIncreaseProductsAPIView(generics.ListAPIView):
     serializer_class = ProductChangeSerializer
 
     def get_queryset(self):
+        cafe = get_cafe_from_request(self.request)
         latest_history = PriceHistory.objects.filter(
             product=OuterRef('pk')
         ).order_by('-date')
@@ -105,6 +119,10 @@ class HighIncreaseProductsAPIView(generics.ListAPIView):
         ).filter(
             percent_change__gt=5
         )
+        
+        # Filter by cafe
+        if cafe:
+            queryset = queryset.filter(cafe=cafe)
         
         # Apply filters
         category_id = self.request.query_params.get('category')
@@ -139,13 +157,15 @@ from django.core.cache import cache
 class DashboardStatsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
+        cafe = get_cafe_from_request(request)
         # Get filter parameters
         category_id = request.query_params.get('category')
         supplier_id = request.query_params.get('store')
         days = request.query_params.get('days')
         
         # Create cache key based on filters
-        cache_key = f'dashboard_stats_{category_id}_{supplier_id}_{days}'
+        cafe_code = cafe.code if cafe else 'all'
+        cache_key = f'dashboard_stats_{cafe_code}_{category_id}_{supplier_id}_{days}'
         cached_data = cache.get(cache_key)
         if cached_data:
             return Response(cached_data)
@@ -159,6 +179,10 @@ class DashboardStatsAPIView(APIView):
             last_update=Subquery(latest_history.values('date')[:1]),
             supplier_name=Subquery(latest_history.values('supplier__name')[:1])
         ).filter(percent_change__isnull=False)
+        
+        # Filter by cafe
+        if cafe:
+            products = products.filter(cafe=cafe)
         
         # Apply filters
         if category_id:

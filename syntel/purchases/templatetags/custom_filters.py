@@ -152,3 +152,36 @@ def jalali_time(value, format_string='%H:%M'):
         pass
     
     return str(value)
+
+
+# =====================================================
+# Cafe URL Template Tags
+# =====================================================
+
+from django.urls import reverse
+
+@register.simple_tag(takes_context=True)
+def cafe_url(context, url_name, *args, **kwargs):
+    """
+    Generate URL with cafe_code prefix.
+    Usage: {% cafe_url 'dashboard' %}
+           {% cafe_url 'product_update' product_id=123 %}
+    """
+    request = context.get('request')
+    cafe_code = context.get('cafe_code')
+    
+    # Try to get cafe_code from different sources
+    if not cafe_code and request:
+        if hasattr(request, 'cafe') and request.cafe:
+            cafe_code = request.cafe.code
+        elif hasattr(request, 'session') and request.session.get('selected_cafe_code'):
+            cafe_code = request.session['selected_cafe_code']
+        elif hasattr(request, 'user') and request.user.is_authenticated and request.user.cafe:
+            cafe_code = request.user.cafe.code
+    
+    if not cafe_code:
+        # Fallback to 'local' if no cafe found
+        cafe_code = 'local'
+    
+    kwargs['cafe_code'] = cafe_code
+    return reverse(url_name, args=args, kwargs=kwargs)

@@ -11,37 +11,37 @@
                     <h4 class="card-title mb-0">جزئیات سفارش خرید {{ purchase_order.order_number }}</h4>
                     <div>
                         {% if purchase_order.status == 'draft' %}
-                            <a href="{% url 'purchase_order_update' purchase_order.id %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'purchase_order_update' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-edit"></i> ویرایش
                             </a>
                         {% endif %}
                         {% if purchase_order.can_be_sent %}
-                            <a href="{% url 'purchase_order_send' purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
+                            <a href="{% url 'purchase_order_send' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
                                 <i class="fas fa-paper-plane"></i> ارسال
                             </a>
                         {% elif purchase_order.can_be_confirmed %}
-                            <a href="{% url 'purchase_order_confirm' purchase_order.id %}" class="btn btn-info btn-sm" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
+                            <a href="{% url 'purchase_order_confirm' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-info btn-sm" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
                                 <i class="fas fa-check"></i> تأیید
                             </a>
                         {% elif purchase_order.status == 'confirmed' %}
-                            <a href="{% url 'purchase_order_mark_in_transit' purchase_order.id %}" class="btn btn-primary btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
+                            <a href="{% url 'purchase_order_mark_in_transit' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-primary btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
                                 <i class="fas fa-truck"></i> در حال حمل
                             </a>
                         {% elif purchase_order.can_be_delivered %}
-                            <a href="{% url 'purchase_order_deliver' purchase_order.id %}" class="btn btn-success btn-sm">
+                            <a href="{% url 'purchase_order_deliver' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm">
                                 <i class="fas fa-box-open"></i> تحویل
                             </a>
                         {% elif purchase_order.can_be_inspected %}
-                            <a href="{% url 'purchase_order_inspect' purchase_order.id %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'purchase_order_inspect' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-search"></i> بازرسی
                             </a>
                         {% elif purchase_order.can_be_completed %}
-                            <a href="{% url 'purchase_order_complete' purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
+                            <a href="{% url 'purchase_order_complete' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
                                 <i class="fas fa-check-double"></i> تکمیل
                             </a>
                         {% endif %}
                         {% if purchase_order.status == 'draft' or purchase_order.status == 'sent' %}
-                            <a href="{% url 'purchase_order_cancel' purchase_order.id %}" class="btn btn-danger btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
+                            <a href="{% url 'purchase_order_cancel' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-danger btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
                                 <i class="fas fa-times"></i> لغو
                             </a>
                         {% endif %}
@@ -245,7 +245,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <p class="mb-1"><strong>شماره درخواست:</strong>
-                                    <a href="{% url 'purchase_request_detail' purchase_order.request.id %}">{{ purchase_order.request.id }}</a>
+                                    <a href="{% url 'purchase_request_detail' purchase_order.request.id cafe_code=cafe_code %}">{{ purchase_order.request.id }}</a>
                                 </p>
                                 <p class="mb-1"><strong>بخش:</strong> {{ purchase_order.request.user.get_role_display }}</p>
                                 <p class="mb-1"><strong>کاربر:</strong> {{ purchase_order.request.user.get_full_name|default:purchase_order.request.user.username }}</p>
@@ -365,10 +365,10 @@
 
                     <!-- Action Buttons -->
                     <div class="mt-4">
-                        <a href="{% url 'purchase_orders_list' %}" class="btn btn-secondary">
+                        <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> بازگشت به لیست
                         </a>
-                        <a href="{% url 'activity_log' purchase_order.request.id %}" class="btn btn-info">
+                        <a href="{% url 'activity_log' purchase_order.request.id cafe_code=cafe_code %}" class="btn btn-info">
                             <i class="fas fa-history"></i> تاریخچه فعالیت‌ها
                         </a>
                     </div>

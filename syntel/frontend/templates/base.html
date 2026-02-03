@@ -664,61 +664,61 @@
 
         <div class="menu-items">
             {% if user.role == 'purchasing' %}
-            <a href="{% url 'dashboard' %}" {% if request.path == '/dashboard/' %}class="active"{% endif %}>
+            <a href="{% url 'dashboard' cafe_code=cafe_code %}" {% if 'dashboard' in request.path %}class="active"{% endif %}>
                 <span>📊 داشبورد</span>
             </a>
             {% endif %}
             
             {% if user.role in 'kitchen,bar,counter,cashier,facilities' %}
-            <a href="{% url 'purchase_request' %}" {% if 'purchase-request' in request.path and 'requests' not in request.path %}class="active"{% endif %}>
+            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" {% if 'purchase-request' in request.path and 'requests' not in request.path %}class="active"{% endif %}>
                 <span>📝 ثبت درخواست</span>
             </a>
-            <a href="{% url 'purchase_requests_list' %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
                 <span>📋 درخواست‌های من</span>
             </a>
             {% endif %}
             
             {% if user.role == 'purchasing' %}
-            <a href="{% url 'purchase_requests_list' %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" {% if 'purchase-requests' in request.path %}class="active"{% endif %}>
                 <span>درخواست‌ها</span>
             </a>
-            <a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
                 <span>عملکرد تأمین‌کنندگان</span>
             </a>
-            <a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'purchase_reports' cafe_code=cafe_code %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
                 <span>گزارشات خرید</span>
             </a>
-            <a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" {% if 'reports' in request.path %}class="active"{% endif %}>
                 <span>گزارشات</span>
             </a>
             {% endif %}
             
             {% if user.role == 'manager' %}
-            <a href="{% url 'finance_dashboard' %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
                 <span>داشبورد مالی</span>
                     </a>
-                    <a href="{% url 'supplier_performance_report' %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
                         <span>عملکرد تأمین‌کنندگان</span>
                     </a>
-                    <a href="{% url 'purchase_reports' %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'purchase_reports' cafe_code=cafe_code %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
                         <span>گزارشات خرید</span>
                     </a>
-                    <a href="{% url 'payment_analytics' %}" {% if 'payment-analytics' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" {% if 'payment-analytics' in request.path %}class="active"{% endif %}>
                         <span>تحلیل‌های پرداخت</span>
                     </a>
-                    <a href="{% url 'inventory_reports' %}" {% if 'inventory-reports' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'inventory_reports' cafe_code=cafe_code %}" {% if 'inventory-reports' in request.path %}class="active"{% endif %}>
                         <span>گزارشات موجودی</span>
                     </a>
-                    <a href="{% url 'reports_dashboard' %}" {% if 'reports' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" {% if 'reports' in request.path %}class="active"{% endif %}>
                         <span>گزارشات</span>
                     </a>
-                    <a href="{% url 'backup_management' %}" {% if 'backup' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'backup_management' cafe_code=cafe_code %}" {% if 'backup' in request.path %}class="active"{% endif %}>
                         <span>پشتیبان‌گیری</span>
                     </a>
-                    <a href="{% url 'system_monitoring' %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'system_monitoring' cafe_code=cafe_code %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>
                         <span>مانیتورینگ سیستم</span>
                     </a>
-                    <a href="{% url 'user_list' %}" {% if 'users' in request.path %}class="active"{% endif %}>
+                    <a href="{% url 'user_list' cafe_code=cafe_code %}" {% if 'users' in request.path %}class="active"{% endif %}>
                         <span>مدیریت کاربران</span>
                     </a>
                     {% endif %}
@@ -734,12 +734,24 @@
     
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="{% url 'dashboard' %}" class="navbar-brand">
+            <a href="{% if cafe_code %}{% url 'dashboard' cafe_code=cafe_code %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
                 <div class="logo">S</div>
                 <span>Syntel</span>
+                {% if current_cafe %}
+                <span style="font-size: 0.8rem; color: var(--secondary-color); margin-right: 0.5rem; background: rgba(236, 72, 153, 0.1); padding: 0.25rem 0.75rem; border-radius: 15px;">
+                    {{ current_cafe.name }}
+                </span>
+                {% endif %}
             </a>
             
             <div style="display: flex; align-items: center; gap: 1rem;">
+                {% if can_switch_cafe %}
+                <!-- دکمه تغییر کافه فقط برای مدیر و مدیرعامل -->
+                <a href="{% url 'select_cafe' %}" class="btn" style="background: var(--secondary-color); color: white; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🔄 تغییر کافه
+                </a>
+                {% endif %}
+                
                 <!-- User Info (Always Visible) -->
                 <div class="user-info">
                     <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>

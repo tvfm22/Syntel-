@@ -8,6 +8,37 @@
 
 سیستم جامع مدیریت خرید، انبار، فاکتور و مالی با رابط کاربری فارسی - آماده برای استقرار روی سرور
 
+## � ساختار پروژه
+
+```
+Syntel/
+├── syntel/                    # Django Project Root
+│   ├── docs/                  # مستندات کامل پروژه
+│   ├── frontend/              # فایل‌های استاتیک فرانت‌اند
+│   ├── logs/                  # لاگ‌های سیستم
+│   ├── purchases/             # اپلیکیشن اصلی
+│   │   ├── management/        # دستورات مدیریتی Django
+│   │   ├── migrations/        # مایگریشن‌های دیتابیس
+│   │   ├── templates/         # قالب‌های HTML
+│   │   ├── templatetags/      # تگ‌های سفارشی
+│   │   └── tests/             # تست‌های اپلیکیشن
+│   ├── scripts/               # اسکریپت‌های کمکی
+│   │   ├── deployment/        # اسکریپت‌های استقرار
+│   │   ├── fixes/             # اسکریپت‌های رفع مشکل
+│   │   ├── management_commands/ # ابزارهای مدیریتی
+│   │   ├── setup/             # اسکریپت‌های راه‌اندازی اولیه
+│   │   └── tests/             # ابزارهای تست
+│   ├── staticfiles/           # فایل‌های استاتیک جمع‌آوری شده
+│   ├── syntel/                # تنظیمات Django
+│   ├── temp/                  # فایل‌های موقت
+│   ├── tests/                 # تست‌های کل پروژه
+│   ├── manage.py              # اسکریپت مدیریت Django
+│   ├── requirements.txt       # وابستگی‌های Python
+│   ├── Dockerfile             # تنظیمات Docker
+│   └── docker-compose.yml     # تنظیمات Docker Compose
+└── README.md                  # این فایل
+```
+
 ## 🚀 نصب سریع
 
 ### با Docker (توصیه شده برای Production)
@@ -22,8 +53,8 @@ cp .env.example .env
 nano .env  # ویرایش و تکمیل متغیرها
 
 # استقرار خودکار
-chmod +x deploy.sh
-./deploy.sh
+chmod +x scripts/deployment/deploy.sh
+bash scripts/deployment/deploy.sh
 ```
 
 سایت روی http://localhost در دسترس خواهد بود.
@@ -67,6 +98,45 @@ python manage.py runserver
 - پشتیبان‌گیری کامل از پایگاه داده
 - صدور و وارد کردن داده‌ها (JSON/CSV)
 - ایجاد اسکریپت‌های انتقال داده
+
+## 📚 مستندات
+
+تمام مستندات پروژه در پوشه `syntel/docs/` قرار دارد:
+
+- [راهنمای کاربر](syntel/docs/USER_MANUAL.md) - راهنمای استفاده برای کاربران
+- [راهنمای مدیر](syntel/docs/MANAGER_MANUAL.md) - راهنمای مدیریت سیستم
+- [مستندات فنی](syntel/docs/TECHNICAL_DOCUMENTATION.md) - مستندات توسعه‌دهنده
+- [راهنمای استقرار](syntel/docs/DEPLOYMENT_GUIDE.md) - نحوه استقرار روی سرور
+- [راهنمای عیب‌یابی](syntel/docs/TROUBLESHOOTING_GUIDE.md) - رفع مشکلات رایج
+- [راهنمای سریع](syntel/docs/QUICK_START_GUIDE.md) - شروع سریع
+
+## 🛠️ اسکریپت‌های کمکی
+
+اسکریپت‌های کمکی در پوشه `syntel/scripts/` سازماندهی شده‌اند:
+
+### راه‌اندازی اولیه (`scripts/setup/`)
+```bash
+python scripts/setup/create_users.py          # ایجاد کاربران نمونه
+python scripts/setup/setup_cafes.py           # راه‌اندازی کافه‌ها
+```
+
+### مدیریت (`scripts/management_commands/`)
+```bash
+python scripts/management_commands/check_users.py      # بررسی کاربران
+python scripts/management_commands/clear_cache.py      # پاک کردن کش
+```
+
+### رفع مشکل (`scripts/fixes/`)
+```bash
+python scripts/fixes/fix_csrf.py              # رفع مشکل CSRF
+python scripts/fixes/fix_urls2.py             # تصحیح URLها
+```
+
+### استقرار (`scripts/deployment/`)
+```bash
+bash scripts/deployment/deploy.sh             # استقرار روی سرور
+bash scripts/deployment/validate_production.sh # اعتبارسنجی Production
+```
 - بازیابی سیستم در صورت مشکل
 
 ### 📈 مانیتورینگ سیستم

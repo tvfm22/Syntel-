@@ -7,6 +7,27 @@ from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 
+
+# Cafe model for multi-tenant support
+class Cafe(models.Model):
+    """مدل کافه برای پشتیبانی از چند شعبه"""
+    name = models.CharField(max_length=200, verbose_name='نام کافه')
+    code = models.CharField(max_length=50, unique=True, verbose_name='کد کافه')  # e.g., 'local', 'baba_adam'
+    address = models.TextField(blank=True, verbose_name='آدرس')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='تلفن')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'کافه'
+        verbose_name_plural = 'کافه‌ها'
+        ordering = ['name']
+
+
 # Custom User model with roles
 class User(AbstractUser):
     ROLE_CHOICES = [
@@ -22,9 +43,38 @@ class User(AbstractUser):
         ('ceo', 'مدیرعامل'),
     ]
     role: models.CharField = models.CharField(max_length=20, choices=ROLE_CHOICES, default='kitchen')
+    cafe = models.ForeignKey('Cafe', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name='کافه')
+    
+    # Roles that can switch between cafes
+    ADMIN_ROLES = ['manager', 'ceo']
+    # Roles that see cafe selection on login
+    CAFE_SELECTION_ROLES = ['manager', 'finance_manager', 'accounting', 'ceo']
 
     def __str__(self) -> str:
         return f"{self.username} ({self.get_role_display()})"
+    
+    @property
+    def can_switch_cafe(self):
+        """
+        فقط سوپر ادمین‌ها می‌توانند بین کافه‌ها جابجا شوند
+        
+        سوپر ادمین = کاربر با نقش manager یا ceo که cafe=None دارد
+        """
+        return self.role in self.ADMIN_ROLES and self.cafe is None
+    
+    @property
+    def needs_cafe_selection(self):
+        """
+        آیا کاربر نیاز به انتخاب کافه در لاگین دارد
+        
+        فقط کاربرانی که:
+        1. نقش ادمین دارند (manager, finance_manager, accounting, ceo)
+        2. و کافه مشخصی ندارند (cafe=None)
+        
+        صفحه انتخاب کافه می‌بینند. این کاربران "سوپر ادمین" هستند.
+        کاربران عادی و کاربران ادمین با کافه مشخص، مستقیم به کافه خودشان می‌روند.
+        """
+        return self.role in self.CAFE_SELECTION_ROLES and self.cafe is None
 
 # Requester model
 class Requester(models.Model):
@@ -34,7 +84,8 @@ class Requester(models.Model):
         ('facilities', 'تاسیسات'),
         ('store', 'انبار'),
     ]
-    name = models.CharField(max_length=50, choices=REQUESTER_CHOICES, unique=True, verbose_name='نام درخواست‌کننده')
+    name = models.CharField(max_length=50, choices=REQUESTER_CHOICES, verbose_name='نام درخواست‌کننده')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='requesters', verbose_name='کافه', null=True, blank=True)
 
     def __str__(self):
         return self.get_name_display()
@@ -42,10 +93,12 @@ class Requester(models.Model):
     class Meta:
         verbose_name = 'درخواست‌کننده'
         verbose_name_plural = 'درخواست‌کنندگان'
+        unique_together = [['name', 'cafe']]
 
 # Invoice Issue model
 class InvoiceIssue(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='نام ایراد')
+    name = models.CharField(max_length=100, verbose_name='نام ایراد')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='invoice_issues', verbose_name='کافه', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -53,6 +106,7 @@ class InvoiceIssue(models.Model):
     class Meta:
         verbose_name = 'ایراد فاکتور'
         verbose_name_plural = 'ایرادات فاکتور'
+        unique_together = [['name', 'cafe']]
 
 # Purchase Request model
 class PurchaseRequest(models.Model):
@@ -62,6 +116,7 @@ class PurchaseRequest(models.Model):
         ('purchased', 'Purchased'),
         ('partial', 'Partial'),
     ]
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='purchase_requests', verbose_name='کافه', null=True, blank=True)
     user: models.ForeignKey = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
     status: models.CharField = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -148,9 +203,10 @@ class ActivityLog(models.Model):
 
 # Unit model for measurement units
 class Unit(models.Model):
-    name = models.CharField(max_length=50, unique=True, verbose_name='نام واحد')
+    name = models.CharField(max_length=50, verbose_name='نام واحد')
     symbol = models.CharField(max_length=10, blank=True, verbose_name='نماد')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='units', verbose_name='کافه', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -158,6 +214,7 @@ class Unit(models.Model):
     class Meta:
         verbose_name = 'واحد اندازه‌گیری'
         verbose_name_plural = 'واحدهای اندازه‌گیری'
+        unique_together = [['name', 'cafe']]
 
 # Category model for product categories
 class Category(models.Model):
@@ -165,6 +222,7 @@ class Category(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subcategories', verbose_name='دسته‌بندی والد')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='categories', verbose_name='کافه', null=True, blank=True)
 
     def __str__(self):
         if self.parent:
@@ -186,18 +244,19 @@ class Category(models.Model):
     class Meta:
         verbose_name = 'دسته‌بندی'
         verbose_name_plural = 'دسته‌بندی‌ها'
-        unique_together = [['name', 'parent']]
+        unique_together = [['name', 'parent', 'cafe']]
 
 # Product model for base products
 class Product(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name='نام محصول')
+    name = models.CharField(max_length=200, verbose_name='نام محصول')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='دسته‌بندی')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد اصلی')
     min_stock = models.PositiveIntegerField(default=0, verbose_name='حداقل موجودی')
-    current_stock = models.PositiveIntegerField(default=0, verbose_name="?????? ????")
+    current_stock = models.PositiveIntegerField(default=0, verbose_name="موجودی فعلی")
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='products', verbose_name='کافه', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
 
     def __str__(self):
@@ -207,14 +266,16 @@ class Product(models.Model):
         verbose_name = 'محصول'
         verbose_name_plural = 'محصولات'
         ordering = ['name']
+        unique_together = [['name', 'cafe']]
 
 # PaymentType model for payment methods
 class PaymentType(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='نام نوع پرداخت')
+    name = models.CharField(max_length=100, verbose_name='نام نوع پرداخت')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='payment_types', verbose_name='کافه', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -222,6 +283,7 @@ class PaymentType(models.Model):
     class Meta:
         verbose_name = 'نوع پرداخت'
         verbose_name_plural = 'انواع پرداخت'
+        unique_together = [['name', 'cafe']]
 
 # PurchaseOrder model for formal purchase orders
 class PurchaseOrder(models.Model):
@@ -412,6 +474,7 @@ class Invoice(models.Model):
         ('overpaid', 'پرداخت اضافی'),
     ]
 
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='invoices', verbose_name='کافه', null=True, blank=True)
     invoice_number = models.CharField(max_length=50, verbose_name='شماره فاکتور')
     purchase_order = models.OneToOneField(PurchaseOrder, on_delete=models.CASCADE, related_name='invoice', verbose_name='سفارش خرید', null=True, blank=True)
     supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices', verbose_name='تأمین‌کننده')
@@ -915,9 +978,10 @@ class Payment(models.Model):
 
 # Payment Location Configuration
 class PaymentLocation(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='نام محل پرداخت')
-    code = models.CharField(max_length=20, unique=True, blank=True, null=True, verbose_name='کد محل پرداخت')
+    name = models.CharField(max_length=100, verbose_name='نام محل پرداخت')
+    code = models.CharField(max_length=20, blank=True, null=True, verbose_name='کد محل پرداخت')
     description = models.TextField(blank=True, verbose_name='توضیحات')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='payment_locations', verbose_name='کافه', null=True, blank=True)
     
     # Configuration
     is_active = models.BooleanField(default=True, verbose_name='فعال')
@@ -946,6 +1010,7 @@ class PaymentLocation(models.Model):
         verbose_name = 'محل پرداخت'
         verbose_name_plural = 'محل‌های پرداخت'
         ordering = ['display_order', 'name']
+        unique_together = [['name', 'cafe'], ['code', 'cafe']]
 
 # Supplier Management System
 class Supplier(models.Model):
@@ -965,8 +1030,9 @@ class Supplier(models.Model):
     ]
 
     # Basic Information
-    name = models.CharField(max_length=200, unique=True, verbose_name='نام تأمین‌کننده')
-    supplier_code = models.CharField(max_length=20, unique=True, blank=True, verbose_name='کد تأمین‌کننده')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='suppliers', verbose_name='کافه', null=True, blank=True)
+    name = models.CharField(max_length=200, verbose_name='نام تأمین‌کننده')
+    supplier_code = models.CharField(max_length=20, blank=True, verbose_name='کد تأمین‌کننده')
     supplier_type = models.CharField(max_length=20, choices=SUPPLIER_TYPE_CHOICES, default='company', verbose_name='نوع تأمین‌کننده')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name='وضعیت')
 
@@ -1273,6 +1339,7 @@ class Supplier(models.Model):
         verbose_name = 'تأمین‌کننده'
         verbose_name_plural = 'تأمین‌کنندگان'
         ordering = ['name']
+        unique_together = [['name', 'cafe'], ['supplier_code', 'cafe']]
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['rating']),
@@ -1395,6 +1462,7 @@ class Notification(models.Model):
     ]
 
     # Recipients and Content
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='notifications', verbose_name='کافه', null=True, blank=True)
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', verbose_name='گیرنده')
     title = models.CharField(max_length=200, verbose_name='عنوان')
     message = models.TextField(verbose_name='پیام')

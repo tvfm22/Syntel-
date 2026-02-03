@@ -15,11 +15,11 @@
             <p class="page-subtitle">مشاهده و مدیریت تمامی فاکتورهای سیستم</p>
         </div>
         <div class="page-actions">
-            <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="action-btn action-btn-primary">
                 <span class="btn-icon">➕</span>
                 فاکتور جدید
             </a>
-            <a href="{% url 'completed_orders_for_invoices' %}" class="action-btn action-btn-secondary">
+            <a href="{% url 'completed_orders_for_invoices' cafe_code=cafe_code %}" class="action-btn action-btn-secondary">
                 <span class="btn-icon">🛒</span>
                 فاکتور از سفارش
             </a>
@@ -63,7 +63,7 @@
 <div class="filters-card">
     <div class="filters-header">
         <span class="filters-title">🔍 فیلتر و جستجو</span>
-        <a href="{% url 'invoices_list' %}" class="clear-filters-btn">
+        <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="clear-filters-btn">
             پاک کردن فیلترها
         </a>
     </div>
@@ -103,7 +103,7 @@
         <div class="invoice-header">
             <div class="invoice-number">
                 <span class="invoice-icon">📋</span>
-                <a href="{% url 'invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a>
+                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}">{{ invoice.invoice_number }}</a>
             </div>
             <div class="invoice-badges">
                 <span class="status-badge status-{{ invoice.status }}">
@@ -155,24 +155,24 @@
                 <span class="meta-item">🕐 ایجاد: {{ invoice.created_at|date:"Y/m/d" }}</span>
             </div>
             <div class="invoice-actions">
-                <a href="{% url 'invoice_detail' invoice.id %}" class="action-icon-btn view-btn" title="مشاهده">
+                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn view-btn" title="مشاهده">
                     👁️
                 </a>
                 {% if invoice.status == 'draft' %}
-                <a href="{% url 'invoice_update' invoice.id %}" class="action-icon-btn edit-btn" title="ویرایش">
+                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn edit-btn" title="ویرایش">
                     ✏️
                 </a>
-                <a href="{% url 'invoice_send' invoice.id %}" class="action-icon-btn send-btn" title="ارسال">
+                <a href="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn send-btn" title="ارسال">
                     📤
                 </a>
                 {% endif %}
                 {% if invoice.status == 'sent' and user.role == 'manager' %}
-                <a href="{% url 'invoice_approve' invoice.id %}" class="action-icon-btn approve-btn" title="تأیید">
+                <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn approve-btn" title="تأیید">
                     ✅
                 </a>
                 {% endif %}
                 {% if invoice.status == 'approved' and user.role == 'manager' %}
-                <a href="{% url 'invoice_pay' invoice.id %}" class="action-icon-btn pay-btn" title="پرداخت">
+                <a href="{% url 'invoice_pay' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn pay-btn" title="پرداخت">
                     💳
                 </a>
                 {% endif %}
@@ -184,7 +184,7 @@
         <div class="empty-icon">📭</div>
         <h3 class="empty-title">فاکتوری یافت نشد</h3>
         <p class="empty-text">هنوز هیچ فاکتوری در سیستم ثبت نشده است یا فیلتر انتخابی نتیجه‌ای ندارد.</p>
-        <a href="{% url 'invoice_register' %}" class="action-btn action-btn-primary">
+        <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="action-btn action-btn-primary">
             <span class="btn-icon">➕</span>
             ایجاد اولین فاکتور
         </a>
@@ -211,7 +211,7 @@
                 {% for invoice in invoices %}
                 <tr data-status="{{ invoice.status }}">
                     <td>
-                        <a href="{% url 'invoice_detail' invoice.id %}" class="invoice-link">
+                        <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="invoice-link">
                             {{ invoice.invoice_number }}
                         </a>
                     </td>
@@ -229,16 +229,16 @@
                     </td>
                     <td>
                         <div class="table-actions">
-                            <a href="{% url 'invoice_detail' invoice.id %}" class="tbl-action-btn" title="مشاهده">👁️</a>
+                            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="مشاهده">👁️</a>
                             {% if invoice.status == 'draft' %}
-                            <a href="{% url 'invoice_update' invoice.id %}" class="tbl-action-btn" title="ویرایش">✏️</a>
-                            <a href="{% url 'invoice_send' invoice.id %}" class="tbl-action-btn" title="ارسال">📤</a>
+                            <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="ویرایش">✏️</a>
+                            <a href="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="ارسال">📤</a>
                             {% endif %}
                             {% if invoice.status == 'sent' and user.role == 'manager' %}
-                            <a href="{% url 'invoice_approve' invoice.id %}" class="tbl-action-btn" title="تأیید">✅</a>
+                            <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="تأیید">✅</a>
                             {% endif %}
                             {% if invoice.status == 'approved' and user.role == 'manager' %}
-                            <a href="{% url 'invoice_pay' invoice.id %}" class="tbl-action-btn" title="پرداخت">💳</a>
+                            <a href="{% url 'invoice_pay' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="پرداخت">💳</a>
                             {% endif %}
                         </div>
                     </td>
