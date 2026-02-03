@@ -664,7 +664,7 @@
 
         <div class="menu-items">
             {% if user.role == 'purchasing' %}
-            <a href="{% url 'dashboard' cafe_code=cafe_code %}" {% if 'dashboard' in request.path %}class="active"{% endif %}>
+            <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" {% if 'dashboard' in request.path %}class="active"{% endif %}>
                 <span>📊 داشبورد</span>
             </a>
             {% endif %}
@@ -694,6 +694,9 @@
             {% endif %}
             
             {% if user.role == 'manager' %}
+            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" {% if 'finance-dashboard' in request.path or 'dashboard' in request.path %}class="active"{% endif %}>
+                <span>🏠 داشبورد اصلی</span>
+            </a>
             <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
                 <span>داشبورد مالی</span>
                     </a>
@@ -734,7 +737,7 @@
     
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="{% if cafe_code %}{% url 'dashboard' cafe_code=cafe_code %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
+            <a href="{% if cafe_code %}{% if user.role == 'manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
                 <div class="logo">S</div>
                 <span>Syntel</span>
                 {% if current_cafe %}

@@ -189,7 +189,8 @@ def login_view(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            return redirect("dashboard", cafe_code=cafe_code)
+            # Manager و سایر نقش‌های ادمین به finance_dashboard می‌روند
+            return redirect("finance_dashboard", cafe_code=cafe_code)
         response = render(
             request,
             "login.html",
@@ -233,7 +234,8 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            return redirect("dashboard", cafe_code=cafe_code)
+            # Manager و سایر نقش‌های ادمین به finance_dashboard می‌روند
+            return redirect("finance_dashboard", cafe_code=cafe_code)
         except Cafe.DoesNotExist:
             messages.error(request, "کافه انتخاب شده یافت نشد.")
     
@@ -705,6 +707,12 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
 
 @custom_login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
+    """داشبورد ساده - برای کاربران عادی"""
+    # اگر کاربر manager است، به finance_dashboard redirect می‌شود
+    if request.user.role == 'manager':
+        cafe = get_cafe_from_request(request)
+        return redirect('finance_dashboard', cafe_code=cafe.code if cafe else 'local')
+    
     # Keep logic simple while providing useful context to templates/tests
     cafe = get_cafe_from_request(request)
     user_requests = PurchaseRequest.objects.all()
