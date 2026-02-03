@@ -1,7 +1,7 @@
 /**
  * Analytics Bubble Chart Application
  * مدیریت نمودارهای حبابی تحلیلی
- * Version: 2.0 - Fixed for integration
+ * Version: 2.1 - Fixed for cafe_code integration
  */
 
 class AnalyticsApp {
@@ -21,6 +21,26 @@ class AnalyticsApp {
             category: null,
             subcategory: null
         };
+        
+        // Extract cafe_code from URL
+        this.cafeCode = this.getCafeCodeFromUrl();
+    }
+    
+    /**
+     * Extract cafe code from current URL path
+     * URL format: /<cafe_code>/analytics/
+     */
+    getCafeCodeFromUrl() {
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        // First part should be cafe_code (e.g., 'local', 'gosaleh', etc.)
+        return pathParts[0] || 'local';
+    }
+    
+    /**
+     * Build API URL with cafe code prefix
+     */
+    buildApiUrl(endpoint) {
+        return `/${this.cafeCode}${endpoint}`;
     }
 
     /**
@@ -100,8 +120,10 @@ class AnalyticsApp {
         canvasEl.style.display = 'none';
 
         try {
+            const apiUrl = this.buildApiUrl(`/api/analytics/departments/expenses/?period=${this.state.currentPeriod}`);
+            console.log('Fetching from:', apiUrl);
             const response = await fetch(
-                `/api/analytics/departments/expenses/?period=${this.state.currentPeriod}`,
+                apiUrl,
                 {
                     method: 'GET',
                     headers: {
@@ -210,8 +232,10 @@ class AnalyticsApp {
         if (loadingEl) loadingEl.style.display = 'flex';
 
         try {
+            const apiUrl = this.buildApiUrl(`/api/analytics/department/${deptId}/categories/?period=${this.state.currentPeriod}`);
+            console.log('Fetching from:', apiUrl);
             const response = await fetch(
-                `/api/analytics/department/${deptId}/categories/?period=${this.state.currentPeriod}`,
+                apiUrl,
                 {
                     method: 'GET',
                     headers: {
@@ -314,8 +338,10 @@ class AnalyticsApp {
         if (loadingEl) loadingEl.style.display = 'flex';
 
         try {
+            const apiUrl = this.buildApiUrl(`/api/analytics/category/${catId}/subcategories/?period=${this.state.currentPeriod}&department_id=${deptId}`);
+            console.log('Fetching from:', apiUrl);
             const response = await fetch(
-                `/api/analytics/category/${catId}/subcategories/?period=${this.state.currentPeriod}&department_id=${deptId}`,
+                apiUrl,
                 {
                     method: 'GET',
                     headers: {
@@ -430,8 +456,10 @@ class AnalyticsApp {
         `;
 
         try {
+            const apiUrl = this.buildApiUrl(`/api/analytics/category/${catId}/products/?period=${this.state.currentPeriod}&department_id=${deptId}`);
+            console.log('Fetching from:', apiUrl);
             const response = await fetch(
-                `/api/analytics/category/${catId}/products/?period=${this.state.currentPeriod}&department_id=${deptId}`,
+                apiUrl,
                 {
                     method: 'GET',
                     headers: {
