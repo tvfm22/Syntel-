@@ -641,6 +641,7 @@ def api_category_products(request, cat_id):
 	# تولید cache_key
 	cache_key = get_cache_key('cat_products', cat_id=cat_id, period=period, dept_id=department_id or 'all')
 	
+	start, end, prev_start, prev_end = get_date_range(period)
 	cafe = get_cafe_from_request(request)
 	
 	# فیلتر بر اساس دسته‌بندی
