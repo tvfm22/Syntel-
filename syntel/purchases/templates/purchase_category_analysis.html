@@ -974,6 +974,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // استخراج کد کافه از URL
+    function getCafeCodeFromUrl() {
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        return pathParts[0] || 'local';
+    }
+    
+    const cafeCode = getCafeCodeFromUrl();
+    console.log('Cafe code:', cafeCode);
+
     // ذخیره زیردسته‌های بارگذاری شده
     let loadedSubcategories = {};
 
@@ -992,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
         // بارگذاری زیردسته‌ها
-        const url = `/api/invoices/subcategories/?category_id=${categoryId}`;
+        const url = `/${cafeCode}/api/invoices/subcategories/?category_id=${categoryId}`;
         console.log('Fetching from:', url);
     
         fetch(url, {
@@ -1046,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
         // ساخت URL با پارامترهای اضافی
-        let url = `/api/invoices/suppliers/?subcategory_id=${subcategoryId}`;
+        let url = `/${cafeCode}/api/invoices/suppliers/?subcategory_id=${subcategoryId}`;
         if (startDate) url += `&start_date=${startDate}`;
         if (endDate) url += `&end_date=${endDate}`;
     
@@ -1128,7 +1137,11 @@ function loadProductHistory(productId, supplierId) {
     const startDate = document.getElementById('start_date').value;
     const endDate = document.getElementById('end_date').value;
     
-    let url = `/api/invoices/product-history/?product_id=${productId}&supplier_id=${supplierId}`;
+    // استخراج کد کافه از URL
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const cafeCode = pathParts[0] || 'local';
+    
+    let url = `/${cafeCode}/api/invoices/product-history/?product_id=${productId}&supplier_id=${supplierId}`;
     if (startDate) url += `&start_date=${startDate}`;
     if (endDate) url += `&end_date=${endDate}`;
     

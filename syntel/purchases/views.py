@@ -461,10 +461,25 @@ def purchase_day_detail(request: HttpRequest) -> HttpResponse:
     all_items = []
     for req in requests:
         for item in req.items.all():
+            # Calculate supplied quantity based on status
+            if item.supply_status == 'purchased':
+                supplied_quantity = item.purchased_quantity or 0
+            elif item.supply_status == 'from_stock':
+                supplied_quantity = item.quantity
+            elif item.supply_status == 'not_supplied':
+                supplied_quantity = 0
+            else:  # pending
+                supplied_quantity = 0
+            
+            new_difference = item.quantity - supplied_quantity
+            
             all_items.append({
                 'request': req,
                 'item': item,
-                'difference': (item.quantity - (item.purchased_quantity or 0))
+                'supplied_quantity': supplied_quantity,
+                'new_difference': new_difference,
+                'difference': (item.quantity - (item.purchased_quantity or 0)),  # Keep old for compatibility
+                'display_difference': abs(new_difference)  # For display purposes
             })
     
     role_names = {
@@ -543,6 +558,16 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     all_items = []
     for req in requests_qs:
         for item in req.items.all():
+            # Calculate supplied quantity based on status
+            if item.supply_status == 'purchased':
+                supplied_quantity = item.purchased_quantity or 0
+            elif item.supply_status == 'from_stock':
+                supplied_quantity = item.quantity
+            elif item.supply_status == 'not_supplied':
+                supplied_quantity = 0
+            else:  # pending
+                supplied_quantity = 0
+            
             all_items.append(item)
     
     # Create PDF
@@ -598,7 +623,7 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     # Table setup - columns from LEFT to RIGHT (RTL: rightmost is name, leftmost is diff)
     y -= 35
     col_widths = [2.5*cm, 3*cm, 3.5*cm, 3.5*cm, 4.5*cm]
-    headers = ['تفاوت', 'وضعیت', 'خریداری شده', 'درخواستی', 'نام کالا']
+    headers = ['تفاوت', 'وضعیت', 'تامین شده', 'درخواستی', 'نام کالا']
     
     # Header background
     c.setFillColor(colors.Color(0.93, 0.93, 0.93))
@@ -635,7 +660,17 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
         c.setFillColor(colors.Color(0.15, 0.15, 0.15))
         c.setFont(font_name, 10)
         
-        difference = item.quantity - (item.purchased_quantity or 0)
+        # Calculate supplied quantity
+        if item.supply_status == 'purchased':
+            supplied_quantity = item.purchased_quantity or 0
+        elif item.supply_status == 'from_stock':
+            supplied_quantity = item.quantity
+        elif item.supply_status == 'not_supplied':
+            supplied_quantity = 0
+        else:  # pending
+            supplied_quantity = 0
+        
+        difference = item.quantity - supplied_quantity
         if item.supply_status == 'not_supplied':
             diff_text = '-'
         elif difference == 0:
@@ -649,7 +684,7 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
         row_data = [
             diff_text,
             status_map.get(item.supply_status, item.supply_status),
-            f"{item.purchased_quantity or 0} {item.unit}",
+            f"{supplied_quantity} {item.unit}",
             f"{item.quantity} {item.unit}",
             item.name
         ]
