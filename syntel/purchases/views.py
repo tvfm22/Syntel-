@@ -3235,8 +3235,12 @@ def inventory_reports(request):
 
 @custom_login_required
 @role_required(["purchasing", "manager", "manager"])
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
 def analytics_dashboard(request):
-    return render(request, "analytics_bubble.html")
+    """Redirect to line chart analytics as default"""
+    cafe_code = request.cafe.code
+    return redirect('analytics_line_chart', cafe_code=cafe_code)
 
 
 @custom_login_required

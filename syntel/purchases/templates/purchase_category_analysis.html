@@ -54,59 +54,9 @@
             border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            right: -280px;
-            transition: right 0.3s ease;
-            z-index: 1000;
-            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        .sidebar.open {
-            right: 0;
-        }
 
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            display: none;
-        }
-
-        .sidebar-overlay.show {
-            display: block;
-        }
-
-        .hamburger-btn {
-            background: white;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1rem;
-        }
-
-        .hamburger-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .hamburger-btn i {
-            font-size: 1.2rem;
-        }
 
         .sidebar-header {
             padding: 1.5rem;
@@ -658,25 +608,16 @@ td {
 </head>
 <body>
     <div class="layout">
-        <!-- Sidebar Overlay -->
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-        
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-title">منو تحلیل</div>
+                <div class="sidebar-title">منو مدیریت</div>
             </div>
             <ul class="menu-list">
                 <li class="menu-item">
-                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link">
+                    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="menu-link">
                         <i class="fas fa-home"></i>
                         <span>داشبورد</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>تحلیل حبابی</span>
                     </a>
                 </li>
                 <li class="menu-item">
@@ -695,6 +636,42 @@ td {
                     <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link active">
                         <i class="fas fa-layer-group"></i>
                         <span>تحلیل خرید بر اساس دسته‌بندی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>گزارشات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>مدیریت تأمین‌کنندگان</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'product_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-box"></i>
+                        <span>مدیریت محصولات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'category_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-list"></i>
+                        <span>دسته‌بندی‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'user_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-users"></i>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'backup_management' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-database"></i>
+                        <span>پشتیبان‌گیری</span>
                     </a>
                 </li>
                 <li class="menu-item">
@@ -718,9 +695,6 @@ td {
                         <i class="fas fa-calendar-alt"></i>
                         <span id="persianDate"></span>
                     </div>
-                    <button class="hamburger-btn" onclick="toggleSidebar()">
-                        <i class="fas fa-bars"></i>
-                    </button>
                 </div>
             </div>
 
@@ -876,13 +850,7 @@ td {
     </div>
 
     <script>
-// Toggle Sidebar
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('show');
-}
+
 
 // نمایش تاریخ شمسی
 function displayPersianDate() {

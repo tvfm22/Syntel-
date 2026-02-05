@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد تحلیلی سیستم خرید</title>
+    
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            right: -280px;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        .hamburger-btn {
+            background: white;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .hamburger-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .hamburger-btn i {
+            font-size: 1.2rem;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--light-color);
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            color: var(--dark-color);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .menu-link:hover {
+            background: var(--light-color);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .menu-link i {
+            width: 20px;
+            font-size: 1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .date-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: var(--dark-color);
+            font-weight: 500;
+            direction: rtl;
+            font-family: Vazir, sans-serif;
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .date-display:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .date-display i {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            background: rgba(99, 102, 241, 0.1);
+            padding: 0.25rem;
+            border-radius: 50%;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-card.primary {
+            border-right: 4px solid var(--primary-color);
+        }
+
+        .stat-card.success {
+            border-right: 4px solid var(--success-color);
+        }
+
+        .stat-card.warning {
+            border-right: 4px solid var(--warning-color);
+        }
+
+        .stat-card.info {
+            border-right: 4px solid var(--info-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card.primary .stat-value {
+            color: var(--primary-color);
+        }
+
+        .stat-card.success .stat-value {
+            color: var(--success-color);
+        }
+
+        .stat-card.warning .stat-value {
+            color: var(--warning-color);
+        }
+
+        .stat-card.info .stat-value {
+            color: var(--info-color);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        /* Analytics Cards */
+        .analytics-section {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--dark-color);
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .analytics-card {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: var(--dark-color);
+            display: block;
+        }
+
+        .analytics-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .analytics-card i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .analytics-card strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .analytics-card small {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">منو مدیریت</div>
+            </div>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-home"></i>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>روند هزینه‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-tags"></i>
+                        <span>نظارت بر قیمت</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-layer-group"></i>
+                        <span>تحلیل خرید بر اساس دسته‌بندی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>گزارشات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>مدیریت تأمین‌کنندگان</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'product_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-box"></i>
+                        <span>مدیریت محصولات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'category_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-list"></i>
+                        <span>دسته‌بندی‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'user_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-users"></i>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'backup_management' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-database"></i>
+                        <span>پشتیبان‌گیری</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link active">
+                        <i class="fas fa-home"></i>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>روند هزینه‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-tags"></i>
+                        <span>نظارت بر قیمت</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-layer-group"></i>
+                        <span>تحلیل خرید بر اساس دسته‌بندی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'logout' %}" class="menu-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-chart-line"></i>
+                    داشبورد تحلیلی سیستم خرید
+                </h1>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div class="date-display">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span id="persianDate"></span>
+                    </div>
+                    <button class="hamburger-btn" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-value">{{ total_requests|default:0 }}</div>
+                    <div class="stat-label">کل درخواست‌های خرید</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-value">{{ approved_requests|default:0 }}</div>
+                    <div class="stat-label">درخواست‌های تأیید شده</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-value">{{ pending_approvals|default:0 }}</div>
+                    <div class="stat-label">در انتظار تأیید</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-value">{{ total_suppliers|default:0 }}</div>
+                    <div class="stat-label">تأمین‌کنندگان فعال</div>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="analytics-section">
+                <h2 class="section-title">گزارش‌های تحلیلی</h2>
+                <div class="analytics-grid">
+                    <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-shopping-cart"></i>
+                        <strong>تحلیل خریدها</strong>
+                        <small>روند درخواست‌ها و تحلیل محصولات</small>
+                    </a>
+                    <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-dollar-sign"></i>
+                        <strong>تحلیل مالی</strong>
+                        <small>هزینه‌ها و پرداخت‌ها</small>
+                    </a>
+                    <a href="{% url 'supplier_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-truck"></i>
+                        <strong>تحلیل تأمین‌کنندگان</strong>
+                        <small>عملکرد و امتیازدهی</small>
+                    </a>
+                    <a href="{% url 'inventory_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-boxes"></i>
+                        <strong>تحلیل موجودی</strong>
+                        <small>موجودی و مصرف محصولات</small>
+                    </a>
+                    <a href="{% url 'executive_summary' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-chart-pie"></i>
+                        <strong>خلاصه مدیریتی</strong>
+                        <small>شاخص‌های کلیدی عملکرد</small>
+                    </a>
+                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="analytics-card">
+                        <i class="fas fa-layer-group"></i>
+                        <strong>تحلیل خرید بر اساس دسته‌بندی</strong>
+                        <small>فیلتر دسته‌بندی و فروشنده</small>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Toggle Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+
+        // نمایش تاریخ شمسی
+        function displayPersianDate() {
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('fa-IR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            
+            const dateElement = document.getElementById('persianDate');
+            if (dateElement) {
+                dateElement.textContent = dateStr;
+            }
+        }
+
+        // فراخوانی تابع نمایش تاریخ
+        if (document.getElementById('persianDate')) {
+            displayPersianDate();
+        }
+    </script>
+</body>
+</html>
