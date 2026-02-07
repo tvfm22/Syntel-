@@ -189,7 +189,9 @@ def login_view(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            # Manager و سایر نقش‌های ادمین به management_dashboard می‌روند
+            elif user.role in ['manager', 'ceo', 'accounting']:
+                return redirect("finance_dashboard", cafe_code=cafe_code)
+            # سایر نقش‌های ادمین به management_dashboard می‌روند
             return redirect("management_dashboard", cafe_code=cafe_code)
         response = render(
             request,
@@ -234,9 +236,9 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            elif user.role == 'ceo':
-                return redirect("management_dashboard", cafe_code=cafe_code)
-            # Manager و سایر نقش‌های ادمین به management_dashboard می‌روند
+            elif user.role in ['manager', 'ceo', 'accounting']:
+                return redirect("finance_dashboard", cafe_code=cafe_code)
+            # سایر نقش‌های ادمین به management_dashboard می‌روند
             return redirect("management_dashboard", cafe_code=cafe_code)
         except Cafe.DoesNotExist:
             messages.error(request, "کافه انتخاب شده یافت نشد.")
