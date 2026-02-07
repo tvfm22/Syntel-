@@ -748,67 +748,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     from datetime import date, timedelta
     from django.db.models import Sum, Count, Q
 
-    # اگر کاربر manager است، داشبورد مدیریتی نمایش داده می‌شود
+    # اگر کاربر manager است، به داشبورد مالی redirect شود
     if request.user.role == 'manager':
-        cafe = get_cafe_from_request(request)
-
-        # آمارهای کلیدی
-        today = date.today()
-        month_start = today.replace(day=1)
-
-        # درآمد کل ماه جاری
-        total_revenue = Invoice.objects.filter(
-            status__in=['approved', 'paid'],
-            created_at__date__gte=month_start
-        )
-        if cafe:
-            total_revenue = total_revenue.filter(cafe=cafe)
-        total_revenue = total_revenue.aggregate(
-            total=Sum('total_amount')
-        )['total'] or 0
-
-        # هزینه‌های عملیاتی ماه جاری
-        total_costs = Invoice.objects.filter(
-            status__in=['approved', 'paid'],
-            created_at__date__gte=month_start
-        )
-        if cafe:
-            total_costs = total_costs.filter(cafe=cafe)
-        total_costs = total_costs.aggregate(
-            total=Sum('total_amount')
-        )['total'] or 0
-
-        # ارزش موجودی انبار
-        total_stock_value = StockItem.objects.aggregate(
-            total=Sum('quantity')
-        )['total'] or 0
-
-        # درخواست‌های در انتظار
-        pending_requests = PurchaseRequest.objects.filter(
-            status='pending'
-        )
-        if cafe:
-            pending_requests = pending_requests.filter(cafe=cafe)
-        pending_requests = pending_requests.count()
-
-        # محصولات با موجودی کم
-        low_stock_items = StockItem.objects.filter(
-            quantity__lte=F('min_quantity')
-        ).count()
-
-        context = {
-            "user": request.user,
-            "current_cafe": cafe,
-            "cafe_code": cafe.code if cafe else None,
-            "all_cafes": Cafe.objects.filter(is_active=True) if request.user.can_switch_cafe else [],
-            "total_revenue": total_revenue,
-            "total_costs": total_costs,
-            "total_stock_value": total_stock_value,
-            "pending_requests": pending_requests,
-            "low_stock_items": low_stock_items,
-            "now": timezone.now(),
-        }
-        return render(request, "dashboard.html", context)
+        return redirect('finance_dashboard')
 
     # برای کاربران عادی - داشبورد ساده
     cafe = get_cafe_from_request(request)
