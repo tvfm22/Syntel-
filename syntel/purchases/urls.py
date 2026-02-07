@@ -169,6 +169,9 @@ cafe_urlpatterns = [
     path('analytics/inventory/', cv(views.inventory_analytics), name='inventory_analytics'),
     path('analytics/executive/', cv(views.executive_summary), name='executive_summary'),
     path('analytics/category-analysis/', cv(views.purchase_category_analysis), name='purchase_category_analysis'),
+    
+    # Management Dashboard
+    path('management-dashboard/', cv(views.management_dashboard), name='management_dashboard'),
 
     # Analytics API URLs (Original)
     path('api/analytics/expenses/departments/', cv(views_analytics.department_expenses_api), name='api_department_expenses_old'),
@@ -196,6 +199,14 @@ cafe_urlpatterns = [
     path('api/invoices/subcategories/', cv(views_analytics.api_invoice_subcategories), name='api_invoice_subcategories'),
     path('api/invoices/suppliers/', cv(views_analytics.api_invoice_suppliers), name='api_invoice_suppliers'),
     path('api/invoices/product-history/', cv(views_analytics.api_product_purchase_history), name='api_product_purchase_history'),
+    
+    # Category Analysis API URLs
+    path('api/category-analysis/stats/', cv(views_analytics.api_category_analysis_stats), name='api_category_analysis_stats'),
+    path('api/category-analysis/data/', cv(views_analytics.api_category_analysis_data), name='api_category_analysis_data'),
+    
+    # Management Dashboard API URLs
+    path('api/management/category-expenses/', cv(views_analytics.api_management_category_expenses), name='api_management_category_expenses'),
+    path('api/management/price-increases/', cv(views_analytics.api_management_price_increases), name='api_management_price_increases'),
     
     # Test page
     path('test/filter/', cv(views.test_filter_page), name='test_filter_page'),

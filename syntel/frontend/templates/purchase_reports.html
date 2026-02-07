@@ -75,6 +75,46 @@
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.date-input-group {
+    display: flex;
+    align-items: center;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    direction: ltr;
+    transition: all 0.3s ease;
+}
+
+.date-input-group:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.date-input-group input {
+    flex: 1;
+    text-align: center;
+    padding: 0.25rem;
+    border: none;
+    font-family: 'Vazir', sans-serif;
+    font-size: 1rem;
+}
+
+.date-input-group input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.date-input-group input[name$="_year"] {
+    flex: 1.5;
+}
+
+.date-input-group .date-separator {
+    color: #e5e7eb;
+    font-weight: bold;
+    padding: 0 0.25rem;
+}
+
 .report-type-tabs {
     display: flex;
     gap: 0.5rem;
@@ -364,12 +404,26 @@
             <!-- Filter Controls -->
             <div class="filters-grid">
                 <div class="filter-group">
-                    <label for="date_from">از تاریخ:</label>
-                    <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+                    <label>از تاریخ:</label>
+                    <input type="hidden" name="date_from" id="date_from" value="{{ date_from }}">
+                    <div class="date-input-group">
+                        <input type="number" name="date_from_year" id="date_from_year" placeholder="سال" min="1300" max="1500">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="date_from_month" id="date_from_month" placeholder="ماه" min="1" max="12">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="date_from_day" id="date_from_day" placeholder="روز" min="1" max="31">
+                    </div>
                 </div>
                 <div class="filter-group">
-                    <label for="date_to">تا تاریخ:</label>
-                    <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+                    <label>تا تاریخ:</label>
+                    <input type="hidden" name="date_to" id="date_to" value="{{ date_to }}">
+                    <div class="date-input-group">
+                        <input type="number" name="date_to_year" id="date_to_year" placeholder="سال" min="1300" max="1500">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="date_to_month" id="date_to_month" placeholder="ماه" min="1" max="12">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="date_to_day" id="date_to_day" placeholder="روز" min="1" max="31">
+                    </div>
                 </div>
                 {% if report_type != 'requests' %}
                 <div class="filter-group">
@@ -841,26 +895,94 @@
 </div>
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Persian datepickers
-    document.querySelectorAll('input[type="date"]').forEach(function(input) {
-        new persianDatepicker(input, {
-            format: 'YYYY/MM/DD',
-            year: 1404,
-            month: 1,
-            day: 1,
-            observer: true,
-            altField: input,
-            altFormat: 'YYYY/MM/DD',
-            calendar: {
-                persian: {
-                    locale: 'fa'
-                }
-            }
-        });
+// تجزیه تاریخ به فیلدهای جداگانه
+function parseDateToFields() {
+    const dateFrom = document.getElementById('date_from').value;
+    const dateTo = document.getElementById('date_to').value;
+    
+    if (dateFrom) {
+        const parts = dateFrom.split('-');
+        if (parts.length === 3) {
+            document.getElementById('date_from_year').value = parts[0];
+            document.getElementById('date_from_month').value = parts[1];
+            document.getElementById('date_from_day').value = parts[2];
+        }
+    }
+    
+    if (dateTo) {
+        const parts = dateTo.split('-');
+        if (parts.length === 3) {
+            document.getElementById('date_to_year').value = parts[0];
+            document.getElementById('date_to_month').value = parts[1];
+            document.getElementById('date_to_day').value = parts[2];
+        }
+    }
+}
+
+// ترکیب فیلدهای تاریخ
+function combineDateFields() {
+    const fromYear = document.getElementById('date_from_year').value;
+    const fromMonth = document.getElementById('date_from_month').value;
+    const fromDay = document.getElementById('date_from_day').value;
+    
+    const toYear = document.getElementById('date_to_year').value;
+    const toMonth = document.getElementById('date_to_month').value;
+    const toDay = document.getElementById('date_to_day').value;
+    
+    if (fromYear && fromMonth && fromDay) {
+        document.getElementById('date_from').value = `${fromYear}-${fromMonth.padStart(2, '0')}-${fromDay.padStart(2, '0')}`;
+    }
+    
+    if (toYear && toMonth && toDay) {
+        document.getElementById('date_to').value = `${toYear}-${toMonth.padStart(2, '0')}-${toDay.padStart(2, '0')}`;
+    }
+}
+
+// Auto-focus
+function setupDateAutoFocus() {
+    const sets = [
+        {year: 'date_from_year', month: 'date_from_month', day: 'date_from_day'},
+        {year: 'date_to_year', month: 'date_to_month', day: 'date_to_day'}
+    ];
+    
+    sets.forEach(set => {
+        const year = document.getElementById(set.year);
+        const month = document.getElementById(set.month);
+        const day = document.getElementById(set.day);
+        
+        if (year) {
+            year.addEventListener('input', function() {
+                if (this.value.length > 4) this.value = this.value.slice(0, 4);
+                if (this.value.length === 4) month.focus();
+            });
+        }
+        
+        if (month) {
+            month.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+                if (this.value.length === 2) day.focus();
+            });
+        }
+        
+        if (day) {
+            day.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+            });
+        }
     });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    parseDateToFields();
+    setupDateAutoFocus();
+    
+    const form = document.getElementById('reportForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            combineDateFields();
+        });
+    }
 });
 </script>
 {% endblock %}
@@ -872,10 +994,24 @@ function exportToExcel() {
 }
 
 // Auto-submit form when filters change
-document.querySelectorAll('select, input[type="date"]').forEach(element => {
+document.querySelectorAll('select').forEach(element => {
     element.addEventListener('change', function() {
+        combineDateFields();
         document.getElementById('reportForm').submit();
     });
+});
+
+// Auto-submit for date fields too
+['date_from_year', 'date_from_month', 'date_from_day', 'date_to_year', 'date_to_month', 'date_to_day'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field && id.includes('day')) {
+        field.addEventListener('blur', function() {
+            if (this.value.length > 0) {
+                combineDateFields();
+                document.getElementById('reportForm').submit();
+            }
+        });
+    }
 });
 </script>
 

@@ -189,8 +189,8 @@ def login_view(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            # Manager و سایر نقش‌های ادمین به finance_dashboard می‌روند
-            return redirect("finance_dashboard", cafe_code=cafe_code)
+            # Manager و سایر نقش‌های ادمین به management_dashboard می‌روند
+            return redirect("management_dashboard", cafe_code=cafe_code)
         response = render(
             request,
             "login.html",
@@ -234,8 +234,10 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            # Manager و سایر نقش‌های ادمین به finance_dashboard می‌روند
-            return redirect("finance_dashboard", cafe_code=cafe_code)
+            elif user.role == 'ceo':
+                return redirect("management_dashboard", cafe_code=cafe_code)
+            # Manager و سایر نقش‌های ادمین به management_dashboard می‌روند
+            return redirect("management_dashboard", cafe_code=cafe_code)
         except Cafe.DoesNotExist:
             messages.error(request, "کافه انتخاب شده یافت نشد.")
     
@@ -742,13 +744,73 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
 
 @custom_login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
-    """داشبورد ساده - برای کاربران عادی"""
-    # اگر کاربر manager است، به finance_dashboard redirect می‌شود
+    """داشبورد مدیریت - برای کاربران مدیر"""
+    from datetime import date, timedelta
+    from django.db.models import Sum, Count, Q
+
+    # اگر کاربر manager است، داشبورد مدیریتی نمایش داده می‌شود
     if request.user.role == 'manager':
         cafe = get_cafe_from_request(request)
-        return redirect('finance_dashboard', cafe_code=cafe.code if cafe else 'local')
-    
-    # Keep logic simple while providing useful context to templates/tests
+
+        # آمارهای کلیدی
+        today = date.today()
+        month_start = today.replace(day=1)
+
+        # درآمد کل ماه جاری
+        total_revenue = Invoice.objects.filter(
+            status__in=['approved', 'paid'],
+            created_at__date__gte=month_start
+        )
+        if cafe:
+            total_revenue = total_revenue.filter(cafe=cafe)
+        total_revenue = total_revenue.aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+
+        # هزینه‌های عملیاتی ماه جاری
+        total_costs = Invoice.objects.filter(
+            status__in=['approved', 'paid'],
+            created_at__date__gte=month_start
+        )
+        if cafe:
+            total_costs = total_costs.filter(cafe=cafe)
+        total_costs = total_costs.aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+
+        # ارزش موجودی انبار
+        total_stock_value = StockItem.objects.aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+
+        # درخواست‌های در انتظار
+        pending_requests = PurchaseRequest.objects.filter(
+            status='pending'
+        )
+        if cafe:
+            pending_requests = pending_requests.filter(cafe=cafe)
+        pending_requests = pending_requests.count()
+
+        # محصولات با موجودی کم
+        low_stock_items = StockItem.objects.filter(
+            quantity__lte=F('min_quantity')
+        ).count()
+
+        context = {
+            "user": request.user,
+            "current_cafe": cafe,
+            "cafe_code": cafe.code if cafe else None,
+            "all_cafes": Cafe.objects.filter(is_active=True) if request.user.can_switch_cafe else [],
+            "total_revenue": total_revenue,
+            "total_costs": total_costs,
+            "total_stock_value": total_stock_value,
+            "pending_requests": pending_requests,
+            "low_stock_items": low_stock_items,
+            "now": timezone.now(),
+        }
+        return render(request, "dashboard.html", context)
+
+    # برای کاربران عادی - داشبورد ساده
     cafe = get_cafe_from_request(request)
     user_requests = PurchaseRequest.objects.all()
     if request.user.role == "kitchen":
@@ -3234,9 +3296,7 @@ def inventory_reports(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "manager"])
-@custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
+@role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def analytics_dashboard(request):
     """Redirect to line chart analytics as default"""
     cafe_code = request.cafe.code
@@ -3244,39 +3304,39 @@ def analytics_dashboard(request):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
+@role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def analytics_line_chart(request):
     """صفحه نمودار خطی روند هزینه‌ها"""
     return render(request, "analytics_line_chart.html")
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
+@role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def analytics_price_monitor(request):
     """صفحه نظارت بر قیمت در بخش تحلیل"""
     return render(request, "analytics_price_monitor.html")
 
 
 @custom_login_required
-@role_required(["purchasing", "manager"])
+@role_required(["purchasing", "manager", "ceo"])
 def purchase_analytics(request):
     return render(request, "analytics_dashboard.html")
 
 
 @custom_login_required
-@role_required(["manager", "purchasing"])
+@role_required(["manager", "purchasing", "ceo"])
 def financial_analytics(request):
     return render(request, "analytics_dashboard.html")
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
+@role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def supplier_analytics(request):
     return render(request, "analytics_dashboard.html")
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
+@role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def purchase_category_analysis(request):
     """
     صفحه تحلیل خرید بر اساس دسته‌بندی و فروشنده
@@ -3291,25 +3351,19 @@ def purchase_category_analysis(request):
     subcategory_id = request.GET.get('subcategory', '')
     supplier_id = request.GET.get('supplier', '')
     
-    # دسته‌بندی‌های اصلی (بدون والد)
+    # دسته‌بند‌های اصلی (بدون والد) - بدون فیلتر cafe برای نمایش همه
     main_categories = Category.objects.filter(
         parent__isnull=True,
         is_active=True
-    )
-    if cafe:
-        main_categories = main_categories.filter(cafe=cafe)
-    main_categories = main_categories.order_by('name')
+    ).order_by('name')
     
-    # زیردسته‌ها (اگر دسته اصلی انتخاب شده)
+    # زیردسته‌ها (اگر دسته اصلی انتخاب شده) - بدون فیلتر cafe
     subcategories = []
     if category_id:
         subcategories = Category.objects.filter(
             parent_id=category_id,
             is_active=True
-        )
-        if cafe:
-            subcategories = subcategories.filter(cafe=cafe)
-        subcategories = subcategories.order_by('name')
+        ).order_by('name')
     
     # فروشندگان فیلتر شده بر اساس زیردسته
     if subcategory_id:
@@ -3331,16 +3385,10 @@ def purchase_category_analysis(request):
         suppliers = Supplier.objects.filter(
             id__in=supplier_ids,
             status='active'
-        )
-        if cafe:
-            suppliers = suppliers.filter(cafe=cafe)
-        suppliers = suppliers.order_by('name')
+        ).order_by('name')
     else:
-        # اگر زیردسته انتخاب نشده، همه فروشندگان فعال را نمایش بده
-        suppliers = Supplier.objects.filter(status='active')
-        if cafe:
-            suppliers = suppliers.filter(cafe=cafe)
-        suppliers = suppliers.order_by('name')
+        #اگر زیردسته انتخاب نشده، همه فروشندگان فعال را نمایش بده - بدون فیلتر cafe
+        suppliers = Supplier.objects.filter(status='active').order_by('name')
     
     # محصولات و داده‌های فیلتر شده
     products_data = []
@@ -3962,5 +4010,28 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
         'stock_request': stock_request,
         'stock_items': stock_items
     })
+
+
+# ---------------------------------------------------------------------------  
+# Management Dashboard
+# ---------------------------------------------------------------------------
+
+@login_required
+def management_dashboard(request):
+    """
+    داشبورد مدیریت با نمودار دایره‌ای هزینه‌ها و تحلیل رشد قیمت
+    """
+    cafe = get_cafe_from_request(request)
+    
+    context = {
+        'cafe_code': cafe.code if cafe else None,
+    }
+    
+    return render(request, 'management_dashboard.html', context)
+
+
+# ---------------------------------------------------------------------------  
+# CEO Dashboard
+# ---------------------------------------------------------------------------
 
 

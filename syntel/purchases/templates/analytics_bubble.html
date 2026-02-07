@@ -1,14 +1,16 @@
 <!DOCTYPE html>
+{% load humanize %}
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحلیل هزینه‌ها</title>
+    <title>تحلیل خرید بر اساس دسته‌بندی - تحلیل</title>
     
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -21,6 +23,7 @@
             --primary-dark: #4f46e5;
             --success-color: #10b981;
             --danger-color: #ef4444;
+            --warning-color: #f59e0b;
             --dark-color: #1f2937;
             --light-color: #f9fafb;
             --border-color: #e5e7eb;
@@ -113,28 +116,35 @@
             padding: 2rem;
         }
 
-        /* Breadcrumb */
-        .breadcrumb-nav {
+        /* Header */
+        .page-header {
             background: white;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow-sm);
-            padding: 1rem 1.5rem;
+            padding: 1.5rem 2rem;
             margin-bottom: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .breadcrumb-content {
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark-color);
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 0.75rem;
         }
 
-        .breadcrumb-content {
+        .page-title i {
+            color: var(--primary-color);
+        }
+
+        .header-actions {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
         }
 
         .current-date {
@@ -173,222 +183,245 @@
         .logout-btn:hover {
             background: var(--danger-color);
             color: white;
-            box-shadow: var(--shadow-md);
         }
 
-        .breadcrumb-list {
-            display: flex;
-            gap: 0.5rem;
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            font-size: 0.875rem;
-        }
-
-        .breadcrumb-list li {
-            color: #6b7280;
-        }
-
-        .breadcrumb-list li.active {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-
-        .breadcrumb-list li:not(:last-child)::after {
-            content: '/';
-            margin-left: 0.5rem;
-            color: #d1d5db;
-        }
-
-        .breadcrumb-list a {
-            color: var(--primary-color);
-            text-decoration: none;
-        }
-
-        .breadcrumb-list a:hover {
-            text-decoration: underline;
-        }
-
-        /* Top Header Row */
-        .top-header {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .header-section {
+        /* Filters */
+        .filters-container {
             background: white;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow-sm);
-            padding: 1.25rem 1.75rem;
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
         }
 
-        /* Filter */
-        .filter-label {
-            display: block;
-            margin-bottom: 0.75rem;
-            font-weight: 600;
-            color: var(--dark-color);
-            font-size: 0.875rem;
-        }
-
-        .period-buttons {
+        .filters-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.625rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
         }
 
-        .period-btn {
-            padding: 0.625rem 1rem;
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--dark-color);
+        }
+
+        .filter-select, .filter-input {
+            padding: 0.75rem 1rem;
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             font-family: 'Vazir', sans-serif;
             font-size: 0.875rem;
             background: white;
-            color: var(--dark-color);
             cursor: pointer;
             transition: all 0.2s;
-            font-weight: 500;
-            text-align: center;
         }
 
-        .period-btn:hover {
-            background: var(--light-color);
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
             border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .stat-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .stat-icon.primary {
+            background: rgba(99, 102, 241, 0.1);
             color: var(--primary-color);
         }
 
-        .period-btn.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow-md);
-        }
-
-        /* Stat Section */
-        .stat-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        .stat-icon.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
         }
 
         .stat-value {
-            font-size: 2.25rem;
+            font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
             margin-bottom: 0.25rem;
         }
+
+        .stat-value.danger { color: var(--danger-color); }
+        .stat-value.success { color: var(--success-color); }
+        .stat-value.primary { color: var(--primary-color); }
+        .stat-value.warning { color: var(--warning-color); }
 
         .stat-label {
             font-size: 0.875rem;
             color: #6b7280;
-            font-weight: 600;
         }
 
-        /* Card */
-        .card {
+        .stat-sublabel {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        /* Table Card */
+        .table-card {
             background: white;
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow-xl);
             overflow: hidden;
-            margin-bottom: 2rem;
-        }
-
-        /* Chart */
-        .chart-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .chart-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin: 0;
-        }
-
-        .chart-body {
-            padding: 2rem;
-        }
-
-        .chart-wrapper {
-            position: relative;
-            height: 500px;
-        }
-
-        .loading-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(255, 255, 255, 0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            border-radius: var(--radius-md);
-        }
-
-        .spinner {
-            width: 3rem;
-            height: 3rem;
-            border: 4px solid var(--light-color);
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Table */
-        .table-box {
-            display: none;
-        }
-
-        .table-box.show {
-            display: block;
+            margin-bottom: 1.5rem;
         }
 
         .table-header {
             padding: 1.5rem 2rem;
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .table-title {
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--dark-color);
-            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-title i {
+            color: var(--warning-color);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .search-box i {
+            color: #9ca3af;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            outline: none;
+            width: 200px;
         }
 
         .table-body {
-            padding: 2rem;
+            padding: 0;
         }
 
         .data-table {
             width: 100%;
-            font-size: 0.875rem;
             border-collapse: collapse;
         }
 
-        .data-table thead th {
+        .data-table thead {
             background: var(--light-color);
-            padding: 1rem;
+        }
+
+        .data-table th {
+            padding: 1rem 1.25rem;
             text-align: right;
+            font-size: 0.875rem;
             font-weight: 700;
             color: var(--dark-color);
             border-bottom: 2px solid var(--border-color);
         }
 
-        .data-table tbody td {
-            padding: 1rem;
+        .data-table td {
+            padding: 1rem 1.25rem;
+            font-size: 0.875rem;
             color: #6b7280;
             border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table tbody tr {
+            transition: all 0.2s;
         }
 
         .data-table tbody tr:hover {
@@ -402,16 +435,98 @@
             font-weight: 700;
         }
 
-        .badge-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
         .badge-danger {
-            background: #fee2e2;
-            color: #991b1b;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
         }
 
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .badge-neutral {
+            background: var(--light-color);
+            color: #6b7280;
+        }
+
+        .chart-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .chart-link:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 900px;
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--dark-color);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .chart-wrapper {
+            height: 400px;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
             .layout {
                 flex-direction: column;
@@ -427,29 +542,53 @@
                 padding: 1rem;
             }
 
-            .top-header {
-                grid-template-columns: 1fr;
+            .page-header {
+                flex-direction: column;
                 gap: 1rem;
+                text-align: center;
             }
 
-            .chart-wrapper {
-                height: 350px;
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .search-box input {
+                width: 150px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+    {% csrf_token %}
     <div class="layout">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-title">منو مدیریت</div>
+                <div class="sidebar-title">منو مدیریت - {{ current_cafe.name }}</div>
             </div>
             <ul class="menu-list">
+                {% if user.role != 'ceo' %}
                 <li class="menu-item">
-                    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link">
                         <i class="fas fa-home"></i>
                         <span>داشبورد</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="menu-item">
+                    <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>داشبورد مدیریت</span>
                     </a>
                 </li>
                 <li class="menu-item">
@@ -465,7 +604,7 @@
                     </a>
                 </li>
                 <li class="menu-item">
-                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link">
+                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link active">
                         <i class="fas fa-layer-group"></i>
                         <span>تحلیل خرید بر اساس دسته‌بندی</span>
                     </a>
@@ -517,14 +656,13 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <nav class="breadcrumb-nav">
-                <div class="breadcrumb-content">
-                    <ol class="breadcrumb-list" id="breadcrumb">
-                        <li><a href="{% url 'finance_dashboard' cafe_code=cafe_code %}">داشبورد</a></li>
-                        <li class="active">دپارتمان‌ها</li>
-                    </ol>
-                </div>
-                <div class="breadcrumb-content">
+            <!-- Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-layer-group"></i>
+                    تحلیل خرید بر اساس دسته‌بندی
+                </h1>
+                <div class="header-actions">
                     <div class="current-date">
                         <i class="fas fa-calendar-alt"></i>
                         <span id="persianDate"></span>
@@ -534,121 +672,367 @@
                         <span>خروج</span>
                     </a>
                 </div>
-            </nav>
+            </div>
 
-            <div class="top-header">
-                <div class="header-section stat-section">
-                    <div class="stat-value" id="totalExpense">0</div>
-                    <div class="stat-label">مجموع هزینه‌ها</div>
-                </div>
-
-                <div class="header-section">
-                    <label class="filter-label">بازه زمانی</label>
-                    <div class="period-buttons">
-                        <button class="period-btn" data-period="weekly">هفتگی</button>
-                        <button class="period-btn active" data-period="monthly">ماهانه</button>
-                        <button class="period-btn" data-period="quarterly">فصلی</button>
-                        <button class="period-btn" data-period="yearly">سالانه</button>
+            <!-- Filters -->
+            <div class="filters-container">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">دسته‌بندی</label>
+                        <select class="filter-select" id="categoryFilter">
+                            <option value="">همه دسته‌بندی‌ها</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">فروشنده/تامین‌کننده</label>
+                        <select class="filter-select" id="supplierFilter">
+                            <option value="">همه تامین‌کنندگان</option>
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">بازه زمانی</label>
+                        <select class="filter-select" id="daysFilter">
+                            <option value="30">30 روز اخیر</option>
+                            <option value="90">3 ماه اخیر</option>
+                            <option value="180">6 ماه اخیر</option>
+                            <option value="365">1 سال اخیر</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex-direction: row; gap: 0.5rem; align-items: end;">
+                        <button onclick="refreshData()" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i>
+                            رفرش
+                        </button>
+                        <button onclick="exportToExcel()" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i>
+                            خروجی Excel
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Department Chart Container -->
-            <div class="card" id="department-chart-container">
-                <div class="chart-header">
-                    <h3 class="chart-title" id="chartTitle">هزینه‌های دپارتمان‌ها</h3>
-                </div>
-                <div class="chart-body">
-                    <div class="chart-wrapper">
-                        <canvas id="departmentBubbleChart"></canvas>
-                        <div class="loading-overlay" id="department-loading">
-                            <div class="spinner"></div>
-                        </div>
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-layer-group"></i>
                     </div>
+                    <div class="stat-value primary" id="totalCategories">۰</div>
+                    <div class="stat-label">تعداد دسته‌بندی‌ها</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="stat-value success" id="totalProducts">۰</div>
+                    <div class="stat-label">تعداد محصولات خریداری شده</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-value warning" id="totalPurchases">۰</div>
+                    <div class="stat-label">کل مبلغ خرید</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon danger">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="stat-value danger" id="topCategoryName">-</div>
+                    <div class="stat-label">پرهزینه‌ترین دسته</div>
+                    <div class="stat-sublabel" id="topCategoryAmount">-</div>
                 </div>
             </div>
 
-            <!-- Category Chart Container -->
-            <div class="card" id="category-chart-container" style="display: none;">
-                <div class="chart-header">
-                    <h3 class="chart-title" id="categoryChartTitle">هزینه‌های دسته‌بندی‌ها</h3>
-                    <button class="btn btn-sm btn-outline-primary" id="back-to-departments" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
-                        <i class="fas fa-arrow-right"></i> بازگشت به بخش‌ها
-                    </button>
-                </div>
-                <div class="chart-body">
-                    <div class="chart-wrapper">
-                        <canvas id="categoryBubbleChart"></canvas>
-                        <div class="loading-overlay" id="category-loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Subcategory Chart Container -->
-            <div class="card" id="subcategory-chart-container" style="display: none;">
-                <div class="chart-header">
-                    <h3 class="chart-title" id="subcategoryChartTitle">زیر دسته‌بندی‌ها</h3>
-                    <button class="btn btn-sm btn-outline-primary" id="back-to-categories" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
-                        <i class="fas fa-arrow-right"></i> بازگشت به دسته‌بندی‌ها
-                    </button>
-                </div>
-                <div class="chart-body">
-                    <div class="chart-wrapper">
-                        <canvas id="subcategoryBubbleChart"></canvas>
-                        <div class="loading-overlay" id="subcategory-loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Product List Container -->
-            <div class="card table-box" id="product-list-container" style="display: none;">
+            <!-- Categories Table -->
+            <div class="table-card">
                 <div class="table-header">
-                    <h3 class="table-title" id="productListTitle">لیست محصولات</h3>
-                    <button class="btn btn-sm btn-outline-primary" id="back-from-products" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--light-color); border: 1px solid var(--primary-color); color: var(--primary-color); border-radius: var(--radius-md); cursor: pointer; font-family: 'Vazir', sans-serif;">
-                        <i class="fas fa-arrow-right"></i> بازگشت
-                    </button>
+                    <h3 class="table-title">
+                        <i class="fas fa-layer-group"></i>
+                        تحلیل خرید بر اساس دسته‌بندی
+                    </h3>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="جستجوی دسته‌بندی...">
+                    </div>
                 </div>
                 <div class="table-body">
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>ردیف</th>
-                                    <th>نام محصول</th>
-                                    <th>مقدار</th>
-                                    <th>قیمت واحد</th>
-                                    <th>قیمت کل</th>
-                                    <th>درصد رشد</th>
-                                    <th>فروشنده</th>
-                                    <th>تاریخ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productTableBody">
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>دسته‌بندی</th>
+                                <th>تعداد محصول</th>
+                                <th>کل خرید (تومان)</th>
+                                <th>درصد از کل</th>
+                                <th>میانگین قیمت</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoriesTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem;">
+                                    <i class="fas fa-spinner fa-spin"></i> در حال بارگذاری...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="/static/js/analytics_bubble.js"></script>
+    <!-- Chart Modal -->
+    <div class="modal-overlay" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">تحلیل دسته‌بندی</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-wrapper">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // نمایش تاریخ شمسی
-        function getPersianDate() {
-            const date = new Date();
-            return date.toLocaleDateString('fa-IR', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric'
-            });
+        // CSRF Token Setup
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
         
-        document.getElementById('persianDate').textContent = getPersianDate();
+        const csrftoken = getCookie('csrftoken');
+
+        // State
+        let chartInstance = null;
+        let categoriesData = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Persian date
+            document.getElementById('persianDate').textContent = getPersianDate();
+            
+            // Load initial data
+            refreshData();
+
+            // Event Listeners
+            document.getElementById('categoryFilter').addEventListener('change', refreshData);
+            document.getElementById('supplierFilter').addEventListener('change', refreshData);
+            document.getElementById('daysFilter').addEventListener('change', refreshData);
+            document.getElementById('searchInput').addEventListener('input', debounce(filterTable, 300));
+        });
+
+        function getPersianDate() {
+            const date = new Date();
+            return new Intl.DateTimeFormat('fa-IR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(date);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function refreshData() {
+            loadStats();
+            loadCategories();
+        }
+
+        function loadStats() {
+            const categoryId = document.getElementById('categoryFilter').value;
+            const supplierId = document.getElementById('supplierFilter').value;
+            const days = document.getElementById('daysFilter').value;
+
+            fetch(`/{{ cafe_code }}/api/category-analysis/stats/?category_id=${categoryId}&supplier_id=${supplierId}&days=${days}`, {
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalCategories').textContent = toFarsiNumber(data.total_categories || 0);
+                document.getElementById('totalProducts').textContent = toFarsiNumber(data.total_products || 0);
+                document.getElementById('totalPurchases').textContent = toFarsiNumber(formatNumber(data.total_purchases || 0));
+                
+                if (data.top_category) {
+                    document.getElementById('topCategoryName').textContent = data.top_category.name;
+                    document.getElementById('topCategoryAmount').textContent = toFarsiNumber(formatNumber(data.top_category.amount)) + ' تومان';
+                }
+            })
+            .catch(error => console.error('Error loading stats:', error));
+        }
+
+        function loadCategories() {
+            const categoryId = document.getElementById('categoryFilter').value;
+            const supplierId = document.getElementById('supplierFilter').value;
+            const days = document.getElementById('daysFilter').value;
+
+            fetch(`/{{ cafe_code }}/api/category-analysis/data/?category_id=${categoryId}&supplier_id=${supplierId}&days=${days}`, {
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                categoriesData = data.categories || [];
+                renderTable(categoriesData);
+            })
+            .catch(error => {
+                console.error('Error loading categories:', error);
+                document.getElementById('categoriesTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--danger-color);">
+                            <i class="fas fa-exclamation-triangle"></i> خطا در بارگذاری داده‌ها
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('categoriesTableBody');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">
+                            <i class="fas fa-inbox"></i> داده‌ای یافت نشد
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(cat => `
+                <tr>
+                    <td style="font-weight: 600; color: var(--dark-color);">${cat.name}</td>
+                    <td>${toFarsiNumber(cat.product_count)}</td>
+                    <td style="font-weight: 600;">${toFarsiNumber(formatNumber(cat.total_amount))}</td>
+                    <td>
+                        <span class="badge ${cat.percentage > 20 ? 'badge-danger' : cat.percentage > 10 ? 'badge-neutral' : 'badge-success'}">
+                            ${toFarsiNumber(cat.percentage.toFixed(1))}٪
+                        </span>
+                    </td>
+                    <td>${toFarsiNumber(formatNumber(cat.avg_price))}</td>
+                    <td>
+                        <a href="#" onclick="showChart('${cat.name}', ${cat.id}); return false;" class="chart-link">
+                            <i class="fas fa-chart-line"></i> نمودار
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = categoriesData.filter(cat => 
+                cat.name.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filteredData);
+        }
+
+        function showChart(categoryName, categoryId) {
+            document.getElementById('modalTitle').textContent = `تحلیل دسته‌بندی: ${categoryName}`;
+            document.getElementById('chartModal').classList.add('show');
+            
+            const days = document.getElementById('daysFilter').value;
+            
+            fetch(`/{{ cafe_code }}/api/category-analysis/chart/${categoryId}/?days=${days}`, {
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'مبلغ خرید (تومان)',
+                            data: data.values,
+                            backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatNumber(value) + ' تومان';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading chart:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('chartModal').classList.remove('show');
+        }
+
+        function exportToExcel() {
+            const categoryId = document.getElementById('categoryFilter').value;
+            const supplierId = document.getElementById('supplierFilter').value;
+            const days = document.getElementById('daysFilter').value;
+            
+            window.location.href = `/{{ cafe_code }}/api/category-analysis/export/?category_id=${categoryId}&supplier_id=${supplierId}&days=${days}`;
+        }
+
+        function formatNumber(num) {
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        function toFarsiNumber(num) {
+            const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return num.toString().replace(/\d/g, x => farsiDigits[x]);
+        }
     </script>
 </body>
 </html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مدیریت - Syntel</title>
+    
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--light-color);
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            color: var(--dark-color);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .menu-link:hover {
+            background: var(--light-color);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .menu-link i {
+            width: 20px;
+            font-size: 1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .period-btn {
+            padding: 0.5rem 1.25rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-family: 'Vazir', sans-serif;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .period-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .period-btn.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light-color);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i {
+            color: var(--primary-color);
+        }
+
+        .card-body {
+            min-height: 300px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Lists */
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            border-right: 4px solid var(--primary-color);
+            transition: all 0.2s ease;
+        }
+
+        .list-item:hover {
+            background: #f3f4f6;
+            transform: translateX(-5px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item-title {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .list-item-subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .list-item-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .list-item-value.increase {
+            color: var(--danger-color);
+        }
+
+        .list-item-value.decrease {
+            color: var(--success-color);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: var(--success-color);
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: var(--warning-color);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #9ca3af;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state small {
+            font-size: 0.9rem;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--primary-color);
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .header-actions {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">منو مدیریت - {{ current_cafe.name }}</div>
+            </div>
+            <ul class="menu-list">
+                {% if user.role != 'ceo' %}
+                <li class="menu-item">
+                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-home"></i>
+                        <span>داشبورد</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="menu-item">
+                    <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" class="menu-link active">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>داشبورد مدیریت</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>روند هزینه‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-tags"></i>
+                        <span>نظارت بر قیمت</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-layer-group"></i>
+                        <span>تحلیل خرید بر اساس دسته‌بندی</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>گزارشات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-store"></i>
+                        <span>مدیریت تأمین‌کنندگان</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'product_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-box"></i>
+                        <span>مدیریت محصولات</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'category_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-list"></i>
+                        <span>دسته‌بندی‌ها</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'user_list' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-users"></i>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'backup_management' cafe_code=cafe_code %}" class="menu-link">
+                        <i class="fas fa-database"></i>
+                        <span>پشتیبان‌گیری</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'logout' %}" class="menu-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <i class="fas fa-chart-bar"></i>
+                    داشبورد مدیریت
+                </div>
+                <div class="page-subtitle">
+                    تحلیل و بررسی کلی هزینه‌ها و عملکرد خرید
+                </div>
+                <div class="header-actions">
+                    <button class="period-btn active" data-period="monthly" onclick="changePeriod('monthly')">
+                        <i class="fas fa-calendar-alt"></i> ماهانه
+                    </button>
+                    <button class="period-btn" data-period="quarterly" onclick="changePeriod('quarterly')">
+                        <i class="fas fa-calendar"></i> فصلی
+                    </button>
+                    <button class="period-btn" data-period="yearly" onclick="changePeriod('yearly')">
+                        <i class="fas fa-calendar-year"></i> سالانه
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Category Expenses Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-chart-pie"></i>
+                            هزینه‌ها به تفکیک دسته‌بندی
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Price Increases -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-arrow-trend-up"></i>
+                            بالاترین رشد قیمت محصولات
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-container" id="priceIncreasesList">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supplier Debts -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        بدهی به تامین‌کنندگان
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>این بخش در حال توسعه است</p>
+                        <small>به زودی اطلاعات بدهی تامین‌کنندگان در اینجا نمایش داده خواهد شد</small>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+        let currentPeriod = 'monthly';
+        let categoryChartInstance = null;
+
+        // تبدیل اعداد انگلیسی به فارسی
+        function toFarsiNumber(num) {
+            const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return num.toString().replace(/\d/g, x => farsiDigits[x]);
+        }
+
+        // فرمت عدد با کاما
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // تغییر دوره زمانی
+        function changePeriod(period) {
+            currentPeriod = period;
+            
+            // به‌روزرسانی دکمه‌های فعال
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-period="${period}"]`).classList.add('active');
+            
+            // بارگذاری مجدد داده‌ها
+            loadCategoryExpenses();
+            loadPriceIncreases();
+        }
+
+        // بارگذاری هزینه‌های دسته‌بندی
+        function loadCategoryExpenses() {
+            fetch(`/{{ cafe_code }}/api/management/category-expenses/?period=${currentPeriod}`, {
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderCategoryChart(data);
+            })
+            .catch(error => {
+                console.error('Error loading category expenses:', error);
+            });
+        }
+
+        // رسم نمودار دسته‌بندی
+        function renderCategoryChart(data) {
+            const ctx = document.getElementById('categoryChart');
+            
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+
+            if (!data.categories || data.categories.length === 0) {
+                ctx.parentElement.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-chart-pie"></i>
+                        <p>داده‌ای برای نمایش وجود ندارد</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const labels = data.categories.map(cat => cat.name);
+            const values = data.categories.map(cat => cat.total);
+            const colors = [
+                '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6',
+                '#8b5cf6', '#06b6d4', '#f43f5e', '#14b8a6', '#a855f7'
+            ];
+
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            rtl: true,
+                            labels: {
+                                font: {
+                                    family: 'Vazir',
+                                    size: 12
+                                },
+                                padding: 15,
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            return {
+                                                text: `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} (${toFarsiNumber(percentage)}%)`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            rtl: true,
+                            textDirection: 'rtl',
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} تومان (${toFarsiNumber(percentage)}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // بارگذاری رشد قیمت محصولات
+        function loadPriceIncreases() {
+            const container = document.getElementById('priceIncreasesList');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+
+            fetch(`/{{ cafe_code }}/api/management/price-increases/?period=${currentPeriod}`, {
+                headers: {
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderPriceIncreases(data);
+            })
+            .catch(error => {
+                console.error('Error loading price increases:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>خطا در بارگذاری داده‌ها</p>
+                    </div>
+                `;
+            });
+        }
+
+        // رسم لیست رشد قیمت
+        function renderPriceIncreases(data) {
+            const container = document.getElementById('priceIncreasesList');
+            
+            if (!data.products || data.products.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <p>تغییر قیمتی یافت نشد</p>
+                        <small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.products.map((product, index) => `
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div class="list-item-title">
+                            ${index + 1}. ${product.name}
+                        </div>
+                        <div class="list-item-subtitle">
+                            قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} تومان
+                            → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} تومان
+                        </div>
+                    </div>
+                    <div>
+                        <div class="badge badge-danger">
+                            <i class="fas fa-arrow-up"></i>
+                            ${toFarsiNumber(product.increase_percentage.toFixed(1))}%
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCategoryExpenses();
+            loadPriceIncreases();
+        });
+    </script>
+</body>
+</html>

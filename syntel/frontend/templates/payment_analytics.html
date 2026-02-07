@@ -288,6 +288,46 @@
     color: #7f1d1d;
 }
 
+.date-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    direction: ltr;
+    transition: all 0.2s ease;
+}
+
+.date-input-group:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.date-input-group input {
+    flex: 1;
+    text-align: center;
+    padding: 0.25rem;
+    border: none;
+    font-family: 'Vazir', sans-serif;
+    font-size: 0.9rem;
+}
+
+.date-input-group input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.date-input-group input[name$="_year"] {
+    flex: 1.5;
+}
+
+.date-input-group .date-separator {
+    color: #cbd5e1;
+    font-weight: bold;
+    padding: 0 0.25rem;
+}
+
 @media (max-width: 768px) {
     .analytics-header {
         padding: 1.5rem;
@@ -349,12 +389,26 @@
             <!-- Custom Date Filters -->
             <div class="custom-date-filters" {% if period != 'custom' %}style="display: none;"{% endif %} id="customFilters">
                 <div>
-                    <label for="start_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">از تاریخ:</label>
-                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">از تاریخ:</label>
+                    <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
+                    <div class="date-input-group">
+                        <input type="number" name="start_year" id="start_year" placeholder="سال" min="1300" max="1500">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="start_month" id="start_month" placeholder="ماه" min="1" max="12">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="start_day" id="start_day" placeholder="روز" min="1" max="31">
+                    </div>
                 </div>
                 <div>
-                    <label for="end_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">تا تاریخ:</label>
-                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">تا تاریخ:</label>
+                    <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
+                    <div class="date-input-group">
+                        <input type="number" name="end_year" id="end_year" placeholder="سال" min="1300" max="1500">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="end_month" id="end_month" placeholder="ماه" min="1" max="12">
+                        <span class="date-separator">/</span>
+                        <input type="number" name="end_day" id="end_day" placeholder="روز" min="1" max="31">
+                    </div>
                 </div>
                 <div>
                     <label for="year" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">سال:</label>
@@ -593,6 +647,100 @@
 </div>
 
 <script>
+// تجزیه تاریخ به فیلدهای جداگانه
+function parseDateToFields() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (startDate) {
+        const parts = startDate.split('-');
+        if (parts.length === 3) {
+            document.getElementById('start_year').value = parts[0];
+            document.getElementById('start_month').value = parts[1];
+            document.getElementById('start_day').value = parts[2];
+        }
+    }
+    
+    if (endDate) {
+        const parts = endDate.split('-');
+        if (parts.length === 3) {
+            document.getElementById('end_year').value = parts[0];
+            document.getElementById('end_month').value = parts[1];
+            document.getElementById('end_day').value = parts[2];
+        }
+    }
+}
+
+// ترکیب فیلدهای تاریخ قبل از ارسال فرم
+function combineDateFields() {
+    const startYear = document.getElementById('start_year').value;
+    const startMonth = document.getElementById('start_month').value;
+    const startDay = document.getElementById('start_day').value;
+    
+    const endYear = document.getElementById('end_year').value;
+    const endMonth = document.getElementById('end_month').value;
+    const endDay = document.getElementById('end_day').value;
+    
+    if (startYear && startMonth && startDay) {
+        const paddedMonth = startMonth.padStart(2, '0');
+        const paddedDay = startDay.padStart(2, '0');
+        document.getElementById('start_date').value = `${startYear}-${paddedMonth}-${paddedDay}`;
+    }
+    
+    if (endYear && endMonth && endDay) {
+        const paddedMonth = endMonth.padStart(2, '0');
+        const paddedDay = endDay.padStart(2, '0');
+        document.getElementById('end_date').value = `${endYear}-${paddedMonth}-${paddedDay}`;
+    }
+}
+
+// Auto-focus برای فیلدهای تاریخ
+function setupDateAutoFocus() {
+    const fields = [
+        {year: 'start_year', month: 'start_month', day: 'start_day'},
+        {year: 'end_year', month: 'end_month', day: 'end_day'}
+    ];
+    
+    fields.forEach(set => {
+        const yearField = document.getElementById(set.year);
+        const monthField = document.getElementById(set.month);
+        const dayField = document.getElementById(set.day);
+        
+        if (yearField) {
+            yearField.addEventListener('input', function() {
+                if (this.value.length > 4) this.value = this.value.slice(0, 4);
+                if (this.value.length === 4) monthField.focus();
+            });
+        }
+        
+        if (monthField) {
+            monthField.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+                if (this.value.length === 2) dayField.focus();
+            });
+        }
+        
+        if (dayField) {
+            dayField.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+            });
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    parseDateToFields();
+    setupDateAutoFocus();
+    
+    // Submit on change
+    const form = document.getElementById('analyticsForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            combineDateFields();
+        });
+    }
+});
+
 // Toggle custom filters visibility
 document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
