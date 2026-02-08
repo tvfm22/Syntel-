@@ -6,512 +6,867 @@
 {% block extra_css %}
 <style>
     :root {
-        --primary-color: #0ea5e9;
-        --primary-hover: #0284c7;
+        --primary-color: #6366f1;
+        --primary-dark: #4f46e5;
         --success-color: #10b981;
-        --warning-color: #f59e0b;
         --danger-color: #ef4444;
-        --secondary-color: #64748b;
-        --border-color: #e2e8f0;
-        --bg-color: #f8fafc;
-        --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        --warning-color: #f59e0b;
+        --dark-color: #1f2937;
+        --light-color: #f9fafb;
+        --border-color: #e5e7eb;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
     }
-    
+
     body {
-        background-color: var(--bg-color);
+        font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+        color: var(--dark-color);
+        line-height: 1.6;
     }
-    
-    .fm-container {
-        max-width: 1400px;
-        margin: 0 auto;
+
+    .layout {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        width: 280px;
+        background: white;
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar-header {
         padding: 1.5rem;
-    }
-    
-    /* Header */
-    .fm-header {
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-        border-radius: 16px;
-        padding: 2rem;
-        color: white;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .fm-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 100%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    }
-    
-    .fm-header-content {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .fm-greeting {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin-bottom: 0.25rem;
-    }
-    
-    .fm-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    
-    .fm-subtitle {
-        font-size: 0.95rem;
-        opacity: 0.85;
-        margin-top: 0.5rem;
-    }
-    
-    .fm-date {
-        position: absolute;
-        left: 2rem;
-        top: 50%;
-        transform: translateY(-50%);
-        text-align: left;
-        font-size: 0.875rem;
-        opacity: 0.9;
-    }
-    
-    .fm-date-day {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-    
-    /* Stats Grid */
-    .fm-stats {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
-    .fm-stat-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.25rem;
-        box-shadow: var(--card-shadow);
-        border: 1px solid var(--border-color);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .fm-stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    .fm-stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    .fm-stat-icon.blue { background: #e0f2fe; color: #0284c7; }
-    .fm-stat-icon.green { background: #d1fae5; color: #059669; }
-    .fm-stat-icon.yellow { background: #fef3c7; color: #d97706; }
-    .fm-stat-icon.purple { background: #ede9fe; color: #7c3aed; }
-    
-    .fm-stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 0.25rem;
-    }
-    
-    .fm-stat-label {
-        font-size: 0.8125rem;
-        color: var(--secondary-color);
-    }
-    
-    /* Menu Grid */
-    .fm-menu-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-    }
-    
-    .fm-menu-card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--card-shadow);
-        border: 1px solid var(--border-color);
-        overflow: hidden;
-    }
-    
-    .fm-menu-header {
-        padding: 1.25rem;
         border-bottom: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+        background: var(--light-color);
     }
-    
-    .fm-menu-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.125rem;
+
+    .sidebar-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--dark-color);
     }
-    
-    .fm-menu-icon.invoices { background: #dbeafe; color: #2563eb; }
-    .fm-menu-icon.payments { background: #d1fae5; color: #059669; }
-    .fm-menu-icon.suppliers { background: #fce7f3; color: #db2777; }
-    
-    .fm-menu-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0;
-    }
-    
-    .fm-menu-body {
-        padding: 0;
-    }
-    
-    .fm-menu-list {
+
+    .menu-list {
         list-style: none;
-        padding: 0;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .menu-item {
         margin: 0;
     }
-    
-    .fm-menu-item {
-        border-bottom: 1px solid #f1f5f9;
-    }
-    
-    .fm-menu-item:last-child {
-        border-bottom: none;
-    }
-    
-    .fm-menu-link {
+
+    .menu-link {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.875rem 1.25rem;
-        color: #475569;
+        padding: 1rem;
+        color: var(--dark-color);
         text-decoration: none;
-        transition: all 0.15s ease;
-    }
-    
-    .fm-menu-link:hover {
-        background: #f8fafc;
-        color: var(--primary-color);
-        padding-right: 1.5rem;
-    }
-    
-    .fm-menu-link i {
-        font-size: 1rem;
-        width: 24px;
-        text-align: center;
-    }
-    
-    .fm-menu-link span {
-        flex: 1;
-    }
-    
-    .fm-menu-link .badge {
-        background: #e0f2fe;
-        color: #0284c7;
-        padding: 0.25rem 0.5rem;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        font-weight: 600;
-    }
-    
-    /* Quick Actions */
-    .fm-quick-actions {
-        display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
-    }
-    
-    .fm-action-btn {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: 500;
+        border-radius: var(--radius-md);
         transition: all 0.2s ease;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .fm-action-btn.primary {
-        background: var(--primary-color);
-        color: white;
-    }
-    
-    .fm-action-btn.primary:hover {
-        background: var(--primary-hover);
-        transform: translateY(-2px);
-    }
-    
-    .fm-action-btn.secondary {
-        background: white;
-        color: var(--secondary-color);
-        border: 1px solid var(--border-color);
-    }
-    
-    .fm-action-btn.secondary:hover {
-        background: #f8fafc;
-        color: #1e293b;
-    }
-    
-    /* User Info */
-    .fm-user-info {
-        position: absolute;
-        left: 2rem;
-        bottom: 2rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    
-    .fm-user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-    }
-    
-    .fm-user-name {
         font-weight: 500;
     }
-    
-    .fm-user-role {
-        font-size: 0.8rem;
-        opacity: 0.85;
+
+    .menu-link:hover {
+        background: var(--light-color);
+        color: var(--primary-color);
+        transform: translateX(5px);
     }
-    
-    /* Notice */
-    .fm-notice {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border: 1px solid #f59e0b;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
+
+    .menu-link.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .menu-link i {
+        width: 20px;
+        font-size: 1rem;
+    }
+
+    /* Main Content */
+    .main-content {
+        flex: 1;
+        padding: 2rem;
+    }
+
+    /* Header */
+    .page-header {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm);
+        padding: 1.5rem 2rem;
         margin-bottom: 1.5rem;
         display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--dark-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .page-title i {
+        color: var(--primary-color);
+    }
+
+    .header-actions {
+        display: flex;
         align-items: center;
         gap: 1rem;
     }
-    
-    .fm-notice i {
-        color: #d97706;
-        font-size: 1.5rem;
-    }
-    
-    .fm-notice p {
-        margin: 0;
-        color: #92400e;
+
+    .current-date {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        background: var(--light-color);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        color: var(--dark-color);
         font-weight: 500;
     }
-    
-    /* Responsive */
-    @media (max-width: 1024px) {
-        .fm-stats {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .fm-menu-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .fm-date {
-            display: none;
-        }
+
+    .current-date i {
+        color: var(--primary-color);
     }
-    
-    @media (max-width: 640px) {
-        .fm-stats {
-            grid-template-columns: 1fr;
-        }
-        
-        .fm-quick-actions {
+
+    .logout-btn {
+        padding: 0.5rem 1rem;
+        background: white;
+        color: var(--danger-color);
+        border: 1px solid var(--danger-color);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        font-family: 'Vazir', sans-serif;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logout-btn:hover {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm);
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.25rem;
+    }
+
+    .stat-icon.danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger-color);
+    }
+
+    .stat-icon.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-color);
+    }
+
+    .stat-icon.primary {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary-color);
+    }
+
+    .stat-icon.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning-color);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value.danger { color: var(--danger-color); }
+    .stat-value.success { color: var(--success-color); }
+    .stat-value.primary { color: var(--primary-color); }
+    .stat-value.warning { color: var(--warning-color); }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .stat-sublabel {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Card Styles */
+    .card {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: all 0.2s;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--light-color);
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--dark-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .card-title i {
+        color: var(--primary-color);
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #9ca3af;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state small {
+        font-size: 0.875rem;
+    }
+
+    /* Loading */
+    .loading {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #9ca3af;
+    }
+
+    .loading i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    /* List Items */
+    .list-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: all 0.2s;
+    }
+
+    .list-item:hover {
+        background: var(--light-color);
+    }
+
+    .list-item:last-child {
+        border-bottom: none;
+    }
+
+    .list-item-content {
+        flex: 1;
+    }
+
+    .list-item-title {
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 0.25rem;
+    }
+
+    .list-item-subtitle {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    /* Badge */
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-md);
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .badge-success {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-color);
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .layout {
             flex-direction: column;
         }
-        
-        .fm-header {
-            padding: 1.5rem;
+
+        .sidebar {
+            width: 100%;
+            border-left: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .main-content {
+            padding: 1rem;
+        }
+
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-grid {
+            gap: 1rem;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="fm-container">
-    <!-- Header -->
-    <div class="fm-header">
-        <div class="fm-header-content">
-            <p class="fm-greeting">سلام، {{ request.user.get_full_name|default:request.user.username }}</p>
-            <h1 class="fm-title">داشبورد مدیر مالی</h1>
-            <p class="fm-subtitle">مدیریت فاکتورها، پرداخت‌ها و تأمین‌کنندگان</p>
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">منو مدیر مالی</div>
         </div>
-        <div class="fm-date">
-            <div class="fm-date-day">{{ today.day }}</div>
-            <div>{{ today|date:"F Y" }}</div>
-        </div>
-    </div>
-    
-    <!-- Stats -->
-    <div class="fm-stats">
-        <div class="fm-stat-card">
-            <div class="fm-stat-icon blue">
-                <i class="fas fa-file-invoice"></i>
+        <ul class="menu-list">
+            <li class="menu-item">
+                <a href="{% url 'finance_manager_dashboard' cafe_code=cafe_code %}" class="menu-link active">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>داشبورد مالی</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="menu-link">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>مدیریت فاکتورها</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="menu-link">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>مدیریت پرداخت‌ها</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>مدیریت تامین‌کنندگان</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>گزارش‌های مالی</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="{% url 'logout' %}" class="menu-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>خروج</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-chart-bar"></i>
+                داشبورد مدیر مالی
+            </h1>
+            <div class="header-actions">
+                <div class="current-date">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="persianDate"></span>
+                </div>
+                <a href="{% url 'logout' %}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>خروج</span>
+                </a>
             </div>
-            <div class="fm-stat-value">{{ stats.total_invoices|default:0 }}</div>
-            <div class="fm-stat-label">کل فاکتورها</div>
         </div>
-        <div class="fm-stat-card">
-            <div class="fm-stat-icon green">
-                <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div class="fm-stat-value">{{ stats.total_payments|default:0 }}</div>
-            <div class="fm-stat-label">کل پرداخت‌ها</div>
-        </div>
-        <div class="fm-stat-card">
-            <div class="fm-stat-icon yellow">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="fm-stat-value">{{ stats.pending_invoices|default:0 }}</div>
-            <div class="fm-stat-label">فاکتورهای در انتظار</div>
-        </div>
-        <div class="fm-stat-card">
-            <div class="fm-stat-icon purple">
-                <i class="fas fa-truck"></i>
-            </div>
-            <div class="fm-stat-value">{{ stats.total_suppliers|default:0 }}</div>
-            <div class="fm-stat-label">تأمین‌کنندگان</div>
-        </div>
-    </div>
-    
-    <!-- Menu Grid -->
-    <div class="fm-menu-grid">
-        <!-- Invoices Management -->
-        <div class="fm-menu-card">
-            <div class="fm-menu-header">
-                <div class="fm-menu-icon invoices">
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon primary">
                     <i class="fas fa-file-invoice"></i>
                 </div>
-                <h3 class="fm-menu-title">مدیریت فاکتورها</h3>
+                <div class="stat-value primary" id="total-invoices">-</div>
+                <div class="stat-label">کل فاکتورها</div>
             </div>
-            <div class="fm-menu-body">
-                <ul class="fm-menu-list">
-                    <li class="fm-menu-item">
-                        <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="fm-menu-link">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                            <span>فاکتورهای فروشگاهی</span>
-                            {% if stats.total_invoices %}<span class="badge">{{ stats.total_invoices }}</span>{% endif %}
-                        </a>
-                    </li>
-                    <li class="fm-menu-item">
-                        <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-list"></i>
-                            <span>همه فاکتورها</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        
-        <!-- Payments Management -->
-        <div class="fm-menu-card">
-            <div class="fm-menu-header">
-                <div class="fm-menu-icon payments">
-                    <i class="fas fa-credit-card"></i>
+
+            <div class="stat-card">
+                <div class="stat-icon success">
+                    <i class="fas fa-money-bill-wave"></i>
                 </div>
-                <h3 class="fm-menu-title">مدیریت پرداخت‌ها</h3>
+                <div class="stat-value success" id="total-payments">-</div>
+                <div class="stat-label">کل پرداخت‌ها</div>
             </div>
-            <div class="fm-menu-body">
-                <ul class="fm-menu-list">
-                    <li class="fm-menu-item">
-                        <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-list"></i>
-                            <span>لیست پرداخت‌ها</span>
-                            {% if stats.total_payments %}<span class="badge">{{ stats.total_payments }}</span>{% endif %}
-                        </a>
-                    </li>
-                    <li class="fm-menu-item">
-                        <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>ثبت پرداخت جدید</span>
-                        </a>
-                    </li>
-                    <li class="fm-menu-item">
-                        <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>محل‌های پرداخت</span>
-                        </a>
-                    </li>
-                </ul>
+
+            <div class="stat-card">
+                <div class="stat-icon warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-value warning" id="pending-invoices">-</div>
+                <div class="stat-label">فاکتورهای در انتظار</div>
             </div>
-        </div>
-        
-        <!-- Suppliers Management -->
-        <div class="fm-menu-card">
-            <div class="fm-menu-header">
-                <div class="fm-menu-icon suppliers">
+
+            <div class="stat-card">
+                <div class="stat-icon danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-value danger" id="unpaid-invoices">-</div>
+                <div class="stat-label">فاکتورهای پرداخت نشده</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon primary">
                     <i class="fas fa-truck"></i>
                 </div>
-                <h3 class="fm-menu-title">مدیریت تأمین‌کنندگان</h3>
-            </div>
-            <div class="fm-menu-body">
-                <ul class="fm-menu-list">
-                    <li class="fm-menu-item">
-                        <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-hand-pointer"></i>
-                            <span>انتخاب تأمین‌کننده</span>
-                        </a>
-                    </li>
-                    <li class="fm-menu-item">
-                        <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="fm-menu-link">
-                            <i class="fas fa-list"></i>
-                            <span>لیست تأمین‌کنندگان</span>
-                            {% if stats.total_suppliers %}<span class="badge">{{ stats.total_suppliers }}</span>{% endif %}
-                        </a>
-                    </li>
-                </ul>
+                <div class="stat-value primary" id="total-suppliers">-</div>
+                <div class="stat-label">کل تامین‌کنندگان</div>
             </div>
         </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="fm-quick-actions">
-        <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="fm-action-btn primary">
-            <i class="fas fa-file-invoice-dollar"></i>
-            فاکتورهای فروشگاهی
-        </a>
-        <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="fm-action-btn primary">
-            <i class="fas fa-credit-card"></i>
-            پرداخت‌ها
-        </a>
-        <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="fm-action-btn secondary">
-            <i class="fas fa-hand-pointer"></i>
-            انتخاب تأمین‌کننده
-        </a>
-    </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Financial Overview Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-chart-pie"></i>
+                        نمای کلی مالی
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-history"></i>
+                        پرداخت‌های اخیر
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="list-container" id="recentPaymentsList">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Invoices -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    فاکتورهای در انتظار پرداخت
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="list-container" id="pendingInvoicesList">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+    // CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    let financialChartInstance = null;
+
+    // تبدیل اعداد انگلیسی به فارسی
+    function toFarsiNumber(num) {
+        const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        return num.toString().replace(/\d/g, x => farsiDigits[x]);
+    }
+
+    // فرمت عدد با کاما
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function getPersianDate() {
+        const date = new Date();
+        return new Intl.DateTimeFormat('fa-IR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(date);
+    }
+
+    // بارگذاری آمار مالی
+    function loadFinanceStats() {
+        fetch(`/{{ cafe_code }}/api/finance/stats/`, {
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-invoices').textContent = toFarsiNumber(data.total_invoices);
+            document.getElementById('total-payments').textContent = toFarsiNumber(data.total_payments);
+            document.getElementById('pending-invoices').textContent = toFarsiNumber(data.pending_invoices);
+            document.getElementById('unpaid-invoices').textContent = toFarsiNumber(data.unpaid_invoices);
+            document.getElementById('total-suppliers').textContent = toFarsiNumber(data.total_suppliers);
+            
+            renderFinancialChart(data);
+        })
+        .catch(error => {
+            console.error('Error loading finance stats:', error);
+        });
+    }
+
+    // رسم نمودار مالی
+    function renderFinancialChart(data) {
+        const ctx = document.getElementById('financialChart');
+        
+        if (financialChartInstance) {
+            financialChartInstance.destroy();
+        }
+
+        const chartData = {
+            labels: ['فاکتورها', 'پرداخت‌ها', 'در انتظار', 'پرداخت نشده'],
+            datasets: [{
+                data: [
+                    data.total_invoices,
+                    data.total_payments,
+                    data.pending_invoices,
+                    data.unpaid_invoices
+                ],
+                backgroundColor: [
+                    '#6366f1',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        };
+
+        financialChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        rtl: true,
+                        labels: {
+                            font: {
+                                family: 'Vazir',
+                                size: 12
+                            },
+                            padding: 15,
+                            usePointStyle: true,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return {
+                                            text: `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} (${toFarsiNumber(percentage)}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        rtl: true,
+                        textDirection: 'rtl',
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // بارگذاری پرداخت‌های اخیر
+    function loadRecentPayments() {
+        const container = document.getElementById('recentPaymentsList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        fetch(`/{{ cafe_code }}/api/finance/recent-payments/`, {
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            renderRecentPayments(data.payments);
+        })
+        .catch(error => {
+            console.error('Error loading recent payments:', error);
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>خطا در بارگذاری داده‌ها</p>
+                </div>
+            `;
+        });
+    }
+
+    // رسم لیست پرداخت‌های اخیر
+    function renderRecentPayments(payments) {
+        const container = document.getElementById('recentPaymentsList');
+        
+        if (!payments || payments.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <p>پرداختی یافت نشد</p>
+                    <small>در حال حاضر پرداختی ثبت نشده است</small>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = payments.map((payment, index) => `
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-title">
+                        ${index + 1}. فاکتور ${payment.invoice_number}
+                    </div>
+                    <div class="list-item-subtitle">
+                        ${payment.payment_type} - ${payment.payment_date}
+                    </div>
+                </div>
+                <div>
+                    <div class="badge badge-success">
+                        <i class="fas fa-money-bill-wave"></i>
+                        ${toFarsiNumber(formatNumber(Math.round(payment.amount)))} تومان
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // بارگذاری فاکتورهای در انتظار
+    function loadPendingInvoices() {
+        const container = document.getElementById('pendingInvoicesList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        fetch(`/{{ cafe_code }}/api/finance/pending-invoices/`, {
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            renderPendingInvoices(data.invoices);
+        })
+        .catch(error => {
+            console.error('Error loading pending invoices:', error);
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>خطا در بارگذاری داده‌ها</p>
+                </div>
+            `;
+        });
+    }
+
+    // رسم لیست فاکتورهای در انتظار
+    function renderPendingInvoices(invoices) {
+        const container = document.getElementById('pendingInvoicesList');
+        
+        if (!invoices || invoices.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <p>فاکتور در انتظار یافت نشد</p>
+                    <small>تمام فاکتورها پرداخت شده‌اند</small>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = invoices.map((invoice, index) => `
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-title">
+                        ${index + 1}. ${invoice.invoice_number}
+                    </div>
+                    <div class="list-item-subtitle">
+                        ${invoice.supplier_name} - ${invoice.invoice_date}
+                    </div>
+                </div>
+                <div>
+                    <div class="badge badge-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${toFarsiNumber(formatNumber(Math.round(invoice.total_amount)))} تومان
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // بارگذاری اولیه
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set Persian date
+        document.getElementById('persianDate').textContent = getPersianDate();
+        
+        // Load all data
+        loadFinanceStats();
+        loadRecentPayments();
+        loadPendingInvoices();
+    });
+</script>
 {% endblock %}

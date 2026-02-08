@@ -21,6 +21,7 @@ from django.db.models import Q, Sum, F
 from django.db import models
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse, HttpRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import (
@@ -161,21 +162,22 @@ def login_view(request: HttpRequest) -> HttpResponse:
         password = request.POST.get("password", "")
         user = authenticate(request, username=username, password=password)
         if user and user.is_active:
-            login(request, user)
-            
             # کاربران با نقش‌های ادمین به صفحه انتخاب کافه می‌روند
             if user.needs_cafe_selection:
+                login(request, user)
                 return redirect("select_cafe")
             
             # کاربران عادی - بررسی اینکه کافه دارند
             if not user.cafe:
-                # کاربر عادی بدون کافه - نمایش خطا
-                logout(request)
+                # کاربر عادی بدون کافه - نمایش خطا بدون لاگین
                 return render(
                     request,
                     "login.html",
-                    {"error": "کافه برای کاربر شما تعریف نشده است. با مدیر تماس بگیرید."},
+                    {"error": "کافه برای کاربر شما تعریف نشده است. با مدیر سیستم تماس بگیرید."},
                 )
+            
+            # کاربر عادی با کافه - لاگین کن
+            login(request, user)
             
             # تنظیم کافه در session
             request.session['selected_cafe_id'] = user.cafe_id
@@ -183,13 +185,18 @@ def login_view(request: HttpRequest) -> HttpResponse:
             cafe_code = user.cafe.code
             
             # Redirect based on role
-            if user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+            # اول نقش را بررسی می‌کنیم
+            if user.role == 'ceo':
+                # مدیرعامل به داشبورد مدیریت
+                return redirect("management_dashboard", cafe_code=cafe_code)
+            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
                 return redirect("mobile_dashboard", cafe_code=cafe_code)
             elif user.role == 'purchasing':
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            elif user.role in ['manager', 'ceo', 'accounting']:
+            elif user.role in ['manager', 'accounting']:
+                # مدیر و حسابداری به داشبورد مالی
                 return redirect("finance_dashboard", cafe_code=cafe_code)
             # سایر نقش‌های ادمین به management_dashboard می‌روند
             return redirect("management_dashboard", cafe_code=cafe_code)
@@ -230,15 +237,18 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
             
             # Redirect based on role
             user = request.user
-            if user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+            # اول نقش را بررسی می‌کنیم (قبل از superuser)
+            if user.role == 'ceo':
+                # مدیرعامل به داشبورد مدیریت
+                return redirect("management_dashboard", cafe_code=cafe_code)
+            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
                 return redirect("mobile_dashboard", cafe_code=cafe_code)
             elif user.role == 'purchasing':
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            elif user.role in ['manager', 'ceo']:
-                return redirect("management_dashboard", cafe_code=cafe_code)
-            elif user.role == 'accounting':
+            elif user.is_superuser or user.role in ['manager', 'accounting']:
+                # سوپرادمین، مدیر و حسابداری به داشبورد مالی
                 return redirect("finance_dashboard", cafe_code=cafe_code)
             # سایر نقش‌ها به داشبورد پیش‌فرض می‌روند
             return redirect("dashboard", cafe_code=cafe_code)
@@ -772,7 +782,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def finance_dashboard(request: HttpRequest) -> HttpResponse:
     from datetime import date
     
@@ -825,23 +835,12 @@ def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
     from datetime import date
     
     cafe = get_cafe_from_request(request)
-    invoice_qs = Invoice.objects.all()
-    supplier_qs = Supplier.objects.all()
-    if cafe:
-        invoice_qs = invoice_qs.filter(cafe=cafe)
-        supplier_qs = supplier_qs.filter(cafe=cafe)
-    stats = {
-        "total_invoices": invoice_qs.count(),
-        "total_payments": Payment.objects.count(),
-        "pending_invoices": invoice_qs.filter(status='pending').count(),
-        "unpaid_invoices": invoice_qs.filter(payment_status='unpaid').count(),
-        "total_suppliers": supplier_qs.count(),
+    
+    context = {
+        'cafe_code': cafe.code if cafe else None,
     }
     
-    return render(request, "finance_manager_dashboard.html", {
-        "stats": stats,
-        "today": date.today(),
-    })
+    return render(request, "finance_manager_dashboard.html", context)
 
 
 # ---------------------------------------------------------------------------
@@ -1114,7 +1113,7 @@ def export_analytics_to_pdf(request, analytics_type):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def backup_management(request):
     cafe = get_cafe_from_request(request)
     pr_qs = PurchaseRequest.objects.all()
@@ -1138,7 +1137,7 @@ def backup_management(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def backup_database(request):
     """Create a server-side backup of the database."""
     try:
@@ -1161,7 +1160,7 @@ def backup_database(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def export_data_json(request):
     """Download a full database backup as JSON."""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1177,7 +1176,7 @@ def export_data_json(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def export_data_csv(request):
     """Export specific data models to CSV."""
     model_name = request.GET.get('model', 'products')
@@ -1258,7 +1257,7 @@ def export_data_csv(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def import_data_json(request):
     """Import data from a JSON backup file."""
     if request.method == 'POST' and request.FILES.get('backup_file'):
@@ -1292,20 +1291,20 @@ def import_data_json(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def create_migration_script(request):
     return render(request, "create_migration_script.html")
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def run_migration_script(request):
     messages.success(request, "Migration executed")
     return redirect("backup_management")
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def system_health_check(request):
     return render(request, "system_health.html", {"status": "healthy"})
 
@@ -1315,7 +1314,7 @@ def system_health_check(request):
 # ---------------------------------------------------------------------------
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Edit a purchased request - allows manager to modify items"""
     purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
@@ -1357,7 +1356,7 @@ def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpRes
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Confirm a purchased request by manager"""
     purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
@@ -1647,7 +1646,7 @@ def payment_type_delete(request, payment_type_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo", "accounting"])
 def user_list(request):
     users = User.objects.all()
     return render(request, "user_list.html", {
@@ -1657,7 +1656,7 @@ def user_list(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def user_create(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -1688,7 +1687,7 @@ def user_create(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def user_update(request, user_id):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
@@ -1703,7 +1702,7 @@ def user_update(request, user_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def user_delete(request, user_id):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
@@ -1713,7 +1712,7 @@ def user_delete(request, user_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def user_reset_password(request, user_id):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
@@ -2454,7 +2453,7 @@ def invoice_send(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def finance_manager_edited_invoices(request):
     """نمایش فاکتورهای ویرایش شده یا ثبت شده توسط مدیر مالی"""
     # فاکتورهایی که مدیر مالی آنها را ایجاد یا ویرایش کرده
@@ -3404,9 +3403,7 @@ def test_filter_page(request):
 
 
 @custom_login_required
-@role_required(["manager"])
-@custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def system_monitoring(request):
     # System Info
     system_info = {
@@ -3443,7 +3440,7 @@ def system_monitoring(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "ceo"])
 def system_monitoring_api(request):
     # System resources snapshot
     system_resources = {

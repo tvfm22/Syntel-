@@ -207,6 +207,11 @@ cafe_urlpatterns = [
     path('api/management/category-expenses/', cv(views_analytics.api_management_category_expenses), name='api_management_category_expenses'),
     path('api/management/price-increases/', cv(views_analytics.api_management_price_increases), name='api_management_price_increases'),
     
+    # Finance Manager Dashboard API URLs
+    path('api/finance/stats/', cv(views_analytics.api_finance_stats), name='api_finance_stats'),
+    path('api/finance/recent-payments/', cv(views_analytics.api_finance_recent_payments), name='api_finance_recent_payments'),
+    path('api/finance/pending-invoices/', cv(views_analytics.api_finance_pending_invoices), name='api_finance_pending_invoices'),
+    
     # Test page
     path('test/filter/', cv(views.test_filter_page), name='test_filter_page'),
     

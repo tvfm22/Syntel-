@@ -1456,3 +1456,80 @@ def api_management_price_increases(request):
 		'products': top_increases,
 		'period': period
 	})
+
+
+# ---------------------------------------------------------------------------
+# Finance Manager Dashboard APIs
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_finance_stats(request):
+	"""API برای دریافت آمار مالی در داشبورد مدیر مالی"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	invoice_qs = Invoice.objects.filter(cafe=cafe)
+	supplier_qs = Supplier.objects.filter(cafe=cafe)
+	
+	stats = {
+		"total_invoices": invoice_qs.count(),
+		"total_payments": Payment.objects.filter(invoice__cafe=cafe).count(),
+		"pending_invoices": invoice_qs.filter(status='pending').count(),
+		"unpaid_invoices": invoice_qs.filter(payment_status='unpaid').count(),
+		"total_suppliers": supplier_qs.count(),
+	}
+	
+	return Response(stats)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_finance_recent_payments(request):
+	"""API برای دریافت پرداخت‌های اخیر"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	recent_payments = Payment.objects.filter(
+		invoice__cafe=cafe
+	).select_related('invoice', 'payment_type').order_by('-payment_date')[:10]
+	
+	payments_data = []
+	for payment in recent_payments:
+		payments_data.append({
+			'id': payment.id,
+			'amount': float(payment.amount),
+			'payment_date': payment.payment_date.strftime('%Y-%m-%d'),
+			'invoice_number': payment.invoice.invoice_number,
+			'payment_type': payment.payment_type.name if payment.payment_type else 'نامشخص',
+		})
+	
+	return Response({'payments': payments_data})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_finance_pending_invoices(request):
+	"""API برای دریافت فاکتورهای در انتظار پرداخت"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	pending_invoices = Invoice.objects.filter(
+		cafe=cafe,
+		payment_status='unpaid'
+	).select_related('supplier').order_by('-invoice_date')[:10]
+	
+	invoices_data = []
+	for invoice in pending_invoices:
+		invoices_data.append({
+			'id': invoice.id,
+			'invoice_number': invoice.invoice_number,
+			'supplier_name': invoice.supplier.name,
+			'total_amount': float(invoice.total_amount),
+			'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d'),
+		})
+	
+	return Response({'invoices': invoices_data})
