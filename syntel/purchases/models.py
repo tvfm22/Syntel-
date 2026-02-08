@@ -112,19 +112,22 @@ class InvoiceIssue(models.Model):
 class PurchaseRequest(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
+        ('pending_manager_approval', 'Pending Manager Approval'),
         ('pending', 'Pending Purchase'),
         ('purchased', 'Purchased'),
         ('partial', 'Partial'),
+        ('rejected', 'Rejected'),
     ]
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='purchase_requests', verbose_name='کافه', null=True, blank=True)
     user: models.ForeignKey = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
-    status: models.CharField = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status: models.CharField = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending_manager_approval')
     processed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_requests')
     processed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True)
     manager_confirmed: models.BooleanField = models.BooleanField(default=False, verbose_name='تایید نهایی مدیر')
     manager_confirmed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تایید مدیر')
     manager_confirmed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='confirmed_requests', verbose_name='تایید کننده')
+    rejection_reason: models.TextField = models.TextField(blank=True, null=True, verbose_name='دلیل رد')
 
     def __str__(self) -> str:
         return f"Request by {self.user.username} - {self.status}"
@@ -578,87 +581,7 @@ class Invoice(models.Model):
 
     def can_be_paid(self):
         """Check if invoice can be marked as paid"""
-        return self.status == 'approved'
-
-    def submit_for_approval(self):
-        """Submit invoice for approval workflow"""
-        if self.status == 'draft':
-            self.status = 'sent'
-            self.save()
-            
-            # Create approval requests based on invoice amount
-            self.create_approval_workflow()
-            
-            return True
-        return False
-
-    def create_approval_workflow(self):
-        """Create approval workflow based on invoice amount and company policy"""
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        
-        # Get all managers
-        managers = User.objects.filter(role='manager')
-        
-        # For invoices over 10M, require CEO approval
-        if self.total_amount > 10000000:  # 10 million
-            ceo_users = User.objects.filter(role='ceo')
-            for ceo in ceo_users:
-                InvoiceApproval.objects.create(
-                    invoice=self,
-                    approver=ceo,
-                    approval_level='ceo',
-                    order=1
-                )
-        
-        # Always require manager approval
-        for manager in managers:
-            order = 2 if self.total_amount > 10000000 else 1
-            InvoiceApproval.objects.create(
-                invoice=self,
-                approver=manager,
-                approval_level='manager',
-                order=order
-            )
-
-    def check_approval_status(self):
-        """Check if all required approvals are complete"""
-        approvals = self.approvals.filter(is_active=True)
-        
-        if not approvals.exists():
-            return
-        
-        # Check if any approval is rejected
-        if approvals.filter(status='rejected').exists():
-            self.status = 'draft'
-            self.save()
-            return
-        
-        # Check if any approval is pending or revision requested
-        if approvals.filter(status__in=['pending', 'revision_requested']).exists():
-            return  # Stay in current status
-        
-        # All approvals are approved
-        if approvals.filter(status='approved').count() == approvals.count():
-            self.status = 'approved'
-            self.approved_at = timezone.now()
-            # Set approved_by to the last approver
-            last_approval = approvals.filter(status='approved').order_by('-responded_at').first()
-            if last_approval:
-                self.approved_by = last_approval.approver
-            self.save()
-
-    def get_pending_approvals(self):
-        """Get pending approvals for this invoice"""
-        return self.approvals.filter(status='pending', is_active=True)
-
-    def get_rejected_approvals(self):
-        """Get rejected approvals for this invoice"""
-        return self.approvals.filter(status='rejected', is_active=True)
-
-    def can_request_revision(self, user):
-        """Check if user can request revision"""
-        return self.approvals.filter(approver=user, status__in=['approved', 'rejected']).exists()
+        return self.status in ['sent', 'approved']
 
     def update_payment_status(self):
         """Update payment status based on payments"""
@@ -769,80 +692,6 @@ class InvoiceItem(models.Model):
     class Meta:
         verbose_name = 'آیتم فاکتور'
         verbose_name_plural = 'آیتم‌های فاکتور'
-
-# Invoice Approval System
-class InvoiceApproval(models.Model):
-    APPROVAL_CHOICES = [
-        ('pending', 'در انتظار'),
-        ('approved', 'تأیید شده'),
-        ('rejected', 'رد شده'),
-        ('revision_requested', 'نیاز به بازبینی'),
-    ]
-
-    APPROVAL_LEVEL_CHOICES = [
-        ('manager', 'مدیر'),
-        ('finance', 'امور مالی'),
-        ('ceo', 'مدیرعامل'),
-    ]
-
-    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='approvals', verbose_name='فاکتور')
-    approver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoice_approvals', verbose_name='تأیید کننده')
-    
-    # Approval details
-    approval_level = models.CharField(max_length=20, choices=APPROVAL_LEVEL_CHOICES, default='manager', verbose_name='سطح تأیید')
-    status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default='pending', verbose_name='وضعیت')
-    
-    # Comments and notes
-    comments = models.TextField(blank=True, verbose_name='نظرات')
-    rejection_reason = models.TextField(blank=True, verbose_name='دلیل رد')
-    revision_notes = models.TextField(blank=True, verbose_name='نکات بازبینی')
-    
-    # Timestamps
-    requested_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ درخواست')
-    responded_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ پاسخ')
-    
-    # Additional tracking
-    is_active = models.BooleanField(default=True, verbose_name='فعال')
-    order = models.PositiveIntegerField(default=1, verbose_name='ترتیب')
-
-    def __str__(self):
-        return f"تأیید {self.invoice.invoice_number} توسط {self.approver.get_full_name()} - {self.get_status_display()}"
-
-    def approve(self, comments=''):
-        """Approve this approval request"""
-        self.status = 'approved'
-        self.comments = comments
-        self.responded_at = timezone.now()
-        self.save()
-        
-        # Check if all approvals are complete
-        self.invoice.check_approval_status()
-
-    def reject(self, reason, comments=''):
-        """Reject this approval request"""
-        self.status = 'rejected'
-        self.rejection_reason = reason
-        self.comments = comments
-        self.responded_at = timezone.now()
-        self.save()
-        
-        # Update invoice status
-        self.invoice.status = 'draft'
-        self.invoice.save()
-
-    def request_revision(self, notes, comments=''):
-        """Request revision for this approval"""
-        self.status = 'revision_requested'
-        self.revision_notes = notes
-        self.comments = comments
-        self.responded_at = timezone.now()
-        self.save()
-
-    class Meta:
-        verbose_name = 'تأیید فاکتور'
-        verbose_name_plural = 'تأییدهای فاکتور'
-        ordering = ['invoice', 'order', 'requested_at']
-        unique_together = ['invoice', 'approver', 'approval_level']
 
 # Payment Tracking System
 class Payment(models.Model):

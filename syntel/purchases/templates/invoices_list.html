@@ -43,11 +43,11 @@
             <span class="stat-label">پیش‌نویس</span>
         </div>
     </div>
-    <div class="stat-box stat-box-approved">
-        <div class="stat-icon-wrapper">✅</div>
+    <div class="stat-box stat-box-sent">
+        <div class="stat-icon-wrapper">📤</div>
         <div class="stat-info">
             <span class="stat-value" id="approvedCount">-</span>
-            <span class="stat-label">تأیید شده</span>
+            <span class="stat-label">ارسال شده</span>
         </div>
     </div>
     <div class="stat-box stat-box-paid">
@@ -167,11 +167,6 @@
                 </a>
                 {% endif %}
                 {% if invoice.status == 'sent' and user.role == 'manager' %}
-                <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn approve-btn" title="تأیید">
-                    ✅
-                </a>
-                {% endif %}
-                {% if invoice.status == 'approved' and user.role == 'manager' %}
                 <a href="{% url 'invoice_pay' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon-btn pay-btn" title="پرداخت">
                     💳
                 </a>
@@ -235,9 +230,6 @@
                             <a href="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="ارسال">📤</a>
                             {% endif %}
                             {% if invoice.status == 'sent' and user.role == 'manager' %}
-                            <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="تأیید">✅</a>
-                            {% endif %}
-                            {% if invoice.status == 'approved' and user.role == 'manager' %}
                             <a href="{% url 'invoice_pay' cafe_code=cafe_code invoice_id=invoice.id %}" class="tbl-action-btn" title="پرداخت">💳</a>
                             {% endif %}
                         </div>
@@ -259,17 +251,17 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Calculate statistics
     const cards = document.querySelectorAll('.invoice-card');
-    let draftCount = 0, approvedCount = 0, paidCount = 0;
+    let draftCount = 0, sentCount = 0, paidCount = 0;
     
     cards.forEach(card => {
         const status = card.dataset.status;
         if (status === 'draft') draftCount++;
-        else if (status === 'approved') approvedCount++;
+        else if (status === 'sent') sentCount++;
         else if (status === 'paid') paidCount++;
     });
     
     document.getElementById('draftCount').textContent = draftCount;
-    document.getElementById('approvedCount').textContent = approvedCount;
+    document.getElementById('approvedCount').textContent = sentCount;
     document.getElementById('paidCount').textContent = paidCount;
 });
 </script>

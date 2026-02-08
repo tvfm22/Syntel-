@@ -694,9 +694,51 @@
             {% endif %}
             
             {% if user.role == 'manager' %}
+            <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" {% if 'management-dashboard' in request.path %}class="active"{% endif %}>
+                <span>📊 داشبورد مدیریت</span>
+            </a>
+            <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" {% if 'approve-purchase-requests' in request.path %}class="active"{% endif %}>
+                <span>✅ تایید درخواست‌های خرید</span>
+            </a>
             <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
                 <span>داشبورد مالی</span>
             </a>
+                    <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
+                        <span>عملکرد تأمین‌کنندگان</span>
+                    </a>
+                    <a href="{% url 'purchase_reports' cafe_code=cafe_code %}" {% if 'purchase-reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات خرید</span>
+                    </a>
+                    <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" {% if 'payment-analytics' in request.path %}class="active"{% endif %}>
+                        <span>تحلیل‌های پرداخت</span>
+                    </a>
+                    <a href="{% url 'inventory_reports' cafe_code=cafe_code %}" {% if 'inventory-reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات موجودی</span>
+                    </a>
+                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" {% if 'reports' in request.path %}class="active"{% endif %}>
+                        <span>گزارشات</span>
+                    </a>
+                    <a href="{% url 'backup_management' cafe_code=cafe_code %}" {% if 'backup' in request.path %}class="active"{% endif %}>
+                        <span>پشتیبان‌گیری</span>
+                    </a>
+                    <a href="{% url 'system_monitoring' cafe_code=cafe_code %}" {% if 'system' in request.path and 'monitoring' in request.path %}class="active"{% endif %}>
+                        <span>مانیتورینگ سیستم</span>
+                    </a>
+                    <a href="{% url 'user_list' cafe_code=cafe_code %}" {% if 'users' in request.path %}class="active"{% endif %}>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                    {% endif %}
+
+                    {% if user.role == 'ceo' %}
+                    <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" {% if 'management-dashboard' in request.path %}class="active"{% endif %}>
+                        <span>📊 داشبورد مدیریت</span>
+                    </a>
+                    <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" {% if 'approve-purchase-requests' in request.path %}class="active"{% endif %}>
+                        <span>✅ تایید درخواست‌های خرید</span>
+                    </a>
+                    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" {% if 'finance-dashboard' in request.path %}class="active"{% endif %}>
+                        <span>داشبورد مالی</span>
+                    </a>
                     <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" {% if 'supplier-performance' in request.path %}class="active"{% endif %}>
                         <span>عملکرد تأمین‌کنندگان</span>
                     </a>
@@ -734,7 +776,7 @@
     
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="{% if cafe_code %}{% if user.role == 'manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
+            <a href="{% if cafe_code %}{% if user.role == 'manager' or user.role == 'ceo' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
                 <div class="logo">S</div>
                 <span>Syntel</span>
                 {% if current_cafe %}

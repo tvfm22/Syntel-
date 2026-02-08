@@ -117,14 +117,9 @@ cafe_urlpatterns = [
     path('invoices/<int:invoice_id>/', cv(views.invoice_detail), name='invoice_detail'),
     path('invoices/<int:invoice_id>/update/', cv(views.invoice_update), name='invoice_update'),
     path('invoices/<int:invoice_id>/send/', cv(views.invoice_send), name='invoice_send'),
-    path('invoices/<int:invoice_id>/approve/', cv(views.invoice_approve), name='invoice_approve'),
-    path('invoices/<int:invoice_id>/reject/', cv(views.invoice_reject), name='invoice_reject'),
-    path('invoices/<int:invoice_id>/request-revision/', cv(views.invoice_request_revision), name='invoice_request_revision'),
     path('invoices/<int:invoice_id>/cancel/', cv(views.invoice_cancel), name='invoice_cancel'),
     path('invoices/<int:invoice_id>/delete/', cv(views.invoice_delete), name='invoice_delete'),
     path('invoices/finance-manager-edited/', cv(views.finance_manager_edited_invoices), name='finance_manager_edited_invoices'),
-    path('pending-approvals/', cv(views.pending_invoice_approvals), name='pending_invoice_approvals'),
-    path('approval-history/', cv(views.approval_history), name='approval_history'),
     path('completed-orders-for-invoices/', cv(views.completed_orders_for_invoices), name='completed_orders_for_invoices'),
     # Payment Management URLs
     path('payments/', cv(views.payment_list), name='payment_list'),
@@ -172,6 +167,10 @@ cafe_urlpatterns = [
     
     # Management Dashboard
     path('management-dashboard/', cv(views.management_dashboard), name='management_dashboard'),
+    path('management/pending-requests/', cv(views.manager_pending_requests), name='manager_pending_requests'),
+    path('management/approve-request/<int:request_id>/', cv(views.manager_approve_request), name='manager_approve_request'),
+    path('management/reject-request/<int:request_id>/', cv(views.manager_reject_request), name='manager_reject_request'),
+    path('management/approve-purchase-requests/', cv(views.approve_purchase_requests), name='approve_purchase_requests'),
 
     # Analytics API URLs (Original)
     path('api/analytics/expenses/departments/', cv(views_analytics.department_expenses_api), name='api_department_expenses_old'),

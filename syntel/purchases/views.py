@@ -236,10 +236,12 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
                 return redirect("purchasing_dashboard", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
-            elif user.role in ['manager', 'ceo', 'accounting']:
+            elif user.role in ['manager', 'ceo']:
+                return redirect("management_dashboard", cafe_code=cafe_code)
+            elif user.role == 'accounting':
                 return redirect("finance_dashboard", cafe_code=cafe_code)
-            # سایر نقش‌های ادمین به management_dashboard می‌روند
-            return redirect("management_dashboard", cafe_code=cafe_code)
+            # سایر نقش‌ها به داشبورد پیش‌فرض می‌روند
+            return redirect("dashboard", cafe_code=cafe_code)
         except Cafe.DoesNotExist:
             messages.error(request, "کافه انتخاب شده یافت نشد.")
     
@@ -2452,21 +2454,6 @@ def invoice_send(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
-def invoice_approve(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-    invoice.status = "approved"
-    invoice.save()
-    return redirect("invoice_detail", invoice_id=invoice.id)
-
-
-@custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
-def invoice_reject(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-
-
-@custom_login_required
 @role_required(["manager"])
 def finance_manager_edited_invoices(request):
     """نمایش فاکتورهای ویرایش شده یا ثبت شده توسط مدیر مالی"""
@@ -2521,24 +2508,6 @@ def finance_manager_edited_invoices(request):
 
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
-def invoice_reject(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-    invoice.status = "draft"
-    invoice.save()
-    return redirect("invoice_detail", invoice_id=invoice.id)
-
-
-@custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
-def invoice_request_revision(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-    invoice.status = "draft"
-    invoice.save()
-    return redirect("invoice_detail", invoice_id=invoice.id)
-
-
-@custom_login_required
-@role_required(["purchasing", "manager", "finance_manager"])
 def invoice_cancel(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "cancelled"
@@ -2575,26 +2544,6 @@ def invoice_bulk_delete(request):
             messages.warning(request, "فاکتورهای انتخاب شده برای حذف یافت نشدند.")
 
     return redirect('invoices_list')
-
-
-@custom_login_required
-@role_required(["purchasing", "manager"])
-def pending_invoice_approvals(request):
-    cafe = get_cafe_from_request(request)
-    invoices = Invoice.objects.filter(status="sent")
-    if cafe:
-        invoices = invoices.filter(cafe=cafe)
-    return render(request, "invoice_approval_list.html", {"invoices": invoices})
-
-
-@custom_login_required
-@role_required(["purchasing", "manager"])
-def approval_history(request):
-    cafe = get_cafe_from_request(request)
-    invoices = Invoice.objects.all()
-    if cafe:
-        invoices = invoices.filter(cafe=cafe)
-    return render(request, "invoice_approval_history.html", {"invoices": invoices})
 
 
 @custom_login_required
@@ -3960,10 +3909,12 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
 # Management Dashboard
 # ---------------------------------------------------------------------------
 
-@login_required
+@custom_login_required
+@role_required(["manager", "ceo"])
 def management_dashboard(request):
     """
     داشبورد مدیریت با نمودار دایره‌ای هزینه‌ها و تحلیل رشد قیمت
+    فقط برای مدیران و مدیرعامل
     """
     cafe = get_cafe_from_request(request)
     
@@ -3972,6 +3923,165 @@ def management_dashboard(request):
     }
     
     return render(request, 'management_dashboard.html', context)
+
+
+@custom_login_required
+@role_required(["manager", "ceo"])
+def approve_purchase_requests(request):
+    """
+    صفحه تایید درخواست‌های خرید - نمایش همه درخواست‌های در انتظار تایید
+    """
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else None
+    
+    # دریافت درخواست‌های در انتظار تایید مدیر
+    requests_qs = PurchaseRequest.objects.filter(
+        status='pending_manager_approval'
+    ).select_related('user', 'cafe').prefetch_related('items__product').order_by('-created_at')
+    
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+    
+    # فیلتر بر اساس دپارتمان
+    department_filter = request.GET.get('department', '')
+    if department_filter:
+        requests_qs = requests_qs.filter(user__role=department_filter)
+    
+    # محاسبه آمار
+    total_requests = requests_qs.count()
+    departments_count = requests_qs.values('user__role').annotate(count=models.Count('id'))
+    
+    context = {
+        'cafe_code': cafe_code,
+        'current_cafe': cafe,
+        'user': request.user,
+        'requests': requests_qs,
+        'total_requests': total_requests,
+        'departments': User.ROLE_CHOICES,
+        'selected_department': department_filter,
+        'departments_count': {item['user__role']: item['count'] for item in departments_count},
+    }
+    
+    return render(request, 'approve_purchase_requests.html', context)
+
+
+@custom_login_required
+@role_required(["manager", "ceo"])
+def manager_pending_requests(request):
+    """
+    لیست درخواست‌های در انتظار تایید مدیر
+    """
+    cafe = get_cafe_from_request(request)
+    
+    requests_qs = PurchaseRequest.objects.filter(
+        status='pending_manager_approval'
+    ).select_related('user', 'cafe').prefetch_related('items').order_by('-created_at')
+    
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+    
+    # فیلتر بر اساس دپارتمان
+    department_filter = request.GET.get('department', '')
+    if department_filter:
+        requests_qs = requests_qs.filter(user__role=department_filter)
+    
+    context = {
+        'requests': requests_qs,
+        'departments': User.ROLE_CHOICES,
+        'selected_department': department_filter,
+        'pending_count': requests_qs.count(),
+    }
+    
+    return render(request, 'manager_pending_requests.html', context)
+
+
+@custom_login_required
+@role_required(["manager", "ceo"])
+def manager_approve_request(request, request_id):
+    """
+    تایید درخواست توسط مدیر
+    """
+    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    cafe = get_cafe_from_request(request)
+    
+    if cafe and purchase_request.cafe != cafe:
+        messages.error(request, 'دسترسی غیرمجاز')
+        return redirect('approve_purchase_requests', cafe_code=cafe.code)
+    
+    if purchase_request.status != 'pending_manager_approval':
+        messages.warning(request, 'این درخواست قبلاً پردازش شده است')
+        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    
+    if request.method == 'POST':
+        # تایید درخواست
+        purchase_request.status = 'pending'
+        purchase_request.manager_confirmed = True
+        purchase_request.manager_confirmed_by = request.user
+        purchase_request.manager_confirmed_at = timezone.now()
+        purchase_request.save()
+        
+        # ثبت لاگ
+        ActivityLog.objects.create(
+            user=request.user,
+            action='approve_request',
+            description=f'تایید درخواست خرید #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}'
+        )
+        
+        messages.success(request, f'درخواست خرید #{purchase_request.id} با موفقیت تایید شد و به واحد خرید ارسال شد')
+        
+        # برگشت به صفحه قبلی یا approve_purchase_requests
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    
+    return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+
+
+@custom_login_required
+@role_required(["manager", "ceo"])
+def manager_reject_request(request, request_id):
+    """
+    رد درخواست توسط مدیر
+    """
+    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    cafe = get_cafe_from_request(request)
+    
+    if cafe and purchase_request.cafe != cafe:
+        messages.error(request, 'دسترسی غیرمجاز')
+        return redirect('approve_purchase_requests', cafe_code=cafe.code)
+    
+    if purchase_request.status != 'pending_manager_approval':
+        messages.warning(request, 'این درخواست قبلاً پردازش شده است')
+        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    
+    if request.method == 'POST':
+        rejection_reason = request.POST.get('rejection_reason', '')
+        
+        # رد درخواست
+        purchase_request.status = 'rejected'
+        purchase_request.rejection_reason = rejection_reason
+        purchase_request.manager_confirmed = False
+        purchase_request.manager_confirmed_by = request.user
+        purchase_request.manager_confirmed_at = timezone.now()
+        purchase_request.save()
+        
+        # ثبت لاگ
+        ActivityLog.objects.create(
+            user=request.user,
+            action='reject_request',
+            description=f'رد درخواست خرید #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}. دلیل: {rejection_reason}'
+        )
+        
+        messages.success(request, f'درخواست خرید #{purchase_request.id} رد شد')
+        
+        # برگشت به صفحه قبلی یا approve_purchase_requests
+        next_url = request.POST.get('next', request.GET.get('next'))
+        if next_url:
+            return redirect(next_url)
+        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    
+    return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
 
 
 # ---------------------------------------------------------------------------  
