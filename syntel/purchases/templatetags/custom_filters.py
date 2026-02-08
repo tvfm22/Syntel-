@@ -185,3 +185,13 @@ def cafe_url(context, url_name, *args, **kwargs):
     
     kwargs['cafe_code'] = cafe_code
     return reverse(url_name, args=args, kwargs=kwargs)
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Get item from dictionary by key
+    Usage: {{ my_dict|get_item:key_name }}
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)

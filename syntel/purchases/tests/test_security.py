@@ -133,7 +133,6 @@ class SecurityTests(TestCase):
                 reverse('system_monitoring'),
                 reverse('user_list'),
                 reverse('finance_dashboard'),
-                reverse('approvals_list'),
                 reverse('purchase_requests_list'),
                 reverse('supplier_list'),
                 reverse('product_list'),

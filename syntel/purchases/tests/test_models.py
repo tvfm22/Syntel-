@@ -6,7 +6,7 @@ from purchases.models import (
     Category, Unit, Product, PaymentType, PaymentLocation,
     Supplier, SupplierEvaluation, PurchaseRequest, PurchaseItem,
     PurchaseOrder, PurchaseOrderItem, Invoice, InvoiceItem,
-    InvoiceApproval, Payment, ActivityLog, Notification
+    Payment, ActivityLog, Notification
 )
 
 User = get_user_model()

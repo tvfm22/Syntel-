@@ -235,34 +235,6 @@ class IntegrationTests(TransactionTestCase):
         payments = Payment.objects.filter(invoice=invoice)
         self.assertEqual(payments.count(), 2)
 
-    def test_approval_workflow(self):
-        """Test approval workflow for high-value purchases"""
-        # Create high-value purchase request
-        self.client.login(username='kitchen_user', password='testpass123')
-
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
-            'item_quantity': ['100'],  # High quantity
-            'item_description': ['High-value purchase requiring approval']
-        })
-        self.assertEqual(response.status_code, 302)
-
-        request = PurchaseRequest.objects.filter(user=self.kitchen_user).first()
-        self.assertIsNotNone(request)
-
-        # Request should be pending approval (assuming approval threshold is set)
-        # This depends on business logic implementation
-
-        # Manager reviews and approves
-        self.client.login(username='manager_user', password='testpass123')
-
-        # Assuming there's an approval endpoint
-        response = self.client.post(reverse('approve_request', args=[request.id]), {
-            'approved': 'true',
-            'comments': 'Approved for high-value purchase'
-        })
-        # This would depend on actual implementation
-
     def test_rejection_workflow(self):
         """Test purchase request rejection workflow"""
         # Create purchase request

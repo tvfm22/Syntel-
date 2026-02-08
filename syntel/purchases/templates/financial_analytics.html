@@ -30,6 +30,37 @@
     font-size: 0.9rem;
     color: #6c757d;
 }
+.date-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    background: white;
+    direction: ltr;
+}
+.date-input-group:focus-within {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+.date-input-group input {
+    flex: 1;
+    text-align: center;
+    padding: 0;
+    border: none;
+    font-family: inherit;
+}
+.date-input-group input:focus {
+    outline: none;
+}
+.date-input-group input[name$="_year"] {
+    flex: 1.5;
+}
+.date-input-group .date-separator {
+    color: #ced4da;
+    font-weight: bold;
+    padding: 0 0.25rem;
+}
 </style>
 {% endblock %}
 
@@ -51,16 +82,28 @@
                 <div class="card-body">
                     <!-- Date Range Filter -->
                     <div class="filter-section">
-                        <form method="get" class="row">
+                        <form method="get" class="row" id="analyticsForm">
                             <div class="col-md-4">
-                                <label for="start_date">از تاریخ:</label>
-                                <input type="date" name="start_date" id="start_date" class="form-control"
-                                       value="{{ start_date|date:'Y-m-d' }}">
+                                <label>از تاریخ:</label>
+                                <input type="hidden" name="start_date" id="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                                <div class="date-input-group">
+                                    <input type="number" name="start_year" id="start_year" placeholder="سال" min="1300" max="1500">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="start_month" id="start_month" placeholder="ماه" min="1" max="12">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="start_day" id="start_day" placeholder="روز" min="1" max="31">
+                                </div>
                             </div>
                             <div class="col-md-4">
-                                <label for="end_date">تا تاریخ:</label>
-                                <input type="date" name="end_date" id="end_date" class="form-control"
-                                       value="{{ end_date|date:'Y-m-d' }}">
+                                <label>تا تاریخ:</label>
+                                <input type="hidden" name="end_date" id="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                                <div class="date-input-group">
+                                    <input type="number" name="end_year" id="end_year" placeholder="سال" min="1300" max="1500">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="end_month" id="end_month" placeholder="ماه" min="1" max="12">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="end_day" id="end_day" placeholder="روز" min="1" max="31">
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label>&nbsp;</label><br>
@@ -196,26 +239,94 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Persian datepickers
-    document.querySelectorAll('input[type="date"]').forEach(function(input) {
-        new persianDatepicker(input, {
-            format: 'YYYY/MM/DD',
-            year: 1404,
-            month: 1,
-            day: 1,
-            observer: true,
-            altField: input,
-            altFormat: 'YYYY/MM/DD',
-            calendar: {
-                persian: {
-                    locale: 'fa'
-                }
-            }
-        });
+// تجزیه تاریخ به فیلدهای جداگانه
+function parseDateToFields() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (startDate) {
+        const parts = startDate.split('-');
+        if (parts.length === 3) {
+            document.getElementById('start_year').value = parts[0];
+            document.getElementById('start_month').value = parts[1];
+            document.getElementById('start_day').value = parts[2];
+        }
+    }
+    
+    if (endDate) {
+        const parts = endDate.split('-');
+        if (parts.length === 3) {
+            document.getElementById('end_year').value = parts[0];
+            document.getElementById('end_month').value = parts[1];
+            document.getElementById('end_day').value = parts[2];
+        }
+    }
+}
+
+// ترکیب فیلدهای تاریخ
+function combineDateFields() {
+    const startYear = document.getElementById('start_year').value;
+    const startMonth = document.getElementById('start_month').value;
+    const startDay = document.getElementById('start_day').value;
+    
+    const endYear = document.getElementById('end_year').value;
+    const endMonth = document.getElementById('end_month').value;
+    const endDay = document.getElementById('end_day').value;
+    
+    if (startYear && startMonth && startDay) {
+        document.getElementById('start_date').value = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`;
+    }
+    
+    if (endYear && endMonth && endDay) {
+        document.getElementById('end_date').value = `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}`;
+    }
+}
+
+// Auto-focus
+function setupDateAutoFocus() {
+    const sets = [
+        {year: 'start_year', month: 'start_month', day: 'start_day'},
+        {year: 'end_year', month: 'end_month', day: 'end_day'}
+    ];
+    
+    sets.forEach(set => {
+        const year = document.getElementById(set.year);
+        const month = document.getElementById(set.month);
+        const day = document.getElementById(set.day);
+        
+        if (year) {
+            year.addEventListener('input', function() {
+                if (this.value.length > 4) this.value = this.value.slice(0, 4);
+                if (this.value.length === 4) month.focus();
+            });
+        }
+        
+        if (month) {
+            month.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+                if (this.value.length === 2) day.focus();
+            });
+        }
+        
+        if (day) {
+            day.addEventListener('input', function() {
+                if (this.value.length > 2) this.value = this.value.slice(0, 2);
+            });
+        }
     });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    parseDateToFields();
+    setupDateAutoFocus();
+    
+    const form = document.getElementById('analyticsForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            combineDateFields();
+        });
+    }
 });
 </script>
 {% endblock %}

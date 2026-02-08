@@ -356,27 +356,6 @@ class ViewTests(TestCase):
         self.assertIn('recent_activity', data['data'])
         self.assertIn('health_status', data['data'])
 
-    def test_approvals_list(self):
-        """Test approvals list view"""
-        # Create invoice for approval
-        request = PurchaseRequest.objects.create(user=self.kitchen_user)
-        order = PurchaseOrder.objects.create(
-            request=request,
-            supplier=self.supplier,
-            order_number='ORD-001'
-        )
-        invoice = Invoice.objects.create(
-            order=order,
-            invoice_number='INV-001',
-            total_amount=1000.00,
-            due_date=timezone.now().date() + timezone.timedelta(days=30)
-        )
-
-        self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('approvals_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'approvals_list.html')
-
     def test_finance_dashboard(self):
         """Test finance dashboard view"""
         self.client.login(username='manager_user', password='testpass123')

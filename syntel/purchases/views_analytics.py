@@ -1190,3 +1190,269 @@ def api_product_purchase_history(request):
 		'history': history_data,
 		'chart_data': chart_data
 	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_category_analysis_stats(request):
+	"""API برای دریافت آمار کلی تحلیل دسته‌بندی‌ها"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	# دریافت فیلترها
+	category_id = request.GET.get('category_id')
+	supplier_id = request.GET.get('supplier_id')
+	days = int(request.GET.get('days', 30))
+	
+	# محاسبه بازه زمانی
+	end_date = timezone.now()
+	start_date = end_date - timedelta(days=days)
+	
+	# فیلتر اصلی
+	items_qs = InvoiceItem.objects.filter(
+		invoice__cafe=cafe,
+		invoice__invoice_date__gte=start_date,
+		invoice__invoice_date__lte=end_date,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	)
+	
+	# اعمال فیلترها
+	if category_id:
+		items_qs = items_qs.filter(product__category_id=category_id)
+	if supplier_id:
+		items_qs = items_qs.filter(invoice__supplier_id=supplier_id)
+	
+	# محاسبه آمار
+	total_amount = items_qs.aggregate(
+		total=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField()))
+	)['total']
+	
+	# تعداد دسته‌بندی های منحصر به فرد
+	total_categories = items_qs.values('product__category').distinct().count()
+	
+	# تعداد محصولات منحصر به فرد
+	total_products = items_qs.values('product').distinct().count()
+	
+	# پرهزینه‌ترین دسته
+	top_category = None
+	category_expenses = items_qs.values('product__category__id', 'product__category__name').annotate(
+		total=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField()))
+	).order_by('-total').first()
+	
+	if category_expenses:
+		top_category = {
+			'id': category_expenses['product__category__id'],
+			'name': category_expenses['product__category__name'] or 'نامشخص',
+			'amount': float(category_expenses['total'])
+		}
+	
+	return Response({
+		'total_categories': total_categories,
+		'total_products': total_products,
+		'total_purchases': float(total_amount),
+		'top_category': top_category
+	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_category_analysis_data(request):
+	"""API برای دریافت داده‌های جزئی تحلیل دسته‌بندی‌ها"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	# دریافت فیلترها
+	category_id = request.GET.get('category_id')
+	supplier_id = request.GET.get('supplier_id')
+	days = int(request.GET.get('days', 30))
+	
+	# محاسبه بازه زمانی
+	end_date = timezone.now()
+	start_date = end_date - timedelta(days=days)
+	
+	# فیلتر اصلی
+	items_qs = InvoiceItem.objects.filter(
+		invoice__cafe=cafe,
+		invoice__invoice_date__gte=start_date,
+		invoice__invoice_date__lte=end_date,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	)
+	
+	# اعمال فیلترها
+	if category_id:
+		items_qs = items_qs.filter(product__category_id=category_id)
+	if supplier_id:
+		items_qs = items_qs.filter(invoice__supplier_id=supplier_id)
+	
+	# محاسبه کل مبلغ برای درصد
+	total_amount = items_qs.aggregate(
+		total=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField()))
+	)['total'] or Decimal('0')
+	
+	# گروه‌بندی بر اساس دسته‌بندی
+	categories_data = items_qs.values(
+		'product__category__id',
+		'product__category__name'
+	).annotate(
+		total_amount=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField())),
+		product_count=Sum('quantity'),
+		item_count=Sum(Value(1, output_field=DecimalField()))
+	).order_by('-total_amount')
+	
+	# آماده‌سازی داده‌ها
+	categories_list = []
+	for cat_data in categories_data:
+		cat_total = cat_data['total_amount'] or Decimal('0')
+		product_count = cat_data['product_count'] or Decimal('0')
+		item_count = cat_data['item_count'] or Decimal('1')
+		
+		# محاسبه درصد
+		percentage = 0
+		if total_amount > 0:
+			percentage = float((cat_total / total_amount) * 100)
+		
+		# محاسبه میانگین قیمت
+		avg_price = 0
+		if item_count > 0:
+			avg_price = float(cat_total / item_count)
+		
+		categories_list.append({
+			'id': cat_data['product__category__id'],
+			'name': cat_data['product__category__name'] or 'نامشخص',
+			'total_amount': float(cat_total),
+			'product_count': int(product_count),
+			'percentage': round(percentage, 1),
+			'avg_price': round(avg_price, 0)
+		})
+	
+	return Response({
+		'categories': categories_list
+	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_management_category_expenses(request):
+	"""API برای دریافت هزینه‌های دسته‌بندی‌ها در داشبورد مدیریت"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	# دریافت دوره زمانی
+	period = request.GET.get('period', 'monthly')
+	
+	# محاسبه بازه زمانی
+	end_date = timezone.now()
+	if period == 'monthly':
+		start_date = end_date - timedelta(days=30)
+	elif period == 'quarterly':
+		start_date = end_date - timedelta(days=90)
+	elif period == 'yearly':
+		start_date = end_date - timedelta(days=365)
+	else:
+		start_date = end_date - timedelta(days=30)
+	
+	# فیلتر اصلی
+	items_qs = InvoiceItem.objects.filter(
+		invoice__cafe=cafe,
+		invoice__invoice_date__gte=start_date,
+		invoice__invoice_date__lte=end_date,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	)
+	
+	# گروه‌بندی بر اساس دسته‌بندی
+	categories_data = items_qs.values(
+		'product__category__id',
+		'product__category__name'
+	).annotate(
+		total=Coalesce(Sum('line_total'), Value(0, output_field=DecimalField()))
+	).order_by('-total')[:10]  # فقط 10 دسته برتر
+	
+	# آماده‌سازی داده‌ها
+	categories_list = []
+	for cat_data in categories_data:
+		if cat_data['product__category__name']:  # فقط دسته‌هایی که نام دارند
+			categories_list.append({
+				'id': cat_data['product__category__id'],
+				'name': cat_data['product__category__name'],
+				'total': float(cat_data['total'])
+			})
+	
+	return Response({
+		'categories': categories_list,
+		'period': period
+	})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_management_price_increases(request):
+	"""API برای دریافت محصولات با بالاترین رشد قیمت"""
+	cafe = get_cafe_from_request(request)
+	if not cafe:
+		return Response({'error': 'Cafe not found'}, status=400)
+	
+	# دریافت دوره زمانی
+	period = request.GET.get('period', 'monthly')
+	
+	# محاسبه بازه زمانی
+	end_date = timezone.now()
+	if period == 'monthly':
+		start_date = end_date - timedelta(days=30)
+	elif period == 'quarterly':
+		start_date = end_date - timedelta(days=90)
+	elif period == 'yearly':
+		start_date = end_date - timedelta(days=365)
+	else:
+		start_date = end_date - timedelta(days=30)
+	
+	# دریافت محصولاتی که در این بازه خریداری شده‌اند
+	recent_items = InvoiceItem.objects.filter(
+		invoice__cafe=cafe,
+		invoice__invoice_date__gte=start_date,
+		invoice__invoice_date__lte=end_date,
+		invoice__status__in=INVOICE_STATUS_INCLUDED
+	).select_related('product', 'invoice')
+	
+	# محاسبه تغییرات قیمت برای هر محصول
+	price_changes = {}
+	
+	for item in recent_items:
+		product_id = item.product.id
+		product_name = item.product.name
+		current_price = float(item.unit_price)
+		
+		if product_id not in price_changes:
+			# یافتن آخرین خرید قبلی (قبل از بازه فعلی)
+			previous_item = InvoiceItem.objects.filter(
+				product_id=product_id,
+				invoice__cafe=cafe,
+				invoice__invoice_date__lt=start_date,
+				invoice__status__in=INVOICE_STATUS_INCLUDED
+			).order_by('-invoice__invoice_date').first()
+			
+			if previous_item:
+				old_price = float(previous_item.unit_price)
+				if old_price > 0:
+					increase = ((current_price - old_price) / old_price) * 100
+					if increase > 0:  # فقط افزایش قیمت
+						price_changes[product_id] = {
+							'name': product_name,
+							'old_price': old_price,
+							'new_price': current_price,
+							'increase_percentage': increase
+						}
+	
+	# مرتب‌سازی و انتخاب 5 مورد برتر
+	top_increases = sorted(
+		price_changes.values(),
+		key=lambda x: x['increase_percentage'],
+		reverse=True
+	)[:5]
+	
+	return Response({
+		'products': top_increases,
+		'period': period
+	})

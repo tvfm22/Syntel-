@@ -258,6 +258,49 @@
         border-color: #d1d5db;
     }
 
+    .date-input-group {
+        display: flex;
+        align-items: center;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0.4rem 0.75rem;
+        background: white;
+        direction: ltr;
+        transition: all 0.2s;
+        height: 38px;
+    }
+
+    .date-input-group:focus-within {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .date-input-group input {
+        flex: 1;
+        text-align: center;
+        padding: 0;
+        border: none;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.875rem;
+        background: transparent;
+    }
+
+    .date-input-group input:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .date-input-group input[name$="_year"],
+    .date-input-group input[id$="_year"] {
+        flex: 1.5;
+    }
+
+    .date-input-group .date-separator {
+        color: #d1d5db;
+        font-weight: bold;
+        padding: 0 0.25rem;
+    }
+
     .issue-tag {
         display: inline-flex;
         align-items: center;
@@ -440,13 +483,25 @@
                             </div>
                             <div class="custom-col col-20">
                                 <label for="invoice_date" class="form-label small text-muted mb-1">تاریخ فاکتور</label>
-                                <input type="date" class="form-control form-control-sm" id="invoice_date" name="invoice_date"
-                                       value="1404/01/01" required>
+                                <input type="hidden" id="invoice_date" name="invoice_date" value="1404/01/01">
+                                <div class="date-input-group">
+                                    <input type="number" name="invoice_year" id="invoice_year" placeholder="سال" min="1300" max="1500">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="invoice_month" id="invoice_month" placeholder="ماه" min="1" max="12">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="invoice_day" id="invoice_day" placeholder="روز" min="1" max="31">
+                                </div>
                             </div>
                             <div class="custom-col col-20">
                                 <label for="request_date" class="form-label small text-muted mb-1">تاریخ درخواست</label>
-                                <input type="date" class="form-control form-control-sm" id="request_date" name="request_date"
-                                       value="1404/01/01" required>
+                                <input type="hidden" id="request_date" name="request_date" value="1404/01/01">
+                                <div class="date-input-group">
+                                    <input type="number" name="request_year" id="request_year" placeholder="سال" min="1300" max="1500">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="request_month" id="request_month" placeholder="ماه" min="1" max="12">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="request_day" id="request_day" placeholder="روز" min="1" max="31">
+                                </div>
                             </div>
                             
                             <div class="custom-col col-20">
@@ -628,7 +683,14 @@
                                     
                                         <div>
                                             <label for="payment-date" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">تاریخ پرداخت</label>
-                                            <input type="date" class="form-control form-control-sm" id="payment-date" name="payment_date" value="{{ today|date:'Y-m-d' }}" style="height: 34px; font-size: 0.875rem; width: 200px;">
+                                            <input type="hidden" id="payment-date" name="payment_date" value="{{ today|date:'Y-m-d' }}">
+                                            <div class="date-input-group" style="width: 200px;">
+                                                <input type="number" name="payment_year" id="payment_year" placeholder="سال" min="1300" max="1500">
+                                                <span class="date-separator">/</span>
+                                                <input type="number" name="payment_month" id="payment_month" placeholder="ماه" min="1" max="12">
+                                                <span class="date-separator">/</span>
+                                                <input type="number" name="payment_day" id="payment_day" placeholder="روز" min="1" max="31">
+                                            </div>
                                         </div>
                                         
                                         <div>
@@ -1273,22 +1335,108 @@ document.addEventListener('DOMContentLoaded', function() {
     setupMoneyInputs();
     calculateTotals();
 
-    // Initialize Persian datepickers
-    document.querySelectorAll('input[type="date"]').forEach(function(input) {
-        new persianDatepicker(input, {
-            format: 'YYYY/MM/DD',
-            year: 1404,
-            month: 1,
-            day: 1,
-            observer: true,
-            altField: input,
-            altFormat: 'YYYY/MM/DD',
-            calendar: {
-                persian: {
-                    locale: 'fa'
-                }
+    // تجزیه تاریخ به فیلدهای جداگانه
+    function parseDateToFields() {
+        const invoiceDate = document.getElementById('invoice_date').value;
+        const requestDate = document.getElementById('request_date').value;
+        const paymentDate = document.getElementById('payment-date').value;
+        
+        if (invoiceDate) {
+            const parts = invoiceDate.split(/[-\/]/);
+            if (parts.length === 3) {
+                document.getElementById('invoice_year').value = parts[0];
+                document.getElementById('invoice_month').value = parts[1];
+                document.getElementById('invoice_day').value = parts[2];
+            }
+        }
+        
+        if (requestDate) {
+            const parts = requestDate.split(/[-\/]/);
+            if (parts.length === 3) {
+                document.getElementById('request_year').value = parts[0];
+                document.getElementById('request_month').value = parts[1];
+                document.getElementById('request_day').value = parts[2];
+            }
+        }
+        
+        if (paymentDate) {
+            const parts = paymentDate.split(/[-\/]/);
+            if (parts.length === 3) {
+                document.getElementById('payment_year').value = parts[0];
+                document.getElementById('payment_month').value = parts[1];
+                document.getElementById('payment_day').value = parts[2];
+            }
+        }
+    }
+
+    // ترکیب فیلدهای تاریخ
+    function combineDateFields() {
+        const invoiceYear = document.getElementById('invoice_year').value;
+        const invoiceMonth = document.getElementById('invoice_month').value;
+        const invoiceDay = document.getElementById('invoice_day').value;
+        
+        const requestYear = document.getElementById('request_year').value;
+        const requestMonth = document.getElementById('request_month').value;
+        const requestDay = document.getElementById('request_day').value;
+        
+        const paymentYear = document.getElementById('payment_year').value;
+        const paymentMonth = document.getElementById('payment_month').value;
+        const paymentDay = document.getElementById('payment_day').value;
+        
+        if (invoiceYear && invoiceMonth && invoiceDay) {
+            document.getElementById('invoice_date').value = `${invoiceYear}/${invoiceMonth.padStart(2, '0')}/${invoiceDay.padStart(2, '0')}`;
+        }
+        
+        if (requestYear && requestMonth && requestDay) {
+            document.getElementById('request_date').value = `${requestYear}/${requestMonth.padStart(2, '0')}/${requestDay.padStart(2, '0')}`;
+        }
+        
+        if (paymentYear && paymentMonth && paymentDay) {
+            document.getElementById('payment-date').value = `${paymentYear}-${paymentMonth.padStart(2, '0')}-${paymentDay.padStart(2, '0')}`;
+        }
+    }
+
+    // Auto-focus برای فیلدهای تاریخ
+    function setupDateAutoFocus() {
+        const sets = [
+            {year: 'invoice_year', month: 'invoice_month', day: 'invoice_day'},
+            {year: 'request_year', month: 'request_month', day: 'request_day'},
+            {year: 'payment_year', month: 'payment_month', day: 'payment_day'}
+        ];
+        
+        sets.forEach(set => {
+            const year = document.getElementById(set.year);
+            const month = document.getElementById(set.month);
+            const day = document.getElementById(set.day);
+            
+            if (year) {
+                year.addEventListener('input', function() {
+                    if (this.value.length > 4) this.value = this.value.slice(0, 4);
+                    if (this.value.length === 4) month.focus();
+                });
+            }
+            
+            if (month) {
+                month.addEventListener('input', function() {
+                    if (this.value.length > 2) this.value = this.value.slice(0, 2);
+                    if (this.value.length === 2) day.focus();
+                });
+            }
+            
+            if (day) {
+                day.addEventListener('input', function() {
+                    if (this.value.length > 2) this.value = this.value.slice(0, 2);
+                });
             }
         });
+    }
+    
+    parseDateToFields();
+    setupDateAutoFocus();
+    
+    // ترکیب تاریخ‌ها قبل از ارسال فرم
+    document.querySelector('form').addEventListener('submit', function() {
+        combineDateFields();
     });
 });
 </script>
