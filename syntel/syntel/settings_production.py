@@ -27,17 +27,29 @@ DEBUG = False
 # ALLOWED_HOSTS - Configure for your domain
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# HTTPS Security Settings
-SECURE_SSL_REDIRECT = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# CSRF Settings
+CSRF_TRUSTED_ORIGINS = [
+    'http://45.159.150.199',
+    'http://localhost',
+    'http://127.0.0.1',
+]
 
-# Cookie Security
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# HTTPS Security Settings (Disabled for HTTP deployment)
+# Enable these when you have SSL certificates:
+# SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 31536000  # 1 year
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 0
+
+# Cookie Security (Disabled for HTTP deployment)
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 
 # Additional Security Headers
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -105,7 +117,7 @@ DATABASES = {
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
         'OPTIONS': {
-            'sslmode': 'require',  # Enforce SSL for database connections
+            # 'sslmode': 'require',  # Enforce SSL for database connections (disabled for Docker)
         },
         'CONN_MAX_AGE': 60,  # Connection pooling
     }
@@ -230,10 +242,8 @@ os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 # Cache configuration (Redis recommended for production)
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        # For production, use Redis:
-        # 'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        # 'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://redis:6379/1'),
     }
 }
 
