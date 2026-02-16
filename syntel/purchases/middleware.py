@@ -11,7 +11,7 @@ from django.urls import resolve
 class CustomCsrfViewMiddleware(CsrfViewMiddleware):
     """
     Middleware سفارشی که به جای نمایش خطای 403، 
-    کاربر را به صفحه مناسب هدایت می‌کند
+    کاربر را به صفحه لاگین هدایت می‌کند
     """
     
     def process_view(self, request, callback, callback_args, callback_kwargs):
@@ -23,10 +23,6 @@ class CustomCsrfViewMiddleware(CsrfViewMiddleware):
             # اگر درخواست از صفحه لاگین بود
             if request.path == '/login/':
                 messages.error(request, 'نشست شما منقضی شده است. لطفاً دوباره تلاش کنید.')
-                return redirect('login')
-            # اگر درخواست از صفحه انتخاب کافه بود
-            elif request.path == '/select-cafe/':
-                messages.error(request, 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.')
                 return redirect('login')
         
         return result
@@ -53,7 +49,7 @@ class CafeMiddleware:
     ]
     
     # Role هایی که باید کافه انتخاب کنند
-    CAFE_SELECTION_ROLES = ['manager', 'finance_manager', 'accounting', 'ceo']
+    CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo']
     
     def __init__(self, get_response):
         self.get_response = get_response
@@ -104,11 +100,8 @@ class CafeMiddleware:
             else:
                 # کاربر عادی باید کافه داشته باشه
                 if not request.user.cafe:
-                    # کاربر عادی بدون کافه - logout و هدایت به لاگین
-                    from django.contrib.auth import logout
-                    logout(request)
-                    messages.error(request, "کافه برای کاربر شما تعریف نشده است. با مدیر سیستم تماس بگیرید.")
-                    return redirect('login')
+                    # کاربر عادی بدون کافه - خطا
+                    raise Http404("کافه برای کاربر تعریف نشده است. با مدیر تماس بگیرید.")
                 
                 # تنظیم کافه کاربر
                 request.session['selected_cafe_id'] = request.user.cafe_id

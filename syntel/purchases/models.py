@@ -37,6 +37,7 @@ class User(AbstractUser):
         ('cashier', 'صندوق'),
         ('facilities', 'تاسیسات'),
         ('purchasing', 'خرید'),
+        ('admin', 'ادمین'),
         ('manager', 'مدیر'),
         ('accounting', 'دفتر حسابداری'),
         ('finance_manager', 'مدیر مالی'),
@@ -46,9 +47,9 @@ class User(AbstractUser):
     cafe = models.ForeignKey('Cafe', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name='کافه')
     
     # Roles that can switch between cafes
-    ADMIN_ROLES = ['manager', 'ceo', 'finance_manager']
+    ADMIN_ROLES = ['manager', 'ceo']
     # Roles that see cafe selection on login
-    CAFE_SELECTION_ROLES = ['manager', 'finance_manager', 'accounting', 'ceo']
+    CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo']
 
     def __str__(self) -> str:
         return f"{self.username} ({self.get_role_display()})"
@@ -71,12 +72,10 @@ class User(AbstractUser):
         1. نقش ادمین دارند (manager, finance_manager, accounting, ceo)
         2. و کافه مشخصی ندارند (cafe=None)
         
-        یا نقش finance_manager دارند (همیشه انتخاب می‌کنند)
-        
         صفحه انتخاب کافه می‌بینند. این کاربران "سوپر ادمین" هستند.
         کاربران عادی و کاربران ادمین با کافه مشخص، مستقیم به کافه خودشان می‌روند.
         """
-        return (self.role in self.CAFE_SELECTION_ROLES and self.cafe is None) or self.role == 'finance_manager'
+        return self.role in self.CAFE_SELECTION_ROLES and self.cafe is None
 
 # Requester model
 class Requester(models.Model):
