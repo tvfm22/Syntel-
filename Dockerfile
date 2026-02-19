@@ -28,10 +28,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY syntel/ .
 
 # Create directories for static files and media
-RUN mkdir -p staticfiles media logs
+RUN mkdir -p staticfiles media
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || echo "Static files collection skipped"
+# Don't collect static files during build (saves memory)
+# Run manually after deployment: python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000
