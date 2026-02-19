@@ -18,14 +18,9 @@ keepalive = 2
 max_requests = 1000
 max_requests_jitter = 50
 
-# Logging
-import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOG_DIR, exist_ok=True)
-
-accesslog = os.path.join(LOG_DIR, 'gunicorn-access.log')
-errorlog = os.path.join(LOG_DIR, 'gunicorn-error.log')
+# Logging - Send logs to stdout/stderr for Docker
+accesslog = '-'  # stdout
+errorlog = '-'   # stderr
 loglevel = 'info'
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
 
@@ -34,7 +29,7 @@ proc_name = 'syntel_gunicorn'
 
 # Server mechanics
 daemon = False
-pidfile = os.path.join(LOG_DIR, 'gunicorn.pid')
+pidfile = None  # Don't use pidfile in Docker
 user = None
 group = None
 tmp_upload_dir = None
