@@ -22,13 +22,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'CHANGE_THIS_IN_PRODUCTION')
 
 # DEBUG must be False in production
-DEBUG = False
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 # ALLOWED_HOSTS - Configure for your domain
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
+    'synetl.liara.run',
+    'localhost',
+    '127.0.0.1',
+    '*',  # Remove this in production for better security
+]
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
+    'https://synetl.liara.run',
+    'http://synetl.liara.run',
     'http://45.159.150.199',
     'http://localhost',
     'http://127.0.0.1',
