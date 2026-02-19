@@ -257,19 +257,9 @@
         gap: 0.25rem;
     }
 
-    .status-draft {
-        background-color: var(--warning-bg);
-        color: var(--warning-text);
-    }
-
     .status-sent {
         background-color: var(--info-bg);
         color: var(--info-text);
-    }
-
-    .status-approved {
-        background-color: var(--success-bg);
-        color: var(--success-text);
     }
 
     .status-rejected {
@@ -493,12 +483,61 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* Checkbox Styling */
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary-color);
+        border-radius: 4px;
+    }
+
+    input[type="checkbox"]:hover {
+        transform: scale(1.1);
+    }
+
+    .table-custom th:first-child,
+    .table-custom td:first-child {
+        text-align: center;
+        width: 50px;
+        padding: 1rem 0.5rem;
+    }
+
+    #selectAll {
+        cursor: pointer;
+    }
+
+    .invoice-checkbox {
+        cursor: pointer;
+        margin: 0;
+    }
+
+    /* Issue Badges */
+    .badge-warning {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    .badge-success {
+        background-color: #dcfce7;
+        color: #166534;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        display: inline-block;
+    }
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+    {% csrf_token %}
     <!-- Page Header -->
     <div class="page-header-custom">
         <div class="page-title-wrapper">
@@ -517,6 +556,7 @@
                 <i class="fas fa-shopping-cart"></i>
                 سفارش‌های تکمیل شده
             </a>
+            {% if is_manager %}
             <button id="bulkPaymentBtn" class="action-btn btn-outline-custom text-success" style="display: none;">
                 <i class="fas fa-money-bill-wave"></i>
                 پرداخت گروهی
@@ -525,6 +565,7 @@
                 <i class="fas fa-trash"></i>
                 حذف گروهی
             </button>
+            {% endif %}
         </div>
     </div>
 
@@ -540,30 +581,21 @@
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon yellow">
-                <i class="fas fa-hourglass-half"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="draftCount">-</h3>
-                <p>پیش‌نویس</p>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon green">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="approvedCount">-</h3>
-                <p>تایید شده</p>
-            </div>
-        </div>
-        <div class="stat-card">
             <div class="stat-icon purple">
                 <i class="fas fa-coins"></i>
             </div>
             <div class="stat-info">
                 <h3 id="paidCount">-</h3>
                 <p>پرداخت شده</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="unpaidCount">-</h3>
+                <p>پرداخت نشده</p>
             </div>
         </div>
     </div>
@@ -587,20 +619,11 @@
                         id="search" placeholder="جستجو در شماره صورتحساب یا نام مشتری..." value="{{ search_query }}">
                 </div>
                 <div class="custom-col col-16">
-                    <label for="issue" class="form-label small text-muted mb-1">شماره</label>
+                    <label for="issue" class="form-label small text-muted mb-1">ایرادات</label>
                     <select name="issue" class="form-control form-control-sm" id="issue" onchange="this.form.submit()">
-                        <option value="">همه شماره‌ها</option>
+                        <option value="">همه</option>
                         {% for issue in issues %}
                         <option value="{{ issue.id }}" {% if selected_issue|stringformat:"s" == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="custom-col col-16">
-                    <label for="status" class="form-label small text-muted mb-1">وضعیت</label>
-                    <select name="status" class="form-control form-control-sm" id="status" onchange="this.form.submit()">
-                        <option value="">همه وضعیت‌ها</option>
-                        {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -614,8 +637,12 @@
                     </select>
                 </div>
                 <div class="custom-col col-16">
-                    <label for="date_query" class="form-label small text-muted mb-1">تاریخ</label>
-                    <input type="date" name="date_query" class="form-control form-control-sm" id="date_query" value="{{ date_query }}">
+                    <label for="invoice_date" class="form-label small text-muted mb-1">تاریخ فاکتور</label>
+                    <input type="date" name="invoice_date" class="form-control form-control-sm" id="invoice_date" value="{{ invoice_date_filter }}">
+                </div>
+                <div class="custom-col col-16">
+                    <label for="due_date" class="form-label small text-muted mb-1">تاریخ درخواست</label>
+                    <input type="date" name="due_date" class="form-control form-control-sm" id="due_date" value="{{ due_date_filter }}">
                 </div>
                 <div class="custom-col col-16 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary-custom btn-sm w-100">
@@ -632,14 +659,15 @@
             <table class="table-custom">
                 <thead>
                     <tr>
-                        <th style="width: 40px;">
-                            <input type="checkbox" id="selectAll">
+                        <th style="width: 50px;" title="انتخاب همه">
+                            <input type="checkbox" id="selectAll" title="انتخاب همه">
                         </th>
                         <th>شماره صورتحساب</th>
-                        <th>مشتری</th>
+                        <th>فروشنده</th>
                         <th>تاریخ صدور</th>
+                        <th>تاریخ درخواست</th>
                         <th>مبلغ (ریال)</th>
-                        <th>وضعیت</th>
+                        <th>ایرادات</th>
                         <th>پرداخت</th>
                         <th>عملیات</th>
                     </tr>
@@ -648,10 +676,8 @@
                     {% for invoice in invoices %}
                     <tr data-status="{{ invoice.status }}">
                         <td>
-                            {% if is_manager %}
                             <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}"
-                                data-amount="{{ invoice.remaining_amount }}">
-                            {% endif %}
+                                data-amount="{{ invoice.remaining_amount }}" title="انتخاب فاکتور {{ invoice.invoice_number }}">
                         </td>
                         <td>
                             <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
@@ -659,13 +685,18 @@
                                 {{ invoice.invoice_number }}
                             </a>
                         </td>
-                        <td>{{ invoice.supplier.name|default:"نامشخص" }}</td>
+                        <td>{{ invoice.supplier_name }}</td>
                         <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
+                        <td>{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</td>
                         <td class="font-weight-bold">{{ invoice.total_amount|number_format }}</td>
                         <td>
-                            <span class="badge-custom status-{{ invoice.status }}">
-                                {{ invoice.get_status_display }}
-                            </span>
+                            {% if invoice.issues.exists %}
+                                {% for issue in invoice.issues.all %}
+                                <span class="badge badge-warning" style="font-size: 0.75rem; margin: 2px;">⚠️ {{ issue.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted" style="font-size: 0.85rem;">✓ بدون ایراد</span>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge-custom payment-{{ invoice.payment_status }}">
@@ -677,23 +708,11 @@
                                 <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="مشاهده">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                {% if invoice.status == 'draft' %}
                                 <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="ویرایش">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="ارسال">
-                                    <i class="fas fa-paper-plane"></i>
-                                </a>
-                                {% endif %}
-                                {% if invoice.status == 'sent' %}
-                                <a href="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon text-success"
-                                    title="تایید">
-                                    <i class="fas fa-check"></i>
-                                </a>
-                                {% endif %}
-                                {% if invoice.status == 'approved' and invoice.can_add_payment %}
-                                <a href="{% url 'payment_create_for_invoice' cafe_code=cafe_code invoice_id=invoice.id %}"
-                                    class="action-icon text-info" title="افزودن پرداخت">
+                                {% if invoice.status == 'sent' and user.role == 'manager' %}
+                                <a href="{% url 'payment_create_for_invoice' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon text-info" title="پرداخت">
                                     <i class="fas fa-credit-card"></i>
                                 </a>
                                 {% endif %}
@@ -729,30 +748,50 @@
         <div class="mobile-card">
             <div class="mobile-card-header">
                 <div class="d-flex align-items-center gap-2">
-                    {% if is_manager %}
-                    <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
-                    {% endif %}
+                    <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}" title="انتخاب">
                     <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
                         class="font-weight-bold text-primary text-decoration-none">
                         {{ invoice.invoice_number }}
                     </a>
                 </div>
-                <span class="badge-custom status-{{ invoice.status }}">
-                    {{ invoice.get_status_display }}
-                </span>
+                <div>
+                    {% if invoice.issues.exists %}
+                        {% for issue in invoice.issues.all %}
+                        <span class="badge badge-warning" style="font-size: 0.7rem; margin: 2px;">⚠️ {{ issue.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">✓ بدون ایراد</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="mobile-card-body">
                 <div class="mobile-card-row">
-                    <span class="mobile-card-label">مشتری:</span>
-                    <span>{{ invoice.supplier.name|default:"نامشخص" }}</span>
+                    <span class="mobile-card-label">فروشنده:</span>
+                    <span>{{ invoice.supplier_name }}</span>
                 </div>
                 <div class="mobile-card-row">
-                    <span class="mobile-card-label">تاریخ:</span>
+                    <span class="mobile-card-label">تاریخ صدور:</span>
                     <span>{{ invoice.invoice_date|date:"Y/m/d" }}</span>
+                </div>
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">تاریخ درخواست:</span>
+                    <span>{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</span>
                 </div>
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">مبلغ:</span>
                     <span class="font-weight-bold">{{ invoice.total_amount|number_format }} ریال</span>
+                </div>
+                <div class="mobile-card-row">
+                    <span class="mobile-card-label">ایرادات:</span>
+                    <span>
+                        {% if invoice.issues.exists %}
+                            {% for issue in invoice.issues.all %}
+                            <span class="badge badge-warning" style="font-size: 0.7rem; margin: 2px;">⚠️ {{ issue.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-success" style="font-size: 0.85rem;">✓ بدون ایراد</span>
+                        {% endif %}
+                    </span>
                 </div>
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">وضعیت پرداخت:</span>
@@ -763,9 +802,7 @@
             </div>
             <div class="mobile-card-footer mt-3 pt-2 border-top d-flex justify-content-end gap-2">
                 <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">مشاهده</a>
-                {% if invoice.status == 'draft' %}
                 <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">ویرایش</a>
-                {% endif %}
             </div>
         </div>
         {% empty %}
@@ -816,21 +853,20 @@
     // Update stats counts based on table data
     document.addEventListener('DOMContentLoaded', function () {
         const rows = document.querySelectorAll('tr[data-status]');
-        let draft = 0, approved = 0, paid = 0;
+        let paid = 0, unpaid = 0;
 
         rows.forEach(row => {
-            const status = row.getAttribute('data-status');
-            if (status === 'draft') draft++;
-            if (status === 'approved') approved++;
-
             // Check payment status badge class
             const paymentBadge = row.querySelector('.payment-paid');
-            if (paymentBadge) paid++;
+            if (paymentBadge) {
+                paid++;
+            } else {
+                unpaid++;
+            }
         });
 
-        document.getElementById('draftCount').textContent = draft;
-        document.getElementById('approvedCount').textContent = approved;
         document.getElementById('paidCount').textContent = paid;
+        document.getElementById('unpaidCount').textContent = unpaid;
 
         // Bulk selection logic
         const selectAll = document.getElementById('selectAll');
@@ -855,7 +891,77 @@
             if (bulkDeleteBtn) bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
         }
 
+        // Bulk Payment Handler
+        if (bulkPaymentBtn) {
+            bulkPaymentBtn.addEventListener('click', function() {
+                const checked = Array.from(document.querySelectorAll('.invoice-checkbox:checked'));
+                if (checked.length === 0) {
+                    alert('لطفاً حداقل یک فاکتور را انتخاب کنید.');
+                    return;
+                }
+                
+                const count = checked.length;
+                if (confirm(`آیا مطمئن هستید که می‌خواهید ${count} فاکتور را پرداخت کنید؟`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = "{% url 'invoice_bulk_payment' cafe_code=cafe_code %}";
+                    
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                    
+                    checked.forEach(cb => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'invoice_ids';
+                        input.value = cb.value;
+                        form.appendChild(input);
+                    });
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
 
+        // Bulk Delete Handler
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', function() {
+                const checked = Array.from(document.querySelectorAll('.invoice-checkbox:checked'));
+                if (checked.length === 0) {
+                    alert('لطفاً حداقل یک فاکتور را انتخاب کنید.');
+                    return;
+                }
+                
+                const count = checked.length;
+                if (confirm(`آیا مطمئن هستید که می‌خواهید ${count} فاکتور را حذف کنید؟ این عمل قابل بازگشت نیست.`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = "{% url 'invoice_bulk_delete' cafe_code=cafe_code %}";
+                    
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                    
+                    checked.forEach(cb => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'invoice_ids';
+                        input.value = cb.value;
+                        form.appendChild(input);
+                    });
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
     });
 
     // Initialize Persian datepickers

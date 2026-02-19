@@ -1977,7 +1977,12 @@ def invoices_list(request):
         'selected_issues_str': selected_issue,
     }
     
-    return render(request, "invoice_list.html", context)
+    response = render(request, "invoice_list.html", context)
+    # جلوگیری از cache مرورگر برای نمایش داده‌های به‌روز
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 @custom_login_required
@@ -2333,10 +2338,15 @@ def invoice_create(request, order_id):
 def invoice_detail(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     items = invoice.invoice_items.all()
-    return render(request, "invoice_detail.html", {
+    response = render(request, "invoice_detail.html", {
         "invoice": invoice,
         "items": items
     })
+    # جلوگیری از cache مرورگر برای نمایش داده‌های به‌روز
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 @custom_login_required
@@ -2389,8 +2399,7 @@ def invoice_update(request, invoice_id):
         # حذف کاما از مقادیر پولی
         shipping_cost_str = request.POST.get("shipping_cost", "0").replace(",", "")
         invoice.shipping_cost = _parse_decimal(shipping_cost_str) or 0
-        invoice.payment_terms = request.POST.get("payment_terms", invoice.payment_terms)
-        invoice.notes = request.POST.get("notes", invoice.notes)
+        invoice.notes = request.POST.get("notes", invoice.notes or '')
         
         # بروزرسانی اقلام موجود فاکتور
         for item in invoice.invoice_items.all():
@@ -2457,19 +2466,109 @@ def invoice_update(request, invoice_id):
         invoice.discount_amount = (invoice.subtotal * invoice.discount_rate / 100) if invoice.discount_rate else 0
         invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount + (invoice.shipping_cost or 0)
         
+        # بروزرسانی پرداخت‌های موجود
+        for payment in invoice.payments.all():
+            payment_date_key = f"payment_date_{payment.id}"
+            payment_amount_key = f"payment_amount_{payment.id}"
+            payment_location_key = f"payment_location_{payment.id}"
+            
+            if payment_date_key in request.POST:
+                payment_date_str = request.POST.get(payment_date_key)
+                if payment_date_str:
+                    try:
+                        # پشتیبانی از فرمت شمسی
+                        if '/' in payment_date_str:
+                            parts = payment_date_str.split('/')
+                            if len(parts) == 3:
+                                payment.payment_date = datetime.now().date()
+                        else:
+                            payment.payment_date = datetime.fromisoformat(payment_date_str).date()
+                    except ValueError:
+                        pass
+            
+            if payment_amount_key in request.POST:
+                amount_str = request.POST.get(payment_amount_key, "0").replace(",", "")
+                payment.amount = _parse_decimal(amount_str) or payment.amount
+            
+            if payment_location_key in request.POST:
+                location_id = request.POST.get(payment_location_key)
+                if location_id:
+                    payment.payment_location_id = int(location_id)
+                else:
+                    payment.payment_location_id = None
+            
+            payment.save()
+        
+        # افزودن پرداخت‌های جدید
+        i = 0
+        while f"payment_date_new_{i}" in request.POST:
+            payment_date_str = request.POST.get(f"payment_date_new_{i}")
+            payment_amount_str = request.POST.get(f"payment_amount_new_{i}", "0").replace(",", "")
+            payment_location_id = request.POST.get(f"payment_location_new_{i}")
+            
+            if payment_date_str and payment_amount_str:
+                payment_amount = _parse_decimal(payment_amount_str) or 0
+                
+                if payment_amount > 0:
+                    try:
+                        # Parse payment date
+                        if '/' in payment_date_str:
+                            payment_date = datetime.now().date()
+                        else:
+                            payment_date = datetime.fromisoformat(payment_date_str).date()
+                        
+                        # ایجاد پرداخت جدید
+                        new_payment = Payment.objects.create(
+                            amount=payment_amount,
+                            payment_date=payment_date,
+                            payment_location_id=int(payment_location_id) if payment_location_id else None,
+                            created_by=request.user,
+                            payment_status='completed'
+                        )
+                        # افزودن فاکتور به پرداخت
+                        new_payment.invoices.add(invoice)
+                    except (ValueError, TypeError):
+                        pass
+            i += 1
+        
+        # محاسبه وضعیت پرداخت بر اساس مجموع پرداخت‌ها
+        total_paid = sum(payment.amount for payment in invoice.payments.all())
+        
+        if total_paid == 0:
+            invoice.payment_status = 'unpaid'
+            # اگر فاکتور sent بود و پرداختی نشده، همان وضعیت را حفظ کن
+            if invoice.status in ['partially_paid', 'paid']:
+                invoice.status = 'sent'
+        elif total_paid < invoice.total_amount:
+            invoice.payment_status = 'partial'
+            invoice.status = 'partially_paid'
+        elif total_paid >= invoice.total_amount:
+            invoice.payment_status = 'paid' if total_paid == invoice.total_amount else 'overpaid'
+            invoice.status = 'paid'
+        
+        # بررسی سررسید برای تنظیم وضعیت overdue
+        if invoice.due_date and invoice.due_date < datetime.now().date():
+            if invoice.payment_status in ['unpaid', 'partial']:
+                invoice.status = 'overdue'
+        
         # ثبت کاربری که فاکتور را ویرایش کرده
         invoice.updated_by = request.user
         invoice.save()
         messages.success(request, "فاکتور با موفقیت بروزرسانی شد.")
-        return redirect("invoice_detail", invoice_id=invoice.id)
+        return redirect("invoice_detail", cafe_code=cafe.code if cafe else 'local', invoice_id=invoice.id)
     
     # GET request - نمایش فرم با داده‌های موجود
     items = invoice.invoice_items.all()
+    payment_locations = PaymentLocation.objects.all()
+    if cafe:
+        payment_locations = payment_locations.filter(cafe=cafe)
+    
     return render(request, "invoice_form.html", {
         "invoice": invoice,
         "order": order,
         "items": items,
         "categories": categories,
+        "payment_locations": payment_locations,
     })
 
 
@@ -2552,6 +2651,43 @@ def invoice_delete(request, invoice_id):
         invoice.delete()
         return redirect("invoices_list")
     return render(request, "invoice_confirm_delete.html", {"invoice": invoice})
+
+
+@custom_login_required
+@role_required(["manager", "finance_manager"])
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager"])
+def invoice_bulk_payment(request):
+    """پرداخت دسته‌جمعی فاکتورها"""
+    if request.method == 'POST':
+        invoice_ids = request.POST.getlist('invoice_ids')
+        if not invoice_ids:
+            messages.warning(request, "هیچ فاکتوری برای پرداخت انتخاب نشده است.")
+            return redirect('invoices_list')
+
+        invoices = Invoice.objects.filter(id__in=invoice_ids)
+        count = invoices.count()
+
+        if count > 0:
+            # ایجاد یک پرداخت برای همه فاکتورهای انتخاب شده
+            total_amount = sum(invoice.total_amount or 0 for invoice in invoices)
+            
+            payment = Payment.objects.create(
+                amount=total_amount,
+                payment_date=timezone.now().date(),
+                payment_status='completed',
+                created_by=request.user,
+                notes=f"پرداخت دسته‌جمعی برای {count} فاکتور"
+            )
+            
+            # اضافه کردن فاکتورها به پرداخت
+            payment.invoices.set(invoices)
+            
+            messages.success(request, f"پرداخت {count} فاکتور با موفقیت ثبت شد.")
+        else:
+            messages.warning(request, "فاکتورهای انتخاب شده یافت نشدند.")
+
+    return redirect('invoices_list')
 
 
 @custom_login_required
