@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'purchases',
 ]
 
@@ -85,10 +86,12 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'purchases.middleware.CustomCsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'purchases.middleware.CafeMiddleware',
+    'purchases.middleware.CafeContextMiddleware',
 ]
 
 ROOT_URLCONF = 'syntel.urls'
@@ -96,7 +99,7 @@ ROOT_URLCONF = 'syntel.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'frontend' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -104,6 +107,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'purchases.context_processors.cafe_context',
             ],
         },
     },
@@ -167,8 +171,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # INTERNATIONALIZATION
 # ====================
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'fa-ir'
+TIME_ZONE = 'Asia/Tehran'
 USE_I18N = True
 USE_TZ = True
 
@@ -177,14 +181,19 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.environ.get('STATIC_ROOT', str(BASE_DIR / 'staticfiles'))
+STATICFILES_DIRS = [
+    BASE_DIR / 'frontend' / 'static',
+]
 
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media'))
 
-# STATICFILES_DIRS = [
-#     BASE_DIR / 'static',
-# ]
+# AUTHENTICATION SETTINGS
+# =======================
+
+LOGIN_URL = '/login/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 # DEFAULT AUTO FIELD
 # ==================
