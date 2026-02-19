@@ -115,20 +115,33 @@ WSGI_APPLICATION = 'syntel.wsgi.application'
 # ======================
 
 # Production database configuration
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'syntel_prod'),
-        'USER': os.environ.get('DB_USER', 'syntel_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'OPTIONS': {
-            # 'sslmode': 'require',  # Enforce SSL for database connections (disabled for Docker)
-        },
-        'CONN_MAX_AGE': 60,  # Connection pooling
+# Falls back to SQLite if PostgreSQL credentials are not provided
+if os.environ.get('DB_HOST'):
+    # PostgreSQL Database (Production)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'syntel_prod'),
+            'USER': os.environ.get('DB_USER', 'syntel_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {
+                # 'sslmode': 'require',  # Enforce SSL for database connections (disabled for Docker)
+            },
+            'CONN_MAX_AGE': 60,  # Connection pooling
+        }
     }
-}
+else:
+    # SQLite Database (Fallback)
+    # Use environment variable for database path (writable location)
+    db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'db.sqlite3'))
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': db_path,
+        }
+    }
 
 # PASSWORD VALIDATION
 # ===================
@@ -163,11 +176,11 @@ USE_TZ = True
 # ==========================
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.environ.get('STATIC_ROOT', str(BASE_DIR / 'staticfiles'))
 
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media'))
 
 # STATICFILES_DIRS = [
 #     BASE_DIR / 'static',
