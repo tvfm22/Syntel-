@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import connection
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 import redis
 import os
 from rest_framework import permissions
@@ -37,13 +39,19 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 )
 
+@csrf_exempt
+@require_http_methods(["GET", "HEAD"])
 def health_check(request):
-    """Health check endpoint for monitoring and load balancers."""
+    """Simple health check endpoint - always returns 200 OK."""
+    return HttpResponse("OK", status=200)
+
+@csrf_exempt  
+@require_http_methods(["GET"])
+def health_check_detailed(request):
+    """Detailed health check endpoint for monitoring."""
     health_status = {
         'status': 'healthy',
         'database': 'ok',
-        'redis': 'ok',
-        'timestamp': None
     }
 
     # Check database connection
@@ -54,16 +62,6 @@ def health_check(request):
         health_status['database'] = f'error: {str(e)}'
         health_status['status'] = 'unhealthy'
 
-    # Check Redis connection if configured
-    redis_url = os.getenv('REDIS_URL')
-    if redis_url:
-        try:
-            r = redis.from_url(redis_url)
-            r.ping()
-        except Exception as e:
-            health_status['redis'] = f'error: {str(e)}'
-            health_status['status'] = 'unhealthy'
-
     # Set overall status
     if health_status['status'] == 'unhealthy':
         return JsonResponse(health_status, status=503)
@@ -73,6 +71,7 @@ def health_check(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', health_check, name='health_check'),
+    path('health/detailed/', health_check_detailed, name='health_check_detailed'),
     path('', include('purchases.urls')),
     # API Documentation
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
