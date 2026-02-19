@@ -31,18 +31,21 @@ COPY syntel/ .
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
 # Create directories for static files and media
 RUN mkdir -p staticfiles media
 
 # Don't collect static files during build (saves memory)
-# Run manually after deployment: python manage.py collectstatic --noinput
+# Will be done in entrypoint.sh
 
 # Expose port
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ || exit 1
+    CMD curl -f http://localhost:8000/ || exit 1
 
-# Run gunicorn
-CMD ["gunicorn", "--config", "gunicorn_config.py", "syntel.wsgi:application"]
+# Use entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]
