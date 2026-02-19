@@ -27,6 +27,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire syntel directory
 COPY syntel/ .
 
+# Remove all Python cache files to ensure fresh start
+RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
 # Create directories for static files and media
 RUN mkdir -p staticfiles media
 
