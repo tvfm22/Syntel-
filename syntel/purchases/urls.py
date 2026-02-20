@@ -109,6 +109,7 @@ cafe_urlpatterns = [
     path('invoices/', cv(views.invoices_list), name='invoices_list'),
     path('all-invoices/', cv(views.all_invoices_list), name='all_invoices_list'),
     path('invoices/bulk-delete/', cv(views.invoice_bulk_delete), name='invoice_bulk_delete'),
+    path('invoices/bulk-payment/', cv(views.invoice_bulk_payment), name='invoice_bulk_payment'),
     path('invoices/register/', cv(views.invoice_register), name='invoice_register'),
     path('invoices/search-products/', cv(views.search_supplier_products), name='search_supplier_products'),
     path('api/products/autocomplete/', cv(views.search_products_autocomplete), name='products_autocomplete'),
