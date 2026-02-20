@@ -2005,6 +2005,7 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
 
     # Handle single issue selection
     selected_issue = request.GET.get('issue', '').strip()
+    has_issues = request.GET.get('has_issues', '').strip()
 
     # Base queryset - ALL invoices (no type filtering)
     cafe = get_cafe_from_request(request)
@@ -2033,6 +2034,9 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
             invoices = invoices.filter(issues__id=issue_id).distinct()
         except ValueError:
             pass
+
+    if has_issues == 'yes':
+        invoices = invoices.filter(issues__isnull=False).distinct()
 
     # Apply date filter
     if date_query and date_search_type:
@@ -2075,6 +2079,7 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
         'issues': issues,
         'selected_issue': selected_issue,
         'selected_issues_str': selected_issue,
+        'has_issues': has_issues,
         'page_title': 'لیست تمامی فاکتورها',
     }
 
