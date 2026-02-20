@@ -26,7 +26,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 # ALLOWED_HOSTS - Configure for your domain
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
-    'synetl.liara.run',
+    'syntel.liara.run',
     'localhost',
     '127.0.0.1',
     '*',  # Remove this in production for better security
@@ -34,8 +34,8 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.envi
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
-    'https://synetl.liara.run',
-    'http://synetl.liara.run',
+    'https://syntel.liara.run',
+    'http://syntel.liara.run',
     'http://45.159.150.199',
     'http://localhost',
     'http://127.0.0.1',
