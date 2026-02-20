@@ -266,8 +266,10 @@ CACHES = {
 }
 
 # Session configuration
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
-SESSION_COOKIE_AGE = 3600  # 1 hour
+# Use db backend (not cached_db) to avoid multi-worker session sharing issues
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_SAVE_EVERY_REQUEST = True
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
