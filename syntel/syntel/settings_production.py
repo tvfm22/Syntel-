@@ -50,6 +50,10 @@ CSRF_TRUSTED_ORIGINS = [
 SECURE_SSL_REDIRECT = False
 SECURE_HSTS_SECONDS = 0
 
+# Proxy / Liara settings - Trust X-Forwarded-Proto header from Liara's reverse proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 # Cookie Security (Disabled for HTTP deployment)
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True

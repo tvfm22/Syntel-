@@ -15,9 +15,11 @@ if [ -f "/app/db.sqlite3" ]; then
 else
     echo "No database file found, will create new one..."
     export DATABASE_PATH="/tmp/db/db.sqlite3"
-    # Run migrations to create database
-    python manage.py migrate --noinput || echo "Migration failed, continuing..."
 fi
+
+# Always run migrations to ensure DB schema is up to date
+echo "Running migrations..."
+python manage.py migrate --noinput || echo "Migration failed, continuing..."
 
 # Create static files directory
 mkdir -p /tmp/staticfiles /tmp/media

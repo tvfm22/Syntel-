@@ -16,6 +16,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, F
 from django.db import models
@@ -166,6 +167,7 @@ def _parse_decimal(value):
 # ---------------------------------------------------------------------------
 
 
+@csrf_exempt
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         username = request.POST.get("username", "")
@@ -2233,13 +2235,13 @@ def invoice_register(request):
             if not payment_amount or payment_amount <= 0:
                 payment_amount = total_amount  # اگر مبلغ وارد نشده، کل مبلغ فاکتور
             
-            payment_type_id = request.POST.get('payment_type_id')
+            payment_location_id = request.POST.get('payment_location_id')
             payment_date_str = request.POST.get('payment_date')
             payment_notes = request.POST.get('payment_notes', '')
             
-            if payment_type_id:
+            if payment_location_id:
                 try:
-                    payment_type = PaymentType.objects.get(id=payment_type_id)
+                    payment_location = PaymentLocation.objects.get(id=payment_location_id)
                     
                     # پردازش تاریخ پرداخت
                     try:
@@ -2251,7 +2253,7 @@ def invoice_register(request):
                     payment = Payment.objects.create(
                         invoice=invoice,
                         amount=payment_amount,
-                        payment_type=payment_type,
+                        payment_location=payment_location,
                         payment_date=payment_date,
                         notes=payment_notes,
                         created_by=request.user
@@ -2268,8 +2270,8 @@ def invoice_register(request):
                     invoice.save()
                     
                     messages.success(request, f"پرداخت به مبلغ {payment_amount:,} ریال ثبت شد.")
-                except PaymentType.DoesNotExist:
-                    messages.warning(request, "نوع پرداخت معتبر نیست.")
+                except PaymentLocation.DoesNotExist:
+                    messages.warning(request, "محل پرداخت معتبر نیست.")
         
         messages.success(request, f"فاکتور {invoice.invoice_number} با موفقیت ایجاد شد.")
         return redirect("invoice_detail", invoice_id=invoice.id)
@@ -2294,6 +2296,7 @@ def invoice_register(request):
         'requesters': Requester.objects.all(),
         'issues': InvoiceIssue.objects.all(),
         'payment_types': PaymentType.objects.filter(is_active=True),
+        'payment_locations': PaymentLocation.objects.filter(is_active=True, cafe=cafe) if cafe else PaymentLocation.objects.filter(is_active=True),
         'today': timezone.now().date(),
         'manual_invoice': True,
         'default_supplier': default_supplier,
@@ -2654,8 +2657,6 @@ def invoice_delete(request, invoice_id):
 
 
 @custom_login_required
-@role_required(["manager", "finance_manager"])
-@custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
 def invoice_bulk_payment(request):
     """پرداخت دسته‌جمعی فاکتورها"""
@@ -2726,8 +2727,13 @@ def completed_orders_for_invoices(request):
 @custom_login_required
 @role_required(["manager", "purchasing", "finance_manager"])
 def payment_list(request):
+    cafe = get_cafe_from_request(request)
     payments = Payment.objects.select_related("invoice", "payment_location").all()
+    if cafe:
+        payments = payments.filter(invoice__cafe=cafe)
     methods = PaymentLocation.objects.all()
+    if cafe:
+        methods = methods.filter(cafe=cafe)
     
     # Filter by date range
     date_from = request.GET.get('date_from', '')
@@ -2795,6 +2801,8 @@ def payment_create(request, invoice_id=None):
     if cafe:
         invoices = invoices.filter(cafe=cafe)
     methods = PaymentLocation.objects.all()
+    if cafe:
+        methods = methods.filter(cafe=cafe)
     target_invoice = Invoice.objects.filter(id=invoice_id).first() if invoice_id else None
 
     # Handle bulk payment
@@ -2839,7 +2847,7 @@ def payment_create(request, invoice_id=None):
                             notified_users.add(user)
                 
                 messages.success(request, f"پرداخت گروهی {amount_val} برای {selected_invoices.count()} فاکتور ثبت شد.")
-                return redirect("payment_list")
+                return redirect("payment_list", cafe_code=cafe.code if cafe else 'local')
         
         # Single payment (existing logic)
         invoice = target_invoice or Invoice.objects.filter(id=request.POST.get("invoice")).first()
@@ -2859,7 +2867,7 @@ def payment_create(request, invoice_id=None):
                 message=f"Payment for {invoice.invoice_number}",
                 notification_type="success",
             )
-            return redirect("payment_list")
+            return redirect("payment_list", cafe_code=cafe.code if cafe else 'local')
 
     return render(
         request,
@@ -2867,7 +2875,7 @@ def payment_create(request, invoice_id=None):
         {
             "invoice": target_invoice,
             "invoices": invoices,
-            "payment_methods": methods,
+            "payment_locations": methods,
             "selected_invoices": selected_invoices,
             "default_amount": default_amount,
         },
@@ -2884,12 +2892,16 @@ def payment_detail(request, payment_id):
 @custom_login_required
 @role_required(["manager", "finance_manager"])
 def payment_update(request, payment_id):
+    cafe = get_cafe_from_request(request)
     payment = get_object_or_404(Payment, id=payment_id)
     if request.method == "POST":
         payment.notes = request.POST.get("notes", payment.notes)
         payment.save()
         return redirect("payment_detail", payment_id=payment.id)
-    return render(request, "payment_form.html", {"payment": payment})
+    methods = PaymentLocation.objects.all()
+    if cafe:
+        methods = methods.filter(cafe=cafe)
+    return render(request, "payment_form.html", {"payment": payment, "payment_locations": methods})
 
 
 @custom_login_required
@@ -2897,26 +2909,43 @@ def payment_update(request, payment_id):
 def payment_delete(request, payment_id):
     payment = get_object_or_404(Payment, id=payment_id)
     if request.method == "POST":
+        cafe = get_cafe_from_request(request)
         payment.delete()
-        return redirect("payment_list")
+        return redirect("payment_list", cafe_code=cafe.code if cafe else 'local')
     return render(request, "payment_confirm_delete.html", {"payment": payment})
 
 
 @custom_login_required
 @role_required(["manager", "finance_manager"])
 def payment_location_list(request):
+    cafe = get_cafe_from_request(request)
     payment_methods = PaymentLocation.objects.all()
+    if cafe:
+        payment_methods = payment_methods.filter(cafe=cafe)
     return render(request, "payment_method_list.html", {"payment_methods": payment_methods})
 
 
 @custom_login_required
 @role_required(["manager", "finance_manager"])
 def payment_location_create(request):
+    cafe = get_cafe_from_request(request)
     if request.method == "POST":
         name = request.POST.get("name")
         if name:
-            PaymentLocation.objects.create(name=name)
-            return redirect("payment_location_list")
+            PaymentLocation.objects.create(
+                name=name,
+                description=request.POST.get("description", ""),
+                is_active=request.POST.get("is_active") == "on",
+                requires_reference=request.POST.get("requires_reference") == "on",
+                requires_bank_info=request.POST.get("requires_bank_info") == "on",
+                requires_check_info=request.POST.get("requires_check_info") == "on",
+                requires_card_info=request.POST.get("requires_card_info") == "on",
+                icon_class=request.POST.get("icon_class", ""),
+                display_order=int(request.POST.get("display_order") or 0),
+                cafe=cafe,
+            )
+            cafe_code = cafe.code if cafe else 'local'
+            return redirect("payment_location_list", cafe_code=cafe_code)
     return render(request, "payment_method_form.html")
 
 
@@ -2924,10 +2953,20 @@ def payment_location_create(request):
 @role_required(["manager", "finance_manager"])
 def payment_location_update(request, method_id):
     payment_method = get_object_or_404(PaymentLocation, id=method_id)
+    cafe = get_cafe_from_request(request)
     if request.method == "POST":
         payment_method.name = request.POST.get("name", payment_method.name)
+        payment_method.description = request.POST.get("description", payment_method.description)
+        payment_method.is_active = request.POST.get("is_active") == "on"
+        payment_method.requires_reference = request.POST.get("requires_reference") == "on"
+        payment_method.requires_bank_info = request.POST.get("requires_bank_info") == "on"
+        payment_method.requires_check_info = request.POST.get("requires_check_info") == "on"
+        payment_method.requires_card_info = request.POST.get("requires_card_info") == "on"
+        payment_method.icon_class = request.POST.get("icon_class", payment_method.icon_class)
+        payment_method.display_order = int(request.POST.get("display_order") or payment_method.display_order)
         payment_method.save()
-        return redirect("payment_location_list")
+        cafe_code = cafe.code if cafe else 'local'
+        return redirect("payment_location_list", cafe_code=cafe_code)
     return render(request, "payment_method_form.html", {"payment_method": payment_method})
 
 
