@@ -33,16 +33,13 @@ def iso_date(value):
 @register.filter
 def number_format(value):
     """
-    Format a number with Persian/Arabic numerals and thousand separators
+    Format a number with thousand separators (comma) and Persian numerals
     """
     if value is None:
         return '0'
 
     try:
-        # Format the number with thousand separators
-        formatted = format(value, '.', 0)
-
-        # Convert Western Arabic numerals to Persian/Arabic numerals
+        formatted = "{:,.0f}".format(float(value))
         persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
         return formatted.translate(persian_digits)
     except (ValueError, TypeError):

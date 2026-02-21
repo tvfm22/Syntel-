@@ -1,535 +1,142 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}لیست پرداخت‌ها{% endblock %}
 
 {% block extra_css %}
 <style>
-    :root {
-        --primary-color: #4f46e5;
-        --primary-hover: #4338ca;
-        --success-color: #10b981;
-        --danger-color: #ef4444;
-        --warning-color: #f59e0b;
-        --secondary-color: #6b7280;
-        --border-color: #e5e7eb;
-        --bg-color: #f9fafb;
-        --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    body { background: #f5f5f5; font-family: 'Vazir', sans-serif; }
+
+    .p-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+    /* header */
+    .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem; }
+    .p-header h1 { font-size: 1.3rem; font-weight: 700; color: #111; margin: 0; }
+    .p-header p  { font-size: .85rem; color: #888; margin: .2rem 0 0; }
+    .p-actions   { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border-radius: 7px; font-size: .875rem; font-weight: 500; text-decoration: none; border: none; cursor: pointer; transition: .15s; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover { background: #4338ca; color: #fff; }
+    .btn-ghost   { background: #fff; color: #444; border: 1px solid #e0e0e0; }
+    .btn-ghost:hover { background: #f3f3f3; color: #222; }
+
+    /* summary */
+    .p-summary { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .p-sum-item { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: .9rem 1.25rem; flex: 1; min-width: 160px; }
+    .p-sum-item .lbl { font-size: .78rem; color: #888; margin: 0 0 .25rem; }
+    .p-sum-item .val { font-size: 1.1rem; font-weight: 700; color: #111; margin: 0; }
+
+    /* filter */
+    .p-filter { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem; }
+    .p-filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
+    .p-filter label { font-size: .78rem; color: #666; display: block; margin-bottom: .3rem; }
+    .p-filter input, .p-filter select {
+        width: 100%; padding: .45rem .75rem; border: 1px solid #e0e0e0; border-radius: 7px;
+        font-size: .875rem; font-family: inherit; background: #fafafa; transition: .15s;
     }
-    
-    body {
-        background-color: var(--bg-color);
-    }
-    
-    .page-header {
-        background: white;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1rem 0;
-        margin-bottom: 1.5rem;
-    }
-    
-    .page-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin: 0;
-    }
-    
-    .page-subtitle {
-        color: var(--secondary-color);
-        font-size: 0.875rem;
-        margin: 0;
-    }
-    
-    .minimal-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: var(--card-shadow);
-        margin-bottom: 1rem;
-    }
-    
-    .card-header-custom {
-        padding: 0.875rem 1.25rem;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    
-    .card-header-custom h5 {
-        margin: 0;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: #374151;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .card-header-custom i {
-        color: var(--primary-color);
-        font-size: 1rem;
-    }
-    
-    .card-body-custom {
-        padding: 1.25rem;
-    }
-    
-    /* Filter Section */
-    .filter-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 8px;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        color: white;
-    }
-    
-    .filter-title {
-        font-size: 0.9375rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-end;
-    }
-    
-    .filter-group {
-        flex: 1;
-        min-width: 180px;
-    }
-    
-    .filter-label {
-        font-size: 0.75rem;
-        font-weight: 500;
-        margin-bottom: 0.375rem;
-        display: block;
-        opacity: 0.9;
-    }
-    
-    .filter-input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 6px;
-        background: rgba(255,255,255,0.15);
-        color: white;
-        font-size: 0.875rem;
-        transition: all 0.15s ease;
-    }
-    
-    .filter-input::placeholder {
-        color: rgba(255,255,255,0.6);
-    }
-    
-    .filter-input:focus {
-        outline: none;
-        background: rgba(255,255,255,0.25);
-        border-color: rgba(255,255,255,0.4);
-    }
-    
-    .filter-select {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 6px;
-        background: rgba(255,255,255,0.15);
-        color: white;
-        font-size: 0.875rem;
-        cursor: pointer;
-    }
-    
-    .filter-select option {
-        background: #4f46e5;
-        color: white;
-    }
-    
-    .filter-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-    
-    .btn-filter {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        transition: all 0.15s ease;
-    }
-    
-    .btn-filter-apply {
-        background: white;
-        color: var(--primary-color);
-    }
-    
-    .btn-filter-apply:hover {
-        background: #f3f4f6;
-    }
-    
-    .btn-filter-clear {
-        background: rgba(255,255,255,0.2);
-        color: white;
-    }
-    
-    .btn-filter-clear:hover {
-        background: rgba(255,255,255,0.3);
-    }
-    
-    /* Summary Card */
-    .summary-card {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border-radius: 8px;
-        padding: 1.25rem;
-        color: white;
-        margin-bottom: 1.5rem;
-    }
-    
-    .summary-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .summary-info h3 {
-        font-size: 0.875rem;
-        font-weight: 500;
-        margin: 0 0 0.25rem 0;
-        opacity: 0.9;
-    }
-    
-    .summary-amount {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    
-    .summary-count {
-        font-size: 0.8125rem;
-        opacity: 0.85;
-        margin-top: 0.25rem;
-    }
-    
-    .summary-icon {
-        background: rgba(255,255,255,0.2);
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .summary-icon i {
-        font-size: 1.5rem;
-    }
-    
-    /* Table Styles */
-    .table-minimal {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    
-    .table-minimal thead th {
-        background: #f8fafc;
-        border-bottom: 2px solid var(--border-color);
-        padding: 0.75rem 0.75rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: #64748b;
-        text-align: right;
-    }
-    
-    .table-minimal tbody td {
-        padding: 0.875rem 0.75rem;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        font-size: 0.875rem;
-    }
-    
-    .table-minimal tbody tr:hover {
-        background: #fafbfc;
-    }
-    
-    /* Buttons */
-    .btn-primary-custom {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        transition: background 0.15s ease;
-        text-decoration: none;
-    }
-    
-    .btn-primary-custom:hover {
-        background: var(--primary-hover);
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-secondary-custom {
-        background: white;
-        color: var(--secondary-color);
-        border: 1px solid var(--border-color);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        transition: all 0.15s ease;
-        text-decoration: none;
-    }
-    
-    .btn-secondary-custom:hover {
-        background: var(--bg-color);
-        color: #374151;
-        text-decoration: none;
-    }
-    
-    .btn-icon {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-    
-    .btn-icon-view {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-    
-    .btn-icon-view:hover {
-        background: #dbeafe;
-    }
-    
-    .btn-icon-edit {
-        background: #fef3c7;
-        color: #d97706;
-    }
-    
-    .btn-icon-edit:hover {
-        background: #fde68a;
-    }
-    
-    .btn-icon-delete {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    
-    .btn-icon-delete:hover {
-        background: #fecaca;
-    }
-    
-    /* Badges */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.625rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-    
-    .status-completed {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .status-pending {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .status-failed {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .status-cancelled {
-        background: #f3f4f6;
-        color: #4b5563;
-    }
-    
-    .location-badge {
-        background: #ede9fe;
-        color: #6d28d9;
-        padding: 0.25rem 0.625rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-    
-    /* Invoice Link */
-    .invoice-link {
-        color: var(--primary-color);
-        text-decoration: none;
-        font-weight: 500;
-    }
-    
-    .invoice-link:hover {
-        text-decoration: underline;
-    }
-    
-    /* Amount */
-    .amount-cell {
-        font-weight: 600;
-        color: #1f2937;
-    }
-    
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: var(--secondary-color);
-    }
-    
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-    
-    .empty-state h4 {
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
-        color: #374151;
-    }
-    
-    .empty-state p {
-        font-size: 0.875rem;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .filter-group {
-            min-width: 100%;
-        }
-        
-        .summary-amount {
-            font-size: 1.5rem;
-        }
+    .p-filter input:focus, .p-filter select:focus { outline: none; border-color: #4f46e5; background: #fff; }
+    .p-filter-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .75rem; }
+
+    /* table */
+    .p-table-wrap { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; overflow: hidden; }
+    .p-table-head { padding: .9rem 1.25rem; border-bottom: 1px solid #efefef; font-weight: 600; font-size: .9rem; color: #333; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    thead th { background: #fafafa; padding: .75rem 1rem; text-align: right; font-weight: 600; color: #555; border-bottom: 1px solid #efefef; white-space: nowrap; }
+    tbody td { padding: .75rem 1rem; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+
+    a.inv-link { color: #4f46e5; text-decoration: none; font-weight: 500; }
+    a.inv-link:hover { text-decoration: underline; }
+
+    .badge { display: inline-block; padding: .2rem .65rem; border-radius: 20px; font-size: .75rem; font-weight: 500; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-gray   { background: #f3f4f6; color: #4b5563; }
+    .badge-blue   { background: #e0e7ff; color: #3730a3; }
+
+    .act-btns { display: flex; gap: .35rem; justify-content: flex-start; }
+    .act-btn  { width: 30px; height: 30px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; text-decoration: none; transition: .15s; background: transparent; }
+    .act-btn:hover { transform: scale(1.15); opacity: .75; }
+    .act-view { }
+    .act-edit { }
+    .act-del  { }
+
+    .empty { text-align: center; padding: 3rem 1rem; color: #aaa; }
+    .empty .ico { font-size: 2.5rem; margin-bottom: .5rem; }
+    .empty p { font-size: .9rem; margin: 0; }
+
+    @media (max-width: 640px) {
+        .p-filter-row { grid-template-columns: 1fr; }
+        table { font-size: .78rem; }
+        thead th, tbody td { padding: .5rem .6rem; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-money-bill-wave ml-2"></i>
-                    مدیریت پرداخت‌ها
-                </h1>
-                <p class="page-subtitle">مشاهده و مدیریت تمامی پرداخت‌ها</p>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="btn-primary-custom">
-                    <i class="fas fa-plus"></i> پرداخت جدید
-                </a>
-                <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="btn-secondary-custom">
-                    <i class="fas fa-cogs"></i> محل‌های پرداخت
-                </a>
-            </div>
+<div class="p-wrap">
+
+    <!-- Header -->
+    <div class="p-header">
+        <div>
+            <h1>💳 مدیریت پرداخت‌ها</h1>
+            <p>مشاهده و مدیریت تمامی پرداخت‌های ثبت‌شده</p>
+        </div>
+        <div class="p-actions">
+            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="btn btn-primary">➕ پرداخت جدید</a>
+            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="btn btn-ghost">⚙️ محل‌های پرداخت</a>
         </div>
     </div>
-</div>
 
-<div class="container-fluid">
-    <!-- Filter Section -->
-    <form method="get" id="filter-form">
-        <div class="filter-section">
-            <div class="filter-title">
-                <i class="fas fa-filter"></i>
-                فیلتر پرداخت‌ها
-            </div>
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">از تاریخ</label>
-                    <input type="text" name="date_from" class="filter-input date-input" 
-                           value="{{ date_from }}" placeholder="1404/01/01">
+    <!-- Summary -->
+    <div class="p-summary">
+        <div class="p-sum-item">
+            <p class="lbl">تعداد پرداخت‌ها</p>
+            <p class="val">{{ payments|length }}</p>
+        </div>
+        <div class="p-sum-item">
+            <p class="lbl">مجموع مبلغ</p>
+            <p class="val">{{ total_amount|number_format }} ریال</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="p-filter">
+        <form method="get">
+            <div class="p-filter-row">
+                <div>
+                    <label>از تاریخ</label>
+                    <input type="date" name="date_from" value="{{ date_from }}">
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">تا تاریخ</label>
-                    <input type="text" name="date_to" class="filter-input date-input" 
-                           value="{{ date_to }}" placeholder="1404/12/29">
+                <div>
+                    <label>تا تاریخ</label>
+                    <input type="date" name="date_to" value="{{ date_to }}">
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">محل پرداخت</label>
-                    <select name="location" class="filter-select">
-                        <option value="">همه محل‌های پرداخت</option>
-                        {% for location in payment_locations %}
-                        <option value="{{ location.id }}" {% if selected_location == location.id|stringformat:"s" %}selected{% endif %}>
-                            {{ location.name }}
-                        </option>
+                <div>
+                    <label>محل پرداخت</label>
+                    <select name="location">
+                        <option value="">همه</option>
+                        {% for loc in payment_locations %}
+                        <option value="{{ loc.id }}" {% if selected_location == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="filter-buttons">
-                    <button type="submit" class="btn-filter btn-filter-apply">
-                        <i class="fas fa-search"></i> اعمال فیلتر
-                    </button>
-                    <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="btn-filter btn-filter-clear">
-                        <i class="fas fa-times"></i> پاک کردن
-                    </a>
-                </div>
             </div>
-        </div>
-    </form>
-    
-    <!-- Summary Card -->
-    <div class="summary-card">
-        <div class="summary-content">
-            <div class="summary-info">
-                <h3>مجموع پرداخت‌ها</h3>
-                <p class="summary-amount">{{ total_amount|floatformat:0|default:"0" }} <small>ریال</small></p>
-                <p class="summary-count">{{ payments|length }} پرداخت</p>
+            <div class="p-filter-actions">
+                <button type="submit" class="btn btn-primary">🔍 اعمال</button>
+                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="btn btn-ghost">✕ پاک کردن</a>
             </div>
-            <div class="summary-icon">
-                <i class="fas fa-wallet"></i>
-            </div>
-        </div>
+        </form>
     </div>
-    
-    <!-- Payments Table -->
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h5>
-                <i class="fas fa-list"></i>
-                لیست پرداخت‌ها
-            </h5>
-        </div>
-        <div class="table-responsive">
-            <table class="table-minimal">
+
+    <!-- Table -->
+    <div class="p-table-wrap">
+        <div class="p-table-head">📋 لیست پرداخت‌ها</div>
+        <div style="overflow-x:auto;">
+            <table>
                 <thead>
                     <tr>
                         <th>فاکتور</th>
@@ -537,9 +144,7 @@
                         <th>مبلغ</th>
                         <th>محل پرداخت</th>
                         <th>تاریخ</th>
-                        <th>وضعیت</th>
-                        <th>شماره مرجع</th>
-                        <th style="width: 120px;">عملیات</th>
+                        <th style="text-align:right;">عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -547,74 +152,42 @@
                     <tr>
                         <td>
                             {% if payment.invoice %}
-                            <a href="{% url 'invoice_detail' payment.invoice.id cafe_code=cafe_code %}" class="invoice-link">
-                                {{ payment.invoice.invoice_number }}
-                            </a>
+                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=payment.invoice.id %}" class="inv-link">{{ payment.invoice.invoice_number }}</a>
                             {% elif payment.invoices.exists %}
-                            <span class="text-muted">{{ payment.invoices.count }} فاکتور</span>
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                                {% for inv in payment.invoices.all %}
+                                    <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=inv.id %}" class="inv-link" style="display:block;">{{ inv.invoice_number }}</a>
+                                {% endfor %}
+                            {% else %}-{% endif %}
                         </td>
                         <td>
-                            {% if payment.invoice and payment.invoice.purchase_order %}
-                                {{ payment.invoice.purchase_order.supplier_name }}
+                            {% if payment.invoice %}
+                                {{ payment.invoice.supplier_name|default:"-" }}
                             {% elif payment.invoices.exists %}
-                                {{ payment.invoices.first.purchase_order.supplier_name|default:"-" }}
-                            {% else %}
-                                -
-                            {% endif %}
+                                {% for inv in payment.invoices.all %}
+                                    <span style="display:block;">{{ inv.supplier_name|default:"-" }}</span>
+                                {% endfor %}
+                            {% else %}-{% endif %}
                         </td>
-                        <td class="amount-cell">{{ payment.amount|floatformat:0 }} ریال</td>
+                        <td style="font-weight:600;">{{ payment.amount|number_format }} ریال</td>
                         <td>
                             {% if payment.payment_location %}
-                            <span class="location-badge">{{ payment.payment_location.name }}</span>
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                                <span class="badge badge-blue">{{ payment.payment_location.name }}</span>
+                            {% else %}-{% endif %}
                         </td>
-                        <td>{{ payment.payment_date|date:"Y/m/d" }}</td>
-                        <td>
-                            {% if payment.payment_status == 'completed' %}
-                                <span class="status-badge status-completed">
-                                    <i class="fas fa-check-circle"></i> تکمیل شده
-                                </span>
-                            {% elif payment.payment_status == 'pending' %}
-                                <span class="status-badge status-pending">
-                                    <i class="fas fa-clock"></i> در انتظار
-                                </span>
-                            {% elif payment.payment_status == 'failed' %}
-                                <span class="status-badge status-failed">
-                                    <i class="fas fa-times-circle"></i> ناموفق
-                                </span>
-                            {% else %}
-                                <span class="status-badge status-cancelled">
-                                    {{ payment.get_payment_status_display }}
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td>{{ payment.reference_number|default:"-" }}</td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a href="{% url 'payment_detail' cafe_code=cafe_code payment_id=payment.id %}" class="btn-icon btn-icon-view" title="مشاهده">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{% url 'payment_update' cafe_code=cafe_code payment_id=payment.id %}" class="btn-icon btn-icon-edit" title="ویرایش">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{% url 'payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="btn-icon btn-icon-delete" title="حذف">
-                                    <i class="fas fa-trash"></i>
-                                </a>
+                        <td style="color:#555;">{{ payment.payment_date|date:"Y/m/d" }}</td>
+                        <td style="text-align:right;">
+                            <div class="act-btns">
+                                <a href="{% url 'payment_update' cafe_code=cafe_code payment_id=payment.id %}" class="act-btn act-edit" title="ویرایش">✏️</a>
+                                <a href="{% url 'payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="act-btn act-del" title="حذف">🗑️</a>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8">
-                            <div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <h4>پرداختی یافت نشد</h4>
-                                <p>هنوز هیچ پرداختی ثبت نشده یا فیلتر شما نتیجه‌ای نداشته است</p>
+                        <td colspan="6">
+                            <div class="empty">
+                                <div class="ico">📭</div>
+                                <p>پرداختی یافت نشد</p>
                             </div>
                         </td>
                     </tr>
@@ -623,32 +196,6 @@
             </table>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
-<script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Persian datepickers
-    $('.date-input').pDatepicker({
-        format: 'YYYY/MM/DD',
-        autoClose: true,
-        initialValue: false,
-        calendar: {
-            persian: {
-                locale: 'fa'
-            }
-        },
-        toolbox: {
-            enabled: true,
-            calendarSwitch: {
-                enabled: false
-            }
-        }
-    });
-});
-</script>
+</div>
 {% endblock %}

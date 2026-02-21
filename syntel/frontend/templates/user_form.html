@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{% if user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}{% endblock %}
+{% block title %}{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}{% endblock %}
 
 {% block content %}
 <style>
@@ -144,6 +144,28 @@
     margin-top: 5px;
 }
 
+.cafe-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: #92400e;
+    margin-top: 6px;
+    display: none;
+}
+
+.cafe-info {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: #1e40af;
+    margin-top: 6px;
+    display: none;
+}
+
 @media (max-width: 768px) {
     .user-form-container {
         padding: 15px;
@@ -172,10 +194,10 @@
 <div class="user-form-container">
     <div class="form-header">
         <h1 class="form-title">
-            {% if user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}
+            {% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}
         </h1>
         <p class="form-subtitle">
-            {% if user %}اطلاعات کاربر را ویرایش کنید{% else %}اطلاعات کاربر جدید را وارد کنید{% endif %}
+            {% if edit_user %}اطلاعات کاربر را ویرایش کنید{% else %}اطلاعات کاربر جدید را وارد کنید{% endif %}
         </p>
     </div>
 {% if error %}
@@ -187,15 +209,17 @@
     <form method="POST" class="user-form">
         {% csrf_token %}
 
-        {% if not user %}
         <div class="form-group">
             <label for="username" class="form-label">
                 نام کاربری <span class="required">*</span>
             </label>
-            <input type="text" id="username" name="username" class="form-input" required>
-            <div class="form-help">نام کاربری باید منحصر به فرد باشد</div>
+            <input type="text" id="username" name="username" class="form-input"
+                   value="{% if edit_user %}{{ edit_user.username }}{% elif form_data %}{{ form_data.username }}{% endif %}"
+                   {% if not edit_user %}required{% endif %}>>
+            <div class="form-help">
+                {% if edit_user %}برای تغییر نام کاربری، مقدار جدید را وارد کنید{% else %}نام کاربری باید منحصر به فرد باشد{% endif %}
+            </div>
         </div>
-        {% endif %}
 
         <div class="form-row">
             <div class="form-group">
@@ -203,7 +227,7 @@
                     نام
                 </label>
                 <input type="text" id="first_name" name="first_name" class="form-input"
-                       value="{% if user %}{{ user.first_name }}{% endif %}">
+                       value="{% if edit_user %}{{ edit_user.first_name }}{% elif form_data %}{{ form_data.first_name }}{% endif %}">
             </div>
 
             <div class="form-group">
@@ -211,7 +235,7 @@
                     نام خانوادگی
                 </label>
                 <input type="text" id="last_name" name="last_name" class="form-input"
-                       value="{% if user %}{{ user.last_name }}{% endif %}">
+                       value="{% if edit_user %}{{ edit_user.last_name }}{% elif form_data %}{{ form_data.last_name }}{% endif %}">
             </div>
         </div>
 
@@ -219,18 +243,62 @@
             <label for="role" class="form-label">
                 نقش <span class="required">*</span>
             </label>
-            <select id="role" name="role" class="form-select" required>
+            <select id="role" name="role" class="form-select" required onchange="onRoleChange(this.value)">
                 <option value="">انتخاب نقش</option>
                 {% for role_value, role_name in roles %}
                 <option value="{{ role_value }}"
-                        {% if user and user.role == role_value %}selected{% endif %}>
+                        {% if edit_user and edit_user.role == role_value %}selected
+                        {% elif form_data and form_data.role == role_value %}selected{% endif %}>
                     {{ role_name }}
                 </option>
                 {% endfor %}
             </select>
         </div>
 
-        {% if not user %}
+        <!-- انتخاب کافه -->
+        <div class="form-group" id="cafeGroup">
+            <label for="cafe_id" class="form-label">
+                کافه / شعبه <span class="required">*</span>
+            </label>
+            <select id="cafe_id" name="cafe_id" class="form-select" required>
+        {% if edit_user and edit_user.cafe is None %}
+            <option value="all" selected>🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+        {% else %}
+            <option value="all">🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+        {% endif %}
+                {% for cafe in cafes %}
+                <option value="{{ cafe.id }}"
+                    {% if edit_user and edit_user.cafe and edit_user.cafe.id == cafe.id %}selected
+                    {% elif not edit_user and current_cafe and current_cafe.id == cafe.id %}selected
+                    {% endif %}>
+                    🏠 {{ cafe.name }} ({{ cafe.code }})
+                </option>
+                {% endfor %}
+            </select>
+            <div class="form-help" id="cafeHelpText">
+                اگر «همه کافه‌ها» انتخاب شود، کاربر هنگام ورود صفحه انتخاب شعبه را می‌بیند.
+                این گزینه فقط برای نقش‌های مدیریتی مناسب است.
+            </div>
+            <div class="cafe-warning" id="cafeWarning">
+                ⚠️ «همه کافه‌ها» فقط برای نقش‌های مدیریتی (مدیر، مدیرعامل، ادمین، مدیر مالی، حسابداری) کار می‌کند.
+                با نقش انتخاب‌شده، کاربر هنگام ورود با خطا مواجه می‌شود.
+            </div>
+            <div class="cafe-info" id="cafeInfo">
+                ✅ این نقش می‌تواند به همه کافه‌ها دسترسی داشته باشد. هنگام ورود صفحه انتخاب شعبه نمایش داده می‌شود.
+            </div>
+            {% if edit_user %}
+            <div style="margin-top:6px; font-size:0.82rem; color:#6b7280;">
+                کافه فعلی:
+                {% if edit_user.cafe %}
+                <strong style="color:#059669">{{ edit_user.cafe.name }}</strong>
+                {% else %}
+                <strong style="color:#6366f1">همه کافه‌ها</strong>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if not edit_user %}
         <div class="form-row">
             <div class="form-group">
                 <label for="password" class="form-label">
@@ -250,43 +318,95 @@
         {% else %}
         <div class="form-group">
             <div class="checkbox-group">
-                <input type="checkbox" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
+                <input type="checkbox" id="is_active" name="is_active" {% if edit_user.is_active %}checked{% endif %}>
                 <label for="is_active">کاربر فعال است</label>
             </div>
             <div class="form-help">اگر این گزینه را غیرفعال کنید، کاربر نمی‌تواند وارد سیستم شود</div>
+        </div>
+
+        <!-- بخش تغییر رمز عبور -->
+        <div style="border: 1px dashed #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 8px; background: #f8fafc;">
+            <div style="font-weight: 600; color: #4b5563; margin-bottom: 12px; font-size: 0.9rem;">🔑 تغییر رمز عبور <span style="font-weight:normal; color:#9ca3af;">(اختیاری – خالی بگذارید تا تغییر نکند)</span></div>
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom:0">
+                    <label for="new_password" class="form-label">رمز عبور جدید</label>
+                    <input type="password" id="new_password" name="new_password" class="form-input" placeholder="حداقل ۸ کاراکتر">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label for="confirm_new_password" class="form-label">تأیید رمز عبور جدید</label>
+                    <input type="password" id="confirm_new_password" name="confirm_new_password" class="form-input" placeholder="تکرار رمز عبور">
+                </div>
+            </div>
         </div>
         {% endif %}
 
         <div class="form-actions">
             <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
             <button type="submit" class="btn-submit">
-                {% if user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
+                {% if edit_user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
             </button>
         </div>
     </form>
 </div>
 
 <script>
+// نقش‌هایی که می‌توانند «همه کافه‌ها» داشته باشند
+const CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo'];
+
+function onRoleChange(roleVal) {
+    checkCafeWarning(roleVal, document.getElementById('cafe_id').value);
+}
+
+function onCafeChange(cafeVal) {
+    checkCafeWarning(document.getElementById('role').value, cafeVal);
+}
+
+function checkCafeWarning(roleVal, cafeVal) {
+    const warning = document.getElementById('cafeWarning');
+    const info = document.getElementById('cafeInfo');
+    if (!warning || !info) return;
+
+    if (cafeVal === 'all') {
+        if (CAFE_SELECTION_ROLES.includes(roleVal)) {
+            warning.style.display = 'none';
+            info.style.display = 'block';
+        } else {
+            warning.style.display = 'block';
+            info.style.display = 'none';
+        }
+    } else {
+        warning.style.display = 'none';
+        info.style.display = 'none';
+    }
+}
+
 // Form validation
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('.user-form');
+    // اضافه کردن onchange به select کافه
+    const cafeSelect = document.getElementById('cafe_id');
+    if (cafeSelect) {
+        cafeSelect.addEventListener('change', function() { onCafeChange(this.value); });
+        // بررسی اولیه
+        checkCafeWarning(
+            document.getElementById('role').value,
+            cafeSelect.value
+        );
+    }
 
+    const form = document.querySelector('.user-form');
     form.addEventListener('submit', function(e) {
-        {% if not user %}
+        let isValid = true;
+        document.querySelectorAll('.error-message').forEach(el => el.remove());
+
+        {% if not edit_user %}
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
         const username = document.getElementById('username').value.trim();
-
-        let isValid = true;
-
-        // Clear previous errors
-        document.querySelectorAll('.error-message').forEach(el => el.remove());
 
         if (!username) {
             showError('username', 'نام کاربری الزامی است');
             isValid = false;
         }
-
         if (!password) {
             showError('password', 'رمز عبور الزامی است');
             isValid = false;
@@ -294,16 +414,31 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('password', 'رمز عبور باید حداقل ۸ کاراکتر باشد');
             isValid = false;
         }
-
         if (password !== confirmPassword) {
             showError('confirm_password', 'رمز عبور و تأیید آن یکسان نیستند');
             isValid = false;
         }
-
-        if (!isValid) {
-            e.preventDefault();
+        {% else %}
+        const editUsername = document.getElementById('username').value.trim();
+        if (!editUsername) {
+            showError('username', 'نام کاربری نمی‌تواند خالی باشد');
+            isValid = false;
+        }
+        const newPwd = document.getElementById('new_password');
+        const confirmNewPwd = document.getElementById('confirm_new_password');
+        if (newPwd && newPwd.value) {
+            if (newPwd.value.length < 8) {
+                showError('new_password', 'رمز عبور باید حداقل ۸ کاراکتر باشد');
+                isValid = false;
+            }
+            if (newPwd.value !== confirmNewPwd.value) {
+                showError('confirm_new_password', 'رمز عبور و تأیید آن یکسان نیستند');
+                isValid = false;
+            }
         }
         {% endif %}
+
+        if (!isValid) e.preventDefault();
     });
 
     function showError(fieldId, message) {

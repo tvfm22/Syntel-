@@ -48,6 +48,7 @@ from .models import (
     StockTransaction,
     StockRequest,
     StockRequestItem,
+    Warehouse,
 )
 from .middleware import get_current_cafe, get_cafe_code
 
@@ -839,13 +840,29 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
         'stock_item__product',
         'created_by'
     ).order_by('-created_at')[:10]
-    
+
+    # انبارهای فعال با قابلیت تامین - با آمار درخواست‌ها
+    from django.db.models import Count, Q as DQ
+    supply_warehouses = []
+    if cafe:
+        supply_warehouses = list(
+            Warehouse.objects.filter(cafe=cafe, is_active=True, is_supply_enabled=True)
+            .annotate(
+                total_requests=Count('stock_requests'),
+                pending_requests=Count('stock_requests', filter=DQ(stock_requests__status='pending')),
+                fulfilled_requests=Count('stock_requests', filter=DQ(stock_requests__status='fulfilled')),
+                rejected_requests=Count('stock_requests', filter=DQ(stock_requests__status='rejected')),
+            )
+            .order_by('name')
+        )
+
     return render(request, "finance_dashboard.html", {
         "stats": stats,
         "stock_stats": stock_stats,
         "low_stock_items": low_stock_items,
         "recent_transactions": recent_transactions,
         "today": date.today(),
+        "supply_warehouses": supply_warehouses,
     })
 
 
@@ -1025,10 +1042,19 @@ def purchase_request_detail(request, request_id):
         if purchase_request.user != request.user:
             from django.http import HttpResponseForbidden
             return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
-    
+
+    # انبارهای فعال و قابل تامین برای نمایش در دراپداون
+    supply_warehouses = []
+    if cafe:
+        supply_warehouses = list(
+            Warehouse.objects.filter(cafe=cafe, is_active=True, is_supply_enabled=True)
+            .values('id', 'name', 'code')
+        )
+
     context = {
         "purchase_request": purchase_request,
         "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities'],
+        "supply_warehouses": supply_warehouses,
     }
     return render(request, "purchase_request_detail.html", context)
 
@@ -1679,17 +1705,29 @@ def payment_type_delete(request, payment_type_id):
 
 @custom_login_required
 @role_required(["manager"])
-def user_list(request):
+def user_list(request, cafe_code=None):
     users = User.objects.all()
+    search_query = request.GET.get("search", "").strip()
+    selected_role = request.GET.get("role", "")
+    if search_query:
+        users = users.filter(
+            username__icontains=search_query
+        ) | users.filter(first_name__icontains=search_query) | users.filter(last_name__icontains=search_query)
+    if selected_role:
+        users = users.filter(role=selected_role)
     return render(request, "user_list.html", {
         "users": users,
         "role_choices": User.ROLE_CHOICES,
+        "search_query": search_query,
+        "selected_role": selected_role,
     })
 
 
 @custom_login_required
 @role_required(["manager"])
-def user_create(request):
+def user_create(request, cafe_code=None):
+    from .models import Cafe as CafeModel
+    cafes = CafeModel.objects.filter(is_active=True)
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email", "")
@@ -1698,13 +1736,30 @@ def user_create(request):
             "confirm_password"
         )
         role = request.POST.get("role", "kitchen")
-        if not username or password != confirm_password:
-            return render(
-                request,
-                "user_form.html",
-                {"error": "username is required", "roles": _get_departments()},
-                status=200,
-            )
+        cafe_id = request.POST.get("cafe_id", "all")
+
+        if not username:
+            return render(request, "user_form.html", {
+                "error": "نام کاربری الزامی است",
+                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+        if User.objects.filter(username=username).exists():
+            return render(request, "user_form.html", {
+                "error": f"نام کاربری '{username}' قبلاً استفاده شده است. لطفاً نام دیگری انتخاب کنید.",
+                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+        if not password:
+            return render(request, "user_form.html", {
+                "error": "رمز عبور الزامی است",
+                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+        if password != confirm_password:
+            return render(request, "user_form.html", {
+                "error": "رمز عبور و تأیید آن یکسان نیستند",
+                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+
+        # تعیین کافه کاربر
+        cafe_obj = None
+        if cafe_id and cafe_id != "all":
+            cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
+
         User.objects.create_user(
             username=username,
             email=email,
@@ -1713,46 +1768,80 @@ def user_create(request):
             first_name=request.POST.get("first_name", ""),
             last_name=request.POST.get("last_name", ""),
             is_active=request.POST.get("is_active", True) not in ["False", "0", ""],
+            cafe=cafe_obj,
         )
-        return redirect("user_list")
-    return render(request, "user_form.html", {"roles": _get_departments()})
+        return redirect("user_list", cafe_code=cafe_code or "local")
+    return render(request, "user_form.html", {"roles": _get_departments(), "cafes": cafes})
 
 
 @custom_login_required
 @role_required(["manager"])
-def user_update(request, user_id):
+def user_update(request, cafe_code=None, user_id=None):
+    from .models import Cafe as CafeModel
     user_obj = get_object_or_404(User, id=user_id)
+    cafes = CafeModel.objects.filter(is_active=True)
     if request.method == "POST":
+        # تغییر نام کاربری (اختیاری)
+        new_username = request.POST.get("username", "").strip()
+        if new_username and new_username != user_obj.username:
+            if User.objects.filter(username=new_username).exists():
+                return render(request, "user_form.html", {
+                    "edit_user": user_obj,
+                    "roles": _get_departments(),
+                    "cafes": cafes,
+                    "error": f"نام کاربری '{new_username}' قبلاً استفاده شده است",
+                })
+            user_obj.username = new_username
         user_obj.first_name = request.POST.get("first_name", user_obj.first_name)
         user_obj.last_name = request.POST.get("last_name", user_obj.last_name)
         user_obj.email = request.POST.get("email", user_obj.email)
         user_obj.role = request.POST.get("role", user_obj.role)
-        user_obj.is_active = request.POST.get("is_active", user_obj.is_active) not in ["False", "0", ""]
+        user_obj.is_active = "is_active" in request.POST
+        cafe_id = request.POST.get("cafe_id", "keep")
+        if cafe_id == "all":
+            user_obj.cafe = None
+        elif cafe_id and cafe_id != "keep":
+            cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
+            if cafe_obj:
+                user_obj.cafe = cafe_obj
+        # تغییر رمز عبور (اختیاری)
+        new_password = request.POST.get("new_password", "").strip()
+        confirm_new_password = request.POST.get("confirm_new_password", "").strip()
+        if new_password:
+            if new_password == confirm_new_password:
+                user_obj.set_password(new_password)
+            else:
+                return render(request, "user_form.html", {
+                    "edit_user": user_obj,
+                    "roles": _get_departments(),
+                    "cafes": cafes,
+                    "error": "رمز عبور جدید و تأیید آن یکسان نیستند",
+                })
         user_obj.save()
-        return redirect("user_list")
-    return render(request, "user_form.html", {"user": user_obj, "roles": _get_departments()})
+        return redirect("user_list", cafe_code=cafe_code or "local")
+    return render(request, "user_form.html", {"edit_user": user_obj, "roles": _get_departments(), "cafes": cafes})
 
 
 @custom_login_required
 @role_required(["manager"])
-def user_delete(request, user_id):
+def user_delete(request, cafe_code=None, user_id=None):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
         user_obj.delete()
-        return redirect("user_list")
+        return redirect("user_list", cafe_code=cafe_code or "local")
     return render(request, "user_confirm_delete.html", {"user": user_obj})
 
 
 @custom_login_required
 @role_required(["manager"])
-def user_reset_password(request, user_id):
+def user_reset_password(request, cafe_code=None, user_id=None):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
         new_password = request.POST.get("password1")
         if new_password:
             user_obj.set_password(new_password)
             user_obj.save()
-            return redirect("user_list")
+            return redirect("user_list", cafe_code=cafe_code or "local")
     return render(request, "user_reset_password.html", {"user": user_obj})
 
 
@@ -1904,6 +1993,7 @@ def invoices_list(request):
     
     # Handle single issue selection
     selected_issue = request.GET.get('issue', '').strip()
+    sort = request.GET.get('sort', '')
     
     # Base queryset
     cafe = get_cafe_from_request(request)
@@ -1947,8 +2037,13 @@ def invoices_list(request):
         except ValueError:
             pass  # Invalid date format, ignore filter
     
-    # Order by creation date (newest first)
-    invoices = invoices.order_by('-created_at')
+    # Ordering
+    if sort == 'amount_asc':
+        invoices = invoices.order_by('total_amount')
+    elif sort == 'amount_desc':
+        invoices = invoices.order_by('-total_amount')
+    else:
+        invoices = invoices.order_by('-created_at')
     
     # Pagination
     paginator = Paginator(invoices, 25)  # 25 items per page
@@ -1977,6 +2072,7 @@ def invoices_list(request):
         'issues': issues,
         'selected_issue': selected_issue,
         'selected_issues_str': selected_issue,
+        'sort': sort,
     }
     
     response = render(request, "invoice_list.html", context)
@@ -2000,8 +2096,8 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
     search_query = request.GET.get('search', '').strip()
     selected_status = request.GET.get('status', '')
     selected_payment_status = request.GET.get('payment_status', '')
-    date_search_type = request.GET.get('date_search_type', '')
-    date_query = request.GET.get('date_query', '').strip()
+    invoice_date_filter = request.GET.get('invoice_date', '').strip()
+    due_date_filter = request.GET.get('due_date', '').strip()
 
     # Handle single issue selection
     selected_issue = request.GET.get('issue', '').strip()
@@ -2038,19 +2134,27 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
     if has_issues == 'yes':
         invoices = invoices.filter(issues__isnull=False).distinct()
 
-    # Apply date filter
-    if date_query and date_search_type:
+    # Apply date filters
+    if invoice_date_filter:
         try:
-            search_date = datetime.fromisoformat(date_query).date()
-            if date_search_type == 'invoice_date':
-                invoices = invoices.filter(invoice_date=search_date)
-            elif date_search_type == 'request_date':
-                invoices = invoices.filter(due_date=search_date)
+            invoices = invoices.filter(invoice_date=datetime.fromisoformat(invoice_date_filter).date())
         except ValueError:
-            pass  # Invalid date format, ignore filter
+            pass
 
-    # Order by creation date (newest first)
-    invoices = invoices.order_by('-created_at')
+    if due_date_filter:
+        try:
+            invoices = invoices.filter(due_date=datetime.fromisoformat(due_date_filter).date())
+        except ValueError:
+            pass
+
+    # Sort
+    sort = request.GET.get('sort', '')
+    if sort == 'amount_asc':
+        invoices = invoices.order_by('total_amount')
+    elif sort == 'amount_desc':
+        invoices = invoices.order_by('-total_amount')
+    else:
+        invoices = invoices.order_by('-invoice_date', '-created_at')
 
     # Pagination
     paginator = Paginator(invoices, 25)  # 25 items per page
@@ -2070,8 +2174,8 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
         'search_query': search_query,
         'selected_status': selected_status,
         'selected_payment_status': selected_payment_status,
-        'date_search_type': date_search_type,
-        'date_query': date_query,
+        'invoice_date_filter': invoice_date_filter,
+        'due_date_filter': due_date_filter,
         'status_choices': status_choices,
         'payment_status_choices': payment_status_choices,
         'is_manager': is_manager,
@@ -2080,6 +2184,7 @@ def all_invoices_list(request: HttpRequest) -> HttpResponse:
         'selected_issue': selected_issue,
         'selected_issues_str': selected_issue,
         'has_issues': has_issues,
+        'sort': sort,
         'page_title': 'لیست تمامی فاکتورها',
     }
 
@@ -2733,9 +2838,11 @@ def completed_orders_for_invoices(request):
 @role_required(["manager", "purchasing", "finance_manager"])
 def payment_list(request):
     cafe = get_cafe_from_request(request)
-    payments = Payment.objects.select_related("invoice", "payment_location").all()
+    payments = Payment.objects.select_related("invoice", "payment_location").prefetch_related("invoices").all()
     if cafe:
-        payments = payments.filter(invoice__cafe=cafe)
+        payments = payments.filter(
+            Q(invoice__cafe=cafe) | Q(invoices__cafe=cafe)
+        ).distinct()
     methods = PaymentLocation.objects.all()
     if cafe:
         methods = methods.filter(cafe=cafe)
@@ -3968,6 +4075,13 @@ def mark_item_for_stock_supply(request: HttpRequest, item_id: int) -> HttpRespon
     item = get_object_or_404(PurchaseItem, id=item_id)
     
     if request.method == 'POST':
+        warehouse_id = request.POST.get('warehouse_id')
+        warehouse_obj = None
+        if warehouse_id:
+            warehouse_obj = Warehouse.objects.filter(
+                id=warehouse_id, is_active=True, is_supply_enabled=True
+            ).first()
+
         # تغییر وضعیت به "تامین از انبار"
         item.supply_status = 'from_stock'
         item.save()
@@ -3977,11 +4091,13 @@ def mark_item_for_stock_supply(request: HttpRequest, item_id: int) -> HttpRespon
             purchase_item=item,
             requested_by=request.user,
             status='pending',
-            notes=request.POST.get('notes', '')
+            notes=request.POST.get('notes', ''),
+            warehouse=warehouse_obj,
         )
         
-        messages.success(request, f'قلم "{item.name}" برای تامین از انبار مشخص شد.')
-        return redirect('stock_supply_list')
+        wname = warehouse_obj.name if warehouse_obj else 'نامشخص'
+        messages.success(request, f'قلم "{item.name}" برای تامین از انبار "{wname}" مشخص شد.')
+        return redirect('purchase_request_detail', request_id=item.request.id)
     
     return redirect('purchase_request_detail', request_id=item.request.id)
 
@@ -4298,3 +4414,147 @@ def manager_reject_request(request, request_id):
 # ---------------------------------------------------------------------------
 
 
+
+# ---------------------------------------------------------------------------
+# Warehouse Management - مدیریت انبارها
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo', 'finance_manager'])
+def warehouse_management(request):
+    """صفحه مدیریت انبارها"""
+    cafe = get_cafe_from_request(request)
+    warehouses = Warehouse.objects.filter(cafe=cafe) if cafe else Warehouse.objects.none()
+    return render(request, 'warehouse/warehouse_management.html', {
+        'warehouses': warehouses,
+        'cafe_code': cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['manager', 'admin', 'ceo'])
+def warehouse_create(request):
+    """ایجاد انبار جدید (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    if not cafe:
+        return JsonResponse({'success': False, 'error': 'کافه یافت نشد'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, Exception):
+        data = request.POST
+
+    name = data.get('name', '').strip()
+    code = data.get('code', '').strip()
+    description = data.get('description', '').strip()
+    location = data.get('location', '').strip()
+    manager_name = data.get('manager_name', '').strip()
+    manager_phone = data.get('manager_phone', '').strip()
+
+    if not name or not code:
+        return JsonResponse({'success': False, 'error': 'نام و کد انبار الزامی است'}, status=400)
+
+    if Warehouse.objects.filter(cafe=cafe, code=code).exists():
+        return JsonResponse({'success': False, 'error': 'کد انبار تکراری است'}, status=400)
+
+    warehouse = Warehouse.objects.create(
+        cafe=cafe,
+        name=name,
+        code=code,
+        description=description,
+        location=location,
+        manager_name=manager_name,
+        manager_phone=manager_phone,
+        is_active=True,
+        is_supply_enabled=data.get('is_supply_enabled', True),
+    )
+
+    return JsonResponse({
+        'success': True,
+        'warehouse': {
+            'id': warehouse.id,
+            'name': warehouse.name,
+            'code': warehouse.code,
+            'description': warehouse.description,
+            'location': warehouse.location,
+            'manager_name': warehouse.manager_name,
+            'manager_phone': warehouse.manager_phone,
+            'is_active': warehouse.is_active,
+            'is_supply_enabled': warehouse.is_supply_enabled,
+        }
+    })
+
+
+@custom_login_required
+@role_required(['manager', 'admin', 'ceo'])
+def warehouse_edit(request, warehouse_id):
+    """ویرایش انبار (AJAX)"""
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe)
+
+    if request.method == 'GET':
+        return JsonResponse({
+            'success': True,
+            'warehouse': {
+                'id': warehouse.id,
+                'name': warehouse.name,
+                'code': warehouse.code,
+                'description': warehouse.description,
+                'location': warehouse.location,
+                'manager_name': warehouse.manager_name,
+                'manager_phone': warehouse.manager_phone,
+                'is_active': warehouse.is_active,
+                'is_supply_enabled': warehouse.is_supply_enabled,
+            }
+        })
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, Exception):
+        data = request.POST
+
+    name = data.get('name', '').strip()
+    code = data.get('code', '').strip()
+
+    if not name or not code:
+        return JsonResponse({'success': False, 'error': 'نام و کد انبار الزامی است'}, status=400)
+
+    if Warehouse.objects.filter(cafe=cafe, code=code).exclude(id=warehouse_id).exists():
+        return JsonResponse({'success': False, 'error': 'کد انبار تکراری است'}, status=400)
+
+    warehouse.name = name
+    warehouse.code = code
+    warehouse.description = data.get('description', '').strip()
+    warehouse.location = data.get('location', '').strip()
+    warehouse.manager_name = data.get('manager_name', '').strip()
+    warehouse.manager_phone = data.get('manager_phone', '').strip()
+    warehouse.is_active = data.get('is_active', True)
+    warehouse.is_supply_enabled = data.get('is_supply_enabled', True)
+    warehouse.save()
+
+    return JsonResponse({'success': True, 'message': 'انبار با موفقیت ویرایش شد'})
+
+
+@custom_login_required
+@role_required(['manager', 'admin', 'ceo'])
+def warehouse_toggle_status(request, warehouse_id):
+    """فعال/غیرفعال کردن انبار (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe)
+    warehouse.is_active = not warehouse.is_active
+    warehouse.save()
+
+    return JsonResponse({
+        'success': True,
+        'is_active': warehouse.is_active,
+        'message': 'انبار فعال شد' if warehouse.is_active else 'انبار غیرفعال شد'
+    })

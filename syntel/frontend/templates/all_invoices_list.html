@@ -278,8 +278,7 @@
     .amount-cell {
         font-weight: 600;
         color: var(--text-main);
-        direction: ltr;
-        text-align: left;
+        text-align: right;
     }
 
     .table-actions {
@@ -398,24 +397,6 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-icon">📊</div>
-            <div class="stat-info">
-                <h3>{{ invoices|length }}</h3>
-                <p>کل فاکتورها</p>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">💰</div>
-            <div class="stat-info">
-                <h3>{% widthratio invoices.paginator.count 1 1 %} ریال</h3>
-                <p>مجموع مبلغ</p>
-            </div>
-        </div>
-    </div>
-
     <!-- Filters -->
     <div class="filter-card">
         <div class="filter-header">
@@ -444,17 +425,31 @@
                     </select>
                 </div>
                 <div>
-                    <label for="date_search_type" class="form-label">نوع تاریخ</label>
-                    <select class="form-select-custom" id="date_search_type" name="date_search_type">
-                        <option value="">انتخاب کنید</option>
-                        <option value="invoice_date" {% if date_search_type == 'invoice_date' %}selected{% endif %}>تاریخ فاکتور</option>
-                        <option value="request_date" {% if date_search_type == 'request_date' %}selected{% endif %}>تاریخ سررسید</option>
+                    <label for="issue" class="form-label">موارد ایراد</label>
+                    <select class="form-select-custom" id="issue" name="issue">
+                        <option value="">همه</option>
+                        {% for issue in issues %}
+                        <option value="{{ issue.id }}" {% if selected_issue == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label for="date_query" class="form-label">تاریخ</label>
-                    <input type="date" class="form-control-custom" id="date_query" name="date_query"
-                           value="{{ date_query }}">
+                    <label for="invoice_date" class="form-label">تاریخ فاکتور</label>
+                    <input type="date" class="form-control-custom" id="invoice_date" name="invoice_date"
+                           value="{{ invoice_date_filter }}">
+                </div>
+                <div>
+                    <label for="due_date" class="form-label">تاریخ درخواست</label>
+                    <input type="date" class="form-control-custom" id="due_date" name="due_date"
+                           value="{{ due_date_filter }}">
+                </div>
+                <div>
+                    <label for="sort" class="form-label">مرتب‌سازی بر اساس مبلغ</label>
+                    <select class="form-select-custom" id="sort" name="sort" onchange="this.form.submit()">
+                        <option value="">پیش‌فرض (جدیدترین)</option>
+                        <option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>مبلغ: کم به زیاد</option>
+                        <option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>مبلغ: زیاد به کم</option>
+                    </select>
                 </div>
             </div>
 

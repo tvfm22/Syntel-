@@ -253,16 +253,20 @@
                         <div class="item-name">{{ item.product.name }}</div>
                     </div>
                     {% if user.role == 'purchasing' and item.supply_status == 'pending' %}
-                    <form method="post" action="{% url 'mark_item_for_stock_supply' cafe_code=cafe_code item_id=item.id %}" style="margin: 0;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-stock-supply" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: all 0.3s;">
-                            📦 تامین از انبار
-                        </button>
-                    </form>
+                    <button type="button"
+                            class="btn-stock-supply"
+                            style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: all 0.3s;"
+                            onclick="openWarehouseModal({{ item.id }}, '{{ item.name|escapejs }}')"
+                    >
+                        📦 تامین از انبار
+                    </button>
                     {% elif item.supply_status == 'from_stock' %}
-                    <span class="status-badge" style="padding: 0.5rem 1rem; background: #10b981; color: white; border-radius: 0.375rem; font-weight: 600;">
+                    {% with last_req=item.stock_requests.first %}
+                    <span class="status-badge" style="padding: 0.5rem 1rem; background: #10b981; color: white; border-radius: 0.375rem; font-weight: 600; display:flex; align-items:center; gap:0.4rem;">
                         ✅ تامین از انبار
+                        {% if last_req and last_req.warehouse %}<span style="font-size:0.78rem;opacity:0.9;">({{ last_req.warehouse.name }})</span>{% endif %}
                     </span>
+                    {% endwith %}
                     {% elif item.supply_status == 'purchased' %}
                     <span class="status-badge" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border-radius: 0.375rem; font-weight: 600;">
                         🛒 خرید شده
@@ -305,5 +309,89 @@
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
 </style>
+
+<!-- ===== WAREHOUSE SELECTION MODAL ===== -->
+<div id="warehouseModal" style="
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55);
+    z-index:9999; align-items:center; justify-content:center; padding:1rem;">
+    <div style="
+        background:white; border-radius:1rem; max-width:460px; width:100%;
+        box-shadow:0 20px 40px rgba(0,0,0,0.2); animation:slideUp .25s ease;">
+
+        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                📦 <span>انتخاب انبار</span>
+            </h3>
+            <button onclick="closeWarehouseModal()" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:#9ca3af;">&#x2715;</button>
+        </div>
+
+        <form method="post" id="supplyForm" action="" style="margin:0;">
+            {% csrf_token %}
+            <div style="padding:1.25rem 1.5rem;">
+                <p style="font-size:0.9rem; color:#374151; margin-bottom:1rem;">
+                    قلم: <strong id="modalItemName"></strong>
+                </p>
+
+                {% if supply_warehouses %}
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; font-size:0.82rem; font-weight:600; margin-bottom:0.4rem; color:#1f2937;">انبار تامین‌کننده <span style="color:#ef4444">*</span></label>
+                    <select name="warehouse_id" id="warehouseSelect" required
+                        style="width:100%; padding:0.65rem 0.875rem; border:1px solid #d1d5db; border-radius:0.5rem; font-family:inherit; font-size:0.875rem; background:white;">
+                        <option value="">-- انبار را انتخاب کنید --</option>
+                        {% for w in supply_warehouses %}
+                        <option value="{{ w.id }}">{{ w.name }} ({{ w.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% else %}
+                <div style="background:#fef3c7;border-radius:0.5rem;padding:0.875rem;font-size:0.875rem;color:#92400e;margin-bottom:1rem;">
+                    ⚠️ هیچ انباری برای تامین فعال نشده است. ابتدا از صفحه مدیریت انبارها یک انبار را «قابل تامین» کنید.
+                </div>
+                {% endif %}
+
+                <div>
+                    <label style="display:block; font-size:0.82rem; font-weight:600; margin-bottom:0.4rem; color:#1f2937;">یادداشت</label>
+                    <textarea name="notes" rows="2"
+                        style="width:100%; padding:0.65rem 0.875rem; border:1px solid #d1d5db; border-radius:0.5rem; font-family:inherit; font-size:0.875rem; resize:vertical;"
+                        placeholder="توضیحات اضافی (اختیاری)"></textarea>
+                </div>
+            </div>
+
+            <div style="padding:1rem 1.5rem; border-top:1px solid #e5e7eb; display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button type="button" onclick="closeWarehouseModal()" style="padding:0.6rem 1.1rem; background:#f3f4f6; border:1px solid #d1d5db; border-radius:0.5rem; font-family:inherit; font-size:0.875rem; cursor:pointer; font-weight:600;">انصراف</button>
+                {% if supply_warehouses %}
+                <button type="submit" style="padding:0.6rem 1.25rem; background:linear-gradient(135deg,#10b981,#059669); color:white; border:none; border-radius:0.5rem; font-family:inherit; font-size:0.875rem; cursor:pointer; font-weight:700;">✔ تامین از این انبار</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+@keyframes slideUp {
+    from { transform:translateY(32px); opacity:0; }
+    to   { transform:translateY(0);    opacity:1; }
+}
+</style>
+
+<script>
+const CAFE_CODE_DETAIL = "{{ cafe_code }}";
+
+function openWarehouseModal(itemId, itemName) {
+    document.getElementById('modalItemName').textContent = itemName;
+    document.getElementById('supplyForm').action = '/' + CAFE_CODE_DETAIL + '/stock/item/' + itemId + '/mark-for-supply/';
+    const modal = document.getElementById('warehouseModal');
+    modal.style.display = 'flex';
+}
+
+function closeWarehouseModal() {
+    document.getElementById('warehouseModal').style.display = 'none';
+}
+
+// Close on overlay click
+document.getElementById('warehouseModal').addEventListener('click', function(e) {
+    if (e.target === this) closeWarehouseModal();
+});
+</script>
 
 {% endblock %}

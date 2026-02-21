@@ -246,6 +246,12 @@ cafe_urlpatterns = [
     path('stock/item/<int:item_id>/mark-for-supply/', cv(views.mark_item_for_stock_supply), name='mark_item_for_stock_supply'),
     path('stock/supply-list/', cv(views.stock_supply_list), name='stock_supply_list'),
     path('stock/request/<int:request_id>/fulfill/', cv(views.fulfill_stock_request), name='fulfill_stock_request'),
+
+    # Warehouse Management URLs (مدیریت انبارها)
+    path('warehouses/', cv(views.warehouse_management), name='warehouse_management'),
+    path('warehouses/create/', cv(views.warehouse_create), name='warehouse_create'),
+    path('warehouses/<int:warehouse_id>/edit/', cv(views.warehouse_edit), name='warehouse_edit'),
+    path('warehouses/<int:warehouse_id>/toggle-status/', cv(views.warehouse_toggle_status), name='warehouse_toggle_status'),
 ]
 
 # ترکیب مسیرها - مسیرهای احراز هویت + مسیرهای کافه با prefix

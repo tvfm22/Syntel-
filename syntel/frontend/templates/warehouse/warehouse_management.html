@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت انبارها - Syntel</title>
+
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: var(--dark-color);
+        }
+
+        /* ===== TOP BAR ===== */
+        .topbar {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.875rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--light-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--dark-color);
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .topbar-title {
+            flex: 1;
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .topbar-title i { color: var(--primary-color); }
+
+        /* ===== MAIN ===== */
+        .main-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+        /* ===== PAGE HEADER CARD ===== */
+        .page-header-card {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-header-card h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .page-header-card p { margin-top: 0.25rem; opacity: 0.85; font-size: 0.9rem; }
+
+        /* ===== STATS BAR ===== */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border-top: 3px solid var(--primary-color);
+        }
+
+        .stat-box.success { border-top-color: var(--success-color); }
+        .stat-box.warning { border-top-color: var(--warning-color); }
+        .stat-box.danger  { border-top-color: var(--danger-color); }
+
+        .stat-box-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-box.success .stat-box-value { color: var(--success-color); }
+        .stat-box.warning .stat-box-value { color: var(--warning-color); }
+        .stat-box.danger  .stat-box-value  { color: var(--danger-color); }
+        .stat-box .stat-box-value          { color: var(--primary-color); }
+
+        .stat-box-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 0.35rem;
+            font-weight: 500;
+        }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 0.65rem 1.25rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); box-shadow: var(--shadow-md); }
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning-color); color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger  { background: var(--danger-color); color: white; }
+        .btn-danger:hover  { background: #dc2626; }
+        .btn-outline {
+            background: white;
+            color: var(--dark-color);
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover { background: var(--light-color); }
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+        /* ===== WAREHOUSES GRID ===== */
+        .warehouses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* ===== WAREHOUSE CARD ===== */
+        .warehouse-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .warehouse-card:hover {
+            box-shadow: var(--shadow-xl);
+            transform: translateY(-4px);
+        }
+
+        .warehouse-card.inactive {
+            opacity: 0.7;
+            border-color: #e5e7eb;
+        }
+
+        /* Card Header - clickable */
+        .wcard-header {
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .wcard-header:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); }
+
+        .wcard-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .wcard-icon {
+            width: 42px;
+            height: 42px;
+            background: rgba(255,255,255,0.2);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+        }
+
+        .wcard-name { font-size: 1rem; font-weight: 700; }
+        .wcard-code { font-size: 0.78rem; opacity: 0.8; margin-top: 1px; }
+
+        .wcard-header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .badge-active   { background: rgba(16,185,129,0.2); color: #a7f3d0; }
+        .badge-inactive { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        .toggle-chevron {
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        .warehouse-card.open .toggle-chevron { transform: rotate(180deg); }
+
+        /* Card Body meta info */
+        .wcard-meta {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.82rem;
+            color: #6b7280;
+        }
+
+        .meta-item i { color: var(--primary-color); width: 14px; }
+        .meta-item span { font-weight: 500; color: var(--dark-color); }
+
+        /* Card Actions */
+        .wcard-actions {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Accordion / Dropdown body */
+        .wcard-dropdown {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease, padding 0.2s;
+        }
+
+        .warehouse-card.open .wcard-dropdown { max-height: 500px; }
+
+        .dropdown-inner {
+            padding: 1rem 1.25rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .dropdown-section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.5rem 0 0.25rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 0.25rem;
+        }
+
+        .dropdown-section-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+        .dropdown-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--light-color);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--dark-color);
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .dropdown-link:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateX(-4px);
+            border-color: var(--primary-color);
+        }
+
+        .dropdown-link i { width: 18px; font-size: 0.95rem; }
+
+        .dropdown-link.coming-soon {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .dropdown-link.coming-soon:hover {
+            background: var(--light-color);
+            color: var(--dark-color);
+            transform: none;
+            border-color: transparent;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 { font-size: 1.2rem; color: #6b7280; margin-bottom: 0.5rem; }
+        .empty-state p  { color: #9ca3af; font-size: 0.875rem; margin-bottom: 1.5rem; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: white;
+            border-radius: var(--radius-xl);
+            width: 100%;
+            max-width: 540px;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.25s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to   { transform: translateY(0);   opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            color: #9ca3af;
+            padding: 0.25rem;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover { color: var(--danger-color); }
+
+        .modal-body { padding: 1.5rem; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .form-label .required { color: var(--danger-color); }
+
+        .form-control {
+            padding: 0.6rem 0.875rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+
+        textarea.form-control { resize: vertical; min-height: 80px; }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-check input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-xl);
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            animation: toastIn 0.3s ease;
+            min-width: 260px;
+            border-right: 4px solid var(--success-color);
+        }
+
+        .toast.error { border-right-color: var(--danger-color); }
+        .toast i.success { color: var(--success-color); }
+        .toast i.error   { color: var(--danger-color); }
+
+        @keyframes toastIn {
+            from { transform: translateX(-30px); opacity: 0; }
+            to   { transform: translateX(0);     opacity: 1; }
+        }
+
+        /* ===== SEARCH ===== */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.5rem 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .search-bar i { color: #9ca3af; }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            font-family: 'Vazir', sans-serif;
+            font-size: 0.875rem;
+            width: 220px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .main-content { padding: 1rem; }
+            .warehouses-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .page-header-card { flex-direction: column; gap: 1rem; text-align: center; }
+            .section-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+{% load static %}
+{% csrf_token %}
+
+<!-- Top Bar -->
+<div class="topbar">
+    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i>
+        بازگشت
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-warehouse"></i>
+        مدیریت انبارها
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main-content">
+
+    <!-- Page Header Card -->
+    <div class="page-header-card">
+        <div>
+            <h1><i class="fas fa-warehouse"></i> مدیریت انبارها</h1>
+            <p>تعریف، مشاهده و ویرایش انبارهای شعبه</p>
+        </div>
+        {% if user.role in 'manager,admin,ceo' %}
+        <button class="btn btn-success" onclick="openCreateModal()">
+            <i class="fas fa-plus"></i>
+            انبار جدید
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-box">
+            <div class="stat-box-value">{{ warehouses|length }}</div>
+            <div class="stat-box-label">کل انبارها</div>
+        </div>
+        <div class="stat-box success">
+            <div class="stat-box-value" id="stat-active">
+                {% with active_count=0 %}
+                {% for w in warehouses %}{% if w.is_active %}{% with active_count=active_count|add:1 %}{% endwith %}{% endif %}{% endfor %}
+                {{ warehouses|length }}
+                {% endwith %}
+            </div>
+            <div class="stat-box-label">انبار فعال</div>
+        </div>
+        <div class="stat-box danger">
+            <div class="stat-box-value" id="stat-inactive">0</div>
+            <div class="stat-box-label">انبار غیرفعال</div>
+        </div>
+    </div>
+
+    <!-- Section Header -->
+    <div class="section-header">
+        <div class="section-title">
+            <i class="fas fa-th-large" style="color:var(--primary-color)"></i>
+            لیست انبارها
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:center;">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="جستجو..." oninput="filterWarehouses(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Warehouses Grid -->
+    <div class="warehouses-grid" id="warehousesGrid">
+
+        {% if warehouses %}
+            {% for warehouse in warehouses %}
+            <div class="warehouse-card {% if not warehouse.is_active %}inactive{% endif %}"
+                 id="wcard-{{ warehouse.id }}"
+                 data-id="{{ warehouse.id }}"
+                 data-name="{{ warehouse.name }}"
+                 data-code="{{ warehouse.code }}"
+                 data-active="{{ warehouse.is_active|yesno:'true,false' }}">
+
+                <!-- Header (clickable) -->
+                <div class="wcard-header" onclick="toggleCard({{ warehouse.id }})">
+                    <div class="wcard-header-left">
+                        <div class="wcard-icon"><i class="fas fa-warehouse"></i></div>
+                        <div>
+                            <div class="wcard-name">{{ warehouse.name }}</div>
+                            <div class="wcard-code">کد: {{ warehouse.code }}</div>
+                        </div>
+                    </div>
+                    <div class="wcard-header-right">
+                        {% if warehouse.is_active %}
+                        <span class="status-badge badge-active">فعال</span>
+                        {% else %}
+                        <span class="status-badge badge-inactive">غیرفعال</span>
+                        {% endif %}
+                        {% if warehouse.is_supply_enabled %}
+                        <span class="status-badge" style="background:rgba(99,102,241,0.2);color:#c7d2fe;font-size:0.68rem;">📦 تامین</span>
+                        {% endif %}
+                        <i class="fas fa-chevron-down toggle-chevron"></i>
+                    </div>
+                </div>
+
+                <!-- Meta Info -->
+                <div class="wcard-meta">
+                    {% if warehouse.location %}
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ warehouse.location }}</span>
+                    </div>
+                    {% endif %}
+                    {% if warehouse.manager_name %}
+                    <div class="meta-item">
+                        <i class="fas fa-user-tie"></i>
+                        <span>{{ warehouse.manager_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% if warehouse.manager_phone %}
+                    <div class="meta-item">
+                        <i class="fas fa-phone"></i>
+                        <span>{{ warehouse.manager_phone }}</span>
+                    </div>
+                    {% endif %}
+                    {% if warehouse.description %}
+                    <div class="meta-item" style="width:100%">
+                        <i class="fas fa-info-circle"></i>
+                        <span>{{ warehouse.description|truncatechars:60 }}</span>
+                    </div>
+                    {% endif %}
+                    {% if not warehouse.location and not warehouse.manager_name and not warehouse.description %}
+                    <div class="meta-item" style="color:#9ca3af; font-style:italic">
+                        <i class="fas fa-info-circle"></i>
+                        <span>اطلاعات تکمیلی ثبت نشده</span>
+                    </div>
+                    {% endif %}
+                    <div class="meta-item" style="width:100%; margin-top:4px;">
+                        <i class="fas fa-boxes" style="color:{% if warehouse.is_supply_enabled %}var(--success-color){% else %}#9ca3af{% endif %}"></i>
+                        <span style="font-weight:600; color:{% if warehouse.is_supply_enabled %}var(--success-color){% else %}#9ca3af{% endif %}">
+                            {% if warehouse.is_supply_enabled %}قابل تامین - از این انبار می‌توان در درخواست‌های خرید تامین کرد{% else %}غیرقابل تامین{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="wcard-actions">
+                    {% if user.role in 'manager,admin,ceo' %}
+                    <button class="btn btn-outline btn-sm"
+                            onclick="openEditModal({{ warehouse.id }}, '{{ warehouse.name|escapejs }}', '{{ warehouse.code|escapejs }}', '{{ warehouse.description|escapejs }}', '{{ warehouse.location|escapejs }}', '{{ warehouse.manager_name|escapejs }}', '{{ warehouse.manager_phone|escapejs }}', {{ warehouse.is_active|yesno:'true,false' }}, {{ warehouse.is_supply_enabled|yesno:'true,false' }})">
+                        <i class="fas fa-edit"></i>
+                        ویرایش
+                    </button>
+                    <button class="btn btn-sm {% if warehouse.is_active %}btn-warning{% else %}btn-success{% endif %}"
+                            onclick="toggleStatus({{ warehouse.id }}, this)">
+                        {% if warehouse.is_active %}
+                        <i class="fas fa-pause-circle"></i> غیرفعال
+                        {% else %}
+                        <i class="fas fa-play-circle"></i> فعال‌سازی
+                        {% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Accordion Dropdown -->
+                <div class="wcard-dropdown">
+                    <div class="dropdown-inner">
+                        <div class="dropdown-section-title">
+                            <i class="fas fa-boxes" style="margin-left:5px"></i>
+                            موجودی و گزارشات
+                        </div>
+                        <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="dropdown-link">
+                            <i class="fas fa-list-ul"></i>
+                            لیست موجودی انبار
+                        </a>
+                        <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="dropdown-link">
+                            <i class="fas fa-exchange-alt"></i>
+                            گزارش ورود و خروج
+                        </a>
+                        <a href="#" class="dropdown-link coming-soon" title="به زودی">
+                            <i class="fas fa-clipboard-check"></i>
+                            انبارگردانی
+                            <span style="font-size:0.7rem;margin-right:auto;background:#f3f4f6;padding:2px 6px;border-radius:9999px;color:#9ca3af">به زودی</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+            {% endfor %}
+
+        {% else %}
+            <!-- Empty State -->
+            <div class="empty-state" style="grid-column: 1/-1;">
+                <div class="empty-state-icon"><i class="fas fa-warehouse"></i></div>
+                <h3>هنوز انباری تعریف نشده</h3>
+                <p>برای شروع، اولین انبار خود را اضافه کنید</p>
+                {% if user.role in 'manager,admin,ceo' %}
+                <button class="btn btn-primary" onclick="openCreateModal()">
+                    <i class="fas fa-plus"></i>
+                    افزودن انبار
+                </button>
+                {% endif %}
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- ========== CREATE/EDIT MODAL ========== -->
+<div class="modal-overlay" id="warehouseModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modalTitle"><i class="fas fa-warehouse"></i> انبار جدید</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editWarehouseId" value="">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">نام انبار <span class="required">*</span></label>
+                    <input type="text" id="fieldName" class="form-control" placeholder="مثال: انبار مرکزی">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">کد انبار <span class="required">*</span></label>
+                    <input type="text" id="fieldCode" class="form-control" placeholder="مثال: WH001" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">مسئول انبار</label>
+                    <input type="text" id="fieldManagerName" class="form-control" placeholder="نام مسئول انبار">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">تلفن مسئول</label>
+                    <input type="text" id="fieldManagerPhone" class="form-control" placeholder="شماره تماس">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">محل انبار</label>
+                    <input type="text" id="fieldLocation" class="form-control" placeholder="آدرس یا محل قرارگیری انبار">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">توضیحات</label>
+                    <textarea id="fieldDescription" class="form-control" placeholder="توضیحات اضافی..."></textarea>
+                </div>
+                <div class="form-group full" id="activeToggleGroup" style="display:none">
+                    <label class="form-check">
+                        <input type="checkbox" id="fieldIsActive" checked>
+                        <span class="form-label" style="margin:0">انبار فعال باشد</span>
+                    </label>
+                </div>
+                <div class="form-group full">
+                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-md);padding:0.875rem;">
+                        <label class="form-check">
+                            <input type="checkbox" id="fieldIsSupplyEnabled" checked>
+                            <div>
+                                <span class="form-label" style="margin:0">قابل تامین از این انبار</span>
+                                <div style="font-size:0.75rem;color:#6b7280;margin-top:2px">هنگام ثبت درخواست خرید، مسئول خرید می‌تواند «تامین از این انبار» را انتخاب کند</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal()">انصراف</button>
+            <button class="btn btn-primary" onclick="saveWarehouse()" id="saveBtn">
+                <i class="fas fa-save"></i>
+                ذخیره
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    const CAFE_CODE = "{{ cafe_code }}";
+    const CSRF_TOKEN = "{{ csrf_token }}";
+
+    // ====== Toggle card open/close ======
+    function toggleCard(id) {
+        const card = document.getElementById('wcard-' + id);
+        card.classList.toggle('open');
+    }
+
+    // ====== Search / Filter ======
+    function filterWarehouses(query) {
+        const cards = document.querySelectorAll('.warehouse-card');
+        const q = query.toLowerCase().trim();
+        cards.forEach(card => {
+            const name = card.dataset.name.toLowerCase();
+            const code = card.dataset.code.toLowerCase();
+            card.style.display = (name.includes(q) || code.includes(q)) ? '' : 'none';
+        });
+    }
+
+    // ====== Modal ======
+    function openCreateModal() {
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-warehouse"></i> انبار جدید';
+        document.getElementById('editWarehouseId').value = '';
+        document.getElementById('fieldName').value = '';
+        document.getElementById('fieldCode').value = '';
+        document.getElementById('fieldManagerName').value = '';
+        document.getElementById('fieldManagerPhone').value = '';
+        document.getElementById('fieldLocation').value = '';
+        document.getElementById('fieldDescription').value = '';
+        document.getElementById('fieldIsSupplyEnabled').checked = true;
+        document.getElementById('activeToggleGroup').style.display = 'none';
+        document.getElementById('warehouseModal').classList.add('open');
+        document.getElementById('fieldName').focus();
+    }
+
+    function openEditModal(id, name, code, description, location, managerName, managerPhone, isActive, isSupplyEnabled) {
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit"></i> ویرایش انبار';
+        document.getElementById('editWarehouseId').value = id;
+        document.getElementById('fieldName').value = name;
+        document.getElementById('fieldCode').value = code;
+        document.getElementById('fieldManagerName').value = managerName;
+        document.getElementById('fieldManagerPhone').value = managerPhone;
+        document.getElementById('fieldLocation').value = location;
+        document.getElementById('fieldDescription').value = description;
+        document.getElementById('fieldIsActive').checked = isActive;
+        document.getElementById('fieldIsSupplyEnabled').checked = isSupplyEnabled;
+        document.getElementById('activeToggleGroup').style.display = 'block';
+        document.getElementById('warehouseModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('warehouseModal').classList.remove('open');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('warehouseModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // ====== Save Warehouse ======
+    async function saveWarehouse() {
+        const btn = document.getElementById('saveBtn');
+        const editId = document.getElementById('editWarehouseId').value;
+        const name = document.getElementById('fieldName').value.trim();
+        const code = document.getElementById('fieldCode').value.trim();
+
+        if (!name || !code) {
+            showToast('نام و کد انبار را وارد کنید', 'error');
+            return;
+        }
+
+        const payload = {
+            name,
+            code,
+            description: document.getElementById('fieldDescription').value.trim(),
+            location: document.getElementById('fieldLocation').value.trim(),
+            manager_name: document.getElementById('fieldManagerName').value.trim(),
+            manager_phone: document.getElementById('fieldManagerPhone').value.trim(),
+            is_active: document.getElementById('fieldIsActive').checked,
+            is_supply_enabled: document.getElementById('fieldIsSupplyEnabled').checked,
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال ذخیره...';
+
+        const url = editId
+            ? `/${CAFE_CODE}/warehouses/${editId}/edit/`
+            : `/${CAFE_CODE}/warehouses/create/`;
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN,
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(editId ? 'انبار با موفقیت ویرایش شد' : 'انبار جدید ایجاد شد', 'success');
+                closeModal();
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.error || 'خطا در ذخیره', 'error');
+            }
+        } catch (e) {
+            showToast('خطا در ارتباط با سرور', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> ذخیره';
+        }
+    }
+
+    // ====== Toggle Status ======
+    async function toggleStatus(id, btn) {
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/${CAFE_CODE}/warehouses/${id}/toggle-status/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'خطا', 'error');
+                btn.disabled = false;
+            }
+        } catch (e) {
+            showToast('خطا در ارتباط با سرور', 'error');
+            btn.disabled = false;
+        }
+    }
+
+    // ====== Toast ======
+    function showToast(msg, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type !== 'success' ? 'error' : ''}`;
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle success' : 'exclamation-circle error'}"></i>${msg}`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+    }
+
+    // ====== Update Stats on load ======
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.warehouse-card');
+        let active = 0, inactive = 0;
+        cards.forEach(c => {
+            if (c.dataset.active === 'true') active++;
+            else inactive++;
+        });
+        const statActive = document.getElementById('stat-active');
+        const statInactive = document.getElementById('stat-inactive');
+        if (statActive) statActive.textContent = active;
+        if (statInactive) statInactive.textContent = inactive;
+    });
+</script>
+
+</body>
+</html>

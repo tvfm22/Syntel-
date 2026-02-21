@@ -1396,6 +1396,31 @@ class PriceHistory(models.Model):
         return f"{self.product.name} - {self.price} ({self.date.date()})"
 
 
+# Warehouse model - مدیریت انبارها
+class Warehouse(models.Model):
+    """مدل انبار برای مدیریت چند انبار"""
+    name = models.CharField(max_length=200, verbose_name='نام انبار')
+    code = models.CharField(max_length=20, verbose_name='کد انبار')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='warehouses', verbose_name='کافه')
+    description = models.TextField(blank=True, verbose_name='توضیحات')
+    location = models.CharField(max_length=300, blank=True, verbose_name='محل انبار')
+    manager_name = models.CharField(max_length=100, blank=True, verbose_name='مسئول انبار')
+    manager_phone = models.CharField(max_length=20, blank=True, verbose_name='تلفن مسئول')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+    is_supply_enabled = models.BooleanField(default=True, verbose_name='قابل تامین (در درخواست‌های خرید قابل انتخاب باشد)')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    class Meta:
+        verbose_name = 'انبار'
+        verbose_name_plural = 'انبارها'
+        unique_together = [['cafe', 'code']]
+        ordering = ['name']
+
+
 # Stock Item model - موجودی انبار
 class StockItem(models.Model):
     product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='stock_item', verbose_name='محصول')
@@ -1471,6 +1496,7 @@ class StockRequest(models.Model):
     requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='درخواست دهنده')
     requested_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ درخواست')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='وضعیت')
+    warehouse = models.ForeignKey('Warehouse', on_delete=models.SET_NULL, null=True, blank=True, related_name='stock_requests', verbose_name='انبار تامین‌کننده')
     fulfilled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='fulfilled_stock_requests', verbose_name='تامین شده توسط')
     fulfilled_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تامین')
     notes = models.TextField(blank=True, verbose_name='یادداشت‌ها')
