@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block title %}درخواست‌های انبار من{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+        <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" 
+           style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; text-decoration: none; color: #374151;">← بازگشت</a>
+        <h1 style="font-size: 1.5rem; color: #1f2937;">📦 درخواست‌های انبار من</h1>
+        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" 
+           style="margin-right: auto; background: #10b981; color: white; padding: 0.6rem 1.2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            + درخواست جدید
+        </a>
+    </div>
+
+    {% if requests %}
+    {% for req in requests %}
+    <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <div>
+                <span style="font-weight: 600; color: #1f2937; font-size: 0.95rem;">درخواست #{{ req.id }}</span>
+                <span style="color: #6b7280; font-size: 0.8rem; margin-right: 0.75rem;">{{ req.created_at|jalali_datetime }}</span>
+            </div>
+            <span style="padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+                {% if req.status == 'pending' %}background: #fef3c7; color: #92400e;
+                {% elif req.status == 'approved_from_stock' %}background: #d1fae5; color: #065f46;
+                {% elif req.status == 'approved_purchase' %}background: #dbeafe; color: #1e40af;
+                {% elif req.status == 'declined' %}background: #fee2e2; color: #991b1b;
+                {% elif req.status == 'fulfilled' %}background: #d1fae5; color: #065f46;
+                {% endif %}">
+                {{ req.get_status_display }}
+            </span>
+        </div>
+
+        <div style="background: #f9fafb; border-radius: 8px; padding: 0.75rem;">
+            {% for item in req.items.all %}
+            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.875rem; {% if not forloop.last %}border-bottom: 1px solid #e5e7eb;{% endif %}">
+                <span style="font-weight: 500;">{{ item.name }}</span>
+                <span style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="color: #6b7280;">{{ item.quantity }} {{ item.unit }}</span>
+                    <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px;
+                        {% if item.supply_status == 'pending' %}background: #f3f4f6; color: #6b7280;
+                        {% elif item.supply_status == 'from_stock' %}background: #d1fae5; color: #065f46;
+                        {% elif item.supply_status == 'to_purchase' %}background: #dbeafe; color: #1e40af;
+                        {% elif item.supply_status == 'declined' %}background: #fee2e2; color: #991b1b;
+                        {% endif %}">
+                        {% if item.supply_status == 'pending' %}در انتظار
+                        {% elif item.supply_status == 'from_stock' %}تامین از انبار
+                        {% elif item.supply_status == 'to_purchase' %}ارجاع به خرید
+                        {% elif item.supply_status == 'declined' %}عدم تامین
+                        {% endif %}
+                    </span>
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align: center; padding: 4rem; color: #6b7280;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+        <p>هیچ درخواستی ثبت نشده است</p>
+        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" 
+           style="display: inline-block; margin-top: 1rem; background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            ثبت اولین درخواست
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

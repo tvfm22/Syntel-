@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ type_label }} - {{ warehouse.name }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --in-color:#10b981;--in-dark:#059669;
+            --out-color:#ef4444;--out-dark:#dc2626;
+            --primary:#6366f1;--primary-dark:#4f46e5;
+            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
+            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
+            --accent:{% if voucher_type == 'in' %}var(--in-color){% else %}var(--out-color){% endif %};
+            --accent-dark:{% if voucher_type == 'in' %}var(--in-dark){% else %}var(--out-dark){% endif %};
+        }
+        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
+        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
+        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .topbar-title{flex:1;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+
+        .main{padding:2rem;max-width:1100px;margin:0 auto}
+
+        /* PAGE HEADER */
+        .page-header{background:linear-gradient(135deg,{% if voucher_type == 'in' %}#10b981,#059669{% else %}#ef4444,#dc2626{% endif %});border-radius:var(--r-xl);padding:1.75rem 2rem;margin-bottom:2rem;color:#fff}
+        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
+        .page-header p{margin-top:.35rem;opacity:.85;font-size:.9rem}
+
+        /* ALERT */
+        .alert{padding:.875rem 1.25rem;border-radius:var(--r-md);margin-bottom:1.5rem;display:flex;align-items:center;gap:.75rem;font-weight:500}
+        .alert-danger{background:#fee2e2;border:1px solid #fca5a5;color:#dc2626}
+
+        /* FORM CARD */
+        .form-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
+        .form-card-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1rem}
+        .form-card-header i{color:var(--accent)}
+        .form-card-body{padding:1.5rem}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+        .form-group{display:flex;flex-direction:column;gap:.4rem}
+        .form-group.full{grid-column:1/-1}
+        .form-label{font-size:.82rem;font-weight:600;color:var(--dark)}
+        .form-label .req{color:#ef4444}
+        .form-control{padding:.65rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;background:#fff;transition:border-color .2s,box-shadow .2s}
+        .form-control:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+        select.form-control{cursor:pointer}
+        textarea.form-control{resize:vertical;min-height:75px}
+
+        /* ITEMS TABLE */
+        .items-section{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
+        .items-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+        .items-header-title{font-weight:700;font-size:1rem;display:flex;align-items:center;gap:.5rem}
+        .items-header-title i{color:var(--accent)}
+        .items-table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;color:#6b7280;background:#f9fafb;border-bottom:1px solid var(--border)}
+        td{padding:.65rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle}
+        tr:last-child td{border-bottom:none}
+        .td-input{padding:.5rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.85rem;width:100%;min-width:100px;background:#fff}
+        .td-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(99,102,241,.08)}
+        .td-select{padding:.5rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.85rem;width:100%;min-width:140px;background:#fff;cursor:pointer}
+        .td-select:focus{outline:none;border-color:var(--accent)}
+        .row-total{font-weight:700;color:var(--accent);text-align:center;min-width:90px}
+        .del-btn{background:none;border:none;color:#ef4444;cursor:pointer;padding:.4rem;border-radius:var(--r-md);transition:all .2s}
+        .del-btn:hover{background:#fee2e2}
+        .add-row-btn{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;background:var(--light);color:var(--dark);border:2px dashed var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .2s;margin:1rem 1.5rem}
+        .add-row-btn:hover{border-color:var(--accent);color:var(--accent);background:#f0fdf4}
+
+        /* FOOTER */
+        .form-footer{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-top:1px solid var(--border);background:#f9fafb}
+        .total-summary{font-size:1rem;font-weight:700;color:var(--dark)}
+        .total-summary span{color:var(--accent);font-size:1.2rem}
+        .footer-btns{display:flex;gap:.75rem}
+        .btn{padding:.7rem 1.4rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
+        .btn-accent{background:var(--accent);color:#fff}
+        .btn-accent:hover{background:var(--accent-dark);box-shadow:var(--shadow-md)}
+        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}
+        .btn-outline:hover{background:var(--light)}
+
+        /* BADGE */
+        .type-badge{padding:.3rem .75rem;border-radius:9999px;font-size:.8rem;font-weight:700}
+        .in-badge{background:#d1fae5;color:#065f46}
+        .out-badge{background:#fee2e2;color:#991b1b}
+
+        @media(max-width:768px){.main{padding:1rem}.form-grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+{% load static %}
+
+<!-- Topbar -->
+<div class="topbar">
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i> مدیریت انبار
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-{% if voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}" style="color:{% if voucher_type == 'in' %}var(--in-color){% else %}var(--out-color){% endif %}"></i>
+        {{ type_label }} - {{ warehouse.name }}
+    </div>
+    <span class="type-badge {% if voucher_type == 'in' %}in-badge{% else %}out-badge{% endif %}">
+        {% if voucher_type == 'in' %}📥 ورود{% else %}📤 خروج{% endif %}
+    </span>
+    <a href="{% url 'warehouse_products' cafe_code=cafe_code warehouse_id=warehouse.id %}"
+       class="btn btn-outline"
+       style="font-size:.82rem;padding:.45rem .9rem;gap:.4rem"
+       title="تعریف محصول جدید برای این انبار">
+        <i class="fas fa-boxes" style="color:#6366f1"></i>
+        تعریف کالا
+    </a>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-{% if voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}"></i>
+            {{ type_label }}
+        </h1>
+        <p>انبار: <strong>{{ warehouse.name }}</strong> (کد: {{ warehouse.code }})
+            {% if warehouse.location %} &bull; {{ warehouse.location }}{% endif %}
+        </p>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="post" id="voucherForm">
+        {% csrf_token %}
+
+        <!-- Voucher Info -->
+        <div class="form-card">
+            <div class="form-card-header">
+                <i class="fas fa-file-alt"></i>
+                اطلاعات حواله
+            </div>
+            <div class="form-card-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">شماره حواله <span class="req">*</span></label>
+                        <input type="text" name="voucher_number" class="form-control" value="{{ auto_number }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">تاریخ و زمان</label>
+                        <input type="datetime-local" name="date" class="form-control" id="dateInput">
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label">توضیحات کلی</label>
+                        <textarea name="description" class="form-control" placeholder="توضیحات اختیاری..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="items-section">
+            <div class="items-header">
+                <div class="items-header-title">
+                    <i class="fas fa-list"></i>
+                    اقلام حواله
+                </div>
+                <span style="font-size:.8rem;color:#6b7280">حداقل یک قلم الزامی است</span>
+            </div>
+
+            <div class="items-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>محصول <span style="color:#ef4444">*</span></th>
+                            <th>مقدار <span style="color:#ef4444">*</span></th>
+                            <th>واحد</th>
+                            <th>قیمت واحد (ریال)</th>
+                            <th>مبلغ کل</th>
+                            <th>توضیحات</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <!-- rows inserted by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <button type="button" class="add-row-btn" onclick="addRow()">
+                <i class="fas fa-plus-circle"></i>
+                افزودن قلم جدید
+            </button>
+
+            <div class="form-footer">
+                <div class="total-summary">
+                    جمع کل: <span id="grandTotal">۰</span> ریال
+                </div>
+                <div class="footer-btns">
+                    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline">
+                        <i class="fas fa-times"></i> انصراف
+                    </a>
+                    <button type="submit" class="btn btn-accent" onclick="return validateForm()">
+                        <i class="fas fa-save"></i>
+                        ثبت {{ type_label }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<script>
+// Products data from server
+const PRODUCTS = [
+    {% for p in products %}
+    {id: {{ p.id }}, name: "{{ p.name|escapejs }}", unit_id: {{ p.unit.id|default:'null' }}, unit_name: "{{ p.unit.name|default:''|escapejs }}", category: "{{ p.category.name|default:''|escapejs }}"},
+    {% endfor %}
+];
+
+const UNITS = [
+    {% for u in units %}
+    {id: {{ u.id }}, name: "{{ u.name|escapejs }}"},
+    {% endfor %}
+];
+
+let rowCounter = 0;
+
+// Set default date to now
+document.addEventListener('DOMContentLoaded', () => {
+    const dt = document.getElementById('dateInput');
+    const now = new Date();
+    dt.value = now.toISOString().slice(0,16);
+    addRow(); // Add one row by default
+});
+
+function buildProductSelect(selectedId = '') {
+    let opts = '<option value="">-- انتخاب محصول --</option>';
+    let lastCat = '';
+    for (const p of PRODUCTS) {
+        if (p.category !== lastCat) {
+            if (lastCat !== '') opts += '</optgroup>';
+            opts += `<optgroup label="${p.category || 'بدون دسته‌بندی'}">`;
+            lastCat = p.category;
+        }
+        const sel = String(p.id) === String(selectedId) ? ' selected' : '';
+        opts += `<option value="${p.id}" data-unit-id="${p.unit_id || ''}" data-unit-name="${p.unit_name}"${sel}>${p.name}</option>`;
+    }
+    if (lastCat !== '') opts += '</optgroup>';
+    return opts;
+}
+
+function buildUnitSelect(selectedId = '') {
+    let opts = '<option value="">-- واحد --</option>';
+    for (const u of UNITS) {
+        const sel = String(u.id) === String(selectedId) ? ' selected' : '';
+        opts += `<option value="${u.id}"${sel}>${u.name}</option>`;
+    }
+    return opts;
+}
+
+function addRow() {
+    rowCounter++;
+    const tbody = document.getElementById('itemsBody');
+    const tr = document.createElement('tr');
+    tr.id = `row-${rowCounter}`;
+    tr.innerHTML = `
+        <td style="color:#9ca3af;font-size:.85rem;text-align:center;min-width:32px">${rowCounter}</td>
+        <td>
+            <select name="product_id[]" class="td-select" onchange="onProductChange(this, ${rowCounter})" required>
+                ${buildProductSelect()}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="quantity[]" class="td-input" min="0.01" step="0.01" placeholder="0"
+                   style="width:100px" onchange="calcRowTotal(${rowCounter})" oninput="calcRowTotal(${rowCounter})" id="qty-${rowCounter}">
+        </td>
+        <td>
+            <select name="unit_id[]" class="td-select" id="unit-${rowCounter}" style="min-width:100px">
+                ${buildUnitSelect()}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="unit_price[]" class="td-input" min="0" step="1" placeholder="0"
+                   style="width:130px" onchange="calcRowTotal(${rowCounter})" oninput="calcRowTotal(${rowCounter})" id="price-${rowCounter}">
+        </td>
+        <td>
+            <span class="row-total" id="total-${rowCounter}">—</span>
+        </td>
+        <td>
+            <input type="text" name="item_description[]" class="td-input" placeholder="اختیاری" style="width:140px">
+        </td>
+        <td>
+            <button type="button" class="del-btn" onclick="removeRow(${rowCounter})" title="حذف">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function removeRow(id) {
+    const row = document.getElementById(`row-${id}`);
+    const tbody = document.getElementById('itemsBody');
+    if (tbody.children.length <= 1) {
+        alert('حداقل یک قلم باید وجود داشته باشد.');
+        return;
+    }
+    row.remove();
+    updateGrandTotal();
+}
+
+function onProductChange(select, rowId) {
+    const opt = select.options[select.selectedIndex];
+    const unitId = opt.dataset.unitId;
+    const unitSel = document.getElementById(`unit-${rowId}`);
+    if (unitId) {
+        unitSel.value = unitId;
+    }
+}
+
+function calcRowTotal(rowId) {
+    const qty   = parseFloat(document.getElementById(`qty-${rowId}`)?.value) || 0;
+    const price = parseFloat(document.getElementById(`price-${rowId}`)?.value) || 0;
+    const total = qty * price;
+    const el    = document.getElementById(`total-${rowId}`);
+    if (el) el.textContent = total > 0 ? total.toLocaleString('fa-IR') + ' ریال' : '—';
+    updateGrandTotal();
+}
+
+function updateGrandTotal() {
+    let grand = 0;
+    document.querySelectorAll('[id^="qty-"]').forEach(qEl => {
+        const id     = qEl.id.replace('qty-', '');
+        const qty    = parseFloat(qEl.value) || 0;
+        const price  = parseFloat(document.getElementById(`price-${id}`)?.value) || 0;
+        grand += qty * price;
+    });
+    document.getElementById('grandTotal').textContent = grand > 0 ? grand.toLocaleString('fa-IR') : '۰';
+}
+
+function validateForm() {
+    const selects = document.querySelectorAll('select[name="product_id[]"]');
+    const qinputs = document.querySelectorAll('input[name="quantity[]"]');
+    for (let i=0; i<selects.length; i++) {
+        if (!selects[i].value) { alert('لطفاً برای همه ردیف‌ها محصول انتخاب کنید.'); return false; }
+        const q = parseFloat(qinputs[i]?.value);
+        if (!q || q <= 0) { alert('مقدار باید بزرگ‌تر از صفر باشد.'); return false; }
+    }
+    return true;
+}
+</script>
+</body>
+</html>

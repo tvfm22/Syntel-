@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.cache import cache
-from .models import Invoice, PriceHistory, StockItem, StockTransaction, Requester
+from .models import Invoice, PriceHistory, StockItem, StockTransaction, Requester, Warehouse
 
 @receiver(post_save, sender=Invoice)
 def create_price_history_on_approval(sender, instance, created, **kwargs):
@@ -50,26 +50,34 @@ def add_to_stock_on_store_invoice(sender, instance, created, **kwargs):
                         reference_type='invoice',
                         reference_id=instance.id
                     ).exists()
-                    
+
                     if not existing_transactions:
+                        # پیدا کردن انبار مرتبط با کافه فاکتور
+                        target_warehouse = None
+                        if instance.cafe:
+                            target_warehouse = Warehouse.objects.filter(
+                                cafe=instance.cafe, is_active=True
+                            ).order_by('id').first()
+
                         # افزودن محصولات به انبار
                         for item in instance.invoice_items.all():
                             if item.product and item.quantity:
-                                # دریافت یا ایجاد موجودی انبار
+                                # دریافت یا ایجاد موجودی انبار برای این انبار مشخص
                                 stock_item, created = StockItem.objects.get_or_create(
                                     product=item.product,
+                                    warehouse=target_warehouse,
                                     defaults={
                                         'quantity': 0,
                                         'unit': item.product.unit,
                                         'min_quantity': 0
                                     }
                                 )
-                                
+
                                 # ثبت تراکنش ورود به انبار
                                 previous_qty = stock_item.quantity
                                 stock_item.quantity += item.quantity
                                 stock_item.save()
-                                
+
                                 StockTransaction.objects.create(
                                     stock_item=stock_item,
                                     transaction_type='in',
@@ -77,7 +85,7 @@ def add_to_stock_on_store_invoice(sender, instance, created, **kwargs):
                                     unit=stock_item.unit,
                                     reference_type='invoice',
                                     reference_id=instance.id,
-                                    description=f'ورود از فاکتور #{instance.id} - {instance.supplier.name if instance.supplier else ""}',
+                                    description=f'ورود از فاکتور #{instance.id} - {instance.supplier.name if instance.supplier else ""} - انبار {target_warehouse.name if target_warehouse else "نامشخص"}',
                                     created_by=instance.created_by,
                                     previous_quantity=previous_qty,
                                     new_quantity=stock_item.quantity

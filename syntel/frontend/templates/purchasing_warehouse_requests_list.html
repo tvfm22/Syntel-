@@ -1,0 +1,98 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ department_name }} - درخواست‌های انبار</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; padding: 16px; padding-bottom: 80px; }
+        .header { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; }
+        .back-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #374151; font-size: 18px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .header-title h1 { font-size: 20px; color: #1f2937; margin-bottom: 4px; }
+        .header-title p { font-size: 13px; color: #6b7280; }
+        .request-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .request-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .request-user { font-size: 15px; font-weight: 600; color: #1f2937; }
+        .request-date { font-size: 12px; color: #6b7280; }
+        .status-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-approved_from_stock { background: #d1fae5; color: #065f46; }
+        .status-approved_purchase { background: #dbeafe; color: #1e40af; }
+        .status-declined { background: #fee2e2; color: #991b1b; }
+        .status-fulfilled { background: #d1fae5; color: #065f46; }
+        .request-items { margin: 12px 0; padding: 12px; background: #f9fafb; border-radius: 8px; }
+        .item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: #374151; }
+        .item:not(:last-child) { border-bottom: 1px solid #e5e7eb; }
+        .request-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .action-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; text-align: center; display: block; }
+        .btn-process { background: #10b981; color: white; }
+        .btn-view { background: #3b82f6; color: white; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 12px 16px; display: flex; gap: 8px; }
+        .nav-btn { flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #374151; font-size: 14px; text-decoration: none; text-align: center; }
+        .nav-btn.active { background: #10b981; color: white; border-color: #10b981; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="back-btn">←</a>
+        <div class="header-title">
+            <h1>📦 {{ department_name }}</h1>
+            <p>{% if status == 'pending' %}درخواست‌های در انتظار{% else %}همه درخواست‌های انبار{% endif %}</p>
+        </div>
+    </div>
+
+    {% if requests %}
+    {% for req in requests %}
+    <div class="request-card">
+        <div class="request-header">
+            <div>
+                <div class="request-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                <div class="request-date">{{ req.created_at|jalali_datetime }}</div>
+            </div>
+            <span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span>
+        </div>
+
+        {% if req.items.all %}
+        <div class="request-items">
+            {% for item in req.items.all %}
+            <div class="item">
+                <span>{{ item.name }}</span>
+                <span style="color: #6b7280;">{{ item.quantity }} {{ item.unit }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="request-actions">
+            {% if req.status == 'pending' %}
+            <a href="{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}" class="action-btn btn-process">
+                پردازش
+            </a>
+            {% else %}
+            <a href="{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}" class="action-btn btn-view">
+                مشاهده
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+        <p>درخواستی وجود ندارد</p>
+    </div>
+    {% endif %}
+
+    <div class="bottom-nav">
+        <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ role }}&status=all"
+           class="nav-btn {% if status != 'pending' %}active{% endif %}">همه</a>
+        <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ role }}&status=pending"
+           class="nav-btn {% if status == 'pending' %}active{% endif %}">در انتظار</a>
+    </div>
+</body>
+</html>

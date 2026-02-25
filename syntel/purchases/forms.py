@@ -1,5 +1,5 @@
 from django import forms
-from .models import PurchaseRequest, PurchaseItem, StockItem, StockTransaction, Product, Unit
+from .models import PurchaseRequest, PurchaseItem, StockItem, StockTransaction, Product, Unit, Warehouse
 
 class PurchaseItemForm(forms.ModelForm):
     class Meta:
@@ -25,6 +25,12 @@ class InitialStockForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control'}),
         label='محصول',
         empty_label='انتخاب محصول'
+    )
+    warehouse = forms.ModelChoiceField(
+        queryset=Warehouse.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='انبار',
+        empty_label='انتخاب انبار'
     )
     quantity = forms.DecimalField(
         max_digits=10,
@@ -53,4 +59,4 @@ class InitialStockForm(forms.ModelForm):
 
     class Meta:
         model = StockItem
-        fields = ['product', 'quantity', 'unit', 'min_quantity']
+        fields = ['product', 'warehouse', 'quantity', 'unit', 'min_quantity']

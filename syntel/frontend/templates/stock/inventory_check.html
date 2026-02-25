@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>انبارگردانی - {{ warehouse.name }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --primary:#6366f1;--primary-dark:#4f46e5;
+            --success:#10b981;--danger:#ef4444;--warning:#f59e0b;
+            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
+            --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+            --shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+            --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1);
+            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
+        }
+        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
+        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
+        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .topbar-title{flex:1;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+        .topbar-title i{color:var(--warning)}
+        .main{padding:2rem;max-width:1400px;margin:0 auto}
+        .page-header{background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:var(--r-xl);padding:1.75rem 2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between}
+        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
+        .page-header p{margin-top:.35rem;opacity:.9;font-size:.9rem}
+        .btn{padding:.65rem 1.25rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark)}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669;box-shadow:var(--shadow-md)}
+        .btn-warning{background:var(--warning);color:#fff}
+        .btn-warning:hover{background:#d97706}
+        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}
+        .btn-outline:hover{background:var(--light)}
+        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
+        .btn-info{background:#0ea5e9;color:#fff}
+        .btn-info:hover{background:#0284c7}
+
+        /* Summary Cards */
+        .summary-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+        .sum-card{background:#fff;border-radius:var(--r-lg);padding:1.25rem;text-align:center;box-shadow:var(--shadow-sm);border-top:3px solid var(--primary)}
+        .sum-card.green{border-top-color:var(--success)}
+        .sum-card.red{border-top-color:var(--danger)}
+        .sum-card.orange{border-top-color:var(--warning)}
+        .sum-value{font-size:1.6rem;font-weight:700;color:var(--primary)}
+        .sum-card.green .sum-value{color:var(--success)}
+        .sum-card.red .sum-value{color:var(--danger)}
+        .sum-card.orange .sum-value{color:var(--warning)}
+        .sum-label{font-size:.78rem;color:#6b7280;margin-top:.3rem;font-weight:500}
+
+        /* Main Table Card */
+        .card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
+        .card-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa}
+        .card-header-title{font-weight:700;font-size:1rem;display:flex;align-items:center;gap:.5rem}
+        .card-header-title i{color:var(--warning)}
+
+        table{width:100%;border-collapse:collapse}
+        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;color:#6b7280;background:#f9fafb;border-bottom:1px solid var(--border);white-space:nowrap}
+        td{padding:.75rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle;font-size:.875rem}
+        tr:last-child td{border-bottom:none}
+        tr:hover td{background:#fffbeb}
+        tr.changed td{background:#f0fdf4}
+
+        .th-group{background:#f0f9ff;color:#0369a1;font-size:.72rem}
+        .th-group-orange{background:#fffbeb;color:#92400e}
+        .th-group-green{background:#f0fdf4;color:#065f46}
+        .th-group-red{background:#fff5f5;color:#991b1b}
+
+        .badge{padding:.25rem .6rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+        .badge-purple{background:#ede9fe;color:#6d28d9}
+        .badge-gray{background:#f3f4f6;color:#6b7280}
+        .badge-green{background:#d1fae5;color:#065f46}
+
+        .num-cell{text-align:center;font-weight:700;font-size:.95rem}
+        .num-in{color:var(--success)}
+        .num-out{color:var(--danger)}
+        .num-initial{color:var(--primary)}
+        .num-system{color:#7c3aed}
+
+        .qty-input{padding:.5rem .75rem;border:2px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.9rem;font-weight:600;width:110px;text-align:center;transition:border-color .2s,box-shadow .2s;background:#fff}
+        .qty-input:focus{outline:none;border-color:var(--success);box-shadow:0 0 0 3px rgba(16,185,129,.15)}
+        .qty-input.filled{border-color:var(--success);background:#f0fdf4}
+        .qty-input.diff-positive{border-color:var(--success)}
+        .qty-input.diff-negative{border-color:var(--danger)}
+
+        .diff-badge{font-size:.78rem;font-weight:700;padding:.15rem .5rem;border-radius:9999px;margin-right:.5rem;white-space:nowrap}
+        .diff-pos{background:#d1fae5;color:#065f46}
+        .diff-neg{background:#fee2e2;color:#991b1b}
+        .diff-zero{background:#f3f4f6;color:#6b7280}
+
+        /* History button */
+        .history-btn{background:none;border:none;cursor:pointer;color:#6366f1;font-size:.85rem;padding:.3rem .5rem;border-radius:var(--r-md);transition:all .2s;font-family:'Vazir',sans-serif;display:flex;align-items:center;gap:.3rem;font-weight:600}
+        .history-btn:hover{background:#ede9fe;color:#4f46e5}
+
+        /* Submit bar */
+        .submit-bar{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;border:2px solid var(--success)}
+        .submit-bar-info{font-size:.9rem;color:#6b7280}
+        .submit-bar-info strong{color:var(--success);font-size:1.1rem}
+
+        .empty-state{text-align:center;padding:4rem 2rem}
+        .empty-state i{font-size:3.5rem;color:#d1d5db;margin-bottom:1rem}
+        .empty-state h3{font-size:1.1rem;color:#6b7280;margin-bottom:.5rem}
+
+        /* ─── HISTORY MODAL ─── */
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+        .modal-overlay.open{display:flex}
+        .modal-box{background:#fff;border-radius:var(--r-xl);width:100%;max-width:800px;box-shadow:var(--shadow-xl);animation:slideUp .25s ease;max-height:90vh;display:flex;flex-direction:column}
+        @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+        .modal-header h3{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+        .modal-close{background:none;border:none;font-size:1.25rem;cursor:pointer;color:#9ca3af;padding:.25rem}
+        .modal-close:hover{color:var(--danger)}
+        .modal-body{padding:1.25rem 1.5rem;overflow-y:auto;flex:1}
+        .modal-tabs{display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0}
+        .modal-tab-btn{padding:.5rem 1rem;border:none;background:none;font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:#6b7280;transition:all .2s}
+        .modal-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+        .modal-tab-content{display:none}
+        .modal-tab-content.active{display:block}
+        .history-table{width:100%;border-collapse:collapse;font-size:.82rem}
+        .history-table th{padding:.6rem .75rem;text-align:right;font-size:.75rem;font-weight:700;color:#6b7280;background:#f9fafb;border-bottom:1px solid var(--border)}
+        .history-table td{padding:.65rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+        .history-table tr:last-child td{border-bottom:none}
+        .in-tag{color:var(--success);font-weight:700}
+        .out-tag{color:var(--danger);font-weight:700}
+        .no-history{text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem}
+        .modal-meta{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+        .meta-chip{background:#f3f4f6;padding:.4rem .875rem;border-radius:9999px;font-size:.8rem;font-weight:600;color:var(--dark)}
+        .meta-chip i{color:var(--primary);margin-left:.35rem}
+        .modal-section-title{font-size:.82rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin:.75rem 0 .5rem;display:flex;align-items:center;gap:.35rem}
+
+        /* Loading spinner */
+        .spinner{display:none;text-align:center;padding:2rem;color:#9ca3af}
+        .spinner.show{display:block}
+
+        .toast-container{position:fixed;bottom:1.5rem;left:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem}
+        .toast{background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-xl);padding:.875rem 1.25rem;display:flex;align-items:center;gap:.75rem;font-size:.875rem;font-weight:500;animation:toastIn .3s ease;min-width:260px;border-right:4px solid var(--success)}
+        .toast.error{border-right-color:var(--danger)}
+        @keyframes toastIn{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+        @media(max-width:900px){.main{padding:1rem}.page-header{flex-direction:column;gap:1rem}table{font-size:.78rem}th,td{padding:.5rem .65rem}}
+    </style>
+</head>
+<body>
+{% load static %}
+{% csrf_token %}
+
+<!-- Topbar -->
+<div class="topbar">
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i> مدیریت انبارها
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-clipboard-check"></i>
+        انبارگردانی - {{ warehouse.name }}
+    </div>
+    <a href="{% url 'warehouse_products' cafe_code=cafe_code warehouse_id=warehouse.id %}" class="btn btn-outline btn-sm">
+        <i class="fas fa-boxes"></i> تعریف کالا
+    </a>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-clipboard-check"></i> انبارگردانی</h1>
+            <p>انبار: <strong>{{ warehouse.name }}</strong> (کد: {{ warehouse.code }}) &bull; برای هر کالا موجودی فیزیکی را وارد کرده و در پایان ثبت انبارگردانی را بزنید</p>
+        </div>
+    </div>
+
+    {% if items_data %}
+
+    <!-- Summary Bar -->
+    <div class="summary-bar">
+        <div class="sum-card">
+            <div class="sum-value">{{ items_data|length }}</div>
+            <div class="sum-label">تعداد اقلام</div>
+        </div>
+        <div class="sum-card green">
+            <div class="sum-value" id="statFilled">0</div>
+            <div class="sum-label">موجودی وارد‌شده</div>
+        </div>
+        <div class="sum-card red" id="lowStockCard">
+            <div class="sum-value">{% for d in items_data %}{% if d.system_qty <= d.stock_item.min_quantity and d.stock_item.min_quantity > 0 %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% endfor %}</div>
+            <div class="sum-label">زیر نقطه سفارش</div>
+        </div>
+        <div class="sum-card orange">
+            <div class="sum-value" id="statChanged">0</div>
+            <div class="sum-label">با تفاوت موجودی</div>
+        </div>
+    </div>
+
+    <!-- Submit Bar -->
+    <div class="submit-bar">
+        <div class="submit-bar-info">
+            <strong id="filledCount">0</strong> کالا از {{ items_data|length }} کالا موجودی وارد شده &mdash;
+            برای ثبت، موجودی فیزیکی را وارد کرده و دکمه ثبت را بزنید
+        </div>
+        <button class="btn btn-success" onclick="submitInventory()" id="submitBtn">
+            <i class="fas fa-save"></i>
+            ثبت انبارگردانی
+        </button>
+    </div>
+
+    <!-- Main Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i class="fas fa-table"></i>
+                لیست کالاهای انبار
+            </div>
+            <div style="display:flex;gap:.5rem">
+                <button class="btn btn-outline btn-sm" onclick="fillAllWithSystem()">
+                    <i class="fas fa-copy"></i>
+                    کپی موجودی سیستم
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="clearAllInputs()">
+                    <i class="fas fa-eraser"></i>
+                    پاک کردن
+                </button>
+            </div>
+        </div>
+        <div style="overflow-x:auto">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">#</th>
+                    <th rowspan="2">نام کالا</th>
+                    <th rowspan="2">دسته‌بندی</th>
+                    <th rowspan="2">واحد</th>
+                    <th colspan="2" class="th-group-green" style="text-align:center;">حواله ورود</th>
+                    <th colspan="2" class="th-group-red" style="text-align:center;">حواله خروج</th>
+                    <th class="th-group" style="text-align:center;">موجودی اولیه</th>
+                    <th class="th-group" style="text-align:center;">موجودی سیستم</th>
+                    <th rowspan="2" style="text-align:center;min-width:150px">موجودی فیزیکی <span style="color:var(--danger)">*</span></th>
+                    <th rowspan="2" style="text-align:center">تفاوت</th>
+                    <th rowspan="2" style="text-align:center">سوابق</th>
+                </tr>
+                <tr>
+                    <th class="th-group-green" style="text-align:center;">تعداد حواله</th>
+                    <th class="th-group-green" style="text-align:center;">جمع مقدار</th>
+                    <th class="th-group-red" style="text-align:center;">تعداد حواله</th>
+                    <th class="th-group-red" style="text-align:center;">جمع مقدار</th>
+                    <th class="th-group" style="text-align:center;"></th>
+                    <th class="th-group" style="text-align:center;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in items_data %}
+                <tr id="tr-{{ d.stock_item.id }}" data-system="{{ d.system_qty }}">
+                    <td style="color:#9ca3af;font-size:.8rem">{{ forloop.counter }}</td>
+                    <td><span style="font-weight:600">{{ d.stock_item.product.name }}</span></td>
+                    <td>
+                        {% if d.stock_item.product.category %}
+                        <span class="badge badge-purple">{{ d.stock_item.product.category.name }}</span>
+                        {% else %}<span class="badge badge-gray">—</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if d.stock_item.unit %}
+                        <span class="badge badge-green">{{ d.stock_item.unit.name }}</span>
+                        {% else %}<span class="badge badge-gray">—</span>{% endif %}
+                    </td>
+                    <!-- Incoming -->
+                    <td class="num-cell num-in">{{ d.in_count }}</td>
+                    <td class="num-cell num-in">{{ d.in_total }}</td>
+                    <!-- Outgoing -->
+                    <td class="num-cell num-out">{{ d.out_count }}</td>
+                    <td class="num-cell num-out">{{ d.out_total }}</td>
+                    <!-- Initial -->
+                    <td class="num-cell num-initial">{{ d.initial_qty }}</td>
+                    <!-- System Qty -->
+                    <td class="num-cell num-system">{{ d.system_qty }}</td>
+                    <!-- Physical Input -->
+                    <td style="text-align:center">
+                        <input type="number"
+                               class="qty-input"
+                               id="input-{{ d.stock_item.id }}"
+                               data-stock-item="{{ d.stock_item.id }}"
+                               data-system="{{ d.system_qty }}"
+                               min="0" step="0.01"
+                               placeholder="—"
+                               oninput="onInputChange(this)"
+                               onchange="onInputChange(this)">
+                    </td>
+                    <!-- Diff -->
+                    <td style="text-align:center" id="diff-{{ d.stock_item.id }}">
+                        <span class="diff-badge diff-zero">—</span>
+                    </td>
+                    <!-- History -->
+                    <td style="text-align:center">
+                        <button class="history-btn"
+                                onclick="openHistory({{ d.stock_item.id }}, '{{ d.stock_item.product.name|escapejs }}')"
+                                title="مشاهده سوابق">
+                            <i class="fas fa-history"></i>
+                            سوابق
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Empty -->
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-clipboard-check"></i>
+            <h3>هیچ کالایی در این انبار تعریف نشده</h3>
+            <p>ابتدا کالاهای خود را در بخش «تعریف کالا» اضافه کنید</p>
+            <a href="{% url 'warehouse_products' cafe_code=cafe_code warehouse_id=warehouse.id %}" class="btn btn-primary" style="margin-top:.5rem">
+                <i class="fas fa-boxes"></i> رفتن به تعریف کالا
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- ========== HISTORY MODAL ========== -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="historyTitle"><i class="fas fa-history" style="color:var(--primary)"></i> سوابق کالا</h3>
+            <button class="modal-close" onclick="closeHistory()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-meta" id="historyMeta"></div>
+            <div class="spinner" id="historySpinner"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+            <div id="historyContent" style="display:none">
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" onclick="switchHistoryTab('in')">
+                        <i class="fas fa-sign-in-alt" style="color:var(--success)"></i>
+                        حواله‌های ورود <span id="inCount" style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:9999px;font-size:.75rem;margin-right:.3rem">0</span>
+                    </button>
+                    <button class="modal-tab-btn" onclick="switchHistoryTab('out')">
+                        <i class="fas fa-sign-out-alt" style="color:var(--danger)"></i>
+                        حواله‌های خروج <span id="outCount" style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:9999px;font-size:.75rem;margin-right:.3rem">0</span>
+                    </button>
+                </div>
+                <div class="modal-tab-content active" id="inTab">
+                    <div id="inTableWrap"></div>
+                </div>
+                <div class="modal-tab-content" id="outTab">
+                    <div id="outTableWrap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const CSRF_TOKEN = document.querySelector('[name=csrfmiddlewaretoken]').value;
+const WAREHOUSE_ID = {{ warehouse.id }};
+const CAFE_CODE = '{{ cafe_code }}';
+
+function onInputChange(input) {
+    const systemQty = parseFloat(input.dataset.system || 0);
+    const physicalQty = input.value !== '' ? parseFloat(input.value) : null;
+    const stockItemId = input.dataset.stockItem;
+    const diffEl = document.getElementById(`diff-${stockItemId}`);
+    const row = document.getElementById(`tr-${stockItemId}`);
+
+    if (physicalQty === null || input.value === '') {
+        input.classList.remove('filled','diff-positive','diff-negative');
+        diffEl.innerHTML = '<span class="diff-badge diff-zero">—</span>';
+        row.classList.remove('changed');
+    } else {
+        input.classList.add('filled');
+        const diff = physicalQty - systemQty;
+        if (diff > 0) {
+            diffEl.innerHTML = `<span class="diff-badge diff-pos">+${diff.toLocaleString('fa-IR')}</span>`;
+            input.classList.add('diff-positive');
+            input.classList.remove('diff-negative');
+        } else if (diff < 0) {
+            diffEl.innerHTML = `<span class="diff-badge diff-neg">${diff.toLocaleString('fa-IR')}</span>`;
+            input.classList.add('diff-negative');
+            input.classList.remove('diff-positive');
+        } else {
+            diffEl.innerHTML = '<span class="diff-badge diff-zero">۰</span>';
+            input.classList.remove('diff-positive','diff-negative');
+        }
+        if (diff !== 0) row.classList.add('changed');
+        else row.classList.remove('changed');
+    }
+    updateStats();
+}
+
+function updateStats() {
+    const inputs = document.querySelectorAll('.qty-input');
+    let filled = 0, changed = 0;
+    inputs.forEach(inp => {
+        if (inp.value !== '') {
+            filled++;
+            const diff = parseFloat(inp.value) - parseFloat(inp.dataset.system || 0);
+            if (diff !== 0) changed++;
+        }
+    });
+    document.getElementById('statFilled').textContent = filled;
+    document.getElementById('statChanged').textContent = changed;
+    const el = document.getElementById('filledCount');
+    if (el) el.textContent = filled;
+}
+
+function fillAllWithSystem() {
+    document.querySelectorAll('.qty-input').forEach(inp => {
+        inp.value = inp.dataset.system;
+        onInputChange(inp);
+    });
+}
+
+function clearAllInputs() {
+    document.querySelectorAll('.qty-input').forEach(inp => {
+        inp.value = '';
+        onInputChange(inp);
+    });
+}
+
+async function submitInventory() {
+    const inputs = document.querySelectorAll('.qty-input');
+    const items = [];
+    inputs.forEach(inp => {
+        if (inp.value !== '') {
+            items.push({
+                stock_item_id: inp.dataset.stockItem,
+                physical_qty: inp.value,
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        showToast('هیچ موجودی وارد نشده است', true);
+        return;
+    }
+
+    if (!confirm(`آیا از ثبت انبارگردانی برای ${items.length} کالا اطمینان دارید؟ این عمل موجودی‌ها را به‌روزرسانی می‌کند.`)) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال ثبت...';
+
+    try {
+        const resp = await fetch(`/${CAFE_CODE}/warehouses/${WAREHOUSE_ID}/inventory-submit/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
+            body: JSON.stringify({items}),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast(`انبارگردانی ثبت شد: ${data.updated} کالا به‌روزرسانی شد`);
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            showToast(data.error || 'خطا در ثبت', true);
+        }
+    } catch (e) {
+        showToast('خطای شبکه', true);
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> ثبت انبارگردانی';
+}
+
+/* ─── HISTORY MODAL ─── */
+let activeHistoryTab = 'in';
+
+function openHistory(stockItemId, productName) {
+    document.getElementById('historyModal').classList.add('open');
+    document.getElementById('historyTitle').innerHTML = `<i class="fas fa-history" style="color:var(--primary)"></i> سوابق: ${productName}`;
+    document.getElementById('historyMeta').innerHTML = '';
+    document.getElementById('historySpinner').classList.add('show');
+    document.getElementById('historyContent').style.display = 'none';
+
+    fetch(`/${CAFE_CODE}/api/warehouses/${WAREHOUSE_ID}/products/${stockItemId}/history/`, {
+        headers: {'X-CSRFToken': CSRF_TOKEN},
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('historySpinner').classList.remove('show');
+        if (!data.success) { showToast('خطا در بارگذاری سوابق', true); return; }
+
+        document.getElementById('historyMeta').innerHTML = `
+            <span class="meta-chip"><i class="fas fa-box"></i>${data.product_name}</span>
+            <span class="meta-chip"><i class="fas fa-balance-scale"></i>موجودی: ${data.current_qty} ${data.unit_name}</span>
+        `;
+
+        document.getElementById('inCount').textContent = data.in_items.length;
+        document.getElementById('outCount').textContent = data.out_items.length;
+
+        document.getElementById('inTableWrap').innerHTML = buildHistoryTable(data.in_items, 'in');
+        document.getElementById('outTableWrap').innerHTML = buildHistoryTable(data.out_items, 'out');
+
+        document.getElementById('historyContent').style.display = 'block';
+        switchHistoryTab('in');
+    })
+    .catch(() => {
+        document.getElementById('historySpinner').classList.remove('show');
+        showToast('خطای شبکه', true);
+    });
+}
+
+function buildHistoryTable(items, type) {
+    if (items.length === 0) {
+        return `<div class="no-history"><i class="fas fa-inbox" style="font-size:2rem;margin-bottom:.5rem"></i><br>سابقه‌ای ثبت نشده</div>`;
+    }
+    const colorClass = type === 'in' ? 'in-tag' : 'out-tag';
+    const typeLabel = type === 'in' ? 'ورود' : 'خروج';
+    let rows = items.map(it => `
+        <tr>
+            <td><span style="font-weight:700;color:var(--primary)">${it.voucher_number}</span></td>
+            <td>${it.date}</td>
+            <td><span class="${colorClass}">${it.quantity} ${it.unit_name}</span></td>
+            <td>${(+it.unit_price).toLocaleString('fa-IR')} ریال</td>
+            <td>${(+it.total_price).toLocaleString('fa-IR')} ریال</td>
+            <td>${it.created_by}</td>
+            <td style="color:#6b7280;font-size:.8rem">${it.description || '—'}</td>
+        </tr>
+    `).join('');
+
+    return `
+    <table class="history-table">
+        <thead><tr>
+            <th>شماره حواله</th>
+            <th>تاریخ</th>
+            <th>مقدار</th>
+            <th>قیمت واحد</th>
+            <th>مبلغ کل</th>
+            <th>ثبت‌کننده</th>
+            <th>توضیحات</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function switchHistoryTab(tab) {
+    activeHistoryTab = tab;
+    document.querySelectorAll('.modal-tab-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.includes(tab === 'in' ? 'ورود' : 'خروج'));
+    });
+    document.getElementById('inTab').classList.toggle('active', tab === 'in');
+    document.getElementById('outTab').classList.toggle('active', tab === 'out');
+}
+
+function closeHistory() { document.getElementById('historyModal').classList.remove('open'); }
+
+document.getElementById('historyModal').addEventListener('click', function(e) {
+    if (e.target === this) closeHistory();
+});
+
+/* ─── TOAST ─── */
+function showToast(msg, isError = false) {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast${isError ? ' error' : ''}`;
+    t.innerHTML = `<i class="fas fa-${isError ? 'times-circle' : 'check-circle'}" style="color:${isError ? '#ef4444' : '#10b981'}"></i> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>

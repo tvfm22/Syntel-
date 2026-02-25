@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ voucher.get_voucher_type_display }} - {{ voucher.voucher_number }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --accent:{% if voucher.voucher_type == 'in' %}#10b981{% else %}#ef4444{% endif %};
+            --accent-light:{% if voucher.voucher_type == 'in' %}#d1fae5{% else %}#fee2e2{% endif %};
+            --primary:#6366f1;--primary-dark:#4f46e5;
+            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
+            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
+        }
+        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
+        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
+        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .topbar-title{flex:1;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+
+        .main{padding:2rem;max-width:1000px;margin:0 auto}
+
+        /* PAGE HEADER */
+        .page-header{background:linear-gradient(135deg,{% if voucher.voucher_type == 'in' %}#10b981,#059669{% else %}#ef4444,#dc2626{% endif %});border-radius:var(--r-xl);padding:2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
+        .page-header p{margin-top:.35rem;opacity:.85;font-size:.9rem}
+
+        /* INFO CARD */
+        .info-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
+        .info-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);font-weight:700;font-size:1rem;display:flex;align-items:center;gap:.5rem}
+        .info-header i{color:var(--accent)}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0}
+        .info-item{padding:1rem 1.5rem;border-bottom:1px solid var(--border)}
+        .info-item:nth-child(odd){border-left:1px solid var(--border)}
+        .info-item:last-child,.info-item:nth-last-child(2):not(:nth-child(odd)){border-bottom:none}
+        .info-label{font-size:.78rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
+        .info-value{font-size:.95rem;font-weight:600;color:var(--dark)}
+        .info-value.number{font-family:monospace;letter-spacing:.05em}
+
+        /* BADGE */
+        .badge{padding:.35rem 1rem;border-radius:9999px;font-size:.85rem;font-weight:700;display:inline-flex;align-items:center;gap:.4rem}
+        .badge-in{background:#d1fae5;color:#065f46}
+        .badge-out{background:#fee2e2;color:#991b1b}
+
+        /* ITEMS TABLE */
+        .items-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
+        .items-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+        .items-header-title{font-weight:700;display:flex;align-items:center;gap:.5rem}
+        .items-header-title i{color:var(--accent)}
+        table{width:100%;border-collapse:collapse}
+        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;background:var(--light);color:#6b7280;border-bottom:1px solid var(--border)}
+        td{padding:.875rem 1rem;border-bottom:1px solid var(--border);font-size:.9rem}
+        tr:last-child td{border-bottom:none}
+        tr:hover td{background:#fafafa}
+
+        /* TOTAL ROW */
+        .total-row td{background:var(--accent-light);font-weight:700;color:var(--dark)}
+
+        /* BUTTONS */
+        .btn{padding:.6rem 1.2rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
+        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
+        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
+
+        /* PRINT */
+        @media print{
+            .topbar,.no-print{display:none!important}
+            body{background:#fff}
+            .page-header{background:#f3f4f6!important;color:#1f2937!important;-webkit-print-color-adjust:exact}
+            .main{padding:0;max-width:100%}
+        }
+
+        @media(max-width:768px){.main{padding:1rem}.info-grid{grid-template-columns:1fr}.info-item:nth-child(odd){border-left:none}}
+    </style>
+</head>
+<body>
+{% load static %}
+
+<!-- Topbar -->
+<div class="topbar no-print">
+    <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i> لیست حواله‌ها
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-{% if voucher.voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}" style="color:var(--accent)"></i>
+        {{ voucher.get_voucher_type_display }} - {{ voucher.voucher_number }}
+    </div>
+    <button onclick="window.print()" class="btn btn-outline btn-sm">
+        <i class="fas fa-print"></i> چاپ
+    </button>
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline btn-sm">
+        <i class="fas fa-warehouse"></i> انبار
+    </a>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1>
+                <i class="fas fa-{% if voucher.voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}"></i>
+                {{ voucher.get_voucher_type_display }}
+            </h1>
+            <p>شماره: <strong>{{ voucher.voucher_number }}</strong> &bull; انبار: {{ voucher.warehouse.name }}</p>
+        </div>
+        {% if voucher.voucher_type == 'in' %}
+        <span class="badge badge-in" style="font-size:.95rem;padding:.5rem 1.25rem">📥 حواله ورود</span>
+        {% else %}
+        <span class="badge badge-out" style="font-size:.95rem;padding:.5rem 1.25rem">📤 حواله خروج</span>
+        {% endif %}
+    </div>
+
+    <!-- Info Card -->
+    <div class="info-card">
+        <div class="info-header"><i class="fas fa-info-circle"></i> اطلاعات حواله</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">شماره حواله</div>
+                <div class="info-value number">{{ voucher.voucher_number }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">نوع</div>
+                <div class="info-value">
+                    {% if voucher.voucher_type == 'in' %}
+                    <span class="badge badge-in"><i class="fas fa-sign-in-alt"></i> ورود</span>
+                    {% else %}
+                    <span class="badge badge-out"><i class="fas fa-sign-out-alt"></i> خروج</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">انبار</div>
+                <div class="info-value"><i class="fas fa-warehouse" style="color:#6366f1;margin-left:4px"></i>{{ voucher.warehouse.name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">تاریخ</div>
+                <div class="info-value">{{ voucher.date|date:"Y/m/d H:i" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">ثبت‌کننده</div>
+                <div class="info-value">{{ voucher.created_by.get_full_name|default:voucher.created_by.username|default:"—" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">تاریخ ایجاد</div>
+                <div class="info-value">{{ voucher.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            {% if voucher.description %}
+            <div class="info-item" style="grid-column:1/-1;border-bottom:none">
+                <div class="info-label">توضیحات</div>
+                <div class="info-value" style="font-weight:400;color:#6b7280">{{ voucher.description }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="items-card">
+        <div class="items-header">
+            <div class="items-header-title">
+                <i class="fas fa-list"></i>
+                اقلام حواله
+            </div>
+            <span style="background:var(--accent-light);color:var(--accent);padding:.25rem .75rem;border-radius:9999px;font-size:.8rem;font-weight:700">
+                {{ items|length }} قلم
+            </span>
+        </div>
+
+        {% if items %}
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>محصول</th>
+                        <th>دسته‌بندی</th>
+                        <th>مقدار</th>
+                        <th>واحد</th>
+                        <th>قیمت واحد (ریال)</th>
+                        <th>مبلغ کل (ریال)</th>
+                        <th>توضیحات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% with grand_total=0 %}
+                    {% for item in items %}
+                    <tr>
+                        <td style="color:#9ca3af;font-size:.82rem">{{ forloop.counter }}</td>
+                        <td style="font-weight:600">{{ item.product.name }}</td>
+                        <td>
+                            {% if item.product.category %}
+                            <span style="background:#e0e7ff;color:#3730a3;padding:.2rem .6rem;border-radius:.375rem;font-size:.75rem">{{ item.product.category.name }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="font-weight:700;color:var(--accent)">{{ item.quantity|floatformat:2 }}</td>
+                        <td style="color:#6b7280">{{ item.unit.name|default:"—" }}</td>
+                        <td>{{ item.unit_price|floatformat:0 }}</td>
+                        <td style="font-weight:700">{{ item.total_price|floatformat:0 }}</td>
+                        <td style="color:#6b7280;font-size:.85rem">{{ item.description|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endwith %}
+
+                    <!-- Total row -->
+                    <tr class="total-row">
+                        <td colspan="6" style="text-align:left;font-size:.9rem">جمع کل</td>
+                        <td style="font-size:1.05rem;color:var(--accent)">
+                            {% with total=0 %}
+                            {% for item in items %}
+                            {% with row_total=item.total_price %}
+                            {% endwith %}
+                            {% endfor %}
+                            —
+                            {% endwith %}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:3rem;text-align:center;color:#9ca3af">
+            <i class="fas fa-box-open" style="font-size:2.5rem;display:block;margin-bottom:.75rem"></i>
+            هیچ قلمی در این حواله ثبت نشده
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions (no print) -->
+    <div class="no-print" style="display:flex;gap:.75rem;justify-content:center">
+        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
+            <i class="fas fa-list"></i> بازگشت به لیست
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print"></i> چاپ حواله
+        </button>
+        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline">
+            <i class="fas fa-warehouse"></i> مدیریت انبار
+        </a>
+    </div>
+
+</div>
+</body>
+</html>

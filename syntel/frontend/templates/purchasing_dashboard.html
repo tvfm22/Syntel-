@@ -157,10 +157,25 @@
 </head>
 <body>
     <div class="header">
-        <h1>داشبورد مسئول خرید</h1>
+        <h1>{% if has_dual %}داشبورد خرید و انبار{% elif has_warehouse %}داشبورد مسئول انبار{% else %}داشبورد مسئول خرید{% endif %}</h1>
         <p>{{ user.first_name }} {{ user.last_name }}</p>
     </div>
 
+    {% if has_dual %}
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" 
+           style="padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;background:#3b82f6;color:white;border:1px solid #3b82f6;">
+            🛒 درخواست‌های خرید
+        </a>
+        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" 
+           style="padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;background:white;color:#374151;border:1px solid #e5e7eb;">
+            📦 درخواست‌های انبار
+        </a>
+    </div>
+    {% endif %}
+
+    {% if has_purchasing %}
+    <div style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:14px;">🛒 درخواست‌های خرید</div>
     <div class="departments-grid">
         {% for dept in departments %}
         <div class="department-card">
@@ -178,11 +193,11 @@
             </div>
             
             <div class="department-actions">
-                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all" 
+                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all&type=purchase" 
                    class="action-btn action-btn-all">
                     همه درخواست‌ها
                 </a>
-                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending" 
+                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending&type=purchase" 
                    class="action-btn action-btn-pending">
                     کامل نشده
                 </a>
@@ -190,6 +205,41 @@
         </div>
         {% endfor %}
     </div>
+    {% endif %}
+
+    {% if has_warehouse and warehouse_departments %}
+    <div style="font-size:16px;font-weight:700;color:#1f2937;margin-top:{% if has_purchasing %}28px{% else %}0{% endif %};margin-bottom:14px;">
+        📦 درخواست‌های انبار
+    </div>
+    <div class="departments-grid">
+        {% for dept in warehouse_departments %}
+        <div class="department-card" style="border-right:4px solid #10b981;">
+            <div class="department-header">
+                <div class="department-icon">{{ dept.icon }}</div>
+                <div class="department-info">
+                    <h3>{{ dept.name }}</h3>
+                    <div class="department-stats">
+                        <span class="stat-badge stat-total">{{ dept.total }} کل</span>
+                        {% if dept.pending > 0 %}
+                        <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="department-actions">
+                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all" 
+                   class="action-btn" style="border-color:#10b981;color:#10b981;">
+                    همه درخواست‌ها
+                </a>
+                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending" 
+                   class="action-btn action-btn-pending">
+                    در انتظار
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <a href="{% url 'logout' %}" class="logout-btn">خروج</a>
 </body>

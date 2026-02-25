@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ثبت درخواست از انبار - Syntel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .user-badge {
+        display: inline-block;
+        background: #f3f4f6;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #93c5fd;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+        color: #1e40af;
+    }
+
+    .item-row {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .item-row:hover {
+        border-color: #9ca3af;
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .item-number {
+        background: #10b981;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .remove-item-btn {
+        background: transparent;
+        color: #dc2626;
+        border: none;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-family: 'Vazir', sans-serif;
+        transition: opacity 0.2s;
+    }
+
+    .item-fields {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+
+    .form-control, select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-family: 'Vazir', sans-serif;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus, select:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+
+    .add-item-btn {
+        background: #f9fafb;
+        border: 1px dashed #d1d5db;
+        color: #6b7280;
+        padding: 0.75rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: block;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        font-family: 'Vazir', sans-serif;
+    }
+
+    .add-item-btn:hover {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+        padding-top: 1rem;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        font-family: 'Vazir', sans-serif;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-primary:hover { background: #059669; }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+        .item-fields { grid-template-columns: 1fr; }
+        .form-actions { flex-direction: column; }
+        .btn { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>📦 ثبت درخواست از انبار</h1>
+        <div class="user-badge">{{ user.get_role_display }}</div>
+    </div>
+
+    <div class="info-box">
+        <strong>راهنما:</strong> از طریق این فرم می‌توانید درخواست کالا از انبار ثبت نمایید. درخواست شما توسط مسئول انبار/خرید بررسی خواهد شد.
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; color: #92400e;">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="post" id="warehouseRequestForm">
+        {% csrf_token %}
+
+        <div class="items-container">
+            <div id="itemsWrapper"></div>
+            <button type="button" class="add-item-btn" onclick="addItem()">+ افزودن کالا</button>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">ارسال درخواست</button>
+            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let itemCount = 0;
+
+    function addItem() {
+        itemCount++;
+        const html = `
+            <div class="item-row" id="item-${itemCount}">
+                <div class="item-header">
+                    <div class="item-number">${itemCount}</div>
+                    <button type="button" class="remove-item-btn" onclick="removeItem(${itemCount})">× حذف</button>
+                </div>
+                <div class="item-fields">
+                    <div class="form-group">
+                        <label>نام کالا *</label>
+                        <input type="text" name="product_name" class="form-control" placeholder="نام کالا..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>مقدار *</label>
+                        <input type="number" name="item_quantity" class="form-control" step="0.01" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>واحد</label>
+                        <select name="item_unit" class="form-control">
+                            <option value="عدد">عدد</option>
+                            <option value="کیلوگرم">کیلوگرم</option>
+                            <option value="گرم">گرم</option>
+                            <option value="لیتر">لیتر</option>
+                            <option value="بسته">بسته</option>
+                            <option value="کارتن">کارتن</option>
+                            <option value="جعبه">جعبه</option>
+                            <option value="شیشه">شیشه</option>
+                            <option value="قوطی">قوطی</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label>توضیحات</label>
+                    <textarea name="item_description" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
+                </div>
+            </div>
+        `;
+        document.getElementById('itemsWrapper').insertAdjacentHTML('beforeend', html);
+    }
+
+    function removeItem(id) {
+        const items = document.querySelectorAll('.item-row');
+        if (items.length > 1) {
+            document.getElementById('item-' + id).remove();
+            updateNumbers();
+        } else {
+            alert('⚠️ باید حداقل یک کالا داشته باشید!');
+        }
+    }
+
+    function updateNumbers() {
+        document.querySelectorAll('.item-row').forEach((row, i) => {
+            const num = row.querySelector('.item-number');
+            if (num) num.textContent = i + 1;
+        });
+    }
+
+    window.addEventListener('load', () => addItem());
+
+    document.getElementById('warehouseRequestForm').addEventListener('submit', function(e) {
+        const items = document.querySelectorAll('.item-row');
+        if (items.length === 0) {
+            e.preventDefault();
+            alert('⚠️ لطفاً حداقل یک کالا اضافه کنید');
+            return;
+        }
+        let valid = true;
+        items.forEach(item => {
+            const name = item.querySelector('input[name="product_name"]');
+            const qty = item.querySelector('input[name="item_quantity"]');
+            if (!name.value.trim()) { valid = false; name.style.borderColor = '#ef4444'; }
+            if (!qty.value) { valid = false; qty.style.borderColor = '#ef4444'; }
+        });
+        if (!valid) {
+            e.preventDefault();
+            alert('⚠️ لطفاً تمام فیلدهای ضروری را پر کنید');
+        }
+    });
+</script>
+{% endblock %}

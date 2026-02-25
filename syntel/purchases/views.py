@@ -49,6 +49,10 @@ from .models import (
     StockRequest,
     StockRequestItem,
     Warehouse,
+    WarehouseVoucher,
+    WarehouseVoucherItem,
+    WarehouseRequest,
+    WarehouseRequestItem,
 )
 from .middleware import get_current_cafe, get_cafe_code
 
@@ -127,6 +131,7 @@ def role_required(roles):
     Simple role-based access control.
     
     کاربران با نقش 'admin' و superuser ها به همه صفحات دسترسی دارند.
+    نقش دوم (secondary_role) هم در نظر گرفته می‌شود.
     """
 
     def decorator(view_func):
@@ -137,10 +142,13 @@ def role_required(roles):
             
             # Admin و superuser به همه جا دسترسی دارند
             user_role = getattr(request.user, "role", None)
+            user_secondary_role = getattr(request.user, "secondary_role", None)
             if not (user_role == 'admin' or request.user.is_superuser):
-                # برای سایر کاربران، چک کردن نقش
+                # برای سایر کاربران، چک کردن نقش اصلی یا نقش دوم
                 if roles and user_role not in roles:
-                    return redirect("login")
+                    # چک کردن نقش دوم
+                    if not (user_secondary_role and user_secondary_role in roles):
+                        return redirect("login")
             
             if not request.user.is_active:
                 logout(request)
@@ -303,9 +311,9 @@ def mobile_dashboard(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["purchasing"])
+@role_required(["purchasing", "warehouse"])
 def purchasing_dashboard(request: HttpRequest) -> HttpResponse:
-    """Dashboard for purchasing manager to review requests by department"""
+    """Dashboard for purchasing/warehouse manager to review requests by department"""
     # Count requests by role
     departments = [
         {'name': 'آشپزخانه', 'role': 'kitchen', 'icon': '🍳'},
@@ -323,39 +331,71 @@ def purchasing_dashboard(request: HttpRequest) -> HttpResponse:
             qs = qs.filter(cafe=cafe)
         dept['total'] = qs.count()
         dept['pending'] = qs.filter(status='pending').count()
-    
+
+    # آمار درخواست‌های انبار بر اساس بخش
+    warehouse_departments = []
+    for dept in departments:
+        qs_wh = WarehouseRequest.objects.filter(user__role=dept['role'])
+        if cafe:
+            qs_wh = qs_wh.filter(cafe=cafe)
+        total_wh = qs_wh.count()
+        pending_wh = qs_wh.filter(status='pending').count()
+        if total_wh > 0 or pending_wh > 0:
+            warehouse_departments.append({
+                'name': dept['name'],
+                'role': dept['role'],
+                'icon': dept['icon'],
+                'total': total_wh,
+                'pending': pending_wh,
+            })
+
+    has_purchasing = request.user.has_purchasing_role
+    has_warehouse = request.user.has_warehouse_role
+    has_dual = request.user.has_dual_role
+
+    cafe_code = cafe.code if cafe else 'local'
+
     return render(request, "purchasing_dashboard.html", {
         "user": request.user,
-        "departments": departments
+        "departments": departments,
+        "warehouse_departments": warehouse_departments,
+        "has_purchasing": has_purchasing,
+        "has_warehouse": has_warehouse,
+        "has_dual": has_dual,
+        "cafe_code": cafe_code,
     })
 
 
 @custom_login_required
-@role_required(["purchasing"])
+@role_required(["purchasing", "warehouse"])
 def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
-    """List purchase requests filtered by department role and status"""
+    """List purchase/warehouse requests filtered by department role and status"""
     role = request.GET.get('role', '')
     status = request.GET.get('status', '')
-    
-    requests = PurchaseRequest.objects.all().select_related('user').prefetch_related('items')
-    
-    # Filter by cafe
+    request_type = request.GET.get('type', 'purchase')  # 'purchase' or 'warehouse'
+
     cafe = get_cafe_from_request(request)
-    if cafe:
-        requests = requests.filter(cafe=cafe)
-    
-    # Filter by role
-    if role:
-        requests = requests.filter(user__role=role)
-    
-    # Filter by status
-    if status == 'pending':
-        requests = requests.filter(status='pending')
-    elif status == 'all':
-        pass  # Show all
-    
-    requests = requests.order_by('-created_at')
-    
+    cafe_code = cafe.code if cafe else 'local'
+
+    if request_type == 'warehouse':
+        requests = WarehouseRequest.objects.all().select_related('user').prefetch_related('items')
+        if cafe:
+            requests = requests.filter(cafe=cafe)
+        if role:
+            requests = requests.filter(user__role=role)
+        if status == 'pending':
+            requests = requests.filter(status='pending')
+        requests = requests.order_by('-created_at')
+    else:
+        requests = PurchaseRequest.objects.all().select_related('user').prefetch_related('items')
+        if cafe:
+            requests = requests.filter(cafe=cafe)
+        if role:
+            requests = requests.filter(user__role=role)
+        if status == 'pending':
+            requests = requests.filter(status='pending')
+        requests = requests.order_by('-created_at')
+
     # Get department name
     department_names = {
         'kitchen': 'آشپزخانه',
@@ -366,25 +406,25 @@ def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
         'facilities': 'تاسیسات',
     }
     department_name = department_names.get(role, 'همه بخش‌ها')
-    
-    # Get cafe_code for template URLs
-    cafe_code = cafe.code if cafe else 'local'
-    
+
     return render(request, "purchasing_requests_list.html", {
         "requests": requests,
         "role": role,
         "status": status,
         "department_name": department_name,
         "cafe_code": cafe_code,
+        "request_type": request_type,
     })
 
 
 @custom_login_required
-@role_required(["purchasing"])
+@role_required(["purchasing", "warehouse"])
 def process_purchase_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Process purchase request items - set quantities and supply status"""
     purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
     if request.method == "POST":
         # Process each item
         for item in purchase_request.items.all():
@@ -395,7 +435,24 @@ def process_purchase_request(request: HttpRequest, request_id: int) -> HttpRespo
                 item.purchased_quantity = int(purchased_qty)
             item.supply_status = supply_status
             item.save()
+
+            # اگر «ارجاع به خرید» در درخواست از انبار - هیچ‌کاری نمی‌خواهد در این لایه
+            # اگر «تامین از انبار» برای درخواست خرید - ایجاد StockRequest
+            if supply_status == 'from_stock':
+                # چک کنیم آیا StockRequest ایجاد شده قبلاً
+                if not item.stock_requests.filter(status='pending').exists():
+                    StockRequest.objects.create(
+                        purchase_item=item,
+                        requested_by=request.user,
+                    )
         
+        # اگر گزینه «ارجاع به خرید» برای اقلامی که از لیست انبار آمده‌اند
+        # این اقلام را به یک درخواست خرید جدید اضافه کن
+        items_to_purchase = [
+            item for item in purchase_request.items.all()
+            if request.POST.get(f'supply_status_{item.id}') == 'purchased'
+        ]
+
         # Update request status if all items are processed
         all_processed = all(
             item.supply_status != 'pending' 
@@ -408,10 +465,394 @@ def process_purchase_request(request: HttpRequest, request_id: int) -> HttpRespo
             purchase_request.save()
             messages.success(request, 'درخواست با موفقیت پردازش شد')
         
-        return redirect('purchasing_requests_list')
+        return redirect('purchasing_requests_list', )
     
+    # Get stock items for search
+    stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
+    if cafe:
+        stock_items = stock_items.filter(warehouse__cafe=cafe)
+
     return render(request, "process_purchase_request.html", {
         "purchase_request": purchase_request,
+        "stock_items": stock_items,
+        "cafe_code": cafe_code,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Warehouse Request (درخواست از انبار) Views
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+def warehouse_request_form(request: HttpRequest) -> HttpResponse:
+    """فرم ثبت درخواست از انبار توسط درخواست‌دهندگان (آشپزخانه، بار، تاسیسات و...)"""
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    if request.method == 'POST':
+        product_names = request.POST.getlist('product_name')
+        quantities = request.POST.getlist('item_quantity')
+        units = request.POST.getlist('item_unit')
+        descriptions = request.POST.getlist('item_description')
+
+        items_data = []
+        for idx, name in enumerate(product_names):
+            name = name.strip() if name else ''
+            if not name:
+                continue
+            qty_raw = quantities[idx] if idx < len(quantities) else ''
+            qty_val = _parse_decimal(qty_raw)
+            if qty_val is None or qty_val <= 0:
+                continue
+            unit_val = units[idx].strip() if idx < len(units) and units[idx] else 'عدد'
+            desc_val = descriptions[idx] if idx < len(descriptions) else ''
+            items_data.append((name, qty_val, unit_val, desc_val))
+
+        if not items_data:
+            messages.error(request, 'حداقل یک قلم کالا وارد کنید')
+            return render(request, 'warehouse_request_form.html', {'cafe_code': cafe_code})
+
+        wh_request = WarehouseRequest.objects.create(
+            user=request.user,
+            cafe=cafe,
+            status='pending',
+        )
+        for name, qty, unit, desc in items_data:
+            product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
+            WarehouseRequestItem.objects.create(
+                warehouse_request=wh_request,
+                product=product,
+                name=name,
+                quantity=qty,
+                unit=unit,
+                description=desc,
+            )
+
+        Notification.objects.create(
+            recipient=request.user,
+            title='درخواست از انبار ثبت شد',
+            message='درخواست شما از انبار ثبت گردید.',
+            notification_type='info',
+            cafe=cafe,
+        )
+        return redirect('warehouse_request_success')
+
+    return render(request, 'warehouse_request_form.html', {'cafe_code': cafe_code})
+
+
+@custom_login_required
+def warehouse_request_success(request: HttpRequest) -> HttpResponse:
+    """صفحه موفقیت پس از ثبت درخواست انبار"""
+    return render(request, 'warehouse_request_success.html')
+
+
+@custom_login_required
+@role_required(['purchasing', 'warehouse'])
+def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResponse:
+    """پردازش درخواست انبار توسط مسئول خرید یا مسئول انبار"""
+    wh_request = get_object_or_404(WarehouseRequest, id=request_id)
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    # موجودی‌های انبار برای جستجو
+    stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
+    if cafe:
+        stock_items = stock_items.filter(warehouse__cafe=cafe)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')  # 'submit' = تایید نهایی
+        items_to_purchase = []  # اقلامی که به خرید ارجاع می‌شوند
+        has_error = False
+
+        for item in wh_request.items.all():
+            supply_status = request.POST.get(f'supply_status_{item.id}', 'pending')
+            item.supply_status = supply_status
+
+            if supply_status == 'from_stock':
+                # تامین از انبار - باید موجودی انبار انتخاب و کاهش یابد
+                stock_item_id = request.POST.get(f'stock_item_{item.id}', '')
+                supplied_qty_raw = request.POST.get(f'supplied_qty_{item.id}', '')
+                supplied_qty = _parse_decimal(supplied_qty_raw)
+
+                if stock_item_id and supplied_qty and supplied_qty > 0:
+                    try:
+                        s_item = StockItem.objects.get(id=int(stock_item_id))
+                        if supplied_qty > s_item.quantity:
+                            messages.error(request, f'موجودی {s_item.product.name} در انبار ({s_item.quantity}) کمتر از مقدار درخواستی ({supplied_qty}) است!')
+                            has_error = True
+                        else:
+                            item.stock_item = s_item
+                            item.supplied_quantity = supplied_qty
+                    except StockItem.DoesNotExist:
+                        messages.error(request, 'موجودی انبار یافت نشد')
+                        has_error = True
+                else:
+                    messages.error(request, f'برای قلم «{item.name}» لطفاً موجودی انبار و مقدار را تعیین کنید')
+                    has_error = True
+
+            elif supply_status == 'to_purchase':
+                items_to_purchase.append(item)
+
+            item.save()
+
+        if has_error:
+            return render(request, 'process_warehouse_request.html', {
+                'wh_request': wh_request,
+                'stock_items': stock_items,
+                'cafe_code': cafe_code,
+            })
+
+        # کاهش از موجودی انبار برای اقلام تامین‌شده
+        for item in wh_request.items.all():
+            if item.supply_status == 'from_stock' and item.stock_item and item.supplied_quantity:
+                s_item = item.stock_item
+                prev_qty = s_item.quantity
+                s_item.quantity -= item.supplied_quantity
+                s_item.save()
+                StockTransaction.objects.create(
+                    stock_item=s_item,
+                    transaction_type='out',
+                    quantity=item.supplied_quantity,
+                    unit=s_item.unit,
+                    reference_type='warehouse_request',
+                    reference_id=wh_request.id,
+                    description=f'تامین درخواست انبار #{wh_request.id} - {item.name}',
+                    created_by=request.user,
+                    previous_quantity=prev_qty,
+                    new_quantity=s_item.quantity,
+                )
+
+        # اگر اقلامی به خرید ارجاع شدند یک درخواست خرید جدید ایجاد می‌شود
+        if items_to_purchase:
+            new_purchase = PurchaseRequest.objects.create(
+                user=wh_request.user,
+                cafe=cafe,
+                status='pending',
+            )
+            wh_request.converted_to_purchase = new_purchase
+            for item in items_to_purchase:
+                PurchaseItem.objects.create(
+                    request=new_purchase,
+                    product=item.product,
+                    name=item.name,
+                    quantity=int(item.quantity),
+                    unit=item.unit,
+                    description=item.description or '',
+                )
+            messages.info(request, f'{len(items_to_purchase)} قلم به لیست خرید ارجاع شد')
+
+        # تعیین وضعیت نهایی درخواست انبار
+        all_statuses = [i.supply_status for i in wh_request.items.all()]
+        if all(s == 'from_stock' for s in all_statuses):
+            wh_request.status = 'approved_from_stock'
+        elif all(s == 'to_purchase' for s in all_statuses):
+            wh_request.status = 'approved_purchase'
+        elif all(s == 'declined' for s in all_statuses):
+            wh_request.status = 'declined'
+        elif any(s != 'pending' for s in all_statuses):
+            wh_request.status = 'fulfilled'
+        
+        wh_request.processed_by = request.user
+        wh_request.processed_at = timezone.now()
+        wh_request.save()
+
+        messages.success(request, 'درخواست انبار با موفقیت پردازش شد')
+        return redirect('purchasing_requests_list')
+
+    return render(request, 'process_warehouse_request.html', {
+        'wh_request': wh_request,
+        'stock_items': stock_items,
+        'cafe_code': cafe_code,
+    })
+
+
+@custom_login_required
+def api_search_stock_items(request: HttpRequest) -> JsonResponse:
+    """API جستجوی موجودی انبار برای autocomplete"""
+    query = request.GET.get('q', '')
+    cafe = get_cafe_from_request(request)
+
+    qs = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
+    if cafe:
+        qs = qs.filter(warehouse__cafe=cafe)
+    if query:
+        qs = qs.filter(product__name__icontains=query)
+
+    results = []
+    for si in qs[:20]:
+        results.append({
+            'id': si.id,
+            'product_name': si.product.name,
+            'quantity': float(si.quantity),
+            'unit': si.unit.name if si.unit else '',
+            'warehouse': si.warehouse.name if si.warehouse else '',
+        })
+    return JsonResponse({'results': results})
+
+
+@custom_login_required
+def warehouse_requests_list(request: HttpRequest) -> HttpResponse:
+    """لیست درخواست‌های انبار برای کاربران درخواست‌دهنده"""
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+    
+    requests_qs = WarehouseRequest.objects.filter(user=request.user).prefetch_related('items').order_by('-created_at')
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+    
+    return render(request, 'warehouse_requests_list.html', {
+        'requests': requests_qs,
+        'cafe_code': cafe_code,
+    })
+
+
+@custom_login_required
+@role_required(['purchasing', 'warehouse'])
+def purchasing_warehouse_requests_list(request: HttpRequest) -> HttpResponse:
+    """لیست درخواست‌های انبار برای مسئول خرید/انبار"""
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+    role_filter = request.GET.get('role', '')
+    status_filter = request.GET.get('status', '')
+
+    qs = WarehouseRequest.objects.select_related('user').prefetch_related('items').order_by('-created_at')
+    if cafe:
+        qs = qs.filter(cafe=cafe)
+    if role_filter:
+        qs = qs.filter(user__role=role_filter)
+    if status_filter == 'pending':
+        qs = qs.filter(status='pending')
+
+    department_names = {
+        'kitchen': 'آشپزخانه', 'bar': 'بار', 'counter': 'کانتر',
+        'store': 'انبار', 'cashier': 'صندوق', 'facilities': 'تاسیسات',
+    }
+    department_name = department_names.get(role_filter, 'همه بخش‌ها')
+
+    return render(request, 'purchasing_warehouse_requests_list.html', {
+        'requests': qs,
+        'role': role_filter,
+        'status': status_filter,
+        'department_name': department_name,
+        'cafe_code': cafe_code,
+    })
+
+
+@custom_login_required
+@role_required(['manager', 'purchasing'])
+def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
+    """لیست خرید با قابلیت تامین از انبار - مسئول خرید می‌تواند اقلام موجود در انبار را از انبار تامین کند"""
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    # اقلام درخواست خرید که هنوز در انتظار هستند
+    pending_items = PurchaseItem.objects.filter(
+        request__status='purchased',
+        supply_status='pending',
+        request__cafe=cafe,
+    ).select_related('request', 'request__user', 'product').order_by('-request__created_at') if cafe else PurchaseItem.objects.filter(
+        request__status='purchased',
+        supply_status='pending',
+    ).select_related('request', 'request__user', 'product').order_by('-request__created_at')
+
+    # موجودی‌های انبار
+    stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
+    if cafe:
+        stock_items = stock_items.filter(warehouse__cafe=cafe)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        has_error = False
+        items_processed = 0
+
+        for item_id_str in request.POST.getlist('item_ids'):
+            try:
+                item = PurchaseItem.objects.get(id=int(item_id_str))
+            except PurchaseItem.DoesNotExist:
+                continue
+            action_for_item = request.POST.get(f'action_{item.id}', '')
+            if action_for_item == 'from_stock':
+                stock_item_id = request.POST.get(f'stock_item_{item.id}', '')
+                supplied_qty_raw = request.POST.get(f'supplied_qty_{item.id}', '')
+                supplied_qty = _parse_decimal(supplied_qty_raw)
+                if not stock_item_id or not supplied_qty or supplied_qty <= 0:
+                    messages.error(request, f'برای قلم «{item.name}» مقدار و موجودی انبار را تعیین کنید')
+                    has_error = True
+                    continue
+                try:
+                    s_item = StockItem.objects.get(id=int(stock_item_id))
+                    if supplied_qty > s_item.quantity:
+                        messages.error(request, f'موجودی {s_item.product.name} ({s_item.quantity}) کمتر از مقدار درخواستی است')
+                        has_error = True
+                        continue
+                    prev_qty = s_item.quantity
+                    s_item.quantity -= supplied_qty
+                    s_item.save()
+                    StockTransaction.objects.create(
+                        stock_item=s_item,
+                        transaction_type='out',
+                        quantity=supplied_qty,
+                        unit=s_item.unit,
+                        reference_type='purchase_item',
+                        reference_id=item.id,
+                        description=f'تامین لیست خرید - {item.name} - درخواست #{item.request.id}',
+                        created_by=request.user,
+                        previous_quantity=prev_qty,
+                        new_quantity=s_item.quantity,
+                    )
+                    item.supply_status = 'from_stock'
+                    item.purchased_quantity = int(supplied_qty)
+                    item.save()
+                    items_processed += 1
+                except StockItem.DoesNotExist:
+                    messages.error(request, 'موجودی انبار یافت نشد')
+                    has_error = True
+
+        if not has_error and items_processed > 0:
+            messages.success(request, f'{items_processed} قلم از انبار تامین شد')
+        
+        return redirect('purchase_list_with_stock_supply')
+
+    return render(request, 'purchase_list_with_stock_supply.html', {
+        'pending_items': pending_items,
+        'stock_items': stock_items,
+        'cafe_code': cafe_code,
+    })
+
+
+@custom_login_required
+@role_required(['purchasing', 'warehouse'])
+def warehouse_dashboard(request: HttpRequest) -> HttpResponse:
+    """داشبورد مسئول انبار (وقتی نقش warehouse دارد)"""
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    departments = [
+        {'name': 'آشپزخانه', 'role': 'kitchen', 'icon': '🍳'},
+        {'name': 'بار', 'role': 'bar', 'icon': '🍸'},
+        {'name': 'کانتر', 'role': 'counter', 'icon': '🛎️'},
+        {'name': 'صندوق', 'role': 'cashier', 'icon': '💰'},
+        {'name': 'تاسیسات', 'role': 'facilities', 'icon': '🔧'},
+    ]
+    for dept in departments:
+        qs = WarehouseRequest.objects.filter(user__role=dept['role'])
+        if cafe:
+            qs = qs.filter(cafe=cafe)
+        dept['total'] = qs.count()
+        dept['pending'] = qs.filter(status='pending').count()
+
+    stock_items_low = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(
+        quantity__lte=F('min_quantity')
+    )
+    if cafe:
+        stock_items_low = stock_items_low.filter(warehouse__cafe=cafe)
+
+    return render(request, 'warehouse_dashboard.html', {
+        'departments': departments,
+        'stock_items_low': stock_items_low[:10],
+        'cafe_code': cafe_code,
+        'user': request.user,
+        'has_dual': request.user.has_dual_role,
     })
 
 
@@ -1760,11 +2201,13 @@ def user_create(request, cafe_code=None):
         if cafe_id and cafe_id != "all":
             cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
 
+        secondary_role = request.POST.get("secondary_role", "").strip() or None
         User.objects.create_user(
             username=username,
             email=email,
             password=password,
             role=role,
+            secondary_role=secondary_role,
             first_name=request.POST.get("first_name", ""),
             last_name=request.POST.get("last_name", ""),
             is_active=request.POST.get("is_active", True) not in ["False", "0", ""],
@@ -1796,6 +2239,7 @@ def user_update(request, cafe_code=None, user_id=None):
         user_obj.last_name = request.POST.get("last_name", user_obj.last_name)
         user_obj.email = request.POST.get("email", user_obj.email)
         user_obj.role = request.POST.get("role", user_obj.role)
+        user_obj.secondary_role = request.POST.get("secondary_role", "").strip() or None
         user_obj.is_active = "is_active" in request.POST
         cafe_id = request.POST.get("cafe_id", "keep")
         if cafe_id == "all":
@@ -3968,85 +4412,114 @@ def search_categories_autocomplete(request):
 def initial_stock_register(request: HttpRequest) -> HttpResponse:
     """ثبت موجودی اولیه انبار"""
     from .forms import InitialStockForm
-    
+    cafe = get_cafe_from_request(request)
+
     if request.method == 'POST':
         form = InitialStockForm(request.POST)
         if form.is_valid():
             product = form.cleaned_data['product']
+            warehouse = form.cleaned_data['warehouse']
             quantity = form.cleaned_data['quantity']
             unit = form.cleaned_data.get('unit') or product.unit
             min_quantity = form.cleaned_data.get('min_quantity', 0)
             description = form.cleaned_data.get('description', '')
-            
-            # بررسی اینکه آیا موجودی برای این محصول وجود دارد
+
+            # بررسی اینکه آیا موجودی برای این محصول در این انبار وجود دارد
             stock_item, created = StockItem.objects.get_or_create(
                 product=product,
+                warehouse=warehouse,
                 defaults={
                     'quantity': 0,
                     'unit': unit,
                     'min_quantity': min_quantity
                 }
             )
-            
+
             if not created:
-                messages.warning(request, f'موجودی برای {product.name} قبلاً ثبت شده است.')
-                return redirect('initial_stock_register')
-            
+                messages.warning(request, f'موجودی برای {product.name} در انبار {warehouse.name} قبلاً ثبت شده است.')
+                return redirect('initial_stock_register', cafe_code=cafe.code if cafe else 'default')
+
             # ثبت تراکنش موجودی اولیه
             previous_qty = stock_item.quantity
             stock_item.quantity = quantity
             stock_item.min_quantity = min_quantity
             stock_item.unit = unit
             stock_item.save()
-            
+
             StockTransaction.objects.create(
                 stock_item=stock_item,
                 transaction_type='initial',
                 quantity=quantity,
                 unit=unit,
                 reference_type='initial',
-                description=description or 'ثبت موجودی اولیه',
+                description=description or f'ثبت موجودی اولیه - انبار {warehouse.name}',
                 created_by=request.user,
                 previous_quantity=previous_qty,
                 new_quantity=quantity
             )
-            
-            messages.success(request, f'موجودی اولیه {product.name} با موفقیت ثبت شد.')
-            return redirect('stock_list')
+
+            messages.success(request, f'موجودی اولیه {product.name} در انبار {warehouse.name} با موفقیت ثبت شد.')
+            return redirect('stock_list', cafe_code=cafe.code if cafe else 'default')
     else:
         form = InitialStockForm()
-    
-    return render(request, 'stock/initial_stock_register.html', {'form': form})
+        # محدود کردن انبارها به کافه جاری
+        if cafe:
+            form.fields['warehouse'].queryset = Warehouse.objects.filter(cafe=cafe, is_active=True)
+
+    return render(request, 'stock/initial_stock_register.html', {'form': form, 'cafe_code': cafe.code if cafe else ''})
 
 
 @custom_login_required
 @role_required(['store', 'purchasing', 'manager'])
 def stock_list(request: HttpRequest) -> HttpResponse:
-    """لیست موجودی‌های انبار"""
-    stock_items = StockItem.objects.select_related('product', 'unit').all().order_by('product__name')
-    
+    """لیست موجودی‌های انبار - گروه‌بندی بر اساس انبار"""
+    cafe = get_cafe_from_request(request)
+
+    # همه انبارهای فعال کافه جاری
+    warehouses_qs = Warehouse.objects.filter(is_active=True)
+    if cafe:
+        warehouses_qs = warehouses_qs.filter(cafe=cafe)
+
+    # فیلتر انبار انتخاب‌شده
+    warehouse_id = request.GET.get('warehouse')
+    selected_warehouse = None
+    if warehouse_id:
+        selected_warehouse = warehouses_qs.filter(id=warehouse_id).first()
+
+    stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').order_by('warehouse__name', 'product__name')
+    if selected_warehouse:
+        stock_items = stock_items.filter(warehouse=selected_warehouse)
+    elif cafe:
+        stock_items = stock_items.filter(warehouse__cafe=cafe)
+
     # فیلتر بر اساس موجودی کم
     show_low_stock = request.GET.get('low_stock')
     if show_low_stock:
         stock_items = [item for item in stock_items if item.is_low_stock]
-    
+
     # جستجو
     search_query = request.GET.get('search')
     if search_query:
-        stock_items = stock_items.filter(
-            Q(product__name__icontains=search_query) |
-            Q(product__category__name__icontains=search_query)
-        )
-    
+        if isinstance(stock_items, list):
+            stock_items = [i for i in stock_items if search_query.lower() in i.product.name.lower()]
+        else:
+            stock_items = stock_items.filter(
+                Q(product__name__icontains=search_query) |
+                Q(product__category__name__icontains=search_query)
+            )
+
     # صفحه‌بندی
     paginator = Paginator(stock_items, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     return render(request, 'stock/stock_list.html', {
         'page_obj': page_obj,
         'search_query': search_query,
-        'show_low_stock': show_low_stock
+        'show_low_stock': show_low_stock,
+        'warehouses': warehouses_qs,
+        'selected_warehouse': selected_warehouse,
+        'cafe_code': cafe.code if cafe else '',
     })
 
 
@@ -4171,16 +4644,16 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
         for product_id, quantity in zip(product_ids, quantities):
             if not product_id or not quantity:
                 continue
-                
+
             try:
                 from decimal import Decimal
                 quantity = Decimal(quantity)
-                product = get_object_or_404(Product, id=int(product_id))
-                stock_item = get_object_or_404(StockItem, product=product)
-                
+                stock_item = get_object_or_404(StockItem, id=int(product_id))
+                product = stock_item.product
+
                 # بررسی موجودی کافی
                 if stock_item.quantity < quantity:
-                    messages.warning(request, f'موجودی {product.name} کافی نیست!')
+                    messages.warning(request, f'موجودی {product.name} در انبار {stock_item.warehouse.name if stock_item.warehouse else ""} کافی نیست!')
                     continue
                 
                 # کاهش از موجودی
@@ -4221,12 +4694,14 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
         messages.success(request, 'درخواست با موفقیت تامین شد.')
         return redirect('stock_supply_list')
     
-    # دریافت لیست موجودی‌های انبار
-    stock_items = StockItem.objects.select_related('product', 'unit').filter(quantity__gt=0).order_by('product__name')
-    
+    # دریافت لیست موجودی‌های انبار - فیلتر بر اساس انبار تامین‌کننده درخواست
+    stock_items_qs = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0).order_by('warehouse__name', 'product__name')
+    if stock_request.warehouse:
+        stock_items_qs = stock_items_qs.filter(warehouse=stock_request.warehouse)
+
     return render(request, 'stock/fulfill_stock_request.html', {
         'stock_request': stock_request,
-        'stock_items': stock_items
+        'stock_items': stock_items_qs
     })
 
 
@@ -4557,4 +5032,649 @@ def warehouse_toggle_status(request, warehouse_id):
         'success': True,
         'is_active': warehouse.is_active,
         'message': 'انبار فعال شد' if warehouse.is_active else 'انبار غیرفعال شد'
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stock Category Views - مدیریت دسته‌بندی موجودی انبار
+# ─────────────────────────────────────────────────────────────────────────────
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo', 'finance_manager', 'accounting'])
+def stock_by_category(request: HttpRequest) -> HttpResponse:
+    """نمایش دسته‌بندی‌های محصولات انبار به صورت فلش کارت"""
+    cafe = get_cafe_from_request(request)
+
+    # دسته‌بندی‌های اصلی که محصولات انبارشده دارند
+    categories_qs = Category.objects.filter(
+        product__stock_items__isnull=False
+    ).distinct()
+    if cafe:
+        categories_qs = categories_qs.filter(cafe=cafe)
+
+    # برای هر دسته آمار موجودی
+    from django.db.models import Count, Sum as DSum
+    category_data = []
+    for cat in categories_qs:
+        items_qs = StockItem.objects.filter(product__category=cat)
+        if cafe:
+            items_qs = items_qs.filter(warehouse__cafe=cafe)
+        count = items_qs.count()
+        low   = sum(1 for i in items_qs if i.is_low_stock)
+        category_data.append({
+            'id': cat.id,
+            'name': cat.name,
+            'description': cat.description,
+            'total_items': count,
+            'low_stock': low,
+        })
+
+    # دسته‌بندی "بدون دسته" - محصولاتی که category ندارند
+    no_cat_qs = StockItem.objects.filter(product__category__isnull=True)
+    if cafe:
+        no_cat_qs = no_cat_qs.filter(warehouse__cafe=cafe)
+    no_cat_count = no_cat_qs.count()
+    no_cat_low   = sum(1 for i in no_cat_qs if i.is_low_stock)
+
+    return render(request, 'stock/stock_categories.html', {
+        'category_data': category_data,
+        'no_cat_count':  no_cat_count,
+        'no_cat_low':    no_cat_low,
+        'cafe_code':     cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo', 'finance_manager', 'accounting'])
+def stock_category_items(request: HttpRequest, category_id: int) -> HttpResponse:
+    """نمایش موجودی‌های انبار یک دسته‌بندی خاص"""
+    cafe = get_cafe_from_request(request)
+
+    if category_id == 0:
+        # "بدون دسته‌بندی"
+        category = None
+        stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(
+            product__category__isnull=True
+        )
+    else:
+        category = get_object_or_404(Category, id=category_id)
+        stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(
+            product__category=category
+        )
+
+    if cafe:
+        stock_items = stock_items.filter(warehouse__cafe=cafe)
+
+    # فیلتر انبار
+    warehouse_id = request.GET.get('warehouse')
+    selected_warehouse = None
+    warehouses_qs = Warehouse.objects.filter(is_active=True)
+    if cafe:
+        warehouses_qs = warehouses_qs.filter(cafe=cafe)
+    if warehouse_id:
+        selected_warehouse = warehouses_qs.filter(id=warehouse_id).first()
+        if selected_warehouse:
+            stock_items = stock_items.filter(warehouse=selected_warehouse)
+
+    # جستجو
+    search_q = request.GET.get('search', '').strip()
+    if search_q:
+        stock_items = stock_items.filter(product__name__icontains=search_q)
+
+    # موجودی کم
+    if request.GET.get('low_stock'):
+        stock_items = [i for i in stock_items if i.is_low_stock]
+
+    paginator = Paginator(stock_items, 50)
+    page_obj  = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'stock/stock_category_items.html', {
+        'category':          category,
+        'page_obj':          page_obj,
+        'warehouses':        warehouses_qs,
+        'selected_warehouse': selected_warehouse,
+        'search_q':          search_q,
+        'show_low_stock':    request.GET.get('low_stock'),
+        'cafe_code':         cafe.code if cafe else '',
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Warehouse Voucher Views - حواله‌های انبار
+# ─────────────────────────────────────────────────────────────────────────────
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def voucher_list(request: HttpRequest) -> HttpResponse:
+    """لیست حواله‌های انبار"""
+    cafe = get_cafe_from_request(request)
+
+    vouchers = WarehouseVoucher.objects.select_related('warehouse', 'created_by').filter(cafe=cafe) if cafe else WarehouseVoucher.objects.none()
+
+    # فیلترها
+    vtype   = request.GET.get('type')   # 'in' | 'out'
+    wh_id   = request.GET.get('warehouse')
+    search  = request.GET.get('search', '').strip()
+
+    if vtype in ('in', 'out'):
+        vouchers = vouchers.filter(voucher_type=vtype)
+    if wh_id:
+        vouchers = vouchers.filter(warehouse_id=wh_id)
+    if search:
+        vouchers = vouchers.filter(
+            Q(voucher_number__icontains=search) | Q(description__icontains=search)
+        )
+
+    warehouses = Warehouse.objects.filter(cafe=cafe, is_active=True) if cafe else Warehouse.objects.none()
+
+    paginator = Paginator(vouchers, 30)
+    page_obj  = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'stock/voucher_list.html', {
+        'page_obj':   page_obj,
+        'warehouses': warehouses,
+        'vtype':      vtype,
+        'wh_id':      wh_id,
+        'search':     search,
+        'cafe_code':  cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def voucher_create(request: HttpRequest, voucher_type: str, warehouse_id: int) -> HttpResponse:
+    """ایجاد حواله ورود یا خروج برای یک انبار"""
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe, is_active=True)
+
+    if voucher_type not in ('in', 'out'):
+        return redirect('warehouse_management', cafe_code=cafe.code if cafe else '')
+
+    # ساخت شماره حواله خودکار
+    import random
+    prefix      = 'VI' if voucher_type == 'in' else 'VO'
+    last_number = WarehouseVoucher.objects.filter(
+        cafe=cafe, voucher_type=voucher_type
+    ).count() + 1
+    auto_number = f"{prefix}-{last_number:05d}"
+
+    # محصولات موجود در این انبار (یا همه محصولات کافه)
+    products = Product.objects.filter(is_active=True)
+    if cafe:
+        products = products.filter(cafe=cafe)
+    products = products.select_related('category', 'unit').order_by('category__name', 'name')
+
+    units = Unit.objects.all()
+
+    if request.method == 'POST':
+        voucher_number = request.POST.get('voucher_number', auto_number).strip()
+        description    = request.POST.get('description', '').strip()
+        date_str       = request.POST.get('date', '').strip()
+
+        # اقلام
+        product_ids  = request.POST.getlist('product_id[]')
+        quantities   = request.POST.getlist('quantity[]')
+        unit_ids     = request.POST.getlist('unit_id[]')
+        unit_prices  = request.POST.getlist('unit_price[]')
+        item_descs   = request.POST.getlist('item_description[]')
+
+        if not product_ids:
+            from django.contrib import messages as dj_messages
+            dj_messages.error(request, 'حداقل یک قلم کالا باید وارد شود.')
+        else:
+            # ایجاد حواله
+            vdate = timezone.now()
+            if date_str:
+                try:
+                    vdate = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%dT%H:%M'))
+                except Exception:
+                    pass
+
+            voucher = WarehouseVoucher.objects.create(
+                cafe=cafe,
+                warehouse=warehouse,
+                voucher_type=voucher_type,
+                voucher_number=voucher_number,
+                date=vdate,
+                description=description,
+                created_by=request.user,
+            )
+
+            for idx, pid in enumerate(product_ids):
+                try:
+                    qty        = Decimal(quantities[idx].replace(',', '')) if idx < len(quantities) else Decimal('0')
+                    uid        = int(unit_ids[idx]) if idx < len(unit_ids) and unit_ids[idx] else None
+                    uprice_str = unit_prices[idx].replace(',', '') if idx < len(unit_prices) else '0'
+                    uprice     = Decimal(uprice_str) if uprice_str else Decimal('0')
+                    idesc      = item_descs[idx] if idx < len(item_descs) else ''
+                    product    = Product.objects.get(id=pid, cafe=cafe)
+                    unit_obj   = Unit.objects.get(id=uid) if uid else None
+
+                    WarehouseVoucherItem.objects.create(
+                        voucher=voucher,
+                        product=product,
+                        quantity=qty,
+                        unit=unit_obj,
+                        unit_price=uprice,
+                        description=idesc,
+                    )
+
+                    # بروزرسانی موجودی StockItem
+                    stock_item, _ = StockItem.objects.get_or_create(
+                        product=product,
+                        warehouse=warehouse,
+                        defaults={'unit': unit_obj or product.unit, 'quantity': 0}
+                    )
+                    prev_qty = stock_item.quantity
+                    if voucher_type == 'in':
+                        stock_item.quantity += qty
+                    else:
+                        stock_item.quantity = max(Decimal('0'), stock_item.quantity - qty)
+                    stock_item.save()
+
+                    # تراکنش
+                    StockTransaction.objects.create(
+                        stock_item=stock_item,
+                        transaction_type='in' if voucher_type == 'in' else 'out',
+                        quantity=qty,
+                        unit=unit_obj or product.unit,
+                        reference_type='voucher',
+                        reference_id=voucher.id,
+                        description=f"حواله {voucher.get_voucher_type_display()} شماره {voucher.voucher_number}",
+                        created_by=request.user,
+                        previous_quantity=prev_qty,
+                        new_quantity=stock_item.quantity,
+                    )
+                except Exception:
+                    continue
+
+            return redirect('voucher_detail', cafe_code=cafe.code if cafe else '', voucher_id=voucher.id)
+
+    type_label = 'حواله ورود' if voucher_type == 'in' else 'حواله خروج'
+    return render(request, 'stock/voucher_create.html', {
+        'warehouse':     warehouse,
+        'voucher_type':  voucher_type,
+        'type_label':    type_label,
+        'auto_number':   auto_number,
+        'products':      products,
+        'units':         units,
+        'cafe_code':     cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo', 'finance_manager', 'accounting'])
+def voucher_detail(request: HttpRequest, voucher_id: int) -> HttpResponse:
+    """نمایش جزئیات یک حواله انبار"""
+    cafe    = get_cafe_from_request(request)
+    voucher = get_object_or_404(WarehouseVoucher, id=voucher_id, cafe=cafe)
+    items   = voucher.items.select_related('product', 'unit', 'product__category').all()
+
+    return render(request, 'stock/voucher_detail.html', {
+        'voucher':   voucher,
+        'items':     items,
+        'cafe_code': cafe.code if cafe else '',
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Warehouse Product Definition Views - تعریف کالا برای انبار
+# ─────────────────────────────────────────────────────────────────────────────
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_products(request: HttpRequest, warehouse_id: int) -> HttpResponse:
+    """لیست و مدیریت محصولات تعریف‌شده برای یک انبار"""
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe, is_active=True)
+
+    # محصولاتی که برای این انبار تعریف شده‌اند (از طریق StockItem)
+    stock_items = StockItem.objects.filter(
+        warehouse=warehouse
+    ).select_related('product', 'product__category', 'unit').order_by(
+        'product__category__name', 'product__name'
+    )
+
+    categories = Category.objects.filter(cafe=cafe, is_active=True).order_by('name')
+    units = Unit.objects.filter(cafe=cafe, is_active=True).order_by('name')
+
+    # محصولات کافه که هنوز به این انبار اضافه نشده‌اند
+    defined_product_ids = stock_items.values_list('product_id', flat=True)
+    available_products = Product.objects.filter(
+        cafe=cafe, is_active=True
+    ).exclude(id__in=defined_product_ids).select_related('category', 'unit').order_by('name')
+
+    return render(request, 'warehouse/warehouse_products.html', {
+        'warehouse':         warehouse,
+        'stock_items':       stock_items,
+        'categories':        categories,
+        'units':             units,
+        'available_products': available_products,
+        'cafe_code':         cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_product_create(request: HttpRequest, warehouse_id: int) -> HttpResponse:
+    """ایجاد یا اضافه‌کردن محصول به انبار (AJAX POST)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe, is_active=True)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = request.POST
+
+    mode = data.get('mode', 'new')  # 'new' | 'existing'
+
+    if mode == 'existing':
+        product_id = data.get('product_id')
+        product = get_object_or_404(Product, id=product_id, cafe=cafe)
+    else:
+        # ایجاد محصول جدید
+        name = (data.get('name') or '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'نام محصول الزامی است'}, status=400)
+
+        category_id = data.get('category_id') or None
+        unit_id = data.get('unit_id') or None
+        min_stock = int(data.get('min_stock') or 0)
+
+        category = Category.objects.get(id=category_id, cafe=cafe) if category_id else None
+        unit_obj = Unit.objects.get(id=unit_id, cafe=cafe) if unit_id else None
+
+        product, created = Product.objects.get_or_create(
+            name=name,
+            cafe=cafe,
+            defaults={
+                'category': category,
+                'unit': unit_obj,
+                'min_stock': min_stock,
+                'is_active': True,
+            }
+        )
+        if not created:
+            # Update if exists
+            product.category = category
+            product.unit = unit_obj
+            product.min_stock = min_stock
+            product.save()
+
+    unit_id = data.get('unit_id') or None
+    unit_obj = Unit.objects.get(id=unit_id, cafe=cafe) if unit_id else product.unit
+    min_quantity = Decimal(str(data.get('min_stock') or data.get('min_quantity') or 0))
+
+    # ایجاد یا به‌روزرسانی StockItem برای این انبار
+    stock_item, created = StockItem.objects.get_or_create(
+        product=product,
+        warehouse=warehouse,
+        defaults={
+            'unit': unit_obj,
+            'quantity': Decimal('0'),
+            'min_quantity': min_quantity,
+        }
+    )
+    if not created:
+        return JsonResponse({'success': False, 'error': f'محصول "{product.name}" قبلاً در این انبار تعریف شده است'}, status=400)
+
+    return JsonResponse({
+        'success': True,
+        'item': {
+            'id': stock_item.id,
+            'product_id': product.id,
+            'product_name': product.name,
+            'category_name': product.category.name if product.category else '—',
+            'unit_name': stock_item.unit.name if stock_item.unit else '—',
+            'min_quantity': str(stock_item.min_quantity),
+            'quantity': str(stock_item.quantity),
+        }
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_product_update(request: HttpRequest, warehouse_id: int, stock_item_id: int) -> HttpResponse:
+    """ویرایش محصول در انبار (AJAX POST)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe)
+    stock_item = get_object_or_404(StockItem, id=stock_item_id, warehouse=warehouse)
+    product = stock_item.product
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = request.POST
+
+    name = (data.get('name') or '').strip()
+    if name and name != product.name:
+        product.name = name
+
+    category_id = data.get('category_id') or None
+    unit_id = data.get('unit_id') or None
+    min_quantity = Decimal(str(data.get('min_stock') or data.get('min_quantity') or 0))
+
+    if category_id:
+        try:
+            product.category = Category.objects.get(id=category_id, cafe=cafe)
+        except Category.DoesNotExist:
+            pass
+    else:
+        product.category = None
+
+    unit_obj = None
+    if unit_id:
+        try:
+            unit_obj = Unit.objects.get(id=unit_id, cafe=cafe)
+            product.unit = unit_obj
+        except Unit.DoesNotExist:
+            pass
+
+    product.min_stock = int(min_quantity)
+    product.save()
+
+    stock_item.unit = unit_obj or stock_item.unit
+    stock_item.min_quantity = min_quantity
+    stock_item.save()
+
+    return JsonResponse({
+        'success': True,
+        'item': {
+            'id': stock_item.id,
+            'product_name': product.name,
+            'category_name': product.category.name if product.category else '—',
+            'unit_name': stock_item.unit.name if stock_item.unit else '—',
+            'min_quantity': str(stock_item.min_quantity),
+            'quantity': str(stock_item.quantity),
+        }
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_product_delete(request: HttpRequest, warehouse_id: int, stock_item_id: int) -> HttpResponse:
+    """حذف محصول از انبار (AJAX POST)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe)
+    stock_item = get_object_or_404(StockItem, id=stock_item_id, warehouse=warehouse)
+
+    if stock_item.quantity > 0:
+        return JsonResponse({'success': False, 'error': 'این محصول دارای موجودی است. ابتدا موجودی را صفر کنید.'}, status=400)
+
+    product_name = stock_item.product.name
+    stock_item.delete()
+
+    return JsonResponse({'success': True, 'message': f'محصول "{product_name}" از انبار حذف شد'})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Inventory Check (انبارگردانی) Views
+# ─────────────────────────────────────────────────────────────────────────────
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_inventory_check(request: HttpRequest, warehouse_id: int) -> HttpResponse:
+    """صفحه انبارگردانی"""
+    from django.db.models import Count, Sum
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe, is_active=True)
+
+    stock_items = StockItem.objects.filter(
+        warehouse=warehouse
+    ).select_related('product', 'product__category', 'unit').order_by(
+        'product__category__name', 'product__name'
+    )
+
+    items_data = []
+    for si in stock_items:
+        # تعداد حواله‌های ورود و خروج این محصول
+        in_count = WarehouseVoucherItem.objects.filter(
+            voucher__warehouse=warehouse,
+            voucher__voucher_type='in',
+            product=si.product
+        ).count()
+        out_count = WarehouseVoucherItem.objects.filter(
+            voucher__warehouse=warehouse,
+            voucher__voucher_type='out',
+            product=si.product
+        ).count()
+
+        # مجموع ورود و خروج
+        in_total = WarehouseVoucherItem.objects.filter(
+            voucher__warehouse=warehouse,
+            voucher__voucher_type='in',
+            product=si.product
+        ).aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+
+        out_total = WarehouseVoucherItem.objects.filter(
+            voucher__warehouse=warehouse,
+            voucher__voucher_type='out',
+            product=si.product
+        ).aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+
+        # موجودی اولیه (از تراکنش‌های initial)
+        initial_qty = StockTransaction.objects.filter(
+            stock_item=si,
+            transaction_type='initial'
+        ).aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+
+        items_data.append({
+            'stock_item': si,
+            'in_count': in_count,
+            'out_count': out_count,
+            'in_total': in_total,
+            'out_total': out_total,
+            'initial_qty': initial_qty,
+            'system_qty': si.quantity,
+        })
+
+    return render(request, 'stock/inventory_check.html', {
+        'warehouse':  warehouse,
+        'items_data': items_data,
+        'cafe_code':  cafe.code if cafe else '',
+    })
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo'])
+def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpResponse:
+    """ثبت انبارگردانی - آپدیت موجودی‌ها"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
+
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe, is_active=True)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'داده نامعتبر'}, status=400)
+
+    items = data.get('items', [])
+    updated = 0
+
+    for item in items:
+        stock_item_id = item.get('stock_item_id')
+        physical_qty_str = str(item.get('physical_qty', '')).strip()
+
+        if not physical_qty_str:
+            continue
+
+        try:
+            physical_qty = Decimal(physical_qty_str)
+            stock_item = StockItem.objects.get(id=stock_item_id, warehouse=warehouse)
+        except Exception:
+            continue
+
+        prev_qty = stock_item.quantity
+        stock_item.quantity = physical_qty
+        stock_item.save()
+
+        StockTransaction.objects.create(
+            stock_item=stock_item,
+            transaction_type='adjustment',
+            quantity=abs(physical_qty - prev_qty),
+            unit=stock_item.unit,
+            reference_type='inventory_check',
+            reference_id=warehouse.id,
+            description=f'انبارگردانی - تعدیل موجودی از {prev_qty} به {physical_qty}',
+            created_by=request.user,
+            previous_quantity=prev_qty,
+            new_quantity=physical_qty,
+        )
+        updated += 1
+
+    return JsonResponse({'success': True, 'updated': updated, 'message': f'{updated} مورد موجودی به‌روزرسانی شد'})
+
+
+@custom_login_required
+@role_required(['store', 'purchasing', 'manager', 'admin', 'ceo', 'finance_manager', 'accounting'])
+def api_product_stock_history(request: HttpRequest, warehouse_id: int, stock_item_id: int) -> JsonResponse:
+    """API - سوابق ورود و خروج یک محصول در یک انبار"""
+    cafe = get_cafe_from_request(request)
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id, cafe=cafe)
+    stock_item = get_object_or_404(StockItem, id=stock_item_id, warehouse=warehouse)
+
+    # حواله‌های ورود
+    in_items = WarehouseVoucherItem.objects.filter(
+        voucher__warehouse=warehouse,
+        voucher__voucher_type='in',
+        product=stock_item.product
+    ).select_related('voucher', 'voucher__created_by', 'unit').order_by('-voucher__date')[:50]
+
+    # حواله‌های خروج
+    out_items = WarehouseVoucherItem.objects.filter(
+        voucher__warehouse=warehouse,
+        voucher__voucher_type='out',
+        product=stock_item.product
+    ).select_related('voucher', 'voucher__created_by', 'unit').order_by('-voucher__date')[:50]
+
+    def serialize_voucher_item(vi):
+        return {
+            'voucher_number': vi.voucher.voucher_number,
+            'date': vi.voucher.date.strftime('%Y-%m-%d %H:%M') if vi.voucher.date else '',
+            'quantity': str(vi.quantity),
+            'unit_name': vi.unit.name if vi.unit else '',
+            'unit_price': str(vi.unit_price),
+            'total_price': str(vi.total_price),
+            'description': vi.description or vi.voucher.description or '',
+            'created_by': vi.voucher.created_by.get_full_name() or vi.voucher.created_by.username if vi.voucher.created_by else '—',
+        }
+
+    return JsonResponse({
+        'success': True,
+        'product_name': stock_item.product.name,
+        'current_qty': str(stock_item.quantity),
+        'unit_name': stock_item.unit.name if stock_item.unit else '',
+        'in_items': [serialize_voucher_item(v) for v in in_items],
+        'out_items': [serialize_voucher_item(v) for v in out_items],
     })

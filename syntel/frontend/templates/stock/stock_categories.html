@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موجودی انبار - دسته‌بندی</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --muted: #6b7280;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+            --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+            --r: .625rem;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        /* TOPBAR */
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: .75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .45rem .9rem;
+            background: var(--light);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            text-decoration: none;
+            color: var(--dark);
+            font-size: .82rem;
+            font-weight: 600;
+            transition: all .2s;
+        }
+        .back-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .topbar-title {
+            flex: 1;
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+        .topbar-title i { color: var(--primary); }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .45rem 1rem;
+            border: none;
+            border-radius: var(--r);
+            font-family: 'Vazir', sans-serif;
+            font-size: .82rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .2s;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-success:hover { background: #059669; }
+        .btn-outline { background: #fff; color: var(--dark); border: 1px solid var(--border); }
+        .btn-outline:hover { background: var(--light); }
+
+        /* MAIN */
+        .main { padding: 1.75rem 1.5rem; max-width: 1300px; margin: 0 auto; }
+
+        /* PAGE HEADER */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .page-header h1 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+        .page-header h1 i { color: var(--primary); }
+        .page-header p { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+
+        /* SEARCH BAR */
+        .search-wrap {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: .75rem 1.1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+        }
+        .search-wrap i { color: var(--muted); font-size: .9rem; flex-shrink: 0; }
+        .search-wrap input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-family: 'Vazir', sans-serif;
+            font-size: .9rem;
+            color: var(--dark);
+            background: transparent;
+        }
+        .search-wrap input::placeholder { color: #9ca3af; }
+        .search-count { font-size: .75rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+        /* GRID */
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: .875rem;
+        }
+
+        /* MINIMAL CARD */
+        .cat-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 1rem 1.1rem;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            transition: all .18s;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+        .cat-card::after {
+            content: '';
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 0 var(--r) var(--r) 0;
+        }
+        .cat-card.no-cat::after { background: var(--muted); }
+        .cat-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        .cat-card.no-cat:hover { border-color: var(--muted); }
+        .cat-card.hidden { display: none !important; }
+
+        .cat-icon-wrap {
+            width: 38px;
+            height: 38px;
+            border-radius: .5rem;
+            background: #eef2ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: .95rem;
+            color: var(--primary);
+        }
+        .cat-card.no-cat .cat-icon-wrap { background: #f3f4f6; color: var(--muted); }
+
+        .cat-info { flex: 1; min-width: 0; }
+        .cat-name {
+            font-size: .875rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cat-meta {
+            font-size: .72rem;
+            color: var(--muted);
+            margin-top: .18rem;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+        .cat-count {
+            font-size: .78rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: #eef2ff;
+            padding: .18rem .5rem;
+            border-radius: .375rem;
+            flex-shrink: 0;
+        }
+        .cat-card.no-cat .cat-count { color: var(--muted); background: #f3f4f6; }
+
+        .low-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+            font-size: .68rem;
+            font-weight: 700;
+            color: var(--danger);
+            background: #fee2e2;
+            padding: .12rem .4rem;
+            border-radius: .35rem;
+        }
+
+        /* NO RESULTS */
+        #noResults {
+            display: none;
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--muted);
+            font-size: .9rem;
+        }
+        #noResults i { display: block; font-size: 2rem; margin-bottom: .5rem; color: #d1d5db; }
+
+        /* EMPTY */
+        .empty {
+            text-align: center;
+            padding: 3.5rem 2rem;
+            background: #fff;
+            border-radius: var(--r);
+            border: 1px solid var(--border);
+        }
+        .empty i { font-size: 2.5rem; color: #d1d5db; display: block; margin-bottom: .75rem; }
+        .empty h3 { font-size: 1rem; color: var(--muted); margin-bottom: .4rem; }
+        .empty p { font-size: .82rem; color: #9ca3af; margin-bottom: 1.25rem; }
+
+        @media (max-width: 640px) {
+            .main { padding: 1rem; }
+            .cat-grid { grid-template-columns: 1fr; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+{% load static %}
+
+<!-- Topbar -->
+<div class="topbar">
+    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i> بازگشت
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-tags"></i>
+        موجودی انبار — دسته‌بندی
+    </div>
+    <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-outline">
+        <i class="fas fa-list"></i> لیست کامل
+    </a>
+    <a href="{% url 'category_create' cafe_code=cafe_code %}" class="btn btn-success">
+        <i class="fas fa-plus"></i> دسته‌بندی جدید
+    </a>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Page header -->
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-tags"></i> دسته‌بندی‌های انبار</h1>
+            <p>برای مشاهده موجودی هر دسته روی آن کلیک کنید</p>
+        </div>
+        <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn btn-outline">
+            <i class="fas fa-cog"></i> مدیریت دسته‌بندی‌ها
+        </a>
+    </div>
+
+    {% if category_data or no_cat_count > 0 %}
+
+    <!-- Search -->
+    <div class="search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput"
+               placeholder="جستجو در دسته‌بندی‌ها..."
+               oninput="filterCards(this.value)"
+               autocomplete="off">
+        <span class="search-count" id="searchCount">
+            {% with total=category_data|length %}{% if no_cat_count > 0 %}{{ total|add:1 }}{% else %}{{ total }}{% endif %}{% endwith %} دسته‌بندی
+        </span>
+    </div>
+
+    <!-- Grid -->
+    <div class="cat-grid" id="catGrid">
+
+        {% for cat in category_data %}
+        <a href="{% url 'stock_category_items' cafe_code=cafe_code category_id=cat.id %}"
+           class="cat-card"
+           data-name="{{ cat.name|lower }}">
+            <div class="cat-icon-wrap">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="cat-info">
+                <div class="cat-name">{{ cat.name }}</div>
+                <div class="cat-meta">
+                    {% if cat.low_stock > 0 %}
+                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i>{{ cat.low_stock }} کم موجود</span>
+                    {% else %}
+                    <span>{{ cat.total_items }} قلم کالا</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="cat-count">{{ cat.total_items }}</div>
+        </a>
+        {% endfor %}
+
+        {% if no_cat_count > 0 %}
+        <a href="{% url 'stock_category_items' cafe_code=cafe_code category_id=0 %}"
+           class="cat-card no-cat"
+           data-name="بدون دسته بندی">
+            <div class="cat-icon-wrap">
+                <i class="fas fa-question-circle"></i>
+            </div>
+            <div class="cat-info">
+                <div class="cat-name">بدون دسته‌بندی</div>
+                <div class="cat-meta">
+                    {% if no_cat_low > 0 %}
+                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i>{{ no_cat_low }} کم موجود</span>
+                    {% else %}
+                    <span>{{ no_cat_count }} قلم کالا</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="cat-count">{{ no_cat_count }}</div>
+        </a>
+        {% endif %}
+
+    </div>
+
+    <div id="noResults">
+        <i class="fas fa-search"></i>
+        نتیجه‌ای پیدا نشد
+    </div>
+
+    {% else %}
+    <div class="empty">
+        <i class="fas fa-boxes"></i>
+        <h3>هیچ موجودی در انبار ثبت نشده</h3>
+        <p>ابتدا محصولات را در انبار ثبت کنید و دسته‌بندی به آن‌ها اضافه نمایید</p>
+        <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> ثبت موجودی اولیه
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function filterCards(query) {
+    const q       = query.trim().toLowerCase();
+    const cards   = document.querySelectorAll('.cat-card');
+    const counter = document.getElementById('searchCount');
+    const noRes   = document.getElementById('noResults');
+    let   visible = 0;
+
+    cards.forEach(card => {
+        const name = (card.dataset.name || '');
+        const show = !q || name.includes(q);
+        card.classList.toggle('hidden', !show);
+        if (show) visible++;
+    });
+
+    if (counter) counter.textContent = visible + ' دسته‌بندی';
+    if (noRes)   noRes.style.display  = visible === 0 ? 'block' : 'none';
+}
+
+// Shortcut: press "/" to focus search
+document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        document.getElementById('searchInput')?.focus();
+    }
+});
+</script>
+
+</body>
+</html>

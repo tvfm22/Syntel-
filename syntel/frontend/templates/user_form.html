@@ -255,6 +255,24 @@
             </select>
         </div>
 
+        <!-- نقش ثانویه (انبار + خرید) -->
+        <div class="form-group" id="secondaryRoleGroup" style="display:none;">
+            <label for="secondary_role" class="form-label">نقش ثانویه</label>
+            <select id="secondary_role" name="secondary_role" class="form-select">
+                <option value="">-- بدون نقش ثانویه --</option>
+                {% for role_value, role_name in roles %}
+                <option value="{{ role_value }}"
+                    {% if edit_user and edit_user.secondary_role == role_value %}selected
+                    {% elif form_data and form_data.secondary_role == role_value %}selected{% endif %}>
+                    {{ role_name }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="form-help">
+                با انتخاب نقش ثانویه، این کاربر می‌تواند هم به عنوان مسئول خرید و هم مسئول انبار فعالیت کند.
+            </div>
+        </div>
+
         <!-- انتخاب کافه -->
         <div class="form-group" id="cafeGroup">
             <label for="cafe_id" class="form-label">
@@ -355,6 +373,11 @@ const CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting
 
 function onRoleChange(roleVal) {
     checkCafeWarning(roleVal, document.getElementById('cafe_id').value);
+    // نمایش نقش ثانویه فقط برای مسئول خرید یا مسئول انبار
+    const srGroup = document.getElementById('secondaryRoleGroup');
+    if (srGroup) {
+        srGroup.style.display = (roleVal === 'purchasing' || roleVal === 'warehouse') ? 'block' : 'none';
+    }
 }
 
 function onCafeChange(cafeVal) {
@@ -391,6 +414,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('role').value,
             cafeSelect.value
         );
+    }
+    // نمایش نقش ثانویه در صورت ویرایش
+    const roleSelect = document.getElementById('role');
+    if (roleSelect) {
+        onRoleChange(roleSelect.value);
     }
 
     const form = document.querySelector('.user-form');

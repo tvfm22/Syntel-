@@ -1,0 +1,201 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لیست خرید - تامین از انبار</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; padding: 16px; padding-bottom: 120px; }
+        .header { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; }
+        .back-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #374151; font-size: 18px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .info-box { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #1e40af; }
+        .item-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border: 2px solid transparent; }
+        .item-card.selected { border-color: #10b981; }
+        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .item-name { font-size: 15px; font-weight: 600; color: #1f2937; }
+        .item-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .item-qty { font-size: 13px; font-weight: 600; color: #374151; }
+        .form-label { display: block; font-size: 13px; color: #374151; margin-bottom: 6px; font-weight: 500; }
+        .form-input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: Vazir, sans-serif; }
+        .form-input:focus { outline: none; border-color: #10b981; }
+        .stock-search-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-top: 10px; }
+        .stock-results { max-height: 160px; overflow-y: auto; }
+        .stock-result-item { padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; margin-bottom: 3px; }
+        .stock-result-item:hover { background: #d1fae5; border-color: #10b981; }
+        .stock-result-item.selected { background: #d1fae5; border-color: #10b981; font-weight: 600; }
+        .selected-info { background: #d1fae5; border-radius: 6px; padding: 8px; margin-top: 6px; font-size: 12px; color: #065f46; display: none; }
+        .qty-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .qty-row input { flex: 1; }
+        .warning { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 6px; display: none; }
+        .item-checkbox { display: flex; align-items: center; gap: 8px; }
+        .item-checkbox input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+        .select-label { font-size: 13px; color: #374151; }
+        .submit-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; box-shadow: 0 -2px 8px rgba(0,0,0,.1); }
+        .submit-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: Vazir, sans-serif; cursor: pointer; }
+        .alert-msg { border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 14px; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .empty-state { text-align: center; padding: 4rem 1rem; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="back-btn">←</a>
+        <div style="flex:1">
+            <h1 style="font-size:18px; color:#1f2937;">🛒 لیست خرید - تامین از انبار</h1>
+            <p style="font-size:13px; color:#6b7280;">اقلامی که می‌توانند از انبار تامین شوند</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert-msg {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="info-box">
+        💡 در مقابل هر قلم می‌توانید در موجودی انبار جستجو کنید و آن را از انبار تامین نمایید.
+        اگر محصولی در انبار موجود نبود، آن قلم برای خرید باقی می‌ماند.
+    </div>
+
+    {% if pending_items %}
+    <form method="post" id="supplyForm">
+        {% csrf_token %}
+
+        {% for item in pending_items %}
+        <div class="item-card" id="card-{{ item.id }}">
+            <div class="item-header">
+                <div>
+                    <div class="item-name">{{ item.name }}</div>
+                    <div class="item-meta">
+                        {{ item.request.user.first_name }} {{ item.request.user.last_name }} |
+                        {{ item.request.created_at|jalali_date }}
+                    </div>
+                </div>
+                <div class="item-qty">{{ item.quantity }} {{ item.unit }}</div>
+            </div>
+
+            <div class="item-checkbox">
+                <input type="checkbox" id="chk-{{ item.id }}" name="item_ids" value="{{ item.id }}"
+                       onchange="toggleCard({{ item.id }}, this.checked)">
+                <label for="chk-{{ item.id }}" class="select-label">تامین این قلم از انبار</label>
+                <input type="hidden" name="action_{{ item.id }}" id="action-{{ item.id }}" value="">
+            </div>
+
+            <div class="stock-search-box" id="stock-box-{{ item.id }}" style="display:none">
+                <label class="form-label">🔍 جستجو در موجودی انبار:</label>
+                <input type="text" class="form-input" id="search-{{ item.id }}" style="margin-bottom:6px;"
+                    placeholder="نام محصول را تایپ کنید..." oninput="searchStock('{{ item.id }}', this.value)">
+                <div class="stock-results" id="results-{{ item.id }}"></div>
+                <div class="selected-info" id="sel-info-{{ item.id }}">
+                    <strong>انتخاب‌شده:</strong> <span id="sel-name-{{ item.id }}"></span>
+                    | موجودی: <span id="sel-qty-{{ item.id }}"></span> <span id="sel-unit-{{ item.id }}"></span>
+                    | انبار: <span id="sel-wh-{{ item.id }}"></span>
+                </div>
+                <input type="hidden" name="stock_item_{{ item.id }}" id="stock-item-id-{{ item.id }}" value="">
+                <div class="qty-row" id="qty-row-{{ item.id }}" style="display:none">
+                    <input type="number" name="supplied_qty_{{ item.id }}" id="sup-qty-{{ item.id }}"
+                        class="form-input" step="0.01" min="0.01" placeholder="مقدار..."
+                        oninput="checkQty('{{ item.id }}', this.value)">
+                    <span style="font-size:13px; color:#6b7280; white-space:nowrap;">{{ item.unit }}</span>
+                </div>
+                <div class="warning" id="warn-{{ item.id }}">⚠️ مقدار بیشتر از موجودی انبار است!</div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="submit-area">
+            <button type="submit" class="submit-btn" onclick="prepareSubmit()">✅ تایید تامین از انبار</button>
+        </div>
+    </form>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size:3rem; margin-bottom:1rem;">⚡</div>
+        <p>هیچ قلم در انتظار خریدی وجود ندارد</p>
+    </div>
+    {% endif %}
+
+    <script>
+        const allStockItems = [
+            {% for si in stock_items %}
+            { id: {{ si.id }}, name: "{{ si.product.name|escapejs }}", qty: {{ si.quantity }}, unit: "{{ si.unit.name|default:''|escapejs }}", wh: "{{ si.warehouse.name|default:''|escapejs }}" }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        const selectedStocks = {};
+
+        function toggleCard(itemId, checked) {
+            const box = document.getElementById('stock-box-' + itemId);
+            const card = document.getElementById('card-' + itemId);
+            const actionInput = document.getElementById('action-' + itemId);
+            box.style.display = checked ? 'block' : 'none';
+            card.classList.toggle('selected', checked);
+            actionInput.value = checked ? 'from_stock' : '';
+            if (!checked) {
+                document.getElementById('stock-item-id-' + itemId).value = '';
+                document.getElementById('sel-info-' + itemId).style.display = 'none';
+                document.getElementById('qty-row-' + itemId).style.display = 'none';
+                document.getElementById('warn-' + itemId).style.display = 'none';
+                delete selectedStocks[itemId];
+            }
+        }
+
+        function searchStock(itemId, q) {
+            const res = document.getElementById('results-' + itemId);
+            if (!q) { res.innerHTML = ''; return; }
+            const fl = allStockItems.filter(s => s.name.toLowerCase().includes(q.toLowerCase()));
+            if (!fl.length) { res.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:6px;">یافت نشد</div>'; return; }
+            res.innerHTML = fl.slice(0,10).map(s => `
+                <div class="stock-result-item" onclick="selectStock('${itemId}',${s.id},'${s.name.replace(/'/g,"\\'")}',${s.qty},'${s.unit}','${s.wh}')">
+                    <span>${s.name} <br><small style="color:#9ca3af">${s.wh}</small></span>
+                    <span style="color:#10b981;font-weight:600">${s.qty} ${s.unit}</span>
+                </div>`).join('');
+        }
+
+        function selectStock(itemId, id, name, qty, unit, wh) {
+            selectedStocks[itemId] = {id, qty, unit};
+            document.getElementById('stock-item-id-' + itemId).value = id;
+            document.getElementById('sel-info-' + itemId).style.display = 'block';
+            document.getElementById('sel-name-' + itemId).textContent = name;
+            document.getElementById('sel-qty-' + itemId).textContent = qty;
+            document.getElementById('sel-unit-' + itemId).textContent = unit;
+            document.getElementById('sel-wh-' + itemId).textContent = wh;
+            document.getElementById('qty-row-' + itemId).style.display = 'flex';
+            document.getElementById('results-' + itemId).innerHTML = '';
+            document.getElementById('search-' + itemId).value = name;
+            const qIn = document.getElementById('sup-qty-' + itemId);
+            if (qIn.value) checkQty(itemId, qIn.value);
+        }
+
+        function checkQty(itemId, val) {
+            const s = selectedStocks[itemId];
+            const w = document.getElementById('warn-' + itemId);
+            w.style.display = (s && parseFloat(val) > s.qty) ? 'block' : 'none';
+        }
+
+        function prepareSubmit() {
+            // اطمینان از اینکه قلم‌های تیک‌خورده، stock_item هم دارند
+            const checked = document.querySelectorAll('input[name="item_ids"]:checked');
+            let valid = true;
+            checked.forEach(cb => {
+                const id = cb.value;
+                const sId = document.getElementById('stock-item-id-' + id).value;
+                const sqty = document.getElementById('sup-qty-' + id);
+                if (!sId) {
+                    alert(`لطفاً برای «${document.querySelector('#card-' + id + ' .item-name').textContent}» یک محصول انبار انتخاب کنید`);
+                    valid = false;
+                } else if (!sqty || !sqty.value) {
+                    alert(`لطفاً مقدار تامین را برای «${document.querySelector('#card-' + id + ' .item-name').textContent}» وارد کنید`);
+                    valid = false;
+                }
+            });
+            return valid;
+        }
+    </script>
+</body>
+</html>

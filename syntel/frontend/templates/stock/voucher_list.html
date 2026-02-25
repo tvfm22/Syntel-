@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لیست حواله‌های انبار</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --primary:#6366f1;--primary-dark:#4f46e5;
+            --success:#10b981;--warning:#f59e0b;--danger:#ef4444;
+            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
+            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
+        }
+        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
+        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
+        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .topbar-title{flex:1;font-size:1.2rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+        .topbar-title i{color:var(--primary)}
+
+        .main{padding:2rem;max-width:1300px;margin:0 auto}
+
+        /* PAGE HEADER */
+        .page-header{background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:var(--r-xl);padding:2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
+        .page-header p{margin-top:.25rem;opacity:.85;font-size:.9rem}
+
+        /* FILTER CARD */
+        .filter-card{background:#fff;border-radius:var(--r-lg);padding:1.25rem 1.5rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+        .filter-group{display:flex;flex-direction:column;gap:.35rem;min-width:160px;flex:1}
+        .filter-label{font-size:.8rem;font-weight:600;color:var(--dark)}
+        .filter-input,.filter-select{padding:.6rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;background:#fff}
+        .filter-input:focus,.filter-select:focus{outline:none;border-color:var(--primary)}
+
+        /* BUTTONS */
+        .btn{padding:.6rem 1.2rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
+        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+        .btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
+        .btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
+        .btn-secondary{background:#6b7280;color:#fff}.btn-secondary:hover{background:#4b5563}
+        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
+        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
+
+        /* STATS */
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:1.5rem}
+        .stat{background:#fff;border-radius:var(--r-lg);padding:1.25rem;text-align:center;box-shadow:var(--shadow-sm);border-top:3px solid var(--primary)}
+        .stat.s{border-top-color:var(--success)}.stat.d{border-top-color:var(--danger)}
+        .stat-val{font-size:1.6rem;font-weight:700;color:var(--primary)}
+        .stat.s .stat-val{color:var(--success)}.stat.d .stat-val{color:var(--danger)}
+        .stat-lbl{font-size:.8rem;color:#6b7280;margin-top:.25rem}
+
+        /* TABLE */
+        .table-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden}
+        .table-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+        .table-title{font-weight:700;display:flex;align-items:center;gap:.5rem}
+        table{width:100%;border-collapse:collapse}
+        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;background:var(--light);color:#6b7280;border-bottom:1px solid var(--border)}
+        td{padding:.875rem 1rem;border-bottom:1px solid var(--border);font-size:.9rem}
+        tr:last-child td{border-bottom:none}
+        tr:hover td{background:#fafafa}
+
+        /* BADGES */
+        .badge{padding:.25rem .75rem;border-radius:9999px;font-size:.75rem;font-weight:700;display:inline-flex;align-items:center;gap:.3rem}
+        .badge-in{background:#d1fae5;color:#065f46}
+        .badge-out{background:#fee2e2;color:#991b1b}
+
+        /* PAGINATION */
+        .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap}
+        .page-link{padding:.5rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:500;background:#fff;transition:all .2s}
+        .page-link:hover,.page-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+        /* EMPTY */
+        .empty{text-align:center;padding:4rem 2rem}
+        .empty i{font-size:3.5rem;color:#d1d5db;display:block;margin-bottom:1rem}
+        .empty h3{color:#6b7280;font-size:1.1rem;margin-bottom:.5rem}
+        .empty p{color:#9ca3af;font-size:.85rem;margin-bottom:1.5rem}
+
+        @media(max-width:768px){.main{padding:1rem};table{font-size:.8rem};td,th{padding:.6rem .5rem}}
+    </style>
+</head>
+<body>
+{% load static %}
+
+<!-- Topbar -->
+<div class="topbar">
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="back-btn">
+        <i class="fas fa-arrow-right"></i> مدیریت انبار
+    </a>
+    <div class="topbar-title">
+        <i class="fas fa-file-invoice"></i>
+        لیست حواله‌های انبار
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-file-invoice"></i> حواله‌های انبار</h1>
+            <p>لیست کامل حواله‌های ورود و خروج</p>
+        </div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <span style="font-size:.82rem;color:rgba(255,255,255,.7)">برای ثبت حواله جدید از صفحه مدیریت انبار اقدام کنید</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="filter-card">
+        <div class="filter-group">
+            <label class="filter-label">نوع حواله</label>
+            <select name="type" class="filter-select">
+                <option value="">همه</option>
+                <option value="in" {% if vtype == 'in' %}selected{% endif %}>📥 ورود</option>
+                <option value="out" {% if vtype == 'out' %}selected{% endif %}>📤 خروج</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">انبار</label>
+            <select name="warehouse" class="filter-select">
+                <option value="">همه انبارها</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.id }}" {% if wh_id == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">جستجو</label>
+            <input type="text" name="search" value="{{ search|default:'' }}" placeholder="شماره یا توضیحات..." class="filter-input">
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
+        {% if vtype or wh_id or search %}
+        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-times"></i> پاک</a>
+        {% endif %}
+    </form>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-val">{{ page_obj.paginator.count }}</div>
+            <div class="stat-lbl">کل حواله‌ها</div>
+        </div>
+        <div class="stat s">
+            <div class="stat-val">
+                {% for v in page_obj.object_list %}{% if v.voucher_type == 'in' %}+{% endif %}{% endfor %}
+            </div>
+            <div class="stat-lbl">حواله ورود</div>
+        </div>
+        <div class="stat d">
+            <div class="stat-val">
+                {% for v in page_obj.object_list %}{% if v.voucher_type == 'out' %}+{% endif %}{% endfor %}
+            </div>
+            <div class="stat-lbl">حواله خروج</div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-list" style="color:var(--primary)"></i> لیست حواله‌ها</div>
+            <span style="font-size:.82rem;color:#6b7280">{{ page_obj.paginator.count }} حواله</span>
+        </div>
+
+        {% if page_obj %}
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>شماره حواله</th>
+                        <th>نوع</th>
+                        <th>انبار</th>
+                        <th>تاریخ</th>
+                        <th>توضیحات</th>
+                        <th>ثبت‌کننده</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for voucher in page_obj %}
+                    <tr>
+                        <td style="color:#9ca3af;font-size:.82rem">{{ forloop.counter }}</td>
+                        <td style="font-weight:700;font-family:monospace;letter-spacing:.05em">{{ voucher.voucher_number }}</td>
+                        <td>
+                            {% if voucher.voucher_type == 'in' %}
+                            <span class="badge badge-in"><i class="fas fa-sign-in-alt"></i> ورود</span>
+                            {% else %}
+                            <span class="badge badge-out"><i class="fas fa-sign-out-alt"></i> خروج</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span style="display:flex;align-items:center;gap:.3rem">
+                                <i class="fas fa-warehouse" style="color:#6366f1;font-size:.8rem"></i>
+                                {{ voucher.warehouse.name }}
+                            </span>
+                        </td>
+                        <td style="color:#6b7280;font-size:.85rem">{{ voucher.date|date:"Y/m/d H:i" }}</td>
+                        <td style="color:#6b7280;font-size:.85rem;max-width:200px">{{ voucher.description|default:"—"|truncatechars:50 }}</td>
+                        <td style="font-size:.82rem;color:#6b7280">{{ voucher.created_by.get_full_name|default:voucher.created_by.username|default:"—" }}</td>
+                        <td>
+                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
+                                <i class="fas fa-eye"></i> مشاهده
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link"><i class="fas fa-chevron-right"></i></a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <span class="page-link active">{{ num }}</span>
+            {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ num }}" class="page-link">{{ num }}</a>
+            {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link"><i class="fas fa-chevron-left"></i></a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty">
+            <i class="fas fa-file-invoice"></i>
+            <h3>هیچ حواله‌ای یافت نشد</h3>
+            <p>{% if vtype or wh_id or search %}فیلترها را تغییر دهید{% else %}از صفحه مدیریت انبار، حواله ورود یا خروج ثبت کنید{% endif %}</p>
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary">
+                <i class="fas fa-warehouse"></i> مدیریت انبار
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+</body>
+</html>

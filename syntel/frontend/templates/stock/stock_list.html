@@ -8,7 +8,7 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937;">
-            📦 موجودی انبار
+            📦 موجودی انبارها
         </h1>
         <div style="display: flex; gap: 1rem;">
             <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="btn-add" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
@@ -17,10 +17,31 @@
         </div>
     </div>
 
+    <!-- Warehouse Tabs -->
+    {% if warehouses %}
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if search_query %}?search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
+           style="padding: 0.6rem 1.25rem; border-radius: 2rem; font-weight: 600; text-decoration: none; font-size: 0.95rem;
+                  {% if not selected_warehouse %}background: #6366f1; color: white;{% else %}background: #e5e7eb; color: #374151;{% endif %}">
+            🏭 همه انبارها
+        </a>
+        {% for wh in warehouses %}
+        <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ wh.id }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
+           style="padding: 0.6rem 1.25rem; border-radius: 2rem; font-weight: 600; text-decoration: none; font-size: 0.95rem;
+                  {% if selected_warehouse.id == wh.id %}background: #6366f1; color: white;{% else %}background: #e5e7eb; color: #374151;{% endif %}">
+            🏬 {{ wh.name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Filters -->
     <div class="filter-card" style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-        <form method="get" style="display: flex; gap: 1rem; align-items: end;">
-            <div style="flex: 1;">
+        <form method="get" style="display: flex; gap: 1rem; align-items: end; flex-wrap: wrap;">
+            {% if selected_warehouse %}
+            <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
+            {% endif %}
+            <div style="flex: 1; min-width: 200px;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">جستجو</label>
                 <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="نام محصول یا دسته‌بندی..." style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
             </div>
@@ -34,12 +55,24 @@
                 🔍 جستجو
             </button>
             {% if search_query or show_low_stock %}
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn-secondary" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if selected_warehouse %}?warehouse={{ selected_warehouse.id }}{% endif %}" class="btn-secondary" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
                 ❌ حذف فیلترها
             </a>
             {% endif %}
         </form>
     </div>
+
+    <!-- Selected Warehouse Banner -->
+    {% if selected_warehouse %}
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 1.5rem;">🏬</span>
+        <div>
+            <strong style="font-size: 1.1rem;">{{ selected_warehouse.name }}</strong>
+            {% if selected_warehouse.location %}<span style="opacity: 0.85; margin-right: 1rem; font-size: 0.9rem;">📍 {{ selected_warehouse.location }}</span>{% endif %}
+            {% if selected_warehouse.manager_name %}<span style="opacity: 0.85; margin-right: 1rem; font-size: 0.9rem;">👤 {{ selected_warehouse.manager_name }}</span>{% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Stock Items Grid -->
     {% if page_obj %}
@@ -51,17 +84,24 @@
                     <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">
                         {{ item.product.name }}
                     </h3>
-                    {% if item.product.category %}
-                    <span style="display: inline-block; padding: 0.25rem 0.75rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.875rem;">
-                        {{ item.product.category.name }}
-                    </span>
-                    {% endif %}
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem;">
+                        {% if item.product.category %}
+                        <span style="display: inline-block; padding: 0.2rem 0.6rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.8rem;">
+                            {{ item.product.category.name }}
+                        </span>
+                        {% endif %}
+                        {% if item.warehouse %}
+                        <span style="display: inline-block; padding: 0.2rem 0.6rem; background: #d1fae5; color: #065f46; border-radius: 0.375rem; font-size: 0.8rem;">
+                            🏬 {{ item.warehouse.name }}
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
                 {% if item.is_low_stock %}
                 <span style="font-size: 1.5rem;">⚠️</span>
                 {% endif %}
             </div>
-            
+
             <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <span style="color: #6b7280; font-weight: 500;">موجودی فعلی:</span>
@@ -76,7 +116,7 @@
                     </span>
                 </div>
             </div>
-            
+
             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
                 <small style="color: #9ca3af;">
                     آخرین بروزرسانی: {{ item.last_updated|date:"Y/m/d H:i" }}
@@ -88,28 +128,30 @@
         </div>
         {% endfor %}
     </div>
-    
+
     <!-- Pagination -->
     {% if page_obj.has_other_pages %}
     <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; padding: 2rem 0;">
         {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
         {% endif %}
-        
+
         <span class="page-info" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; font-weight: 600;">
             صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
         </span>
-        
+
         {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
+        <a href="?page={{ page_obj.next_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
         {% endif %}
     </div>
     {% endif %}
-    
+
     {% else %}
     <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
         <div style="font-size: 4rem; margin-bottom: 1rem;">📦</div>
-        <h3 style="color: #6b7280; margin-bottom: 1rem;">هیچ موجودی ثبت نشده است</h3>
+        <h3 style="color: #6b7280; margin-bottom: 1rem;">
+            {% if selected_warehouse %}هیچ موجودی در انبار «{{ selected_warehouse.name }}» ثبت نشده است{% else %}هیچ موجودی ثبت نشده است{% endif %}
+        </h3>
         <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
             ➕ ثبت اولین موجودی
         </a>
@@ -123,16 +165,11 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         transition: all 0.3s;
     }
-    
-    .stock-card {
-        transition: all 0.3s;
-    }
-    
+    .stock-card { transition: all 0.3s; }
     .stock-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
     }
-    
     .page-link:hover {
         background: #f3f4f6;
         border-color: #6366f1;

@@ -41,6 +41,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://localhost:8000',
     'https://127.0.0.1:8000',
     'https://bug-free-space-parakeet-p5w6gxpvxvp356p-8000.app.github.dev',
+    'https://studious-fiesta-9g5xqpjp6j9c7vjg-8000.app.github.dev',
+    'https://*.app.github.dev',
 ]
 
 # Session Settings

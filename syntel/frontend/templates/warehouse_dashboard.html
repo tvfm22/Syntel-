@@ -1,0 +1,115 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مسئول انبار - Syntel</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; padding: 20px; padding-bottom: 80px; }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .header h1 { font-size: 22px; color: #1f2937; margin-bottom: 6px; }
+        .header p { color: #6b7280; font-size: 14px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; background: white; border: 1px solid #e5e7eb; color: #374151; }
+        .tab-btn.active { background: #10b981; color: white; border-color: #10b981; }
+        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .departments-grid { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 600px; margin: 0 auto; }
+        .department-card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .department-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .dept-icon { font-size: 28px; }
+        .dept-name { font-size: 17px; font-weight: 600; color: #1f2937; }
+        .dept-stats { display: flex; gap: 6px; margin-top: 4px; }
+        .stat-badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .stat-total { background: #e5e7eb; color: #374151; }
+        .stat-pending { background: #fef3c7; color: #92400e; }
+        .dept-actions { display: flex; gap: 10px; }
+        .dept-btn { flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #374151; font-size: 13px; text-decoration: none; text-align: center; transition: all .2s; }
+        .dept-btn:active { background: #f9fafb; }
+        .dept-btn-all { border-color: #10b981; color: #10b981; }
+        .dept-btn-pending { border-color: #f59e0b; color: #f59e0b; }
+        .low-stock-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); margin-bottom: 12px; }
+        .low-stock-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+        .low-stock-item:last-child { border-bottom: none; }
+        .stock-name { font-weight: 500; color: #1f2937; }
+        .stock-quantities { display: flex; gap: 12px; align-items: center; }
+        .qty-current { color: #ef4444; font-weight: 700; }
+        .qty-min { color: #6b7280; font-size: 12px; }
+        .logout-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; color: #ef4444; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,.1); font-size: 14px; }
+        @media (min-width: 640px) {
+            .departments-grid { grid-template-columns: repeat(2, 1fr); max-width: 800px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📦 داشبورد مسئول انبار</h1>
+        <p>{{ user.first_name }} {{ user.last_name }}</p>
+    </div>
+
+    {% if has_dual %}
+    <div class="tab-row">
+        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active">📦 انبار</a>
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn">🛒 خرید</a>
+    </div>
+    {% endif %}
+
+    <!-- درخواست‌های انبار بر اساس بخش -->
+    <div class="section-title">
+        📋 درخواست‌های انبار به تفکیک بخش
+    </div>
+    <div class="departments-grid">
+        {% for dept in departments %}
+        <div class="department-card">
+            <div class="department-header">
+                <div class="dept-icon">{{ dept.icon }}</div>
+                <div>
+                    <div class="dept-name">{{ dept.name }}</div>
+                    <div class="dept-stats">
+                        <span class="stat-badge stat-total">{{ dept.total }} کل</span>
+                        {% if dept.pending > 0 %}
+                        <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="dept-actions">
+                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all"
+                   class="dept-btn dept-btn-all">همه درخواست‌ها</a>
+                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending"
+                   class="dept-btn dept-btn-pending">در انتظار</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- موجودی‌های کم -->
+    {% if stock_items_low %}
+    <div class="section-title" style="margin-top: 24px;">
+        ⚠️ موجودی‌های کمتر از حداقل
+    </div>
+    <div class="low-stock-card">
+        {% for si in stock_items_low %}
+        <div class="low-stock-item">
+            <span class="stock-name">{{ si.product.name }}</span>
+            <span class="stock-quantities">
+                <span class="qty-current">{{ si.quantity }} {{ si.unit }}</span>
+                <span class="qty-min">حداقل: {{ si.min_quantity }}</span>
+            </span>
+        </div>
+        {% endfor %}
+        <div style="margin-top: 12px; text-align: left;">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" 
+               style="color: #10b981; font-size: 13px; text-decoration: none; font-weight: 600;">
+                مشاهده همه موجودی‌ها ←
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'logout' %}" class="logout-btn">خروج</a>
+</body>
+</html>

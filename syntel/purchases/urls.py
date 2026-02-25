@@ -39,6 +39,15 @@ cafe_urlpatterns = [
     path('purchasing-dashboard/', cv(views.purchasing_dashboard), name='purchasing_dashboard'),
     path('purchasing/requests/', cv(views.purchasing_requests_list), name='purchasing_requests_list'),
     path('purchasing/request/<int:request_id>/process/', cv(views.process_purchase_request), name='process_purchase_request'),
+    # Warehouse Request URLs (درخواست از انبار)
+    path('warehouse-request/', cv(views.warehouse_request_form), name='warehouse_request_form'),
+    path('warehouse-request/success/', cv(views.warehouse_request_success), name='warehouse_request_success'),
+    path('warehouse-requests/', cv(views.warehouse_requests_list), name='warehouse_requests_list'),
+    path('warehouse-requests/purchasing/', cv(views.purchasing_warehouse_requests_list), name='purchasing_warehouse_requests_list'),
+    path('warehouse-request/<int:request_id>/process/', cv(views.process_warehouse_request), name='process_warehouse_request'),
+    path('purchase-list/stock-supply/', cv(views.purchase_list_with_stock_supply), name='purchase_list_with_stock_supply'),
+    path('warehouse-dashboard/', cv(views.warehouse_dashboard), name='warehouse_dashboard'),
+    path('api/stock-items/search/', cv(views.api_search_stock_items), name='api_search_stock_items'),
     path('finance-dashboard/', cv(views.finance_dashboard), name='finance_dashboard'),
     path('finance-manager-dashboard/', cv(views.finance_manager_dashboard), name='finance_manager_dashboard'),
     path('purchase-request/', cv(views.purchase_request_form), name='purchase_request'),
@@ -252,6 +261,29 @@ cafe_urlpatterns = [
     path('warehouses/create/', cv(views.warehouse_create), name='warehouse_create'),
     path('warehouses/<int:warehouse_id>/edit/', cv(views.warehouse_edit), name='warehouse_edit'),
     path('warehouses/<int:warehouse_id>/toggle-status/', cv(views.warehouse_toggle_status), name='warehouse_toggle_status'),
+
+    # Warehouse Product Definition URLs (تعریف کالا برای انبار)
+    path('warehouses/<int:warehouse_id>/products/', cv(views.warehouse_products), name='warehouse_products'),
+    path('warehouses/<int:warehouse_id>/products/create/', cv(views.warehouse_product_create), name='warehouse_product_create'),
+    path('warehouses/<int:warehouse_id>/products/<int:stock_item_id>/update/', cv(views.warehouse_product_update), name='warehouse_product_update'),
+    path('warehouses/<int:warehouse_id>/products/<int:stock_item_id>/delete/', cv(views.warehouse_product_delete), name='warehouse_product_delete'),
+
+    # Warehouse Inventory Check URLs (انبارگردانی)
+    path('warehouses/<int:warehouse_id>/inventory-check/', cv(views.warehouse_inventory_check), name='warehouse_inventory_check'),
+    path('warehouses/<int:warehouse_id>/inventory-submit/', cv(views.warehouse_inventory_submit), name='warehouse_inventory_submit'),
+
+    # Warehouse Voucher URLs (حواله‌های انبار)
+    path('vouchers/', cv(views.voucher_list), name='voucher_list'),
+    path('vouchers/<int:warehouse_id>/in/', cv(views.voucher_create), {'voucher_type': 'in'}, name='voucher_create_in'),
+    path('vouchers/<int:warehouse_id>/out/', cv(views.voucher_create), {'voucher_type': 'out'}, name='voucher_create_out'),
+    path('vouchers/detail/<int:voucher_id>/', cv(views.voucher_detail), name='voucher_detail'),
+
+    # Stock Category URLs (موجودی انبار بر اساس دسته‌بندی)
+    path('stock/categories/', cv(views.stock_by_category), name='stock_by_category'),
+    path('stock/categories/<int:category_id>/items/', cv(views.stock_category_items), name='stock_category_items'),
+
+    # API URLs for inventory history
+    path('api/warehouses/<int:warehouse_id>/products/<int:stock_item_id>/history/', cv(views.api_product_stock_history), name='api_product_stock_history'),
 ]
 
 # ترکیب مسیرها - مسیرهای احراز هویت + مسیرهای کافه با prefix

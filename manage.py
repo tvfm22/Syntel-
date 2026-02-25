@@ -6,6 +6,8 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # Add the inner syntel/ directory to sys.path so Django can find syntel.settings
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'syntel'))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
     try:
         from django.core.management import execute_from_command_line

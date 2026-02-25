@@ -37,6 +37,7 @@ class User(AbstractUser):
         ('cashier', 'صندوق'),
         ('facilities', 'تاسیسات'),
         ('purchasing', 'خرید'),
+        ('warehouse', 'انبار'),
         ('admin', 'ادمین'),
         ('manager', 'مدیر'),
         ('accounting', 'دفتر حسابداری'),
@@ -44,6 +45,11 @@ class User(AbstractUser):
         ('ceo', 'مدیرعامل'),
     ]
     role: models.CharField = models.CharField(max_length=20, choices=ROLE_CHOICES, default='kitchen')
+    # نقش دوم - امکان داشتن هر دو نقش مسئول خرید و مسئول انبار به صورت همزمان
+    secondary_role = models.CharField(
+        max_length=20, choices=ROLE_CHOICES, blank=True, null=True,
+        verbose_name='نقش دوم', help_text='اگر کاربر هم مسئول خرید و هم مسئول انبار باشد'
+    )
     cafe = models.ForeignKey('Cafe', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name='کافه')
     
     # Roles that can switch between cafes
@@ -53,7 +59,22 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return f"{self.username} ({self.get_role_display()})"
-    
+
+    @property
+    def has_purchasing_role(self):
+        """آیا کاربر نقش مسئول خرید دارد"""
+        return self.role == 'purchasing' or self.secondary_role == 'purchasing'
+
+    @property
+    def has_warehouse_role(self):
+        """آیا کاربر نقش مسئول انبار دارد"""
+        return self.role == 'warehouse' or self.secondary_role == 'warehouse'
+
+    @property
+    def has_dual_role(self):
+        """آیا کاربر هر دو نقش مسئول خرید و مسئول انبار را دارد"""
+        return self.has_purchasing_role and self.has_warehouse_role
+
     @property
     def can_switch_cafe(self):
         """
@@ -169,6 +190,70 @@ class PurchaseItem(models.Model):
             models.Index(fields=['name']),
             models.Index(fields=['product']),
         ]
+
+# WarehouseRequest model - درخواست از انبار
+class WarehouseRequest(models.Model):
+    """درخواست از انبار - درخواست‌دهندگان می‌توانند درخواست تامین از انبار ثبت کنند"""
+    STATUS_CHOICES = [
+        ('pending', 'در انتظار بررسی'),
+        ('approved_from_stock', 'تامین از انبار'),
+        ('approved_purchase', 'ارسال به لیست خرید'),
+        ('declined', 'عدم تامین'),
+        ('fulfilled', 'تامین شده'),
+    ]
+
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='warehouse_requests', verbose_name='کافه', null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='warehouse_requests', verbose_name='درخواست‌دهنده')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ثبت')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', verbose_name='وضعیت')
+    processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_warehouse_requests', verbose_name='پردازش‌کننده')
+    processed_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ پردازش')
+    notes = models.TextField(blank=True, verbose_name='یادداشت')
+    # اگر به لیست خرید ارجاع شد
+    converted_to_purchase = models.ForeignKey(PurchaseRequest, on_delete=models.SET_NULL, null=True, blank=True, related_name='from_warehouse_request', verbose_name='تبدیل به درخواست خرید')
+
+    def __str__(self):
+        return f"درخواست انبار #{self.id} - {self.user.username} - {self.get_status_display()}"
+
+    class Meta:
+        verbose_name = 'درخواست از انبار'
+        verbose_name_plural = 'درخواست‌های از انبار'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['cafe', 'status']),
+        ]
+
+
+# WarehouseRequestItem model - اقلام درخواست از انبار
+class WarehouseRequestItem(models.Model):
+    """اقلام درخواست از انبار"""
+    SUPPLY_STATUS_CHOICES = [
+        ('pending', 'در انتظار'),
+        ('from_stock', 'تامین از انبار'),
+        ('to_purchase', 'ارجاع به خرید'),
+        ('declined', 'عدم تامین'),
+    ]
+
+    warehouse_request = models.ForeignKey(WarehouseRequest, on_delete=models.CASCADE, related_name='items', verbose_name='درخواست انبار')
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
+    name = models.CharField(max_length=100, verbose_name='نام کالا')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار درخواستی')
+    unit = models.CharField(max_length=20, verbose_name='واحد')
+    description = models.TextField(blank=True, verbose_name='توضیحات')
+    supply_status = models.CharField(max_length=20, choices=SUPPLY_STATUS_CHOICES, default='pending', verbose_name='وضعیت تامین')
+    # موجودی انبار انتخاب‌شده برای تامین
+    stock_item = models.ForeignKey('StockItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='warehouse_request_items', verbose_name='موجودی انبار')
+    supplied_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='مقدار تامین‌شده')
+
+    def __str__(self):
+        return f"{self.name} - {self.quantity} {self.unit}"
+
+    class Meta:
+        verbose_name = 'قلم درخواست انبار'
+        verbose_name_plural = 'اقلام درخواست انبار'
+
 
 # Purchase Invoices model (optional)
 class PurchaseInvoice(models.Model):
@@ -1423,7 +1508,8 @@ class Warehouse(models.Model):
 
 # Stock Item model - موجودی انبار
 class StockItem(models.Model):
-    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='stock_item', verbose_name='محصول')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_items', verbose_name='محصول')
+    warehouse = models.ForeignKey('Warehouse', on_delete=models.CASCADE, related_name='stock_items', verbose_name='انبار', null=True, blank=True)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='موجودی')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
     min_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='حداقل موجودی')
@@ -1431,7 +1517,8 @@ class StockItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
 
     def __str__(self):
-        return f"{self.product.name} - موجودی: {self.quantity} {self.unit}"
+        warehouse_name = self.warehouse.name if self.warehouse else 'نامشخص'
+        return f"{self.product.name} [{warehouse_name}] - موجودی: {self.quantity} {self.unit}"
 
     @property
     def is_low_stock(self):
@@ -1441,8 +1528,10 @@ class StockItem(models.Model):
     class Meta:
         verbose_name = 'موجودی انبار'
         verbose_name_plural = 'موجودی‌های انبار'
+        unique_together = [['product', 'warehouse']]
         indexes = [
             models.Index(fields=['product']),
+            models.Index(fields=['warehouse']),
             models.Index(fields=['last_updated']),
         ]
 
@@ -1527,3 +1616,60 @@ class StockRequestItem(models.Model):
     class Meta:
         verbose_name = 'قلم تامین از انبار'
         verbose_name_plural = 'اقلام تامین از انبار'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Warehouse Voucher models - حواله‌های انبار (ورود / خروج)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WarehouseVoucher(models.Model):
+    """حواله انبار - ثبت ورود یا خروج کالا"""
+
+    VOUCHER_TYPE_CHOICES = [
+        ('in',  'حواله ورود'),
+        ('out', 'حواله خروج'),
+    ]
+
+    cafe           = models.ForeignKey('Cafe',      on_delete=models.CASCADE,  related_name='warehouse_vouchers', verbose_name='کافه')
+    warehouse      = models.ForeignKey('Warehouse', on_delete=models.CASCADE,  related_name='vouchers',           verbose_name='انبار')
+    voucher_type   = models.CharField(max_length=10, choices=VOUCHER_TYPE_CHOICES, verbose_name='نوع حواله')
+    voucher_number = models.CharField(max_length=50, verbose_name='شماره حواله')
+    date           = models.DateTimeField(default=timezone.now, verbose_name='تاریخ')
+    description    = models.TextField(blank=True, verbose_name='توضیحات')
+    created_by     = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, verbose_name='ایجادکننده')
+    created_at     = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    def __str__(self):
+        return f"{self.get_voucher_type_display()} - {self.voucher_number}"
+
+    class Meta:
+        verbose_name        = 'حواله انبار'
+        verbose_name_plural = 'حواله‌های انبار'
+        ordering            = ['-created_at']
+        unique_together     = [['cafe', 'voucher_number']]
+        indexes             = [
+            models.Index(fields=['cafe', 'voucher_type', '-created_at']),
+            models.Index(fields=['warehouse', '-created_at']),
+        ]
+
+
+class WarehouseVoucherItem(models.Model):
+    """قلم (ردیف) حواله انبار"""
+
+    voucher     = models.ForeignKey(WarehouseVoucher, on_delete=models.CASCADE,                          related_name='items',  verbose_name='حواله')
+    product     = models.ForeignKey('Product',        on_delete=models.PROTECT,                                                verbose_name='محصول')
+    quantity    = models.DecimalField(max_digits=10, decimal_places=2,                                                         verbose_name='مقدار')
+    unit        = models.ForeignKey('Unit',           on_delete=models.SET_NULL, null=True, blank=True,                        verbose_name='واحد')
+    unit_price  = models.DecimalField(max_digits=14, decimal_places=0, default=0,                                              verbose_name='قیمت واحد (ریال)')
+    description = models.TextField(blank=True, verbose_name='توضیحات')
+
+    @property
+    def total_price(self):
+        return self.quantity * self.unit_price
+
+    def __str__(self):
+        return f"{self.product.name} - {self.quantity}"
+
+    class Meta:
+        verbose_name        = 'قلم حواله انبار'
+        verbose_name_plural = 'اقلام حواله انبار'

@@ -1,0 +1,250 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پردازش درخواست انبار</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; padding: 16px; padding-bottom: 120px; }
+        .header { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; }
+        .back-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #374151; font-size: 18px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .header-info { flex: 1; }
+        .header-info h1 { font-size: 18px; color: #1f2937; }
+        .header-info p { font-size: 13px; color: #6b7280; }
+        .request-info { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #6b7280; font-size: 14px; }
+        .info-value { color: #1f2937; font-size: 14px; font-weight: 500; }
+        .item-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .item-name { font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+        .item-requested { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 14px; color: #374151; margin-bottom: 8px; font-weight: 500; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; font-family: Vazir, sans-serif; }
+        .form-input:focus { outline: none; border-color: #10b981; }
+        .radio-group { display: flex; flex-direction: column; gap: 8px; }
+        .radio-option { display: flex; align-items: center; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all .2s; }
+        .radio-option:has(input:checked) { background: #f0fdf4; border-color: #10b981; }
+        .radio-option input[type=radio] { margin-left: 10px; width: 18px; height: 18px; }
+        .radio-label { font-size: 14px; color: #374151; }
+        .stock-search-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 12px; display: none; }
+        .stock-search-box.visible { display: block; }
+        .stock-search-input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: Vazir, sans-serif; margin-bottom: 8px; }
+        .stock-results { max-height: 200px; overflow-y: auto; }
+        .stock-result-item { padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; margin-bottom: 4px; }
+        .stock-result-item:hover { background: #d1fae5; border-color: #10b981; }
+        .stock-result-item.selected { background: #d1fae5; border-color: #10b981; font-weight: 600; }
+        .stock-name { color: #1f2937; }
+        .stock-qty { color: #10b981; font-weight: 600; font-size: 12px; }
+        .stock-warehouse { color: #6b7280; font-size: 11px; }
+        .stock-warning { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 6px; display: none; }
+        .selected-stock-info { background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 13px; color: #065f46; display: none; }
+        .qty-input-wrapper { margin-top: 10px; display: none; }
+        .submit-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; box-shadow: 0 -2px 8px rgba(0,0,0,.1); }
+        .submit-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: Vazir, sans-serif; cursor: pointer; }
+        .submit-btn:active { background: #059669; }
+        .alert-error { background: #fee2e2; color: #991b1b; border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="javascript:history.back()" class="back-btn">←</a>
+        <div class="header-info">
+            <h1>📦 پردازش درخواست انبار</h1>
+            <p>شماره درخواست: #{{ wh_request.id }}</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert-error">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="request-info">
+        <div class="info-row">
+            <span class="info-label">درخواست‌دهنده:</span>
+            <span class="info-value">{{ wh_request.user.first_name }} {{ wh_request.user.last_name }} ({{ wh_request.user.get_role_display }})</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">تاریخ ثبت:</span>
+            <span class="info-value">{{ wh_request.created_at|jalali_datetime }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">وضعیت:</span>
+            <span class="info-value">{{ wh_request.get_status_display }}</span>
+        </div>
+    </div>
+
+    <form method="post" id="processForm">
+        {% csrf_token %}
+
+        {% for item in wh_request.items.all %}
+        <div class="item-card" id="card-{{ item.id }}">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-requested">مقدار درخواستی: {{ item.quantity }} {{ item.unit }}</div>
+            {% if item.description %}
+            <div style="font-size: 12px; color: #9ca3af; margin-bottom: 10px;">{{ item.description }}</div>
+            {% endif %}
+
+            <div class="form-group">
+                <label class="form-label">وضعیت تامین</label>
+                <div class="radio-group">
+                    <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'from_stock')">
+                        <input type="radio" name="supply_status_{{ item.id }}" value="from_stock"
+                               {% if item.supply_status == 'from_stock' %}checked{% endif %}>
+                        <span class="radio-label">📦 تامین از انبار</span>
+                    </label>
+                    <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'to_purchase')">
+                        <input type="radio" name="supply_status_{{ item.id }}" value="to_purchase"
+                               {% if item.supply_status == 'to_purchase' %}checked{% endif %}>
+                        <span class="radio-label">🛒 اضافه به لیست خرید</span>
+                    </label>
+                    <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'declined')">
+                        <input type="radio" name="supply_status_{{ item.id }}" value="declined"
+                               {% if item.supply_status == 'declined' %}checked{% endif %}>
+                        <span class="radio-label">🚫 عدم تامین</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- جعبه جستجو در موجودی انبار (فقط وقتی "تامین از انبار" انتخاب شود) -->
+            <div class="stock-search-box {% if item.supply_status == 'from_stock' %}visible{% endif %}" id="stock-box-{{ item.id }}">
+                <div class="form-label" style="margin-bottom: 8px;">🔍 جستجو در موجودی انبار</div>
+                <input type="text" class="stock-search-input" id="search-{{ item.id }}"
+                    placeholder="نام محصول انبار را تایپ کنید..." oninput="searchStock('{{ item.id }}', this.value)">
+                <div class="stock-results" id="results-{{ item.id }}">
+                    <!-- نتایج جستجو اینجا نمایش می‌یابد -->
+                </div>
+                <div class="selected-stock-info" id="selected-info-{{ item.id }}">
+                    <strong>محصول انتخابی:</strong> <span id="selected-name-{{ item.id }}"></span>
+                    | <strong>موجودی:</strong> <span id="selected-qty-{{ item.id }}"></span>
+                    <span id="selected-unit-{{ item.id }}"></span>
+                    | <strong>انبار:</strong> <span id="selected-warehouse-{{ item.id }}"></span>
+                </div>
+                <div class="stock-warning" id="warn-{{ item.id }}">⚠️ مقدار وارد شده بیشتر از موجودی انبار است!</div>
+                <input type="hidden" name="stock_item_{{ item.id }}" id="stock-item-id-{{ item.id }}" value="">
+                <div class="qty-input-wrapper" id="qty-wrapper-{{ item.id }}">
+                    <label class="form-label">مقدار تامین از انبار ({{ item.unit }}):</label>
+                    <input type="number" name="supplied_qty_{{ item.id }}" id="supplied-qty-{{ item.id }}"
+                        class="form-input" step="0.01" min="0.01"
+                        placeholder="مقدار تامین..."
+                        oninput="checkQty('{{ item.id }}', this.value)"
+                        value="{{ item.supplied_quantity|default:'' }}">
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="submit-area">
+            <button type="submit" class="submit-btn">✅ تایید نهایی</button>
+        </div>
+    </form>
+
+    <!-- Stock items data for search -->
+    <script>
+        const allStockItems = [
+            {% for si in stock_items %}
+            {
+                id: {{ si.id }},
+                product_name: "{{ si.product.name|escapejs }}",
+                quantity: {{ si.quantity }},
+                unit: "{{ si.unit.name|default:''|escapejs }}",
+                warehouse: "{{ si.warehouse.name|default:''|escapejs }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        const selectedStocks = {};  // item_id -> {id, quantity, unit}
+
+        function onSupplyChange(itemId, value) {
+            const box = document.getElementById('stock-box-' + itemId);
+            if (value === 'from_stock') {
+                box.classList.add('visible');
+            } else {
+                box.classList.remove('visible');
+                // پاک کردن انتخاب
+                document.getElementById('stock-item-id-' + itemId).value = '';
+                document.getElementById('selected-info-' + itemId).style.display = 'none';
+                document.getElementById('qty-wrapper-' + itemId).style.display = 'none';
+                document.getElementById('warn-' + itemId).style.display = 'none';
+                delete selectedStocks[itemId];
+            }
+        }
+
+        function searchStock(itemId, query) {
+            const resultsDiv = document.getElementById('results-' + itemId);
+            if (!query || query.length < 1) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            const q = query.toLowerCase();
+            const filtered = allStockItems.filter(s => s.product_name.toLowerCase().includes(q));
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<div style="color:#9ca3af; font-size:13px; padding:8px;">محصولی یافت نشد</div>';
+                return;
+            }
+            resultsDiv.innerHTML = filtered.slice(0, 15).map(s => `
+                <div class="stock-result-item" id="result-${itemId}-${s.id}" onclick="selectStock('${itemId}', ${s.id}, '${s.product_name.replace(/'/g,"\\'")}', ${s.quantity}, '${s.unit}', '${s.warehouse}')">
+                    <span>
+                        <span class="stock-name">${s.product_name}</span><br>
+                        <span class="stock-warehouse">انبار: ${s.warehouse}</span>
+                    </span>
+                    <div style="text-align:left">
+                        <span class="stock-qty">${s.quantity}</span><br>
+                        <span class="stock-warehouse">${s.unit}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectStock(itemId, stockId, name, qty, unit, warehouse) {
+            selectedStocks[itemId] = {id: stockId, quantity: qty, unit: unit};
+            document.getElementById('stock-item-id-' + itemId).value = stockId;
+            document.getElementById('selected-info-' + itemId).style.display = 'block';
+            document.getElementById('selected-name-' + itemId).textContent = name;
+            document.getElementById('selected-qty-' + itemId).textContent = qty;
+            document.getElementById('selected-unit-' + itemId).textContent = unit;
+            document.getElementById('selected-warehouse-' + itemId).textContent = warehouse;
+            document.getElementById('qty-wrapper-' + itemId).style.display = 'block';
+            document.getElementById('results-' + itemId).innerHTML = '';
+            document.getElementById('search-' + itemId).value = name;
+            // نمایش هشدار اگر مقدار از قبل پر شده
+            const qtyInput = document.getElementById('supplied-qty-' + itemId);
+            if (qtyInput.value) checkQty(itemId, qtyInput.value);
+        }
+
+        function checkQty(itemId, val) {
+            const warn = document.getElementById('warn-' + itemId);
+            const s = selectedStocks[itemId];
+            if (s && parseFloat(val) > s.quantity) {
+                warn.style.display = 'block';
+            } else {
+                warn.style.display = 'none';
+            }
+        }
+
+        // آماده کردن حالت اولیه برای اقلامی که قبلاً تامین از انبار انتخاب شده
+        document.addEventListener('DOMContentLoaded', function() {
+            {% for item in wh_request.items.all %}
+            {% if item.supply_status == 'from_stock' %}
+            // نمایش جعبه جستجو
+            document.getElementById('stock-box-{{ item.id }}').classList.add('visible');
+            {% if item.stock_item %}
+            selectStock('{{ item.id }}', {{ item.stock_item.id }},
+                '{{ item.stock_item.product.name|escapejs }}',
+                {{ item.stock_item.quantity }},
+                '{{ item.stock_item.unit.name|default:""}}',
+                '{{ item.stock_item.warehouse.name|default:""}}');
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+        });
+    </script>
+</body>
+</html>
