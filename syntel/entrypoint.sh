@@ -22,7 +22,7 @@ echo "Running migrations..."
 python manage.py migrate --noinput || echo "Migration failed, continuing..."
 
 # Create static files directory
-mkdir -p /tmp/staticfiles /tmp/media
+mkdir -p /tmp/staticfiles /tmp/media /app/temp
 export STATIC_ROOT="/tmp/staticfiles"
 export MEDIA_ROOT="/tmp/media"
 

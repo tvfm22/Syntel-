@@ -34,8 +34,8 @@ RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# Create directories for static files and media
-RUN mkdir -p staticfiles media
+# Create directories for static files, media, and temp
+RUN mkdir -p staticfiles media temp
 
 # Don't collect static files during build (saves memory)
 # Will be done in entrypoint.sh
