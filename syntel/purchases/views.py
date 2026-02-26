@@ -465,7 +465,7 @@ def process_purchase_request(request: HttpRequest, request_id: int) -> HttpRespo
             purchase_request.save()
             messages.success(request, 'درخواست با موفقیت پردازش شد')
         
-        return redirect('purchasing_requests_list', )
+        return redirect('purchasing_requests_list', cafe_code=cafe_code)
     
     # Get stock items for search
     stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
@@ -535,7 +535,7 @@ def warehouse_request_form(request: HttpRequest) -> HttpResponse:
             notification_type='info',
             cafe=cafe,
         )
-        return redirect('warehouse_request_success')
+        return redirect('warehouse_request_success', cafe_code=cafe_code)
 
     return render(request, 'warehouse_request_form.html', {'cafe_code': cafe_code})
 
@@ -1394,7 +1394,7 @@ def purchase_request_form(request):
 
         cafe = get_cafe_from_request(request)
         purchase_request = PurchaseRequest.objects.create(
-            user=request.user, status="pending", cafe=cafe
+            user=request.user, status="pending_manager_approval", cafe=cafe
         )
         for index, (name, qty, unit, desc) in enumerate(items_data, start=1):
             # Try to find matching product by name (optional)
@@ -1420,7 +1420,25 @@ def purchase_request_form(request):
             message="Your purchase request was submitted.",
             notification_type="info",
         )
-        return redirect("purchase_request_success")
+
+        # ارسال نوتیفیکیشن به مدیرعامل و مدیر جهت تایید
+        manager_roles = ['manager', 'ceo']
+        if cafe:
+            managers = User.objects.filter(role__in=manager_roles, cafe=cafe)
+        else:
+            managers = User.objects.filter(role__in=manager_roles)
+        for mgr in managers:
+            Notification.objects.create(
+                recipient=mgr,
+                title="درخواست خرید جدید - منتظر تایید",
+                message=f"درخواست خرید جدید از طرف {request.user.get_full_name() or request.user.username} ثبت شده و منتظر تایید شماست.",
+                notification_type="approval",
+                priority="high",
+                cafe=cafe,
+            )
+
+        cafe_code = cafe.code if cafe else 'local'
+        return redirect("purchase_request_success", cafe_code=cafe_code)
 
     return render(request, "purchase_request_form.html", {
         "department": department
@@ -4824,6 +4842,7 @@ def manager_approve_request(request, request_id):
         # ثبت لاگ
         ActivityLog.objects.create(
             user=request.user,
+            request=purchase_request,
             action='approve_request',
             description=f'تایید درخواست خرید #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}'
         )
@@ -4870,6 +4889,7 @@ def manager_reject_request(request, request_id):
         # ثبت لاگ
         ActivityLog.objects.create(
             user=request.user,
+            request=purchase_request,
             action='reject_request',
             description=f'رد درخواست خرید #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}. دلیل: {rejection_reason}'
         )
