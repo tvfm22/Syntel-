@@ -4,215 +4,175 @@
 
 {% block extra_css %}
 <style>
-        * {
-            box-sizing: border-box;
-        }
+    * { box-sizing: border-box; }
 
-        .page-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 1.5rem;
-        }
+    .page-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
 
-        .page-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
 
-        .page-header h1 {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.5rem;
-        }
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
 
-        .user-badge {
-            display: inline-block;
-            background: #f3f4f6;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
+    .user-badge {
+        display: inline-block;
+        background: #f3f4f6;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
 
-        .items-container {
-            margin-bottom: 1.5rem;
-        }
+    .items-container { margin-bottom: 1.5rem; }
 
-        .item-row {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            transition: border-color 0.2s;
-        }
+    .item-row {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: border-color .2s;
+    }
+    .item-row:hover { border-color: #9ca3af; }
 
-        .item-row:hover {
-            border-color: #9ca3af;
-        }
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.875rem;
+    }
 
-        .item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
+    .item-number {
+        background: #6366f1;
+        color: white;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.875rem; font-weight: 600;
+    }
 
-        .item-number {
-            background: #6366f1;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
+    .remove-item-btn {
+        background: transparent; color: #dc2626; border: none;
+        padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.875rem;
+        font-family: 'Vazir', sans-serif;
+    }
+    .remove-item-btn:hover { opacity: .7; }
 
-        .remove-item-btn {
-            background: transparent;
-            color: #dc2626;
-            border: none;
-            padding: 0.25rem 0.5rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-family: 'Vazir', sans-serif;
-            transition: opacity 0.2s;
-        }
+    /* ── 3-col on desktop, 1-col on mobile ── */
+    .item-fields {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 0.75rem;
+    }
+    @media (max-width: 640px) {
+        .item-fields { grid-template-columns: 1fr; }
+    }
 
-        .remove-item-btn:hover {
-            opacity: 0.7;
-        }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label {
+        font-size: 0.875rem; color: #6b7280;
+        margin-bottom: 0.25rem; font-weight: 500;
+    }
 
-        .item-fields {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
-            gap: 0.75rem;
-        }
+    .form-control, select {
+        width: 100%; padding: 0.5rem;
+        border: 1px solid #d1d5db; border-radius: 6px;
+        font-size: 0.875rem; font-family: 'Vazir', sans-serif;
+        transition: border-color .2s;
+    }
+    .form-control:focus, select:focus { outline: none; border-color: #6366f1; }
+    textarea.form-control { resize: vertical; min-height: 60px; }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
+    /* ── autocomplete ── */
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-dropdown {
+        position: absolute; top: 100%; right: 0; left: 0; z-index: 999;
+        background: white; border: 1px solid #d1d5db; border-top: none;
+        border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,.1); display: none;
+    }
+    .autocomplete-dropdown.open { display: block; }
+    .ac-item {
+        padding: 8px 12px; font-size: 13px; cursor: pointer;
+        border-bottom: 1px solid #f3f4f6; transition: background .1s;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.highlighted { background: #eff6ff; }
+    .ac-item .ac-name { font-weight: 600; color: #1f2937; }
+    .ac-item .ac-cat  { color: #6b7280; font-size: 11px; margin-top: 2px; }
+    .ac-item.ac-add-new {
+        color: #6366f1; font-weight: 600; border-top: 1px solid #e5e7eb;
+        background: #f5f3ff;
+    }
+    .ac-item.ac-add-new:hover { background: #ede9fe; }
 
-        .form-group label {
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin-bottom: 0.25rem;
-            font-weight: 500;
-        }
+    /* ── add item btn ── */
+    .add-item-btn {
+        background: #f9fafb; border: 1px dashed #d1d5db; color: #6b7280;
+        padding: 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.875rem;
+        font-weight: 500; transition: all .2s; display: block; width: 100%;
+        margin-bottom: 1.5rem; font-family: 'Vazir', sans-serif;
+    }
+    .add-item-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
 
-        .form-control,
-        select {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-family: 'Vazir', sans-serif;
-            transition: border-color 0.2s;
-        }
+    /* ── form actions ── */
+    .form-actions {
+        display: flex; gap: 0.75rem; justify-content: center; padding-top: 1rem; flex-wrap: wrap;
+    }
+    .btn {
+        padding: 0.75rem 2rem; border-radius: 8px; font-size: 0.875rem;
+        font-weight: 600; cursor: pointer; transition: all .2s;
+        border: none; font-family: 'Vazir', sans-serif; text-decoration: none; display: inline-block;
+    }
+    .btn-primary   { background: #6366f1; color: white; }
+    .btn-primary:hover  { background: #4f46e5; }
+    .btn-secondary { background: #f3f4f6; color: #6b7280; }
+    .btn-secondary:hover { background: #e5e7eb; }
 
-        .form-control:focus,
-        select:focus {
-            outline: none;
-            border-color: #6366f1;
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 60px;
-        }
-
-        .add-item-btn {
-            background: #f9fafb;
-            border: 1px dashed #d1d5db;
-            color: #6b7280;
-            padding: 0.75rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            display: block;
-            width: 100%;
-            margin-bottom: 1.5rem;
-            font-family: 'Vazir', sans-serif;
-        }
-
-        .add-item-btn:hover {
-            background: #f3f4f6;
-            border-color: #9ca3af;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: center;
-            padding-top: 1rem;
-        }
-
-        .btn {
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            font-family: 'Vazir', sans-serif;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #6366f1;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #4f46e5;
-        }
-
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .page-container {
-                padding: 1rem;
-            }
-
-            .page-header h1 {
-                font-size: 1.5rem;
-            }
-
-            .item-fields {
-                grid-template-columns: 1fr;
-            }
-
-            .form-actions {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-            }
-        }
-    </style>
+    /* ── add-product modal overlay ── */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 2000;
+        background: rgba(0,0,0,.4); align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 14px; padding: 24px;
+        width: min(440px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.2);
+    }
+    .modal-box h3 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 14px; color: #374151; margin-bottom: 6px; font-weight: 500; }
+    .modal-field input, .modal-field select {
+        width: 100%; padding: 9px 12px; border: 1px solid #d1d5db;
+        border-radius: 8px; font-size: 14px; font-family: Vazir, sans-serif;
+    }
+    .modal-field input:focus, .modal-field select:focus { outline: none; border-color: #6366f1; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-btn-save {
+        flex: 1; padding: 10px; background: #6366f1; color: white; border: none;
+        border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+        font-family: Vazir, sans-serif; transition: background .15s;
+    }
+    .modal-btn-save:hover { background: #4f46e5; }
+    .modal-btn-cancel {
+        padding: 10px 20px; background: #f3f4f6; color: #6b7280; border: none;
+        border-radius: 8px; font-size: 14px; cursor: pointer; font-family: Vazir, sans-serif;
+    }
+    .modal-err { color: #dc2626; font-size: 13px; margin-top: 6px; }
+</style>
 {% endblock %}
 
 {% block content %}
-
 <div class="page-container">
     <div class="page-header">
         <h1>ثبت درخواست خرید</h1>
@@ -221,153 +181,308 @@
 
     <form method="post" id="purchaseForm">
         {% csrf_token %}
-        
         <div class="items-container">
-            <div id="itemsWrapper">
-                <!-- Items will be added here by JavaScript -->
-            </div>
-            <button type="button" class="add-item-btn" onclick="addItem()">
-                + افزودن کالا
-            </button>
+            <div id="itemsWrapper"></div>
+            <button type="button" class="add-item-btn" onclick="addItem()">+ افزودن کالا</button>
         </div>
-
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                ارسال درخواست
-            </button>
-            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
-                انصراف
-            </a>
+            <button type="submit" class="btn btn-primary">ارسال درخواست</button>
+            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
         </div>
     </form>
 </div>
 
+<!-- Add new product modal -->
+<div class="modal-overlay" id="addProductModal">
+    <div class="modal-box">
+        <h3>➕ افزودن کالای جدید</h3>
+        <div class="modal-field">
+            <label>نام کالا *</label>
+            <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
+            <div class="modal-err" id="newProductErr"></div>
+        </div>
+        <div class="modal-field">
+            <label>واحد</label>
+            <select id="newProductUnit">
+                <option value="عدد">عدد</option>
+                <option value="کیلوگرم">کیلوگرم</option>
+                <option value="گرم">گرم</option>
+                <option value="لیتر">لیتر</option>
+                <option value="بسته">بسته</option>
+                <option value="کارتن">کارتن</option>
+                <option value="جعبه">جعبه</option>
+                <option value="شیشه">شیشه</option>
+                <option value="قوطی">قوطی</option>
+                <option value="بطری">بطری</option>
+                <option value="پاکت">پاکت</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
+            <button class="modal-btn-cancel" onclick="closeAddProductModal()">انصراف</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-        let itemCount = 0;
+    let itemCount = 0;
+    let pendingProductItemId = null; // which item's input triggered add-product modal
+    const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
+    const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
+    const CSRF_TOKEN       = "{{ csrf_token }}";
 
-        // Product name field - no preset selection needed
+    function buildUnitOptions(selected) {
+        const units = ['عدد','کیلوگرم','گرم','لیتر','بسته','کارتن','جعبه','شیشه','قوطی','بطری','پاکت','متر','دست','جفت'];
+        return units.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
+    }
 
-        function addItem() {
-            itemCount++;
-            const itemHtml = `
-                <div class="item-row" id="item-${itemCount}">
-                    <div class="item-header">
-                        <div class="item-number">${itemCount}</div>
-                        <button type="button" class="remove-item-btn" onclick="removeItem(${itemCount})">× حذف</button>
-                    </div>
-                    <div class="item-fields">
-                        <div class="form-group">
-                            <label>نام کالا *</label>
-                            <input type="text" name="product_name" class="form-control" placeholder="نام کالا را وارد کنید..." required>
-                        </div>
-                        <div class="form-group">
-                            <label>مقدار *</label>
-                            <input type="number" name="item_quantity" class="form-control" step="0.01" placeholder="0" required>
-                        </div>
-                        <div class="form-group">
-                            <label>واحد</label>
-                            <select name="item_unit" class="form-control">
-                                <option value="عدد">عدد</option>
-                                <option value="کیلوگرم">کیلوگرم</option>
-                                <option value="گرم">گرم</option>
-                                <option value="لیتر">لیتر</option>
-                                <option value="بسته">بسته</option>
-                                <option value="کارتن">کارتن</option>
-                                <option value="جعبه">جعبه</option>
-                                <option value="شیشه">شیشه</option>
-                                <option value="قوطی">قوطی</option>
-                                <option value="بطری">بطری</option>
-                                <option value="پاکت">پاکت</option>
-                                <option value="متر">متر</option>
-                                <option value="سانتی‌متر">سانتی‌متر</option>
-                                <option value="دست">دست</option>
-                                <option value="جفت">جفت</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 0.75rem;">
-                        <label>توضیحات</label>
-                        <textarea name="item_description" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
+    function addItem(prefillName = '', prefillUnit = 'عدد') {
+        itemCount++;
+        const id = itemCount;
+        const html = `
+        <div class="item-row" id="item-${id}">
+            <div class="item-header">
+                <div class="item-number">${id}</div>
+                <button type="button" class="remove-item-btn" onclick="removeItem(${id})">× حذف</button>
+            </div>
+            <div class="item-fields">
+                <div class="form-group">
+                    <label>نام کالا *</label>
+                    <div class="autocomplete-wrap">
+                        <input type="text" name="product_name" class="form-control ac-input"
+                               data-item-id="${id}" placeholder="جستجو یا نام کالا..." required
+                               value="${escapeHtml(prefillName)}"
+                               autocomplete="off"
+                               oninput="onAcInput(this, ${id})"
+                               onkeydown="onAcKeydown(event, ${id})">
+                        <input type="hidden" name="product_id" class="product-id-field" value="">
+                        <div class="autocomplete-dropdown" id="ac-drop-${id}"></div>
                     </div>
                 </div>
-            `;
-            document.getElementById('itemsWrapper').insertAdjacentHTML('beforeend', itemHtml);
-        }
+                <div class="form-group">
+                    <label>مقدار *</label>
+                    <input type="number" name="item_quantity" class="form-control" step="0.01" placeholder="0" required>
+                </div>
+                <div class="form-group">
+                    <label>واحد</label>
+                    <select name="item_unit" class="form-control" id="item-unit-${id}">
+                        ${buildUnitOptions(prefillUnit)}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 0.75rem;">
+                <label>توضیحات</label>
+                <textarea name="item_description" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
+            </div>
+        </div>`;
+        document.getElementById('itemsWrapper').insertAdjacentHTML('beforeend', html);
+        // focus the new input
+        const newInput = document.querySelector(`#item-${id} .ac-input`);
+        if (newInput && !prefillName) newInput.focus();
+    }
 
-        function removeItem(id) {
-            const items = document.querySelectorAll('.item-row');
-            if (items.length > 1) {
-                const itemElement = document.getElementById(`item-${id}`);
-                if (itemElement) {
-                    itemElement.style.animation = 'fadeOut 0.3s ease';
-                    setTimeout(() => {
-                        itemElement.remove();
-                        updateItemNumbers();
-                    }, 300);
+    function escapeHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function removeItem(id) {
+        const items = document.querySelectorAll('.item-row');
+        if (items.length > 1) {
+            document.getElementById('item-' + id).remove();
+            updateNumbers();
+        } else {
+            alert('⚠️ باید حداقل یک کالا در درخواست باشد!');
+        }
+    }
+
+    function updateNumbers() {
+        document.querySelectorAll('.item-row').forEach((row, i) => {
+            const nb = row.querySelector('.item-number');
+            if (nb) nb.textContent = i + 1;
+        });
+    }
+
+    // ── Autocomplete logic ──────────────────────────────────────────────
+    let acTimers = {};
+    let acResults = {};
+    let acHighlight = {};
+
+    function onAcInput(input, id) {
+        const q = input.value.trim();
+        clearTimeout(acTimers[id]);
+        if (q.length < 1) { closeDropdown(id); return; }
+        acTimers[id] = setTimeout(() => fetchSuggestions(q, id), 250);
+    }
+
+    function fetchSuggestions(q, id) {
+        fetch(`${AUTOCOMPLETE_URL}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                acResults[id] = data.results || [];
+                renderDropdown(id, q);
+            }).catch(() => closeDropdown(id));
+    }
+
+    function renderDropdown(id, q) {
+        const drop = document.getElementById(`ac-drop-${id}`);
+        if (!drop) return;
+        const items = acResults[id] || [];
+        let html = '';
+        items.forEach((p, idx) => {
+            html += `<div class="ac-item" data-idx="${idx}" onmousedown="selectProduct(${id}, ${idx})">
+                <div class="ac-name">${escapeHtml(p.name)}</div>
+                ${p.category ? `<div class="ac-cat">${escapeHtml(p.category)}</div>` : ''}
+            </div>`;
+        });
+        // Always offer "add new"
+        html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal(${id}, '${escapeHtml(q)}')">
+            ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
+        </div>`;
+        drop.innerHTML = html;
+        drop.classList.add('open');
+        acHighlight[id] = -1;
+    }
+
+    function closeDropdown(id) {
+        const drop = document.getElementById(`ac-drop-${id}`);
+        if (drop) drop.classList.remove('open');
+        acHighlight[id] = -1;
+    }
+
+    function selectProduct(id, idx) {
+        const p = (acResults[id] || [])[idx];
+        if (!p) return;
+        const row = document.getElementById(`item-${id}`);
+        row.querySelector('.ac-input').value = p.name;
+        row.querySelector('.product-id-field').value = p.id || '';
+        // If product has a unit, try to select it
+        if (p.unit) {
+            const sel = document.getElementById(`item-unit-${id}`);
+            if (sel) {
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === p.unit) { sel.selectedIndex = i; break; }
                 }
+            }
+        }
+        closeDropdown(id);
+    }
+
+    function onAcKeydown(e, id) {
+        const drop = document.getElementById(`ac-drop-${id}`);
+        if (!drop || !drop.classList.contains('open')) return;
+        const items = drop.querySelectorAll('.ac-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            acHighlight[id] = Math.min((acHighlight[id] || -1) + 1, items.length - 1);
+            highlightItem(id, items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            acHighlight[id] = Math.max((acHighlight[id] || 0) - 1, 0);
+            highlightItem(id, items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const hi = acHighlight[id];
+            if (hi >= 0 && hi < items.length) items[hi].dispatchEvent(new MouseEvent('mousedown'));
+        } else if (e.key === 'Escape') {
+            closeDropdown(id);
+        }
+    }
+
+    function highlightItem(id, items) {
+        items.forEach(it => it.classList.remove('highlighted'));
+        const hi = acHighlight[id];
+        if (hi >= 0 && hi < items.length) items[hi].classList.add('highlighted');
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.autocomplete-wrap')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.remove('open'));
+        }
+    });
+
+    // ── Add New Product Modal ─────────────────────────────────────────
+    function openAddProductModal(itemId, prefillName = '') {
+        pendingProductItemId = itemId;
+        document.getElementById('newProductName').value = prefillName;
+        document.getElementById('newProductErr').textContent = '';
+        document.getElementById('addProductModal').classList.add('open');
+        setTimeout(() => document.getElementById('newProductName').focus(), 100);
+    }
+
+    function closeAddProductModal() {
+        document.getElementById('addProductModal').classList.remove('open');
+        pendingProductItemId = null;
+    }
+
+    function submitNewProduct() {
+        const name = document.getElementById('newProductName').value.trim();
+        const unit = document.getElementById('newProductUnit').value;
+        const errEl = document.getElementById('newProductErr');
+        if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
+
+        const btn = document.querySelector('.modal-btn-save');
+        btn.disabled = true; btn.textContent = 'در حال ذخیره...';
+
+        fetch(QUICK_ADD_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ name, unit })
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
+            if (data.success) {
+                // Fill in the item row that triggered this
+                const id = pendingProductItemId;
+                if (id) {
+                    const row = document.getElementById(`item-${id}`);
+                    row.querySelector('.ac-input').value = data.product.name;
+                    row.querySelector('.product-id-field').value = data.product.id;
+                    const sel = document.getElementById(`item-unit-${id}`);
+                    if (sel && data.product.unit) {
+                        for (let i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === data.product.unit) { sel.selectedIndex = i; break; }
+                        }
+                    }
+                }
+                closeAddProductModal();
+                // Push to acResults for future typeahead
             } else {
-                alert('⚠️ باید حداقل یک کالا در درخواست باشد!');
+                errEl.textContent = data.error || 'خطا در افزودن کالا';
             }
-        }
-
-        function updateItemNumbers() {
-            const items = document.querySelectorAll('.item-row');
-            items.forEach((item, index) => {
-                const numberBadge = item.querySelector('.item-number');
-                if (numberBadge) {
-                    numberBadge.textContent = index + 1;
-                }
-            });
-        }
-
-        // Add first item on page load
-        window.addEventListener('load', function() {
-            addItem();
+        }).catch(() => {
+            btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
+            errEl.textContent = 'خطای شبکه. لطفاً دوباره تلاش کنید.';
         });
+    }
 
-        // Form validation
-        document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-            const items = document.querySelectorAll('.item-row');
-            if (items.length === 0) {
-                e.preventDefault();
-                alert('⚠️ لطفاً حداقل یک کالا اضافه کنید');
-                return false;
-            }
-            
-            // Check if all required fields are filled
-            let allValid = true;
-            items.forEach(item => {
-                const productNameInput = item.querySelector('input[name="product_name"]');
-                const quantityInput = item.querySelector('input[name="item_quantity"]');
-                
-                if (!productNameInput || !productNameInput.value.trim()) {
-                    allValid = false;
-                    productNameInput.style.borderColor = 'var(--danger-color)';
-                }
-                if (!quantityInput || !quantityInput.value) {
-                    allValid = false;
-                    quantityInput.style.borderColor = 'var(--danger-color)';
-                }
-            });
-            
-            if (!allValid) {
-                e.preventDefault();
-                alert('⚠️ لطفاً تمام فیلدهای ضروری را پر کنید');
-                return false;
-            }
+    // Allow Enter key in modal
+    document.getElementById('newProductName').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitNewProduct(); }
+    });
+
+    // Close modal on overlay click
+    document.getElementById('addProductModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddProductModal();
+    });
+
+    // ── Init ─────────────────────────────────────────────────────────
+    window.addEventListener('load', () => addItem());
+
+    // ── Form validation ───────────────────────────────────────────────
+    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+        const items = document.querySelectorAll('.item-row');
+        if (!items.length) { e.preventDefault(); alert('⚠️ لطفاً حداقل یک کالا اضافه کنید'); return; }
+        let valid = true;
+        items.forEach(item => {
+            const n = item.querySelector('input[name="product_name"]');
+            const q = item.querySelector('input[name="item_quantity"]');
+            if (!n.value.trim()) { valid = false; n.style.borderColor = '#ef4444'; }
+            if (!q.value) { valid = false; q.style.borderColor = '#ef4444'; }
         });
-
-        // Add CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut {
-                from { opacity: 1; transform: translateY(0); }
-                to { opacity: 0; transform: translateY(-20px); }
-            }
-        `;
-        document.head.appendChild(style);
-    </script>
+        if (!valid) { e.preventDefault(); alert('⚠️ لطفاً تمام فیلدهای ضروری را پر کنید'); }
+    });
+</script>
 {% endblock %}

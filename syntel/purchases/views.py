@@ -4361,7 +4361,8 @@ def search_products_autocomplete(request):
             'id': product.id,
             'name': product.name,
             'category': category_display,
-            'label': f"{product.name} ({category_display})" if category_display else product.name
+            'label': f"{product.name} ({category_display})" if category_display else product.name,
+            'unit': product.unit.name if product.unit else '',
         })
     
     return JsonResponse({'results': results})
@@ -5678,3 +5679,183 @@ def api_product_stock_history(request: HttpRequest, warehouse_id: int, stock_ite
         'in_items': [serialize_voucher_item(v) for v in in_items],
         'out_items': [serialize_voucher_item(v) for v in out_items],
     })
+
+
+# ---------------------------------------------------------------------------
+# All-departments requests view
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(["purchasing", "warehouse", "manager"])
+def all_departments_requests(request):
+    """Aggregated view of every department's purchase/warehouse requests.
+
+    Similar products requested by multiple departments are merged so the
+    purchasing/warehouse manager can see the total amount needed at a glance.
+    """
+    from collections import defaultdict
+
+    request_type = request.GET.get('type', 'purchase')
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    DEPT_NAMES = {
+        'kitchen':   'آشپزخانه',
+        'bar':       'بار',
+        'counter':   'کانتر',
+        'cashier':   'صندوق',
+        'facilities':'تاسیسات',
+        'store':     'انبار',
+        'purchasing':'خرید',
+        'warehouse': 'انبارداری',
+        'manager':   'مدیر',
+        'admin':     'ادمین',
+    }
+
+    if request_type == 'warehouse':
+        requests_qs = (
+            WarehouseRequest.objects
+            .select_related('user', 'user__cafe')
+            .prefetch_related('items', 'items__product')
+        )
+    else:
+        requests_qs = (
+            PurchaseRequest.objects
+            .select_related('user', 'user__cafe')
+            .prefetch_related('items', 'items__product')
+        )
+
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
+
+    requests_list = list(requests_qs.order_by('-created_at'))
+
+    # ---- Merge similar products ----------------------------------------
+    product_map = defaultdict(lambda: {
+        'display_name': '',
+        'total_qty': 0.0,
+        'unit': '',
+        'departments': defaultdict(float),
+    })
+
+    for req in requests_list:
+        dept_name = DEPT_NAMES.get(getattr(req.user, 'role', ''), getattr(req.user, 'role', '—'))
+        for item in req.items.all():
+            # Normalise key: use product id when available, else lower-cased name
+            if hasattr(item, 'product') and item.product_id:
+                key = f"product_{item.product_id}"
+                display_name = item.product.name
+            else:
+                raw_name = (item.name if hasattr(item, 'name') else '') or ''
+                key = raw_name.strip().lower()
+                display_name = raw_name.strip().title()
+
+            unit_name = ''
+            if hasattr(item, 'unit') and item.unit:
+                # unit is a CharField on PurchaseItem/WarehouseRequestItem
+                if hasattr(item.unit, 'name'):
+                    unit_name = item.unit.name   # FK to Unit
+                else:
+                    unit_name = str(item.unit)   # plain string
+
+            qty = float(item.quantity) if item.quantity else 0.0
+
+            product_map[key]['display_name'] = display_name
+            product_map[key]['total_qty'] += qty
+            if not product_map[key]['unit'] and unit_name:
+                product_map[key]['unit'] = unit_name
+            product_map[key]['departments'][dept_name] += qty
+
+    merged_products = []
+    for _key, data in product_map.items():
+        dept_list = [
+            {'name': d, 'qty': round(q, 2)}
+            for d, q in sorted(data['departments'].items())
+        ]
+        merged_products.append({
+            'name': data['display_name'],
+            'total_qty': round(data['total_qty'], 2),
+            'unit': data['unit'],
+            'departments': dept_list,
+            'dept_count': len(dept_list),
+        })
+    # Sort: products wanted by more departments first, then by total qty
+    merged_products.sort(key=lambda x: (-x['dept_count'], -x['total_qty']))
+
+    active_departments = len(set(
+        getattr(r.user, 'role', '') for r in requests_list if r.user
+    ))
+    pending_count = sum(1 for r in requests_list if r.status == 'pending')
+
+    return render(request, 'all_departments_requests.html', {
+        'requests': requests_list,
+        'merged_products': merged_products,
+        'request_type': request_type,
+        'total_requests': len(requests_list),
+        'pending_count': pending_count,
+        'active_departments': active_departments,
+        'cafe_code': cafe_code,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Quick-add product API (used from within purchase/warehouse request forms)
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+def quick_add_product(request):
+    """Create a new Product on-the-fly from the request form.
+
+    POST JSON body: {"name": "...", "unit": "..."}
+    Returns JSON: {"success": true, "product": {"id": ..., "name": "...", "unit": "..."}}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
+
+    name = data.get('name', '').strip()
+    unit_name = data.get('unit', 'عدد').strip()
+
+    if not name:
+        return JsonResponse({'success': False, 'error': 'نام کالا الزامی است'})
+
+    cafe = get_cafe_from_request(request)
+
+    # Return existing product if same name already exists
+    existing_qs = Product.objects.filter(name__iexact=name)
+    if cafe:
+        existing_qs = existing_qs.filter(cafe=cafe)
+    if existing_qs.exists():
+        p = existing_qs.first()
+        return JsonResponse({'success': True, 'product': {
+            'id': p.id,
+            'name': p.name,
+            'unit': p.unit.name if p.unit else unit_name,
+        }})
+
+    # Find or create the unit
+    unit_obj = None
+    if unit_name:
+        unit_qs = Unit.objects.filter(name=unit_name)
+        if cafe:
+            unit_qs = unit_qs.filter(cafe=cafe)
+        unit_obj = unit_qs.first()
+        if not unit_obj:
+            unit_obj = Unit.objects.create(name=unit_name, cafe=cafe)
+
+    product = Product.objects.create(
+        name=name,
+        unit=unit_obj,
+        cafe=cafe,
+        is_active=True,
+    )
+
+    return JsonResponse({'success': True, 'product': {
+        'id': product.id,
+        'name': product.name,
+        'unit': product.unit.name if product.unit else unit_name,
+    }})

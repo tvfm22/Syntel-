@@ -1,0 +1,335 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>درخواست همه بخش‌ها - Syntel</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; }
+
+        .page-wrapper { max-width: 1280px; margin: 0 auto; padding: 20px 24px 80px; }
+
+        /* ── header ── */
+        .header {
+            background: white; padding: 16px 20px; border-radius: 12px;
+            margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        }
+        .back-btn {
+            width: 38px; height: 38px; border-radius: 8px; border: 1px solid #e5e7eb;
+            background: white; color: #374151; font-size: 18px; display: flex;
+            align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;
+        }
+        .back-btn:hover { background: #f9fafb; }
+        .header-info h1 { font-size: 20px; color: #1f2937; margin-bottom: 4px; }
+        .header-info p  { font-size: 13px; color: #6b7280; }
+
+        /* ── type toggle ── */
+        .type-toggle {
+            display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .type-btn {
+            padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+            text-decoration: none; background: white; border: 1px solid #e5e7eb;
+            color: #374151; transition: all .15s;
+        }
+        .type-btn:hover { background: #f9fafb; }
+        .type-btn.active-purchase  { background: #6366f1; color: white; border-color: #6366f1; }
+        .type-btn.active-warehouse { background: #10b981; color: white; border-color: #10b981; }
+
+        /* ── stats bar ── */
+        .stats-bar {
+            display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px;
+        }
+        .stat-card {
+            background: white; border-radius: 10px; padding: 14px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); flex: 1; min-width: 130px;
+        }
+        .stat-card .stat-num  { font-size: 24px; font-weight: 700; color: #1f2937; }
+        .stat-card .stat-lbl  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+        /* ── section title ── */
+        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* ── merged products table / cards ── */
+        .merged-table-wrap { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; margin-bottom: 28px; }
+        .merged-table { width: 100%; border-collapse: collapse; }
+        .merged-table th {
+            background: #f9fafb; padding: 12px 16px; font-size: 13px; font-weight: 700;
+            color: #6b7280; text-align: right; border-bottom: 1px solid #e5e7eb;
+        }
+        .merged-table td { padding: 12px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        .merged-table tr:last-child td { border-bottom: none; }
+        .merged-table tr:hover td { background: #fafafa; }
+
+        .product-name-cell { font-weight: 600; color: #1f2937; }
+        .qty-cell { font-weight: 700; color: #059669; font-size: 15px; }
+
+        .dept-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .dept-pill {
+            padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;
+            background: #e0e7ff; color: #4338ca;
+        }
+        .dept-pill.warehouse-pill { background: #d1fae5; color: #065f46; }
+
+        /* ── mobile card view for merged products ── */
+        .merged-cards { display: none; }
+        .merged-card {
+            background: white; border-radius: 12px; padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px;
+        }
+        .merged-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .merged-card-name  { font-size: 16px; font-weight: 700; color: #1f2937; }
+        .merged-card-qty   { font-size: 16px; font-weight: 700; color: #059669; }
+        .merged-card-depts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+        @media (max-width: 700px) {
+            .merged-table-wrap { display: none; }
+            .merged-cards      { display: block; }
+        }
+
+        /* ── individual requests list ── */
+        .requests-list { margin-bottom: 28px; }
+        .request-card {
+            background: white; border-radius: 12px; padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px;
+        }
+        .request-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .request-user  { font-size: 15px; font-weight: 600; color: #1f2937; }
+        .request-meta  { font-size: 12px; color: #6b7280; margin-top: 3px; }
+        .status-badge  { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .status-pending            { background: #fef3c7; color: #92400e; }
+        .status-approved_from_stock{ background: #d1fae5; color: #065f46; }
+        .status-approved_purchase  { background: #dbeafe; color: #1e40af; }
+        .status-declined           { background: #fee2e2; color: #991b1b; }
+        .status-fulfilled          { background: #d1fae5; color: #065f46; }
+
+        .request-items { background: #f9fafb; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+        .req-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; color: #374151; border-bottom: 1px solid #e5e7eb; }
+        .req-item:last-child { border-bottom: none; }
+
+        .dept-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px;
+            font-weight: 500; background: #e5e7eb; color: #374151; margin-bottom: 4px;
+        }
+
+        /* ── empty state ── */
+        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; background: white; border-radius: 12px; }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 14px; }
+
+        /* ── process btn ── */
+        .process-btn {
+            display: inline-block; padding: 8px 18px; background: #10b981; color: white;
+            border-radius: 8px; font-size: 13px; text-decoration: none; font-weight: 600;
+            transition: background .15s; margin-top: 10px;
+        }
+        .process-btn:hover { background: #059669; }
+        .view-btn {
+            display: inline-block; padding: 8px 18px; background: #3b82f6; color: white;
+            border-radius: 8px; font-size: 13px; text-decoration: none; font-weight: 600;
+            transition: background .15s; margin-top: 10px;
+        }
+        .view-btn:hover { background: #2563eb; }
+
+        /* ── filter bar ── */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-select {
+            padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;
+            font-family: Vazir, sans-serif; background: white; color: #374151; cursor: pointer;
+        }
+        .filter-select:focus { outline: none; border-color: #6366f1; }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="header">
+        <a href="
+            {% if request_type == 'warehouse' %}
+                {% url 'warehouse_dashboard' cafe_code=cafe_code %}
+            {% else %}
+                {% url 'purchasing_dashboard' cafe_code=cafe_code %}
+            {% endif %}
+        " class="back-btn">←</a>
+        <div class="header-info">
+            <h1>{% if request_type == 'warehouse' %}📦 درخواست انبار همه بخش‌ها{% else %}🛒 درخواست خرید همه بخش‌ها{% endif %}</h1>
+            <p>محصولات مشابه از بخش‌های مختلف ادغام شده‌اند</p>
+        </div>
+    </div>
+
+    <!-- Type toggle -->
+    <div class="type-toggle">
+        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=purchase"
+           class="type-btn {% if request_type == 'purchase' %}active-purchase{% endif %}">🛒 درخواست خرید</a>
+        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse"
+           class="type-btn {% if request_type == 'warehouse' %}active-warehouse{% endif %}">📦 درخواست انبار</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-num">{{ total_requests }}</div>
+            <div class="stat-lbl">کل درخواست‌ها</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ pending_count }}</div>
+            <div class="stat-lbl">در انتظار بررسی</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ merged_products|length }}</div>
+            <div class="stat-lbl">محصول یکتا (ادغام‌شده)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ active_departments }}</div>
+            <div class="stat-lbl">بخش فعال</div>
+        </div>
+    </div>
+
+    <!-- Merged products section -->
+    {% if merged_products %}
+    <div class="section-title">🔀 محصولات ادغام‌شده (درخواست چند بخش)</div>
+
+    <!-- Table view (desktop) -->
+    <div class="merged-table-wrap">
+        <table class="merged-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>نام محصول</th>
+                    <th>جمع مقدار</th>
+                    <th>واحد</th>
+                    <th>بخش‌های درخواست‌دهنده</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mp in merged_products %}
+                <tr>
+                    <td style="color:#9ca3af;font-size:13px;">{{ forloop.counter }}</td>
+                    <td class="product-name-cell">{{ mp.name }}</td>
+                    <td class="qty-cell">{{ mp.total_qty }}</td>
+                    <td>{{ mp.unit }}</td>
+                    <td>
+                        <div class="dept-pills">
+                            {% for dept in mp.departments %}
+                            <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
+                                {{ dept.name }} ({{ dept.qty }})
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Card view (mobile) -->
+    <div class="merged-cards">
+        {% for mp in merged_products %}
+        <div class="merged-card">
+            <div class="merged-card-header">
+                <div class="merged-card-name">{{ mp.name }}</div>
+                <div class="merged-card-qty">{{ mp.total_qty }} {{ mp.unit }}</div>
+            </div>
+            <div class="merged-card-depts">
+                {% for dept in mp.departments %}
+                <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
+                    {{ dept.name }} ({{ dept.qty }})
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Individual requests -->
+    <div class="section-title" style="margin-top: 8px;">📄 همه درخواست‌ها</div>
+
+    <!-- Department filter -->
+    <div class="filter-bar">
+        <select class="filter-select" onchange="filterByDept(this.value)">
+            <option value="">همه بخش‌ها</option>
+            <option value="kitchen">آشپزخانه</option>
+            <option value="bar">بار</option>
+            <option value="counter">کانتر</option>
+            <option value="cashier">صندوق</option>
+            <option value="facilities">تاسیسات</option>
+        </select>
+        <select class="filter-select" onchange="filterByStatus(this.value)">
+            <option value="">همه وضعیت‌ها</option>
+            <option value="pending">در انتظار</option>
+            <option value="approved_from_stock">تامین از انبار</option>
+            <option value="approved_purchase">ارجاع به خرید</option>
+            <option value="fulfilled">تامین شده</option>
+            <option value="declined">رد شده</option>
+        </select>
+    </div>
+
+    {% if requests %}
+    <div class="requests-list" id="requestsList">
+        {% for req in requests %}
+        <div class="request-card" data-role="{{ req.user.role }}" data-status="{{ req.status }}">
+            <div class="request-header">
+                <div>
+                    <span class="dept-badge">{{ req.user.get_role_display }}</span>
+                    <div class="request-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                    <div class="request-meta">{{ req.created_at|jalali_datetime }}</div>
+                </div>
+                <span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span>
+            </div>
+
+            {% if req.items.all %}
+            <div class="request-items">
+                {% for item in req.items.all %}
+                <div class="req-item">
+                    <span>{{ item.name }}</span>
+                    <span style="color:#6b7280;">{{ item.quantity }} {{ item.unit }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if req.status == 'pending' %}
+            <a href="{% if request_type == 'warehouse' %}{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}{% else %}{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}{% endif %}"
+               class="process-btn">پردازش درخواست</a>
+            {% else %}
+            <a href="{% if request_type == 'warehouse' %}{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}{% else %}{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}{% endif %}"
+               class="view-btn">مشاهده جزئیات</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>هیچ درخواستی وجود ندارد</p>
+    </div>
+    {% endif %}
+
+</div><!-- /page-wrapper -->
+
+<script>
+    function filterByDept(role) {
+        filterCards();
+    }
+    function filterByStatus(status) {
+        filterCards();
+    }
+    function filterCards() {
+        const roleFilter   = document.querySelectorAll('.filter-select')[0].value;
+        const statusFilter = document.querySelectorAll('.filter-select')[1].value;
+        document.querySelectorAll('.request-card').forEach(card => {
+            const matchRole   = !roleFilter   || card.dataset.role   === roleFilter;
+            const matchStatus = !statusFilter || card.dataset.status === statusFilter;
+            card.style.display = (matchRole && matchStatus) ? '' : 'none';
+        });
+    }
+</script>
+</body>
+</html>

@@ -8,239 +8,198 @@
     <title>داشبورد مسئول خرید - سینتل</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Vazir, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
 
-        body {
-            background: #f3f4f6;
-            min-height: 100vh;
-            padding: 20px;
-        }
+        body { background: #f3f4f6; min-height: 100vh; }
 
+        /* ── page wrapper ── */
+        .page-wrapper { max-width: 1280px; margin: 0 auto; padding: 20px 24px 100px; }
+
+        /* ── header ── */
         .header {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: white; padding: 18px 24px; border-radius: 12px;
+            margin-bottom: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
         }
+        .header-left h1 { font-size: 22px; color: #1f2937; margin-bottom: 4px; }
+        .header-left p  { color: #6b7280; font-size: 14px; }
 
-        .header h1 {
-            font-size: 24px;
-            color: #1f2937;
-            margin-bottom: 8px;
+        /* ── tabs ── */
+        .tab-row { display: flex; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+            text-decoration: none; background: white; border: 1px solid #e5e7eb;
+            color: #374151; transition: all .15s;
         }
+        .tab-btn:hover { background: #f9fafb; }
+        .tab-btn.active-blue  { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .tab-btn.active-green { background: #10b981; color: white; border-color: #10b981; }
 
-        .header p {
-            color: #6b7280;
-            font-size: 14px;
-        }
+        /* ── section title ── */
+        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-block  { margin-bottom: 32px; }
 
-        .departments-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
+        /* ── departments grid — responsive from 1 → 2 → 3 → 4 cols ── */
+        .departments-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 560px)  { .departments-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 900px)  { .departments-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1200px) { .departments-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .department-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: all 0.2s;
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            transition: box-shadow .2s, transform .15s;
         }
+        .department-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
 
-        .department-card:active {
-            transform: scale(0.98);
-        }
+        .department-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .department-icon  { font-size: 32px; }
+        .department-info h3 { font-size: 17px; color: #1f2937; margin-bottom: 6px; }
+        .department-stats   { display: flex; gap: 8px; flex-wrap: wrap; font-size: 13px; }
 
-        .department-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
+        .stat-badge   { padding: 3px 10px; border-radius: 12px; font-weight: 500; }
+        .stat-total   { background: #e5e7eb; color: #374151; }
+        .stat-pending { background: #fef3c7; color: #92400e; }
 
-        .department-icon {
-            font-size: 32px;
-        }
-
-        .department-info h3 {
-            font-size: 18px;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
-
-        .department-stats {
-            display: flex;
-            gap: 8px;
-            font-size: 13px;
-        }
-
-        .stat-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-weight: 500;
-        }
-
-        .stat-total {
-            background: #e5e7eb;
-            color: #374151;
-        }
-
-        .stat-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .department-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
-        }
-
+        .department-actions { display: flex; gap: 10px; margin-top: 14px; }
         .action-btn {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
-            color: #374151;
-            font-size: 14px;
-            text-decoration: none;
-            text-align: center;
-            transition: all 0.2s;
+            flex: 1; padding: 10px 8px; border: 1px solid #e5e7eb; border-radius: 8px;
+            background: white; color: #374151; font-size: 13px; text-decoration: none;
+            text-align: center; transition: all .15s; font-family: Vazir, sans-serif;
         }
+        .action-btn:hover      { opacity: .85; }
+        .action-btn-all        { border-color: #3b82f6; color: #3b82f6; }
+        .action-btn-green      { border-color: #10b981; color: #10b981; }
+        .action-btn-pending    { border-color: #f59e0b; color: #f59e0b; }
 
-        .action-btn:active {
-            background: #f9fafb;
+        /* ── all-departments banner ── */
+        .all-depts-banner {
+            border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; color: white;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 14px;
         }
-
-        .action-btn-all {
-            border-color: #3b82f6;
-            color: #3b82f6;
+        .banner-purchase { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 4px 14px rgba(99,102,241,.3); }
+        .banner-warehouse { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16,185,129,.3); }
+        .all-depts-banner-left h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .all-depts-banner-left p  { font-size: 13px; opacity: .85; }
+        .banner-btn {
+            background: white; border: none; padding: 10px 22px; border-radius: 8px;
+            font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap;
+            font-family: Vazir, sans-serif; transition: opacity .15s;
         }
+        .banner-btn:hover      { opacity: .9; }
+        .banner-btn-purple     { color: #4f46e5; }
+        .banner-btn-green      { color: #059669; }
 
-        .action-btn-pending {
-            border-color: #f59e0b;
-            color: #f59e0b;
-        }
-
+        /* ── logout ── */
         .logout-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 12px 24px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            color: #ef4444;
-            text-decoration: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 11px 28px; background: white; border: 1px solid #e5e7eb;
+            border-radius: 8px; color: #ef4444; text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 14px; font-weight: 600; z-index: 100;
         }
-
-        @media (min-width: 640px) {
-            .departments-grid {
-                grid-template-columns: repeat(2, 1fr);
-                max-width: 800px;
-            }
-        }
+        .logout-btn:hover { background: #fef2f2; }
     </style>
 </head>
 <body>
+<div class="page-wrapper">
+
+    <!-- Header -->
     <div class="header">
-        <h1>{% if has_dual %}داشبورد خرید و انبار{% elif has_warehouse %}داشبورد مسئول انبار{% else %}داشبورد مسئول خرید{% endif %}</h1>
-        <p>{{ user.first_name }} {{ user.last_name }}</p>
+        <div class="header-left">
+            <h1>{% if has_dual %}داشبورد خرید و انبار{% elif has_warehouse %}داشبورد مسئول انبار{% else %}داشبورد مسئول خرید{% endif %}</h1>
+            <p>{{ user.first_name }} {{ user.last_name }}</p>
+        </div>
     </div>
 
+    <!-- Dual-role tabs -->
     {% if has_dual %}
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" 
-           style="padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;background:#3b82f6;color:white;border:1px solid #3b82f6;">
-            🛒 درخواست‌های خرید
-        </a>
-        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" 
-           style="padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;background:white;color:#374151;border:1px solid #e5e7eb;">
-            📦 درخواست‌های انبار
-        </a>
+    <div class="tab-row">
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn active-blue">🛒 درخواست‌های خرید</a>
+        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn">📦 درخواست‌های انبار</a>
     </div>
     {% endif %}
 
+    <!-- All-departments purchase banner -->
     {% if has_purchasing %}
-    <div style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:14px;">🛒 درخواست‌های خرید</div>
-    <div class="departments-grid">
-        {% for dept in departments %}
-        <div class="department-card">
-            <div class="department-header">
-                <div class="department-icon">{{ dept.icon }}</div>
-                <div class="department-info">
-                    <h3>{{ dept.name }}</h3>
-                    <div class="department-stats">
-                        <span class="stat-badge stat-total">{{ dept.total }} کل</span>
-                        {% if dept.pending > 0 %}
-                        <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
-                        {% endif %}
+    <div class="all-depts-banner banner-purchase">
+        <div class="all-depts-banner-left">
+            <h2>📋 درخواست همه بخش‌ها — خرید</h2>
+            <p>مشاهده و ادغام درخواست‌های خرید تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
+        </div>
+        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=purchase" class="banner-btn banner-btn-purple">مشاهده یکجا</a>
+    </div>
+
+    <div class="section-block">
+        <div class="section-title">🛒 درخواست‌های خرید به تفکیک بخش</div>
+        <div class="departments-grid">
+            {% for dept in departments %}
+            <div class="department-card">
+                <div class="department-header">
+                    <div class="department-icon">{{ dept.icon }}</div>
+                    <div class="department-info">
+                        <h3>{{ dept.name }}</h3>
+                        <div class="department-stats">
+                            <span class="stat-badge stat-total">{{ dept.total }} کل</span>
+                            {% if dept.pending > 0 %}<span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>{% endif %}
+                        </div>
                     </div>
                 </div>
+                <div class="department-actions">
+                    <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all&type=purchase"
+                       class="action-btn action-btn-all">همه</a>
+                    <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending&type=purchase"
+                       class="action-btn action-btn-pending">در انتظار</a>
+                </div>
             </div>
-            
-            <div class="department-actions">
-                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all&type=purchase" 
-                   class="action-btn action-btn-all">
-                    همه درخواست‌ها
-                </a>
-                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending&type=purchase" 
-                   class="action-btn action-btn-pending">
-                    کامل نشده
-                </a>
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% endif %}
 
+    <!-- All-departments warehouse banner -->
+    {% if has_warehouse %}
+    <div class="all-depts-banner banner-warehouse">
+        <div class="all-depts-banner-left">
+            <h2>📦 درخواست انبار همه بخش‌ها</h2>
+            <p>مشاهده و ادغام درخواست‌های انبار تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
+        </div>
+        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse" class="banner-btn banner-btn-green">مشاهده یکجا</a>
+    </div>
+    {% endif %}
+
+    <!-- Warehouse requests by department -->
     {% if has_warehouse and warehouse_departments %}
-    <div style="font-size:16px;font-weight:700;color:#1f2937;margin-top:{% if has_purchasing %}28px{% else %}0{% endif %};margin-bottom:14px;">
-        📦 درخواست‌های انبار
-    </div>
-    <div class="departments-grid">
-        {% for dept in warehouse_departments %}
-        <div class="department-card" style="border-right:4px solid #10b981;">
-            <div class="department-header">
-                <div class="department-icon">{{ dept.icon }}</div>
-                <div class="department-info">
-                    <h3>{{ dept.name }}</h3>
-                    <div class="department-stats">
-                        <span class="stat-badge stat-total">{{ dept.total }} کل</span>
-                        {% if dept.pending > 0 %}
-                        <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
-                        {% endif %}
+    <div class="section-block">
+        <div class="section-title">📦 درخواست‌های انبار به تفکیک بخش</div>
+        <div class="departments-grid">
+            {% for dept in warehouse_departments %}
+            <div class="department-card" style="border-right: 4px solid #10b981;">
+                <div class="department-header">
+                    <div class="department-icon">{{ dept.icon }}</div>
+                    <div class="department-info">
+                        <h3>{{ dept.name }}</h3>
+                        <div class="department-stats">
+                            <span class="stat-badge stat-total">{{ dept.total }} کل</span>
+                            {% if dept.pending > 0 %}<span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>{% endif %}
+                        </div>
                     </div>
                 </div>
+                <div class="department-actions">
+                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all"
+                       class="action-btn action-btn-green">همه</a>
+                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending"
+                       class="action-btn action-btn-pending">در انتظار</a>
+                </div>
             </div>
-            <div class="department-actions">
-                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all" 
-                   class="action-btn" style="border-color:#10b981;color:#10b981;">
-                    همه درخواست‌ها
-                </a>
-                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending" 
-                   class="action-btn action-btn-pending">
-                    در انتظار
-                </a>
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% endif %}
 
-    <a href="{% url 'logout' %}" class="logout-btn">خروج</a>
+</div><!-- /page-wrapper -->
+
+<a href="{% url 'logout' %}" class="logout-btn">خروج از سیستم</a>
 </body>
 </html>
