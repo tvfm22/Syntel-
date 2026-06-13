@@ -1,12 +1,13 @@
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ورود به سیستم Syntel</title>
+    <title>ورود به سیستم Kuker</title>
     
     <!-- Vazir Font -->
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
     
     <style>
         * {
@@ -16,82 +17,175 @@
         }
         body {
             font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            background: #f3f4f6;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            color: #1f2937;
         }
         .login-container {
             background: white;
-            padding: 30px;
+            padding: 40px 30px;
             width: 100%;
             max-width: 400px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
         }
         .logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
         .logo h1 {
-            color: #333;
+            color: #111827;
             font-size: 28px;
             margin-bottom: 8px;
+            font-weight: 700;
         }
         .logo p {
-            color: #666;
+            color: #6b7280;
             font-size: 14px;
         }
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .step.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }
         label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: #374151;
             font-weight: 500;
+            font-size: 14px;
         }
         input[type="text"],
         input[type="password"] {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
             font-family: 'Vazir', sans-serif;
+            transition: all 0.2s ease;
+            background-color: #f9fafb;
         }
         input:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: #4f46e5;
+            background-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
         }
-        .submit-btn {
+        .cafe-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .cafe-option {
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            background: #ffffff;
+            color: #374151;
+            font-weight: 500;
+        }
+        .cafe-option:hover {
+            background: #f9fafb;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+        .cafe-option.selected {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+        }
+        .btn {
             width: 100%;
-            padding: 12px;
-            background: #007bff;
+            padding: 14px;
+            background: #4f46e5;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 500;
             cursor: pointer;
             font-family: 'Vazir', sans-serif;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            background: #4338ca;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background: #6b7280;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        .back-btn {
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+        }
+        .back-btn:hover {
+            background: #e5e7eb;
+            color: #374151;
         }
         .messages {
             margin-bottom: 20px;
         }
         .alert {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #f5c6cb;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            font-size: 14px;
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            margin: 0 6px;
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background: #4f46e5;
+            transform: scale(1.3);
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="logo">
-            <h1>Syntel</h1>
+            <h1>Kuker</h1>
             <p>سیستم مدیریت خرید کافه</p>
+        </div>
+
+        <div class="step-indicator">
+            <div class="step-dot active" id="step1-dot"></div>
+            <div class="step-dot" id="step2-dot"></div>
+            <div class="step-dot" id="step3-dot"></div>
         </div>
 
         {% if error %}
@@ -108,19 +202,72 @@
             </div>
         {% endif %}
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="username">نام کاربری</label>
-                <input type="text" id="username" name="username" required>
+        <!-- مرحله 1: انتخاب کافه -->
+        <div class="step active" id="step1">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #1f2937; font-weight: 500; font-size: 16px;">انتخاب کافه یا رستوران</h3>
+            <div class="cafe-list">
+                {% for cafe in cafes %}
+                <div class="cafe-option" data-cafe="{{ cafe.code }}">
+                    {{ cafe.name }}
+                </div>
+                {% endfor %}
             </div>
-            <div class="form-group">
-                <label for="password">رمز عبور</label>
-                <input type="password" id="password" name="password" required>
+        </div>
+
+        <!-- مرحله 2: ورود اطلاعات -->
+        <div class="step" id="step2">
+            <form id="login-form" method="post">
+                {% csrf_token %}
+                <input type="hidden" id="selected-cafe" name="cafe_code" value="">
+                <div class="form-group">
+                    <label for="username">نام کاربری</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">رمز عبور</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn">ورود</button>
+                <button type="button" class="btn back-btn" onclick="goToStep(1)">بازگشت</button>
+            </form>
+        </div>
+
+        <!-- مرحله 3: در حال ورود (اختیاری) -->
+        <div class="step" id="step3">
+            <div style="text-align: center;">
+                <p>در حال ورود...</p>
             </div>
-            <button type="submit" class="submit-btn">ورود</button>
-        </form>
+        </div>
 
     </div>
+
+    <script>
+        let selectedCafe = '';
+
+        // انتخاب کافه
+        document.querySelectorAll('.cafe-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.cafe-option').forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedCafe = this.getAttribute('data-cafe');
+                document.getElementById('selected-cafe').value = selectedCafe;
+                setTimeout(() => goToStep(2), 300);
+            });
+        });
+
+        function goToStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
+            document.getElementById('step' + step).classList.add('active');
+            document.getElementById('step' + step + '-dot').classList.add('active');
+        }
+
+        // اگر فرم submit شود، به مرحله 3 برو
+        document.getElementById('login-form').addEventListener('submit', function() {
+            goToStep(3);
+        });
+    </script>
 </body>
 </html>
+
+

@@ -178,31 +178,44 @@ def _parse_decimal(value):
 
 @csrf_exempt
 def login_view(request: HttpRequest) -> HttpResponse:
+    from .models import Cafe
+    
     if request.method == "POST":
         username = request.POST.get("username", "")
         password = request.POST.get("password", "")
+        cafe_code = request.POST.get("cafe_code", "")
+        
         user = authenticate(request, username=username, password=password)
         if user and user.is_active:
             login(request, user)
             
-            # کاربران با نقش‌های ادمین به صفحه انتخاب کافه می‌روند
-            if user.needs_cafe_selection:
-                return redirect("select_cafe")
-            
-            # کاربران عادی - بررسی اینکه کافه دارند
-            if not user.cafe:
-                # کاربر عادی بدون کافه - نمایش خطا
-                logout(request)
-                return render(
-                    request,
-                    "login.html",
-                    {"error": "کافه برای کاربر شما تعریف نشده است. با مدیر تماس بگیرید."},
-                )
-            
-            # تنظیم کافه در session
-            request.session['selected_cafe_id'] = user.cafe_id
-            request.session['selected_cafe_code'] = user.cafe.code
-            cafe_code = user.cafe.code
+            # تنظیم کافه انتخاب شده در session
+            if cafe_code:
+                try:
+                    selected_cafe = Cafe.objects.get(code=cafe_code, is_active=True)
+                    request.session['selected_cafe_id'] = selected_cafe.id
+                    request.session['selected_cafe_code'] = selected_cafe.code
+                    cafe_code = selected_cafe.code
+                except Cafe.DoesNotExist:
+                    logout(request)
+                    return render(
+                        request,
+                        "login.html",
+                        {"error": "کافه انتخاب شده معتبر نیست.", "cafes": Cafe.objects.filter(is_active=True)},
+                    )
+            else:
+                # اگر کافه انتخاب نشده، از کافه کاربر استفاده کن
+                if user.cafe:
+                    request.session['selected_cafe_id'] = user.cafe_id
+                    request.session['selected_cafe_code'] = user.cafe.code
+                    cafe_code = user.cafe.code
+                else:
+                    logout(request)
+                    return render(
+                        request,
+                        "login.html",
+                        {"error": "کافه برای کاربر شما تعریف نشده است. با مدیر تماس بگیرید.", "cafes": Cafe.objects.filter(is_active=True)},
+                    )
             
             # Redirect based on role
             # ادمین به داشبورد مالی
@@ -230,13 +243,15 @@ def login_view(request: HttpRequest) -> HttpResponse:
         response = render(
             request,
             "login.html",
-            {"error": "Invalid credentials"},
+            {"error": "نام کاربری یا رمز عبور اشتباه است.", "cafes": Cafe.objects.filter(is_active=True)},
         )
         # Ensure the expected text is present for tests regardless of template markup
         response.content += b"Invalid credentials"
         return response
 
-    return render(request, "login.html")
+    # GET request - نمایش لیست کافه‌ها
+    cafes = Cafe.objects.filter(is_active=True)
+    return render(request, "login.html", {"cafes": cafes})
 
 
 @custom_login_required
@@ -307,7 +322,8 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @role_required(["kitchen", "bar", "counter", "cashier", "facilities"])
 def mobile_dashboard(request: HttpRequest) -> HttpResponse:
     """Simple mobile-friendly dashboard for department users"""
-    return render(request, "mobile_dashboard.html", {"user": request.user})
+    cafe = get_cafe_from_request(request)
+    return render(request, "mobile_dashboard.html", {"user": request.user, "cafe": cafe})
 
 
 @custom_login_required

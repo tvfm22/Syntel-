@@ -1,12 +1,13 @@
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}سیستم مدیریت خرید - Syntel{% endblock %}</title>
+    <title>{% block title %}سیستم مدیریت خرید - Kuker{% endblock %}</title>
     
     <!-- Vazir Font -->
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
     
     <style>
         * {
@@ -51,8 +52,10 @@
             backdrop-filter: blur(10px);
             box-shadow: var(--shadow-sm);
             padding: 0.75rem 0;
-            position: sticky;
+            position: fixed;
+            width: 100%;
             top: 0;
+            left: 0;
             z-index: 1000;
             border-bottom: 1px solid var(--border-color);
         }
@@ -262,7 +265,7 @@
         /* Container */
         .container {
             max-width: 1400px;
-            margin: 2rem auto;
+            margin: 6rem auto 2rem;
             padding: 0 2rem;
         }
 
@@ -555,7 +558,7 @@
 
             .container {
                 padding: 0 1rem;
-                margin: 0 auto;
+                margin: 5rem auto 1rem;
             }
 
             .card {
@@ -776,15 +779,9 @@
     
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="{% if cafe_code %}{% if user.role == 'admin' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role == 'manager' or user.role == 'ceo' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand">
-                <div class="logo">S</div>
-                <span>Syntel</span>
-                {% if current_cafe %}
-                <span style="font-size: 0.8rem; color: var(--secondary-color); margin-right: 0.5rem; background: rgba(236, 72, 153, 0.1); padding: 0.25rem 0.75rem; border-radius: 15px;">
-                    {{ current_cafe.name }}
-                </span>
-                {% endif %}
-            </a>
+            <button class="mobile-menu-toggle" onclick="toggleMenu()" style="margin-left: 0; margin-right: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
             
             <div style="display: flex; align-items: center; gap: 1rem;">
                 {% if can_switch_cafe %}
@@ -793,19 +790,23 @@
                     🔄 تغییر کافه
                 </a>
                 {% endif %}
-                
-                <!-- User Info (Always Visible) -->
-                <div class="user-info">
-                    <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
-                    <div>
-                        <div style="font-weight: 600;">{{ user.username }}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280;">{{ user.get_role_display }}</div>
-                    </div>
-                </div>
 
-                <button class="mobile-menu-toggle" onclick="toggleMenu()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                </button>
+                <a href="{% if cafe_code %}{% if user.role == 'admin' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role == 'manager' or user.role == 'ceo' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="navbar-brand" style="margin-right: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; direction: ltr;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-top: -2px;">
+                            <defs>
+                                <linearGradient id="k-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#ec4899" />
+                                    <stop offset="100%" stop-color="#8b5cf6" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M17 4v16"></path>
+                            <path d="M6 4l11 8"></path>
+                            <path d="M17 12l-11 8"></path>
+                        </svg>
+                        <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; display: inline-block;">Kuker</span>
+                    </div>
+                </a>
             </div>
             
 
@@ -861,8 +862,10 @@
     </script>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+
