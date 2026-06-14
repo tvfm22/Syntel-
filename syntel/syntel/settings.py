@@ -62,9 +62,24 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'purchases',
+    'drf_spectacular',
 ]
 
 AUTH_USER_MODEL = 'purchases.User'
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Syntel API',
+    'DESCRIPTION': 'API documentation for Syntel Finance Management System',
+    'VERSION': 'v1',
+    'CONTACT': {'email': 'support@syntel.com'},
+    'LICENSE': {'name': 'MIT License'},
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
