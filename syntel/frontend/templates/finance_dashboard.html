@@ -1,1350 +1,578 @@
-﻿{% load static %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد مالی - Kuker</title>
-    
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'dashboard_layout.html' %}
+{% load static %}
 
-        :root {
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --dark-color: #1f2937;
-            --light-color: #f9fafb;
-            --border-color: #e5e7eb;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
-            --radius-xl: 1rem;
-        }
+{% block title %}داشبورد مالی - Kuker{% endblock %}
 
-        body {
-            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
+{% block extra_css %}
+<style>
+    /* ─── Page-specific styles ─── */
 
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
+    .stat-sublabel {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
 
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-left: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-        }
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+    }
+    .search-box i { color: #9ca3af; }
+    .search-box input {
+        border: none;
+        background: transparent;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.875rem;
+        outline: none;
+        width: 200px;
+    }
 
-        .sidebar-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--light-color);
-        }
+    .chart-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: all 0.2s;
+    }
+    .chart-link:hover { color: var(--primary-dark); }
 
-        .sidebar-title {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--dark-color);
-        }
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-content {
+        background: white;
+        border-radius: var(--radius-xl);
+        width: 90%;
+        max-width: 900px;
+        box-shadow: var(--shadow-xl);
+        overflow: hidden;
+    }
+    .modal-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-title { font-size: 1.25rem; font-weight: 700; color: var(--dark); }
+    .modal-close {
+        background: none; border: none; font-size: 1.5rem;
+        color: #9ca3af; cursor: pointer; transition: all 0.2s;
+    }
+    .modal-close:hover { color: var(--dark); }
+    .modal-body { padding: 2rem; }
+    .chart-wrapper { height: 400px; }
 
-        .menu-list {
-            list-style: none;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
 
-        .menu-item {
-            margin: 0;
-        }
+    /* Flash Card Styles */
+    .flash-card {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    .flash-card:hover {
+        box-shadow: var(--shadow-xl);
+        transform: translateY(-4px);
+        border-color: var(--primary);
+    }
+    .flash-card-header {
+        padding: 1.5rem;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+    .flash-card-header span { font-size: 1.5rem; }
+    .flash-card-body {
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .flash-card-link {
+        padding: 0.875rem 1rem;
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        color: var(--dark);
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid transparent;
+    }
+    .flash-card-link:hover {
+        background: var(--primary);
+        color: white;
+        transform: translateX(-5px);
+        border-color: var(--primary);
+    }
+    .flash-card-link i { font-size: 1rem; width: 20px; }
 
-        .menu-link {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            color: var(--dark-color);
-            text-decoration: none;
-            border-radius: var(--radius-md);
-            transition: all 0.2s ease;
-            font-weight: 500;
-        }
+    .flash-card:nth-child(1) .flash-card-header { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .flash-card:nth-child(2) .flash-card-header { background: linear-gradient(135deg, #10b981, #059669); }
+    .flash-card:nth-child(3) .flash-card-header { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .flash-card:nth-child(4) .flash-card-header { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .flash-card:nth-child(5) .flash-card-header { background: linear-gradient(135deg, #ec4899, #db2777); }
+    .flash-card:nth-child(6) .flash-card-header { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .flash-card:nth-child(7) .flash-card-header { background: linear-gradient(135deg, #14b8a6, #0d9488); }
 
-        .menu-link:hover {
-            background: var(--light-color);
-            color: var(--primary-color);
-            transform: translateX(5px);
-        }
-
-        .menu-link.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            box-shadow: var(--shadow-md);
-        }
-
-        .menu-link i {
-            width: 20px;
-            font-size: 1rem;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            padding: 2rem;
-        }
-
-        /* Header */
-        .page-header {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .page-title i {
-            color: var(--primary-color);
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
         }
+        .search-box input { width: 150px; }
+    }
 
-        .current-date {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0.875rem;
-            background: var(--light-color);
-            border-radius: var(--radius-md);
-            font-size: 0.875rem;
-            color: var(--dark-color);
-            font-weight: 500;
-        }
-
-        .current-date i {
-            color: var(--primary-color);
-        }
-
-        .logout-btn {
-            padding: 0.5rem 1rem;
-            background: white;
-            color: var(--danger-color);
-            border: 1px solid var(--danger-color);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            font-family: 'Vazir', sans-serif;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logout-btn:hover {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        /* Filters */
-        .filters-container {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.5rem;
-            align-items: end;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .filter-label {
-            font-weight: 600;
-            font-size: 0.875rem;
-            color: var(--dark-color);
-        }
-
-        .filter-select, .filter-input {
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            font-family: 'Vazir', sans-serif;
-            font-size: 0.875rem;
-            background: white;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .filter-select:focus, .filter-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .btn {
-            padding: 0.75rem 1.25rem;
-            border: none;
-            border-radius: var(--radius-md);
-            font-family: 'Vazir', sans-serif;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
-        }
-
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-info {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .btn-info:hover {
-            background: #138496;
-        }
-
-        .btn-warning {
-            background: var(--warning-color);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        /* Stats Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.2s;
-        }
-
-        .stat-card:hover {
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.25rem;
-        }
-
-        .stat-icon.danger {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-color);
-        }
-
-        .stat-icon.success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
-
-        .stat-icon.primary {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-color);
-        }
-
-        .stat-icon.warning {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-value.danger { color: var(--danger-color); }
-        .stat-value.success { color: var(--success-color); }
-        .stat-value.primary { color: var(--primary-color); }
-        .stat-value.warning { color: var(--warning-color); }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: #6b7280;
-        }
-
-        .stat-sublabel {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            margin-top: 0.25rem;
-        }
-
-        /* Table Card */
-        .table-card {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
-
-        .table-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .table-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .table-title i {
-            color: var(--warning-color);
-        }
-
-        .search-box {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--light-color);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-        }
-
-        .search-box i {
-            color: #9ca3af;
-        }
-
-        .search-box input {
-            border: none;
-            background: transparent;
-            font-family: 'Vazir', sans-serif;
-            font-size: 0.875rem;
-            outline: none;
-            width: 200px;
-        }
-
-        .table-body {
-            padding: 0;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table thead {
-            background: var(--light-color);
-        }
-
-        .data-table th {
-            padding: 1rem 1.25rem;
-            text-align: right;
-            font-size: 0.875rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .data-table td {
-            padding: 1rem 1.25rem;
-            font-size: 0.875rem;
-            color: #6b7280;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .data-table tbody tr {
-            transition: all 0.2s;
-        }
-
-        .data-table tbody tr:hover {
-            background: var(--light-color);
-        }
-
-        .badge {
-            padding: 0.375rem 0.75rem;
-            border-radius: var(--radius-md);
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        .badge-danger {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-color);
-        }
-
-        .badge-success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
-
-        .badge-neutral {
-            background: var(--light-color);
-            color: #6b7280;
-        }
-
-        .chart-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            transition: all 0.2s;
-        }
-
-        .chart-link:hover {
-            color: var(--primary-dark);
-        }
-
-        /* Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: var(--radius-xl);
-            width: 90%;
-            max-width: 900px;
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-        }
-
-        .modal-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--dark-color);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #9ca3af;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .modal-close:hover {
-            color: var(--dark-color);
-        }
-
-        .modal-body {
-            padding: 2rem;
-        }
-
-        .chart-wrapper {
-            height: 400px;
-        }
-
-        /* Dashboard Grid */
+    @media (max-width: 480px) {
         .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: 1fr;
+            gap: 1rem;
         }
+    }
+</style>
+{% endblock %}
 
-        /* Flash Card Styles */
-        .flash-card {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
+{% block content %}
+<!-- Header -->
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-chart-bar"></i>
+        داشبورد مالی
+    </h1>
+    <div class="header-actions">
+        <div class="current-date">
+            <i class="fas fa-calendar-alt"></i>
+            <span id="persianDate"></span>
+        </div>
+        <a href="{% url 'logout' %}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>خروج</span>
+        </a>
+    </div>
+</div>
 
-        .flash-card:hover {
-            box-shadow: var(--shadow-xl);
-            transform: translateY(-4px);
-            border-color: var(--primary-color);
-        }
-
-        .flash-card-header {
-            padding: 1.5rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .flash-card-header span {
-            font-size: 1.5rem;
-        }
-
-        .flash-card-body {
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .flash-card-link {
-            padding: 0.875rem 1rem;
-            background: var(--light-color);
-            border-radius: var(--radius-md);
-            text-decoration: none;
-            color: var(--dark-color);
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border: 1px solid transparent;
-        }
-
-        .flash-card-link:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: translateX(-5px);
-            border-color: var(--primary-color);
-        }
-
-        .flash-card-link i {
-            font-size: 1rem;
-            width: 20px;
-        }
-
-        /* رنگ‌های مختلف برای هر دسته */
-        .flash-card:nth-child(1) .flash-card-header {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
-        }
-
-        .flash-card:nth-child(2) .flash-card-header {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .flash-card:nth-child(3) .flash-card-header {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .flash-card:nth-child(4) .flash-card-header {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        .flash-card:nth-child(5) .flash-card-header {
-            background: linear-gradient(135deg, #ec4899, #db2777);
-        }
-
-        .flash-card:nth-child(6) .flash-card-header {
-            background: linear-gradient(135deg, #06b6d4, #0891b2);
-        }
-
-        .flash-card:nth-child(7) .flash-card-header {
-            background: linear-gradient(135deg, #14b8a6, #0d9488);
-        }
-
-        .card-title {
-            font-size: 0.875rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .card-title i {
-            color: var(--primary-color);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .layout {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                border-left: none;
-                border-bottom: 1px solid var(--border-color);
-            }
-
-            .main-content {
-                padding: 1rem;
-            }
-
-            .page-header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .filters-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .dashboard-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-
-            .search-box input {
-                width: 150px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-title">منو مالی - {{ current_cafe.name }}</div>
-            </div>
-            <ul class="menu-list">
-                {% if user.role != 'ceo' and user.role != 'manager' %}
-                <li class="menu-item">
-                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-home"></i>
-                        <span>داشبورد</span>
-                    </a>
-                </li>
-                {% endif %}
-                <li class="menu-item">
-                    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="menu-link active">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>داشبورد مالی</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span>گزارشات خرید</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-list"></i>
-                        <span>لیست خرید به تفکیک تاریخ</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="menu-link">
-                        <i class="fas fa-file-invoice"></i>
-                        <span>فاکتورهای نقدی</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-credit-card"></i>
-                        <span>پرداخت‌ها</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-store"></i>
-                        <span>مدیریت تأمین‌کنندگان</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'product_list' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-box"></i>
-                        <span>مدیریت محصولات</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'category_list' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-list"></i>
-                        <span>دسته‌بندی‌ها</span>
-                    </a>
-                </li>
-                {% if user.role == 'admin' or user.role == 'manager' or user.role == 'ceo' or user.role == 'accounting' or user.role == 'finance_manager' %}
-                <li class="menu-item">
-                    <a href="{% url 'user_list' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-users"></i>
-                        <span>مدیریت کاربران</span>
-                    </a>
-                </li>
-                {% endif %}
-                <li class="menu-item">
-                    <a href="{% url 'logout' %}" class="menu-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>خروج</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <div class="page-header">
-                <h1 class="page-title">
-                    <i class="fas fa-chart-bar"></i>
-                    داشبورد مالی
-                </h1>
-                <div class="header-actions">
-                    <div class="current-date">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span id="persianDate"></span>
-                    </div>
-                    <a href="{% url 'logout' %}" class="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>خروج</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
-                <!-- فلش کارت درخواست‌ها -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>📊</span>
-                        درخواست‌ها
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-chart-bar"></i>
-                            گزارشات خرید
-                        </a>
-                        <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-calendar-alt"></i>
-                            لیست خرید به تفکیک تاریخ
-                        </a>
-                        <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="flash-card-link">
-                            <i class="fas fa-shopping-cart"></i>
-                            درخواست‌های خرید
-                        </a>
-                        <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-warehouse"></i>
-                            درخواست‌های انبار
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت فاکتورها -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>📋</span>
-                        فاکتورها
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="flash-card-link">
-                            <i class="fas fa-file-invoice"></i>
-                            لیست فاکتورهای نقدی
-                        </a>
-                        <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-plus-circle"></i>
-                            ثبت فاکتور نقدی
-                        </a>
-                        {% if user.role == 'manager' %}
-                        <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="flash-card-link">
-                            <i class="fas fa-check-circle"></i>
-                            فاکتورهای نیازمند تأیید
-                        </a>
-                        <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="flash-card-link">
-                            <i class="fas fa-exclamation-circle"></i>
-                            فاکتورهای پرداخت نشده
-                        </a>
-                        {% endif %}
-                        <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-list-alt"></i>
-                            لیست تمامی فاکتورها
-                        </a>
-                        {% if user.role == 'manager' %}
-                        <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-edit"></i>
-                            فاکتورهای ویرایش شده مدیر مالی
-                        </a>
-                        {% endif %}
-                        <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            مدیریت ایرادات فاکتور
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت تامین‌کنندگان -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>🏪</span>
-                        تامین‌کنندگان
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-store"></i>
-                            مدیریت تأمین‌کنندگان
-                        </a>
-                        <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-list"></i>
-                            لیست تأمین‌کنندگان
-                        </a>
-                        <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-plus"></i>
-                            افزودن/ویرایش تأمین‌کننده
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت پرداخت‌ها -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>💰</span>
-                        پرداخت‌ها
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-credit-card"></i>
-                            لیست پرداخت‌ها
-                        </a>
-                        <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-plus-circle"></i>
-                            ثبت پرداخت جدید
-                        </a>
-                        <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-chart-pie"></i>
-                            گزارشات پرداخت
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت گزارشات -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>📈</span>
-                        گزارشات
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-chart-line"></i>
-                            نمودار روند قیمت‌ها
-                        </a>
-                        <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-calendar-check"></i>
-                            گزارشات ماهانه
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت انبار -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>📦</span>
-                        انبار
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-tags"></i>
-                            موجودی انبار - دسته‌بندی
-                        </a>
-                        <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-warehouse"></i>
-                            لیست کامل موجودی انبار
-                        </a>
-                        <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-plus-square"></i>
-                            ثبت موجودی جدید
-                        </a>
-                        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-file-invoice"></i>
-                            لیست حواله‌های انبار
-                        </a>
-                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-truck"></i>
-                            لیست تامین از انبار
-                        </a>
-                        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-building"></i>
-                            مدیریت انبارها
-                        </a>
-                        <a href="{% url 'category_create' cafe_code=cafe_code %}" class="flash-card-link" style="border-right: 3px solid #10b981;">
-                            <i class="fas fa-plus" style="color:#10b981"></i>
-                            ایجاد دسته‌بندی انبار
-                        </a>
-                    </div>
-                </div>
-
-                <!-- فلش کارت اطلاعات پایه -->
-                <div class="flash-card">
-                    <div class="flash-card-header">
-                        <span>⚙️</span>
-                        اطلاعات پایه
-                    </div>
-                    <div class="flash-card-body">
-                        <a href="{% url 'product_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-box"></i>
-                            لیست محصولات
-                        </a>
-                        <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-balance-scale"></i>
-                            واحدهای اندازه‌گیری
-                        </a>
-                        <a href="{% url 'category_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-tags"></i>
-                            دسته‌بندی‌ها
-                        </a>
-                        <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-map-marker-alt"></i>
-                            محل پرداخت
-                        </a>
-                        <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="flash-card-link">
-                            <i class="fas fa-users"></i>
-                            مدیریت درخواست‌کنندگان
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- بخش انبارهای تامین‌کننده -->
-            {% if supply_warehouses %}
-            <div class="table-card" style="margin-top: 1.5rem;">
-                <div class="table-header">
-                    <div class="table-title">
-                        <i class="fas fa-building" style="color: #6366f1;"></i>
-                        انبارهای تامین‌کننده فعال
-                    </div>
-                    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; text-decoration: none;">
-                        <i class="fas fa-cog"></i>
-                        مدیریت انبارها
-                    </a>
-                </div>
-                <div class="table-body">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>نام انبار</th>
-                                <th>کد</th>
-                                <th>موقعیت</th>
-                                <th>کل درخواست‌ها</th>
-                                <th>در انتظار</th>
-                                <th>تامین شده</th>
-                                <th>رد شده</th>
-                                <th>عملیات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for wh in supply_warehouses %}
-                            <tr>
-                                <td style="font-weight: 600; color: #1f2937;">
-                                    <i class="fas fa-warehouse" style="color: #6366f1; margin-left: 6px;"></i>
-                                    {{ wh.name }}
-                                </td>
-                                <td>
-                                    <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">{{ wh.code }}</span>
-                                </td>
-                                <td style="color: #6b7280;">{{ wh.location|default:"—" }}</td>
-                                <td style="text-align: center;">
-                                    {% if wh.total_requests > 0 %}
-                                    <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" style="color: #6366f1; font-weight: 600; text-decoration: none;">{{ wh.total_requests }}</a>
-                                    {% else %}
-                                    <span style="color: #9ca3af;">۰</span>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: center;">
-                                    {% if wh.pending_requests > 0 %}
-                                    <span style="background: #fef3c7; color: #d97706; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.pending_requests }}</span>
-                                    {% else %}
-                                    <span style="color: #9ca3af;">—</span>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: center;">
-                                    {% if wh.fulfilled_requests > 0 %}
-                                    <span style="background: #d1fae5; color: #059669; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.fulfilled_requests }}</span>
-                                    {% else %}
-                                    <span style="color: #9ca3af;">—</span>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: center;">
-                                    {% if wh.rejected_requests > 0 %}
-                                    <span style="background: #fee2e2; color: #dc2626; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.rejected_requests }}</span>
-                                    {% else %}
-                                    <span style="color: #9ca3af;">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="btn btn-info" style="font-size: 0.75rem; padding: 0.3rem 0.7rem; text-decoration: none;">
-                                        <i class="fas fa-list"></i>
-                                        درخواست‌ها
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% elif supply_warehouses is not None %}
-            <div style="background: white; border-radius: 0.75rem; padding: 2rem; margin-top: 1.5rem; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <i class="fas fa-warehouse" style="font-size: 2.5rem; color: #d1d5db; display: block; margin-bottom: 1rem;"></i>
-                <p style="color: #6b7280; font-size: 0.95rem;">هیچ انبار تامین‌کننده‌ای تعریف نشده است.</p>
-                <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="margin-top: 1rem; text-decoration: none;">
-                    <i class="fas fa-plus"></i>
-                    افزودن انبار
-                </a>
-            </div>
-            {% endif %}
-        </main>
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+    {% comment %}=== Flash Card: درخواست‌ها ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>📊</span>درخواست‌ها</div>
+        <div class="flash-card-body">
+            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-chart-bar"></i> گزارشات خرید
+            </a>
+            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-calendar-alt"></i> لیست خرید به تفکیک تاریخ
+            </a>
+            <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="flash-card-link">
+                <i class="fas fa-shopping-cart"></i> درخواست‌های خرید
+            </a>
+            <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-warehouse"></i> درخواست‌های انبار
+            </a>
+        </div>
     </div>
 
-    <script>
-        // CSRF Token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    {% comment %}=== Flash Card: فاکتورها ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>📋</span>فاکتورها</div>
+        <div class="flash-card-body">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="flash-card-link">
+                <i class="fas fa-file-invoice"></i> لیست فاکتورهای نقدی
+            </a>
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-plus-circle"></i> ثبت فاکتور نقدی
+            </a>
+            {% if user.role == 'manager' %}
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="flash-card-link">
+                <i class="fas fa-check-circle"></i> فاکتورهای نیازمند تأیید
+            </a>
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="flash-card-link">
+                <i class="fas fa-exclamation-circle"></i> فاکتورهای پرداخت نشده
+            </a>
+            {% endif %}
+            <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-list-alt"></i> لیست تمامی فاکتورها
+            </a>
+            {% if user.role == 'manager' %}
+            <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-edit"></i> فاکتورهای ویرایش شده مدیر مالی
+            </a>
+            {% endif %}
+            <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-exclamation-triangle"></i> مدیریت ایرادات فاکتور
+            </a>
+        </div>
+    </div>
+
+    {% comment %}=== Flash Card: تامین‌کنندگان ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>🏪</span>تامین‌کنندگان</div>
+        <div class="flash-card-body">
+            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-store"></i> مدیریت تأمین‌کنندگان
+            </a>
+            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-list"></i> لیست تأمین‌کنندگان
+            </a>
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-plus"></i> افزودن/ویرایش تأمین‌کننده
+            </a>
+        </div>
+    </div>
+
+    {% comment %}=== Flash Card: پرداخت‌ها ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>💰</span>پرداخت‌ها</div>
+        <div class="flash-card-body">
+            <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-credit-card"></i> لیست پرداخت‌ها
+            </a>
+            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-plus-circle"></i> ثبت پرداخت جدید
+            </a>
+            <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-chart-pie"></i> گزارشات پرداخت
+            </a>
+        </div>
+    </div>
+
+    {% comment %}=== Flash Card: گزارشات ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>📈</span>گزارشات</div>
+        <div class="flash-card-body">
+            <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-chart-line"></i> نمودار روند قیمت‌ها
+            </a>
+            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-calendar-check"></i> گزارشات ماهانه
+            </a>
+        </div>
+    </div>
+
+    {% comment %}=== Flash Card: انبار ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>📦</span>انبار</div>
+        <div class="flash-card-body">
+            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-tags"></i> موجودی انبار - دسته‌بندی
+            </a>
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-warehouse"></i> لیست کامل موجودی انبار
+            </a>
+            <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-plus-square"></i> ثبت موجودی جدید
+            </a>
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-file-invoice"></i> لیست حواله‌های انبار
+            </a>
+            <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-truck"></i> لیست تامین از انبار
+            </a>
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-building"></i> مدیریت انبارها
+            </a>
+            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="flash-card-link" style="border-right: 3px solid #10b981;">
+                <i class="fas fa-plus" style="color:#10b981"></i>
+                ایجاد دسته‌بندی انبار
+            </a>
+        </div>
+    </div>
+
+    {% comment %}=== Flash Card: اطلاعات پایه ==={% endcomment %}
+    <div class="flash-card">
+        <div class="flash-card-header"><span>⚙️</span>اطلاعات پایه</div>
+        <div class="flash-card-body">
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-box"></i> لیست محصولات
+            </a>
+            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-balance-scale"></i> واحدهای اندازه‌گیری
+            </a>
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-tags"></i> دسته‌بندی‌ها
+            </a>
+            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-map-marker-alt"></i> محل پرداخت
+            </a>
+            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="flash-card-link">
+                <i class="fas fa-users"></i> مدیریت درخواست‌کنندگان
+            </a>
+        </div>
+    </div>
+</div>
+
+{% comment %}=== انبارهای تامین‌کننده ==={% endcomment %}
+{% if supply_warehouses %}
+<div class="table-card" style="margin-top: 1.5rem;">
+    <div class="table-header">
+        <div class="table-title">
+            <i class="fas fa-building" style="color: #6366f1;"></i>
+            انبارهای تامین‌کننده فعال
+        </div>
+        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; text-decoration: none;">
+            <i class="fas fa-cog"></i> مدیریت انبارها
+        </a>
+    </div>
+    <div class="table-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>نام انبار</th>
+                    <th>کد</th>
+                    <th>موقعیت</th>
+                    <th>کل درخواست‌ها</th>
+                    <th>در انتظار</th>
+                    <th>تامین شده</th>
+                    <th>رد شده</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wh in supply_warehouses %}
+                <tr>
+                    <td style="font-weight: 600; color: #1f2937;">
+                        <i class="fas fa-warehouse" style="color: #6366f1; margin-left: 6px;"></i>
+                        {{ wh.name }}
+                    </td>
+                    <td><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">{{ wh.code }}</span></td>
+                    <td style="color: #6b7280;">{{ wh.location|default:"—" }}</td>
+                    <td style="text-align: center;">
+                        {% if wh.total_requests > 0 %}
+                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" style="color: #6366f1; font-weight: 600; text-decoration: none;">{{ wh.total_requests }}</a>
+                        {% else %}
+                        <span style="color: #9ca3af;">۰</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if wh.pending_requests > 0 %}
+                        <span style="background: #fef3c7; color: #d97706; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.pending_requests }}</span>
+                        {% else %}
+                        <span style="color: #9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if wh.fulfilled_requests > 0 %}
+                        <span style="background: #d1fae5; color: #059669; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.fulfilled_requests }}</span>
+                        {% else %}
+                        <span style="color: #9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if wh.rejected_requests > 0 %}
+                        <span style="background: #fee2e2; color: #dc2626; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.rejected_requests }}</span>
+                        {% else %}
+                        <span style="color: #9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="btn btn-info" style="font-size: 0.75rem; padding: 0.3rem 0.7rem; text-decoration: none;">
+                            <i class="fas fa-list"></i> درخواست‌ها
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif supply_warehouses is not None %}
+<div style="background: white; border-radius: 0.75rem; padding: 2rem; margin-top: 1.5rem; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <i class="fas fa-warehouse" style="font-size: 2.5rem; color: #d1d5db; display: block; margin-bottom: 1rem;"></i>
+    <p style="color: #6b7280; font-size: 0.95rem;">هیچ انبار تامین‌کننده‌ای تعریف نشده است.</p>
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="margin-top: 1rem; text-decoration: none;">
+        <i class="fas fa-plus"></i> افزودن انبار
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
-        
-        const csrftoken = getCookie('csrftoken');
-        let currentPeriod = 'monthly';
-        let categoryChartInstance = null;
+        return cookieValue;
+    }
 
-        // تبدیل اعداد انگلیسی به فارسی
-        function toFarsiNumber(num) {
-            const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-            return num.toString().replace(/\d/g, x => farsiDigits[x]);
+    const csrftoken = getCookie('csrftoken');
+    let currentPeriod = 'monthly';
+    let categoryChartInstance = null;
+
+    function toFarsiNumber(num) {
+        const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        return num.toString().replace(/\d/g, x => farsiDigits[x]);
+    }
+
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function getPersianDate() {
+        const date = new Date();
+        return new Intl.DateTimeFormat('fa-IR', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        }).format(date);
+    }
+
+    function changePeriod(period) {
+        currentPeriod = period;
+        document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-period="${period}"]`).classList.add('active');
+        loadCategoryExpenses();
+        loadPriceIncreases();
+    }
+
+    function loadCategoryExpenses() {
+        fetch(`/{{ cafe_code }}/api/management/category-expenses/?period=${currentPeriod}`, {
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => renderCategoryChart(data))
+        .catch(error => console.error('Error loading category expenses:', error));
+    }
+
+    function renderCategoryChart(data) {
+        const ctx = document.getElementById('categoryChart');
+        if (categoryChartInstance) { categoryChartInstance.destroy(); }
+        if (!data.categories || data.categories.length === 0) {
+            ctx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-pie"></i><p>داده‌ای برای نمایش وجود ندارد</p></div>';
+            return;
         }
-
-        // فرمت عدد با کاما
-        function formatNumber(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        }
-
-        function getPersianDate() {
-            const date = new Date();
-            return new Intl.DateTimeFormat('fa-IR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }).format(date);
-        }
-
-        // تغییر دوره زمانی
-        function changePeriod(period) {
-            currentPeriod = period;
-            
-            // به‌روزرسانی دکمه‌های فعال
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-period="${period}"]`).classList.add('active');
-            
-            // بارگذاری مجدد داده‌ها
-            loadCategoryExpenses();
-            loadPriceIncreases();
-        }
-
-        // بارگذاری هزینه‌های دسته‌بندی
-        function loadCategoryExpenses() {
-            fetch(`/{{ cafe_code }}/api/management/category-expenses/?period=${currentPeriod}`, {
-                headers: {
-                    'X-CSRFToken': csrftoken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                renderCategoryChart(data);
-            })
-            .catch(error => {
-                console.error('Error loading category expenses:', error);
-            });
-        }
-
-        // رسم نمودار دسته‌بندی
-        function renderCategoryChart(data) {
-            const ctx = document.getElementById('categoryChart');
-            
-            if (categoryChartInstance) {
-                categoryChartInstance.destroy();
-            }
-
-            if (!data.categories || data.categories.length === 0) {
-                ctx.parentElement.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-chart-pie"></i>
-                        <p>داده‌ای برای نمایش وجود ندارد</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const labels = data.categories.map(cat => cat.name);
-            const values = data.categories.map(cat => cat.total);
-            const colors = [
-                '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6',
-                '#8b5cf6', '#06b6d4', '#f43f5e', '#14b8a6', '#a855f7'
-            ];
-
-            categoryChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors.slice(0, labels.length),
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            rtl: true,
-                            labels: {
-                                font: {
-                                    family: 'Vazir',
-                                    size: 12
-                                },
-                                padding: 15,
-                                usePointStyle: true,
-                                generateLabels: function(chart) {
-                                    const data = chart.data;
-                                    if (data.labels.length && data.datasets.length) {
-                                        return data.labels.map((label, i) => {
-                                            const value = data.datasets[0].data[i];
-                                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                            const percentage = ((value / total) * 100).toFixed(1);
-                                            return {
-                                                text: `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} (${toFarsiNumber(percentage)}%)`,
-                                                fillStyle: data.datasets[0].backgroundColor[i],
-                                                hidden: false,
-                                                index: i
-                                            };
-                                        });
-                                    }
-                                    return [];
+        const labels = data.categories.map(cat => cat.name);
+        const values = data.categories.map(cat => cat.total);
+        const colors = ['#6366f1','#ec4899','#10b981','#f59e0b','#3b82f6','#8b5cf6','#06b6d4','#f43f5e','#14b8a6','#a855f7'];
+        categoryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderWidth: 2, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right', rtl: true,
+                        labels: {
+                            font: { family: 'Vazir', size: 12 },
+                            padding: 15, usePointStyle: true,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return {
+                                            text: `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} (${toFarsiNumber(percentage)}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false, index: i
+                                        };
+                                    });
                                 }
+                                return [];
                             }
-                        },
-                        tooltip: {
-                            rtl: true,
-                            textDirection: 'rtl',
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} تومان (${toFarsiNumber(percentage)}%)`;
-                                }
+                        }
+                    },
+                    tooltip: {
+                        rtl: true, textDirection: 'rtl',
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} تومان (${toFarsiNumber(percentage)}%)`;
                             }
                         }
                     }
                 }
-            });
-        }
-
-        // بارگذاری رشد قیمت محصولات
-        function loadPriceIncreases() {
-            const container = document.getElementById('priceIncreasesList');
-            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
-
-            fetch(`/{{ cafe_code }}/api/management/price-increases/?period=${currentPeriod}`, {
-                headers: {
-                    'X-CSRFToken': csrftoken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                renderPriceIncreases(data);
-            })
-            .catch(error => {
-                console.error('Error loading price increases:', error);
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>خطا در بارگذاری داده‌ها</p>
-                    </div>
-                `;
-            });
-        }
-
-        // رسم لیست رشد قیمت
-        function renderPriceIncreases(data) {
-            const container = document.getElementById('priceIncreasesList');
-            
-            if (!data.products || data.products.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-chart-line"></i>
-                        <p>تغییر قیمتی یافت نشد</p>
-                        <small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small>
-                    </div>
-                `;
-                return;
             }
-
-            container.innerHTML = data.products.map((product, index) => `
-                <div class="list-item">
-                    <div class="list-item-content">
-                        <div class="list-item-title">
-                            ${index + 1}. ${product.name}
-                        </div>
-                        <div class="list-item-subtitle">
-                            قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} تومان
-                            → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} تومان
-                        </div>
-                    </div>
-                    <div>
-                        <div class="badge badge-danger">
-                            <i class="fas fa-arrow-up"></i>
-                            ${toFarsiNumber(product.increase_percentage.toFixed(1))}%
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // بارگذاری اولیه
-        document.addEventListener('DOMContentLoaded', () => {
-            // Set Persian date
-            document.getElementById('persianDate').textContent = getPersianDate();
-            
-            loadCategoryExpenses();
-            loadPriceIncreases();
         });
-    </script>
-</body>
-</html>
+    }
 
+    function loadPriceIncreases() {
+        const container = document.getElementById('priceIncreasesList');
+        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        fetch(`/{{ cafe_code }}/api/management/price-increases/?period=${currentPeriod}`, {
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => renderPriceIncreases(data))
+        .catch(error => {
+            console.error('Error loading price increases:', error);
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>';
+        });
+    }
 
+    function renderPriceIncreases(data) {
+        const container = document.getElementById('priceIncreasesList');
+        if (!data.products || data.products.length === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>تغییر قیمتی یافت نشد</p><small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small></div>';
+            return;
+        }
+        container.innerHTML = data.products.map((product, index) => `
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-title">${index + 1}. ${product.name}</div>
+                    <div class="list-item-subtitle">قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} تومان → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} تومان</div>
+                </div>
+                <div><div class="badge badge-danger"><i class="fas fa-arrow-up"></i> ${toFarsiNumber(product.increase_percentage.toFixed(1))}%</div></div>
+            </div>
+        `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('persianDate').textContent = getPersianDate();
+        loadCategoryExpenses();
+        loadPriceIncreases();
+    });
+</script>
+{% endblock %}

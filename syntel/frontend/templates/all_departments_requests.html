@@ -15,18 +15,31 @@
 
         /* ── header ── */
         .header {
-            background: white; padding: 16px 20px; border-radius: 12px;
+            background: white; padding: 12px 20px; border-radius: 12px;
             margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            display: flex; align-items: center; justify-content: center;
         }
-        .back-btn {
-            width: 38px; height: 38px; border-radius: 8px; border: 1px solid #e5e7eb;
-            background: white; color: #374151; font-size: 18px; display: flex;
-            align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;
+
+        /* ── date navigation ── */
+        .date-nav {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 10px;
         }
-        .back-btn:hover { background: #f9fafb; }
-        .header-info h1 { font-size: 20px; color: #1f2937; margin-bottom: 4px; }
-        .header-info p  { font-size: 13px; color: #6b7280; }
+        .date-arrow {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e5e7eb;
+            background: white; color: #374151; font-size: 20px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; transition: all .15s; cursor: pointer; line-height: 1;
+        }
+        .date-arrow:hover { background: #6366f1; color: white; border-color: #6366f1; }
+        .date-display {
+            cursor: pointer; padding: 4px 12px; border-radius: 6px;
+            transition: background .15s; text-align: center; min-width: 140px;
+            user-select: none;
+        }
+        .date-display:hover { background: #e5e7eb; }
+        .date-jalali { display: block; font-size: 15px; font-weight: 700; color: #1f2937; }
+        .date-gregorian { display: block; font-size: 11px; color: #9ca3af; }
 
         /* ── type toggle ── */
         .type-toggle {
@@ -102,11 +115,16 @@
         .request-user  { font-size: 15px; font-weight: 600; color: #1f2937; }
         .request-meta  { font-size: 12px; color: #6b7280; margin-top: 3px; }
         .status-badge  { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-        .status-pending            { background: #fef3c7; color: #92400e; }
-        .status-approved_from_stock{ background: #d1fae5; color: #065f46; }
-        .status-approved_purchase  { background: #dbeafe; color: #1e40af; }
-        .status-declined           { background: #fee2e2; color: #991b1b; }
-        .status-fulfilled          { background: #d1fae5; color: #065f46; }
+        .status-draft                  { background: #f3f4f6; color: #6b7280; }
+        .status-pending_manager_approval { background: #fef3c7; color: #92400e; }
+        .status-pending                { background: #fef3c7; color: #92400e; }
+        .status-purchased              { background: #d1fae5; color: #065f46; }
+        .status-partial                { background: #dbeafe; color: #1e40af; }
+        .status-rejected               { background: #fee2e2; color: #991b1b; }
+        .status-approved_from_stock    { background: #d1fae5; color: #065f46; }
+        .status-approved_purchase      { background: #dbeafe; color: #1e40af; }
+        .status-declined               { background: #fee2e2; color: #991b1b; }
+        .status-fulfilled              { background: #d1fae5; color: #065f46; }
 
         .request-items { background: #f9fafb; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
         .req-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; color: #374151; border-bottom: 1px solid #e5e7eb; }
@@ -147,18 +165,18 @@
 <body>
 <div class="page-wrapper">
 
-    <!-- Header -->
-    <div class="header">
-        <a href="
-            {% if request_type == 'warehouse' %}
-                {% url 'warehouse_dashboard' cafe_code=cafe_code %}
-            {% else %}
-                {% url 'purchasing_dashboard' cafe_code=cafe_code %}
-            {% endif %}
-        " class="back-btn">←</a>
-        <div class="header-info">
-            <h1>{% if request_type == 'warehouse' %}📦 درخواست انبار همه بخش‌ها{% else %}🛒 درخواست خرید همه بخش‌ها{% endif %}</h1>
-            <p>محصولات مشابه از بخش‌های مختلف ادغام شده‌اند</p>
+    <!-- Header with Shamsi date navigation -->
+    <div class="header" style="justify-content:center;">
+        <!-- Date navigation -->
+        <div class="date-nav">
+            <a href="?type={{ request_type }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow">‹</a>
+            <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
+                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+            </div>
+            <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
+                   onchange="if(this.value) window.location.href='?type={{ request_type }}&date=' + this.value;">
+            <a href="?type={{ request_type }}&date={{ next_date|date:'Y-m-d' }}" class="date-arrow">›</a>
         </div>
     </div>
 
@@ -168,26 +186,6 @@
            class="type-btn {% if request_type == 'purchase' %}active-purchase{% endif %}">🛒 درخواست خرید</a>
         <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse"
            class="type-btn {% if request_type == 'warehouse' %}active-warehouse{% endif %}">📦 درخواست انبار</a>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-bar">
-        <div class="stat-card">
-            <div class="stat-num">{{ total_requests }}</div>
-            <div class="stat-lbl">کل درخواست‌ها</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-num">{{ pending_count }}</div>
-            <div class="stat-lbl">در انتظار بررسی</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-num">{{ merged_products|length }}</div>
-            <div class="stat-lbl">محصول یکتا (ادغام‌شده)</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-num">{{ active_departments }}</div>
-            <div class="stat-lbl">بخش فعال</div>
-        </div>
     </div>
 
     <!-- Merged products section -->
@@ -217,7 +215,7 @@
                         <div class="dept-pills">
                             {% for dept in mp.departments %}
                             <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
-                                {{ dept.name }} ({{ dept.qty }})
+                                {{ dept.name }}
                             </span>
                             {% endfor %}
                         </div>
@@ -239,7 +237,7 @@
             <div class="merged-card-depts">
                 {% for dept in mp.departments %}
                 <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
-                    {{ dept.name }} ({{ dept.qty }})
+                    {{ dept.name }}
                 </span>
                 {% endfor %}
             </div>
@@ -255,11 +253,9 @@
     <div class="filter-bar">
         <select class="filter-select" onchange="filterByDept(this.value)">
             <option value="">همه بخش‌ها</option>
-            <option value="kitchen">آشپزخانه</option>
-            <option value="bar">بار</option>
-            <option value="counter">کانتر</option>
-            <option value="cashier">صندوق</option>
-            <option value="facilities">تاسیسات</option>
+            {% for dep in all_departments %}
+            <option value="{{ dep.name }}">{{ dep.name }}</option>
+            {% endfor %}
         </select>
         <select class="filter-select" onchange="filterByStatus(this.value)">
             <option value="">همه وضعیت‌ها</option>
@@ -274,10 +270,10 @@
     {% if requests %}
     <div class="requests-list" id="requestsList">
         {% for req in requests %}
-        <div class="request-card" data-role="{{ req.user.role }}" data-status="{{ req.status }}">
+        <div class="request-card" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
             <div class="request-header">
                 <div>
-                    <span class="dept-badge">{{ req.user.get_role_display }}</span>
+                    <span class="dept-badge">{{ req.user.department_display }}</span>
                     <div class="request-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
                     <div class="request-meta">{{ req.created_at|jalali_datetime }}</div>
                 </div>
@@ -314,6 +310,10 @@
 
 </div><!-- /page-wrapper -->
 
+<div style="text-align:center;padding:12px 0 24px;">
+    <a href="{% url 'logout' %}" style="color:#9ca3af;font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px;transition:all.15s;display:inline-block;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">🚪 خروج</a>
+</div>
+
 <script>
     function filterByDept(role) {
         filterCards();
@@ -322,12 +322,12 @@
         filterCards();
     }
     function filterCards() {
-        const roleFilter   = document.querySelectorAll('.filter-select')[0].value;
+        const deptFilter   = document.querySelectorAll('.filter-select')[0].value;
         const statusFilter = document.querySelectorAll('.filter-select')[1].value;
         document.querySelectorAll('.request-card').forEach(card => {
-            const matchRole   = !roleFilter   || card.dataset.role   === roleFilter;
+            const matchDept   = !deptFilter   || card.dataset.dept   === deptFilter;
             const matchStatus = !statusFilter || card.dataset.status === statusFilter;
-            card.style.display = (matchRole && matchStatus) ? '' : 'none';
+            card.style.display = (matchDept && matchStatus) ? '' : 'none';
         });
     }
 </script>

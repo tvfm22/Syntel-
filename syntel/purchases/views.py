@@ -29,6 +29,8 @@ from .models import (
     ActivityLog,
     Cafe,
     Category,
+    DEPARTMENT_CHOICES,
+    Department,
     Invoice,
     InvoiceIssue,
     InvoiceItem,
@@ -230,10 +232,10 @@ def login_view(request: HttpRequest) -> HttpResponse:
             # سایر نقش‌های مدیریتی
             elif user.role == 'manager':
                 return redirect("management_dashboard", cafe_code=cafe_code)
-            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
                 return redirect("mobile_dashboard", cafe_code=cafe_code)
             elif user.role == 'purchasing':
-                return redirect("purchasing_dashboard", cafe_code=cafe_code)
+                return redirect("all_departments_requests", cafe_code=cafe_code)
             elif user.role == 'finance_manager':
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
             elif user.role == 'accounting':
@@ -291,10 +293,10 @@ def select_cafe(request: HttpRequest) -> HttpResponse:
                 return redirect("finance_manager_dashboard", cafe_code=cafe_code)
             elif user.role == 'accounting':
                 return redirect("finance_dashboard", cafe_code=cafe_code)
-            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+            elif user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
                 return redirect("mobile_dashboard", cafe_code=cafe_code)
             elif user.role == 'purchasing':
-                return redirect("purchasing_dashboard", cafe_code=cafe_code)
+                return redirect("all_departments_requests", cafe_code=cafe_code)
             # سایر نقش‌ها به داشبورد پیش‌فرض می‌روند
             return redirect("dashboard", cafe_code=cafe_code)
         except Cafe.DoesNotExist:
@@ -319,7 +321,7 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["kitchen", "bar", "counter", "cashier", "facilities"])
+@role_required(["kitchen", "bar", "counter", "cashier", "facilities", "requester"])
 def mobile_dashboard(request: HttpRequest) -> HttpResponse:
     """Simple mobile-friendly dashboard for department users"""
     cafe = get_cafe_from_request(request)
@@ -1355,9 +1357,9 @@ def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["kitchen", "bar", "counter", "cashier", "facilities", "purchasing", "manager"])
+@role_required(["kitchen", "bar", "counter", "cashier", "facilities", "purchasing", "manager", "requester"])
 @custom_login_required
-@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing"])
+@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing", "requester"])
 def purchase_request_form(request):
     cafe = get_cafe_from_request(request)
     
@@ -1470,7 +1472,7 @@ def purchase_request_success(request):
 def purchase_requests_list(request):
     cafe = get_cafe_from_request(request)
     # For mobile users, show only their own requests
-    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
         requests_qs = PurchaseRequest.objects.filter(user=request.user)
         if cafe:
             requests_qs = requests_qs.filter(cafe=cafe)
@@ -1483,16 +1485,23 @@ def purchase_requests_list(request):
     
     # For purchasing/manager users
     selected_department = request.GET.get("department") or ""
-    requests_qs = PurchaseRequest.objects.select_related("user").prefetch_related("items")
+    requests_qs = PurchaseRequest.objects.select_related("user__department").prefetch_related("items")
     if cafe:
         requests_qs = requests_qs.filter(cafe=cafe)
     requests_qs = requests_qs.order_by("-created_at")
     if selected_department:
-        requests_qs = requests_qs.filter(user__role=selected_department)
+        # Try filtering by department name first (for requester users)
+        requests_qs = requests_qs.filter(
+            models.Q(user__department__name=selected_department) |
+            models.Q(user__role=selected_department)
+        )
+
+    # Build department list from Department model + any old roles with pending requests
+    department_list = Department.objects.filter(is_active=True).values_list('name', 'name')
 
     context = {
         "requests": list(requests_qs),
-        "departments": _get_departments(),
+        "departments": department_list,
         "selected_department": selected_department,
         "is_mobile_user": False,
     }
@@ -1513,7 +1522,7 @@ def purchase_request_detail(request, request_id):
     purchase_request = get_object_or_404(pr_qs, id=request_id)
     
     # Check permissions: mobile users can only see their own requests
-    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities']:
+    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
         if purchase_request.user != request.user:
             from django.http import HttpResponseForbidden
             return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
@@ -1528,7 +1537,7 @@ def purchase_request_detail(request, request_id):
 
     context = {
         "purchase_request": purchase_request,
-        "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities'],
+        "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester'],
         "supply_warehouses": supply_warehouses,
     }
     return render(request, "purchase_request_detail.html", context)
@@ -1964,26 +1973,47 @@ def product_list(request):
 @role_required(["purchasing", "manager"])
 def product_create(request):
     cafe = get_cafe_from_request(request)
+    cafe_code = get_cafe_code(request) or 'local'
     if request.method == "POST":
         name = request.POST.get("name")
         category = Category.objects.filter(id=request.POST.get("category")).first()
         unit = Unit.objects.filter(id=request.POST.get("unit")).first()
+        usage_location = request.POST.get("usage_location", "general")
         if name:
+            # Check for duplicate product name in same cafe
+            existing = Product.objects.filter(name__iexact=name)
+            if cafe:
+                existing = existing.filter(cafe=cafe)
+            if existing.exists():
+                categories = Category.objects.all()
+                if cafe:
+                    categories = categories.filter(cafe=cafe)
+                departments_qs = Department.objects.filter(is_active=True)
+                return render(request, "product_form.html", {
+                    "categories": categories,
+                    "units": Unit.objects.all(),
+                    "departments_qs": departments_qs,
+                    "departments": DEPARTMENT_CHOICES,
+                    "error": f"محصولی با نام «{name}» قبلاً ثبت شده است.",
+                    "form_data": request.POST,
+                })
             Product.objects.create(
                 name=name,
                 category=category,
                 unit=unit,
                 min_stock=int(request.POST.get("min_stock") or 0),
+                usage_location=usage_location,
                 cafe=cafe,
             )
-            return redirect("product_list")
+            return redirect("product_list", cafe_code=cafe_code)
     categories = Category.objects.all()
     if cafe:
         categories = categories.filter(cafe=cafe)
+    departments_qs = Department.objects.filter(is_active=True)
     return render(
         request,
         "product_form.html",
-        {"categories": categories, "units": Unit.objects.all()},
+        {"categories": categories, "units": Unit.objects.all(), "departments_qs": departments_qs, "departments": DEPARTMENT_CHOICES},
     )
 
 
@@ -1991,28 +2021,36 @@ def product_create(request):
 @role_required(["purchasing", "manager"])
 def product_update(request, product_id):
     cafe = get_cafe_from_request(request)
+    cafe_code = get_cafe_code(request) or 'local'
     product = get_object_or_404(Product, id=product_id)
     if request.method == "POST":
         product.name = request.POST.get("name", product.name)
+        product.category = Category.objects.filter(id=request.POST.get("category")).first() or product.category
+        product.unit = Unit.objects.filter(id=request.POST.get("unit")).first() or product.unit
+        product.min_stock = int(request.POST.get("min_stock") or product.min_stock)
+        product.usage_location = request.POST.get("usage_location", product.usage_location)
+        product.description = request.POST.get("description", product.description)
         product.save()
-        return redirect("product_list")
+        return redirect("product_list", cafe_code=cafe_code)
     categories = Category.objects.all()
     if cafe:
         categories = categories.filter(cafe=cafe)
+    departments_qs = Department.objects.filter(is_active=True)
     return render(
         request,
         "product_form.html",
-        {"product": product, "categories": categories, "units": Unit.objects.all()},
+        {"product": product, "categories": categories, "units": Unit.objects.all(), "departments_qs": departments_qs, "departments": DEPARTMENT_CHOICES},
     )
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def product_delete(request, product_id):
+    cafe_code = get_cafe_code(request) or 'local'
     product = get_object_or_404(Product, id=product_id)
     if request.method == "POST":
         product.delete()
-        return redirect("product_list")
+        return redirect("product_list", cafe_code=cafe_code)
     return render(request, "product_confirm_delete.html", {"product": product})
 
 
@@ -2179,9 +2217,15 @@ def payment_type_delete(request, payment_type_id):
 
 
 @custom_login_required
-@role_required(["manager"])
+@role_required(["manager", "admin"])
 def user_list(request, cafe_code=None):
+    cafe = get_cafe_from_request(request)
     users = User.objects.all()
+
+    # فیلتر بر اساس کافه جاری - فقط کاربران همین کافه/رستوران نشان داده شوند
+    if cafe:
+        users = users.filter(cafe=cafe)
+
     search_query = request.GET.get("search", "").strip()
     selected_role = request.GET.get("role", "")
     if search_query:
@@ -2203,6 +2247,7 @@ def user_list(request, cafe_code=None):
 def user_create(request, cafe_code=None):
     from .models import Cafe as CafeModel
     cafes = CafeModel.objects.filter(is_active=True)
+    departments = Department.objects.filter(is_active=True)
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email", "")
@@ -2212,28 +2257,34 @@ def user_create(request, cafe_code=None):
         )
         role = request.POST.get("role", "kitchen")
         cafe_id = request.POST.get("cafe_id", "all")
+        department_id = request.POST.get("department_id", "")
 
         if not username:
             return render(request, "user_form.html", {
                 "error": "نام کاربری الزامی است",
-                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+                "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
         if User.objects.filter(username=username).exists():
             return render(request, "user_form.html", {
                 "error": f"نام کاربری '{username}' قبلاً استفاده شده است. لطفاً نام دیگری انتخاب کنید.",
-                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+                "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
         if not password:
             return render(request, "user_form.html", {
                 "error": "رمز عبور الزامی است",
-                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+                "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
         if password != confirm_password:
             return render(request, "user_form.html", {
                 "error": "رمز عبور و تأیید آن یکسان نیستند",
-                "roles": _get_departments(), "cafes": cafes, "form_data": request.POST})
+                "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
 
         # تعیین کافه کاربر
         cafe_obj = None
         if cafe_id and cafe_id != "all":
             cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
+
+        # تعیین بخش
+        department_obj = None
+        if department_id:
+            department_obj = Department.objects.filter(id=department_id, is_active=True).first()
 
         secondary_role = request.POST.get("secondary_role", "").strip() or None
         User.objects.create_user(
@@ -2246,9 +2297,10 @@ def user_create(request, cafe_code=None):
             last_name=request.POST.get("last_name", ""),
             is_active=request.POST.get("is_active", True) not in ["False", "0", ""],
             cafe=cafe_obj,
+            department=department_obj,
         )
-        return redirect("user_list", cafe_code=cafe_code or "local")
-    return render(request, "user_form.html", {"roles": _get_departments(), "cafes": cafes})
+        return redirect("user_list", cafe_code=get_cafe_code(request) or "local")
+    return render(request, "user_form.html", {"roles": _get_departments(), "cafes": cafes, "departments": departments})
 
 
 @custom_login_required
@@ -2257,6 +2309,7 @@ def user_update(request, cafe_code=None, user_id=None):
     from .models import Cafe as CafeModel
     user_obj = get_object_or_404(User, id=user_id)
     cafes = CafeModel.objects.filter(is_active=True)
+    departments = Department.objects.filter(is_active=True)
     if request.method == "POST":
         # تغییر نام کاربری (اختیاری)
         new_username = request.POST.get("username", "").strip()
@@ -2266,6 +2319,7 @@ def user_update(request, cafe_code=None, user_id=None):
                     "edit_user": user_obj,
                     "roles": _get_departments(),
                     "cafes": cafes,
+                    "departments": departments,
                     "error": f"نام کاربری '{new_username}' قبلاً استفاده شده است",
                 })
             user_obj.username = new_username
@@ -2282,6 +2336,12 @@ def user_update(request, cafe_code=None, user_id=None):
             cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
             if cafe_obj:
                 user_obj.cafe = cafe_obj
+        # بخش
+        department_id = request.POST.get("department_id", "").strip()
+        if department_id:
+            user_obj.department = Department.objects.filter(id=department_id, is_active=True).first()
+        else:
+            user_obj.department = None
         # تغییر رمز عبور (اختیاری)
         new_password = request.POST.get("new_password", "").strip()
         confirm_new_password = request.POST.get("confirm_new_password", "").strip()
@@ -2293,11 +2353,12 @@ def user_update(request, cafe_code=None, user_id=None):
                     "edit_user": user_obj,
                     "roles": _get_departments(),
                     "cafes": cafes,
+                    "departments": departments,
                     "error": "رمز عبور جدید و تأیید آن یکسان نیستند",
                 })
         user_obj.save()
-        return redirect("user_list", cafe_code=cafe_code or "local")
-    return render(request, "user_form.html", {"edit_user": user_obj, "roles": _get_departments(), "cafes": cafes})
+        return redirect("user_list", cafe_code=get_cafe_code(request) or "local")
+    return render(request, "user_form.html", {"edit_user": user_obj, "roles": _get_departments(), "cafes": cafes, "departments": departments})
 
 
 @custom_login_required
@@ -2306,7 +2367,7 @@ def user_delete(request, cafe_code=None, user_id=None):
     user_obj = get_object_or_404(User, id=user_id)
     if request.method == "POST":
         user_obj.delete()
-        return redirect("user_list", cafe_code=cafe_code or "local")
+        return redirect("user_list", cafe_code=get_cafe_code(request) or "local")
     return render(request, "user_confirm_delete.html", {"user": user_obj})
 
 
@@ -2319,7 +2380,7 @@ def user_reset_password(request, cafe_code=None, user_id=None):
         if new_password:
             user_obj.set_password(new_password)
             user_obj.save()
-            return redirect("user_list", cafe_code=cafe_code or "local")
+            return redirect("user_list", cafe_code=get_cafe_code(request) or "local")
     return render(request, "user_reset_password.html", {"user": user_obj})
 
 
@@ -4367,21 +4428,52 @@ def search_supplier_products(request):
 
 @custom_login_required
 def search_products_autocomplete(request):
-    """Autocomplete API for products with their categories"""
+    """Autocomplete API for products with their categories.
+    Filters products by the requesting user's department (usage_location)."""
     query = request.GET.get('q', '').strip()
-    
+
     if not query or len(query) < 2:
         return JsonResponse({'results': []})
-    
+
     cafe = get_cafe_from_request(request)
     products = Product.objects.filter(
         models.Q(name__icontains=query) | models.Q(category__name__icontains=query),
         is_active=True
-    ).select_related('category', 'category__parent')
+    ).select_related('category', 'category__parent', 'unit')
     if cafe:
         products = products.filter(cafe=cafe)
+
+    # Filter by user's department (usage_location)
+    user_role = request.user.role
+    # Roles that see ALL products (managers, purchasing, warehouse, etc.)
+    unrestricted_roles = ['purchasing', 'warehouse', 'admin', 'manager', 'accounting', 'finance_manager', 'ceo']
+    if user_role not in unrestricted_roles:
+        if user_role == 'requester':
+            # For requester users, filter by their assigned department name
+            dep_name = request.user.department.name if request.user.department else None
+            if dep_name:
+                # Show products matching the department name OR general products
+                # Also handle backward compatibility with old English keys
+                old_key_map = {
+                    'آشپزخانه': 'kitchen', 'بار': 'bar', 'کانتر': 'counter',
+                    'صندوق': 'cashier', 'تاسیسات': 'facilities',
+                }
+                old_key = old_key_map.get(dep_name, None)
+                q_filter = models.Q(usage_location='general') | models.Q(usage_location=dep_name)
+                if old_key:
+                    q_filter = q_filter | models.Q(usage_location=old_key)
+                products = products.filter(q_filter)
+            else:
+                # No department - show general only
+                products = products.filter(usage_location='general')
+        else:
+            # Old-style roles (backward compatibility) - filter by role value
+            products = products.filter(
+                models.Q(usage_location=user_role) | models.Q(usage_location='general')
+            )
+
     products = products[:15]
-    
+
     results = []
     for product in products:
         category_display = ''
@@ -4390,7 +4482,7 @@ def search_products_autocomplete(request):
                 category_display = f"{product.category.parent.name} > {product.category.name}"
             else:
                 category_display = product.category.name
-        
+
         results.append({
             'id': product.id,
             'name': product.name,
@@ -4398,7 +4490,7 @@ def search_products_autocomplete(request):
             'label': f"{product.name} ({category_display})" if category_display else product.name,
             'unit': product.unit.name if product.unit else '',
         })
-    
+
     return JsonResponse({'results': results})
 
 
@@ -4755,8 +4847,9 @@ def management_dashboard(request):
     
     context = {
         'cafe_code': cafe.code if cafe else None,
+        'active_page': 'management_dashboard',
     }
-    
+
     return render(request, 'management_dashboard.html', context)
 
 
@@ -5730,10 +5823,25 @@ def all_departments_requests(request):
     purchasing/warehouse manager can see the total amount needed at a glance.
     """
     from collections import defaultdict
+    from datetime import date, timedelta
 
     request_type = request.GET.get('type', 'purchase')
+    date_str = request.GET.get('date', '')
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
+
+    # Determine selected date (default to today)
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_date = date.today()
+    else:
+        selected_date = date.today()
+        date_str = selected_date.isoformat()
+
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
 
     DEPT_NAMES = {
         'kitchen':   'آشپزخانه',
@@ -5764,6 +5872,9 @@ def all_departments_requests(request):
     if cafe:
         requests_qs = requests_qs.filter(cafe=cafe)
 
+    # Filter by selected date
+    requests_qs = requests_qs.filter(created_at__date=selected_date)
+
     requests_list = list(requests_qs.order_by('-created_at'))
 
     # ---- Merge similar products ----------------------------------------
@@ -5775,7 +5886,10 @@ def all_departments_requests(request):
     })
 
     for req in requests_list:
-        dept_name = DEPT_NAMES.get(getattr(req.user, 'role', ''), getattr(req.user, 'role', '—'))
+        if getattr(req.user, 'role', '') == 'requester' and req.user.department:
+            dept_name = req.user.department.name
+        else:
+            dept_name = DEPT_NAMES.get(getattr(req.user, 'role', ''), getattr(req.user, 'role', '—'))
         for item in req.items.all():
             # Normalise key: use product id when available, else lower-cased name
             if hasattr(item, 'product') and item.product_id:
@@ -5831,6 +5945,11 @@ def all_departments_requests(request):
         'pending_count': pending_count,
         'active_departments': active_departments,
         'cafe_code': cafe_code,
+        'selected_date': selected_date,
+        'prev_date': prev_date,
+        'next_date': next_date,
+        'date_str': date_str,
+        'all_departments': Department.objects.filter(is_active=True).order_by('name'),
     })
 
 
@@ -5855,11 +5974,19 @@ def quick_add_product(request):
 
     name = data.get('name', '').strip()
     unit_name = data.get('unit', 'عدد').strip()
+    usage_location = data.get('usage_location', '').strip()
 
     if not name:
         return JsonResponse({'success': False, 'error': 'نام کالا الزامی است'})
 
     cafe = get_cafe_from_request(request)
+
+    # Auto-detect usage_location from user's department if not provided
+    if not usage_location:
+        if request.user.role == 'requester' and request.user.department:
+            usage_location = request.user.department.name
+        else:
+            usage_location = 'general'
 
     # Return existing product if same name already exists
     existing_qs = Product.objects.filter(name__iexact=name)
@@ -5886,6 +6013,7 @@ def quick_add_product(request):
     product = Product.objects.create(
         name=name,
         unit=unit_obj,
+        usage_location=usage_location,
         cafe=cafe,
         is_active=True,
     )
@@ -5894,4 +6022,50 @@ def quick_add_product(request):
         'id': product.id,
         'name': product.name,
         'unit': product.unit.name if product.unit else unit_name,
+    }})
+
+
+@custom_login_required
+@role_required(["manager"])
+def quick_add_department(request):
+    """Create a new Department on-the-fly from the user form.
+
+    POST JSON body: {"name": "..."}
+    Returns JSON: {"success": true, "department": {"id": ..., "name": "..."}}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
+
+    name = data.get('name', '').strip()
+
+    if not name:
+        return JsonResponse({'success': False, 'error': 'نام بخش الزامی است'})
+
+    cafe = get_cafe_from_request(request)
+
+    # Return existing department if same name already exists
+    existing_qs = Department.objects.filter(name__iexact=name)
+    if cafe:
+        existing_qs = existing_qs.filter(cafe=cafe)
+    if existing_qs.exists():
+        d = existing_qs.first()
+        return JsonResponse({'success': True, 'department': {
+            'id': d.id,
+            'name': d.name,
+        }})
+
+    department = Department.objects.create(
+        name=name,
+        cafe=cafe,
+        is_active=True,
+    )
+
+    return JsonResponse({'success': True, 'department': {
+        'id': department.id,
+        'name': department.name,
     }})

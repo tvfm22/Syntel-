@@ -1,1451 +1,416 @@
-﻿{% load static %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحلیل خرید بر اساس دسته‌بندی</title>
-    
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --info-color: #3b82f6;
-            --dark-color: #1f2937;
-            --light-color: #f9fafb;
-            --border-color: #e5e7eb;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
-            --radius-xl: 1rem;
-        }
-
-        body {
-            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
-
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-left: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-        }
-
-
-
-        .sidebar-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--light-color);
-        }
-
-        .sidebar-title {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--dark-color);
-        }
-
-        .menu-list {
-            list-style: none;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            flex: 1;
-        }
-
-        .menu-item {
-            margin: 0;
-        }
-
-        .menu-link {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            color: var(--dark-color);
-            text-decoration: none;
-            border-radius: var(--radius-md);
-            transition: all 0.2s ease;
-            font-weight: 500;
-        }
-
-        .menu-link:hover {
-            background: var(--light-color);
-            color: var(--primary-color);
-            transform: translateX(5px);
-        }
-
-        .menu-link.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            box-shadow: var(--shadow-md);
-        }
-
-        .menu-link i {
-            width: 20px;
-            font-size: 1rem;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            padding: 2rem;
-            overflow-x: auto;
-            width: 100%;
-        }
-
-        .page-header {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .page-title i {
-            color: var(--primary-color);
-        }
-
-        /* Top Header */
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: white;
-            padding: 1rem 1.5rem;
-            border-radius: var(--radius-lg);
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .date-display {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--dark-color);
-            font-weight: 500;
-            direction: rtl;
-            font-family: Vazir, sans-serif;
-            background: var(--light-color);
-            padding: 0.5rem 0.875rem;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-        }
-
-        .date-display i {
-            color: var(--primary-color);
-            font-size: 1rem;
-        }
-
-        .logout-btn {
-            background: white;
-            border: 1px solid var(--danger-color);
-            color: var(--danger-color);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-family: 'Vazir', sans-serif;
-        }
-
-        .logout-btn:hover {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        /* Filter Section */
-.filter-section {
-    background-color: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.filter-row {
-    margin-bottom: 1rem;
-}
-
-.filter-section label {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--dark-color);
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.filter-section input,
-.filter-section select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-family: 'Vazir', sans-serif;
-    transition: all 0.2s ease;
-}
-
-.filter-section input:focus,
-.filter-section select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.date-input-group {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 0.5rem;
-    background: white;
-    direction: ltr;
-    transition: all 0.2s ease;
-}
-
-.date-input-group:focus-within {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.date-input-group input {
-    flex: 1;
-    text-align: center;
-    padding: 0.25rem;
-    border: none;
-    font-family: 'Vazir', sans-serif;
-    font-size: 0.9rem;
-}
-
-.date-input-group input:focus {
-    outline: none;
-    box-shadow: none;
-}
-
-.date-input-group input[name$="_year"] {
-    flex: 1.5;
-}
-
-.date-input-group .date-separator {
-    color: var(--border-color);
-    font-weight: bold;
-    padding: 0 0.25rem;
-}
-
-.btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    transition: all 0.2s ease;
-    border: none;
-    cursor: pointer;
-    font-family: 'Vazir', sans-serif;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-    box-shadow: var(--shadow-sm);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-outline-secondary {
-    background: white;
-    color: var(--dark-color);
-    border: 1px solid var(--border-color);
-}
-
-.btn-outline-secondary:hover {
-    background: var(--light-color);
-}
-
-.btn-success {
-    background: var(--success-color);
-    color: white;
-}
-
-.btn-success:hover {
-    background: #059669;
-}
-
-/* Metric Cards */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.metric-card {
-    background: white;
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.2s ease;
-}
-
-.metric-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
-}
-
-.metric-card.bg-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-}
-
-.metric-card.bg-success {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-}
-
-.metric-card.bg-info {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-}
-
-.metric-card.bg-warning {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-}
-
-.metric-value {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.metric-label {
-    font-size: 0.9rem;
-    opacity: 0.9;
-}
-
-/* Table */
-.products-table {
-    background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
-}
-
-.table-header {
-    padding: 1.25rem 1.5rem;
-    background: var(--light-color);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.table-header h5 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.table-responsive {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-thead {
-    background: var(--light-color);
-}
-
-th {
-    padding: 1rem;
-    text-align: right;
-    font-weight: 700;
-    color: var(--dark-color);
-    font-size: 0.9rem;
-    border-bottom: 2px solid var(--border-color);
-}
-
-td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.product-row {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.product-row:hover {
-    background-color: var(--light-color);
-}
-
-.history-row {
-    background-color: #f0f4f8;
-    display: none;
-}
-
-.history-row.show {
-    display: table-row;
-}
-
-.history-container {
-    padding: 1rem 1.5rem;
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-    background: #f0f4f8;
-    border-radius: var(--radius-md);
-}
-
-.history-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.history-chart-container {
-    width: 500px;
-    flex-shrink: 0;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 0 2px 4px -1px rgba(59, 130, 246, 0.06);
-}
-
-.history-chart-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    color: #6b7280;
-    text-align: center;
-}
-
-.chart-wrapper {
-    position: relative;
-    height: 280px;
-}
-
-.history-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #6b7280;
-}
-
-.history-grid {
-    display: flex;
-    gap: 0.75rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-}
-
-.history-item {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: var(--radius-md);
-    padding: 0.75rem;
-    box-shadow: 0 2px 4px -1px rgba(59, 130, 246, 0.1), 0 1px 2px -1px rgba(59, 130, 246, 0.06);
-    min-width: 180px;
-    flex-shrink: 0;
-}
-
-.history-item .history-label {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    display: block;
-    margin-bottom: 0.15rem;
-}
-
-.history-item .history-value {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--dark-color);
-    display: block;
-    margin-bottom: 0.4rem;
-}
-
-.history-item .history-date {
-    font-size: 0.8rem;
-    color: var(--primary-color);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.history-item .history-supplier {
-    font-size: 0.75rem;
-    color: #6b7280;
-    padding-top: 0.4rem;
-    border-top: 1px solid var(--border-color);
-    margin-top: 0.4rem;
-}
-
-.badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-.badge-info {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(0,0,0,.1);
-    border-radius: 50%;
-    border-top-color: var(--primary-color);
-    animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.alert {
-    padding: 1rem 1.5rem;
-    border-radius: var(--radius-md);
-    margin: 1rem;
-}
-
-.alert-warning {
-    background: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
-}
-
-.alert-info {
-    background: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
-}
-
-.alert i {
-    margin-left: 0.5rem;
-}
-
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -0.5rem;
-}
-
-.col-md-3,
-.col-md-4,
-.col-md-8 {
-    padding: 0 0.5rem;
-}
-
-.col-md-3 {
-    flex: 0 0 25%;
-    max-width: 25%;
-}
-
-.col-md-4 {
-    flex: 0 0 33.333333%;
-    max-width: 33.333333%;
-}
-
-.col-md-8 {
-    flex: 0 0 66.666667%;
-    max-width: 66.666667%;
-}
-
-@media (max-width: 768px) {
-    .col-md-3,
-    .col-md-4,
-    .col-md-8 {
-        flex: 0 0 100%;
-        max-width: 100%;
-        margin-bottom: 1rem;
+{% extends 'dashboard_layout.html' %}
+{% load static %}
+
+{% block title %}تحلیل خرید بر اساس دسته‌بندی{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white; border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm); padding: 1.5rem 2rem; margin-bottom: 1.5rem;
+    }
+    .filter-row { display: flex; flex-wrap: wrap; }
+    .date-input-group { display: flex; align-items: center; gap: 4px; }
+    .date-input-group input[type="number"] {
+        width: 70px; padding: 0.5rem; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md); text-align: center; font-family: 'Vazir', sans-serif;
+    }
+    .date-sep { color: var(--gray-400); font-weight: 600; }
+
+    .date-display {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.5rem 0.875rem; background: var(--gray-50);
+        border-radius: var(--radius-md); font-size: 0.85rem; color: var(--dark); font-weight: 500;
+    }
+    .date-display i { color: var(--primary); }
+
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem; margin-bottom: 1.5rem;
     }
 
-    .sidebar {
-        display: none;
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table thead { background: var(--gray-50); }
+    .data-table th { padding: 1rem 1.25rem; text-align: right; font-size: 0.85rem; font-weight: 700; color: var(--dark); border-bottom: 2px solid var(--gray-200); }
+    .data-table td { padding: 0.75rem 1.25rem; font-size: 0.85rem; color: var(--gray-500); border-bottom: 1px solid var(--gray-200); }
+    .data-table tbody tr { transition: all 0.2s; }
+    .data-table tbody tr:hover { background: var(--gray-50); }
+    .data-table .amount { font-weight: 700; color: var(--dark); }
+
+    .badge { padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 700; }
+    .badge-success { background: rgba(16,185,129,0.1); color: #065f46; }
+    .badge-warning { background: rgba(245,158,11,0.1); color: #92400e; }
+    .badge-info { background: rgba(99,102,241,0.1); color: var(--primary-dark); }
+
+    .chart-card {
+        background: white; border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl); overflow: hidden; margin-bottom: 1.5rem;
     }
+    .chart-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
+    .chart-title { font-size: 1.15rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.5rem; }
+    .chart-body { padding: 2rem; }
+    .chart-wrapper { position: relative; height: 400px; }
+    .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .spinner { width: 2.5rem; height: 2.5rem; border: 4px solid var(--gray-100); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .main-content {
-        padding: 1rem;
+    .empty-state { text-align: center; padding: 2rem; color: var(--gray-500); }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--gray-400); display: block; }
+
+    .select2-search__field { font-family: 'Vazir', sans-serif !important; }
+
+    @media (max-width: 768px) {
+        .filter-row { flex-direction: column; gap: 0.5rem; }
+        .data-table td, .data-table th { padding: 0.5rem; font-size: 0.75rem; }
+        .chart-wrapper { height: 300px; }
+        .chart-body { padding: 1rem; }
     }
-}
-    </style>
-</head>
-<body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-title">منو مدیریت - {{ current_cafe.name }}</div>
-            </div>
-            <ul class="menu-list">
-                {% if user.role != 'ceo' and user.role != 'manager' %}
-                <li class="menu-item">
-                    <a href="{% url 'dashboard' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-home"></i>
-                        <span>داشبورد</span>
-                    </a>
-                </li>
-                {% endif %}
-                <li class="menu-item">
-                    <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>داشبورد مدیریت</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-check-double"></i>
-                        <span>تایید درخواست‌های خرید</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span>روند هزینه‌ها</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-tags"></i>
-                        <span>نظارت بر قیمت</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link active">
-                        <i class="fas fa-layer-group"></i>
-                        <span>تحلیل خرید بر اساس دسته‌بندی</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'logout' %}" class="menu-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>خروج</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
+</style>
+{% endblock %}
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">
-                    <i class="fas fa-layer-group"></i>
-                    تحلیل خرید بر اساس دسته‌بندی
-                </h1>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div class="date-display">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span id="persianDate"></span>
-                    </div>
-                    <a href="{% url 'logout' %}" class="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>خروج</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="filter-section">
-                <form method="get" id="filterForm">
-                    <div class="row filter-row" style="align-items: flex-end; gap: 10px;">
-                        <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
-                            <label>
-                                <i class="fas fa-calendar"></i> از تاریخ:
-                            </label>
-                            <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
-                            <div class="date-input-group">
-                                <input type="number" name="start_year" id="start_year" 
-                                       placeholder="سال" min="1300" max="1500">
-                                <span class="date-separator">/</span>
-                                <input type="number" name="start_month" id="start_month" 
-                                       placeholder="ماه" min="1" max="12">
-                                <span class="date-separator">/</span>
-                                <input type="number" name="start_day" id="start_day" 
-                                       placeholder="روز" min="1" max="31">
-                            </div>
-                        </div>
-                        <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
-                            <label>
-                                <i class="fas fa-calendar"></i> تا تاریخ:
-                            </label>
-                            <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
-                            <div class="date-input-group">
-                                <input type="number" name="end_year" id="end_year" 
-                                       placeholder="سال" min="1300" max="1500">
-                                <span class="date-separator">/</span>
-                                <input type="number" name="end_month" id="end_month" 
-                                       placeholder="ماه" min="1" max="12">
-                                <span class="date-separator">/</span>
-                                <input type="number" name="end_day" id="end_day" 
-                                       placeholder="روز" min="1" max="31">
-                            </div>
-                        </div>
-                        <div class="col-md-3" style="flex: 0 0 calc(22.22% - 8px);">
-                            <label for="category">
-                                <i class="fas fa-folder"></i> دسته اصلی:
-                            </label>
-                            <select name="category" id="category" class="form-control">
-                                <option value="">-- دسته --</option>
-                                {% for cat in main_categories %}
-                                <option value="{{ cat.id }}" {% if cat.id|stringformat:"s" == selected_category %}selected{% endif %}>
-                                    {{ cat.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3" style="flex: 0 0 calc(22.22% - 8px);">
-                            <label for="subcategory">
-                                <i class="fas fa-folder-open"></i> زیردسته:
-                            </label>
-                            <select name="subcategory" id="subcategory" class="form-control">
-                                <option value="">-- زیردسته --</option>
-                                {% for subcat in subcategories %}
-                                <option value="{{ subcat.id }}" {% if subcat.id|stringformat:"s" == selected_subcategory %}selected{% endif %}>
-                                    {{ subcat.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2" style="flex: 0 0 calc(22.22% - 8px);">
-                            <label for="supplier">
-                                <i class="fas fa-truck"></i> فروشنده:
-                            </label>
-                            <select name="supplier" id="supplier" class="form-control">
-                                <option value="">-- همه --</option>
-                                {% for sup in suppliers %}
-                                <option value="{{ sup.id }}" {% if sup.id|stringformat:"s" == selected_supplier %}selected{% endif %}>
-                                    {{ sup.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Summary Metrics -->
-            {% if selected_subcategory %}
-            <div class="metrics-grid">
-                <div class="metric-card bg-primary">
-                    <div class="metric-value">{{ summary.total_items }}</div>
-                    <div class="metric-label">تعداد کل خریدها</div>
-                </div>
-                <div class="metric-card bg-success">
-                    <div class="metric-value">{{ summary.total_amount|floatformat:0 }}</div>
-                    <div class="metric-label">مبلغ کل (ریال)</div>
-                </div>
-                <div class="metric-card bg-info">
-                    <div class="metric-value">{{ summary.weighted_avg_price|floatformat:0 }}</div>
-                    <div class="metric-label">میانگین وزنی (ریال)</div>
-                </div>
-                <div class="metric-card bg-warning">
-                    <div class="metric-value">{{ summary.total_quantity|floatformat:2 }}</div>
-                    <div class="metric-label">مقدار کل خریداری شده</div>
-                </div>
-            </div>
-
-            <!-- Products Table -->
-            <div class="products-table">
-                <div class="table-header">
-                    <h5>
-                        <i class="fas fa-list"></i> لیست محصولات
-                    </h5>
-                </div>
-                {% if products_data %}
-                <div class="table-responsive">
-                    <table id="productsTable">
-                        <thead>
-                            <tr>
-                                <th width="4%">#</th>
-                                <th width="22%">نام محصول</th>
-                                <th width="18%">فروشنده</th>
-                                <th width="8%">واحد</th>
-                                <th width="10%">مقدار کل</th>
-                                <th width="13%">میانگین قیمت</th>
-                                <th width="13%">مبلغ کل (ریال)</th>
-                                <th width="7%">تعداد خرید</th>
-                                <th width="5%">جزئیات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for product in products_data %}
-                            <tr class="product-row" data-product-id="{{ product.product__id }}" data-supplier-id="{{ product.invoice__supplier__id }}" onclick="toggleHistory({{ product.product__id }}, {{ product.invoice__supplier__id }})">
-                                <td>{{ forloop.counter }}</td>
-                                <td><strong>{{ product.product__name }}</strong></td>
-                                <td><i class="fas fa-store"></i> {{ product.invoice__supplier__name }}</td>
-                                <td>{{ product.product__unit__name|default:"نامشخص" }}</td>
-                                <td>{{ product.total_quantity|floatformat:2 }}</td>
-                                <td><span style="color: #2563eb; font-weight: 600;">{{ product.weighted_avg_price|floatformat:0 }}</span></td>
-                                <td>{{ product.total_amount|floatformat:0 }}</td>
-                                <td><span class="badge badge-info">{{ product.purchase_count }}</span></td>
-                                <td>
-                                    <i class="fas fa-chevron-down" id="icon-{{ product.product__id }}-{{ product.invoice__supplier__id }}"></i>
-                                </td>
-                            </tr>
-                            <tr class="history-row" id="history-{{ product.product__id }}-{{ product.invoice__supplier__id }}">
-                                <td colspan="9">
-                                    <div class="history-container" id="history-content-{{ product.product__id }}-{{ product.invoice__supplier__id }}">
-                                        <div class="text-center">
-                                            <div class="loading-spinner"></div>
-                                            در حال بارگذاری...
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    هیچ محصولی با این فیلترها یافت نشد.
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i>
-                لطفاً دسته‌بندی و زیردسته را انتخاب کنید تا اطلاعات نمایش داده شود.
-            </div>
-            {% endif %}
-        </main>
+{% block content %}
+<!-- Header -->
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-layer-group"></i>
+        تحلیل خرید بر اساس دسته‌بندی
+    </h1>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="date-display">
+            <i class="fas fa-calendar-alt"></i>
+            <span id="persianDate"></span>
+        </div>
+        <a href="{% url 'logout' %}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>خروج</span>
+        </a>
     </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" id="filterForm">
+        <div class="row filter-row" style="align-items: flex-end; gap: 10px;">
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
+                <label><i class="fas fa-calendar"></i> از تاریخ:</label>
+                <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
+                <div class="date-input-group">
+                    <input type="number" name="start_year" id="start_year" value="{{ start_year|default:1403 }}" min="1400" max="1410" style="width:65px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="start_month" id="start_month" value="{{ start_month|default:1 }}" min="1" max="12" style="width:50px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="start_day" id="start_day" value="{{ start_day|default:1 }}" min="1" max="31" style="width:50px;">
+                </div>
+            </div>
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
+                <label><i class="fas fa-calendar"></i> تا تاریخ:</label>
+                <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
+                <div class="date-input-group">
+                    <input type="number" name="end_year" id="end_year" value="{{ end_year|default:1403 }}" min="1400" max="1410" style="width:65px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="end_month" id="end_month" value="{{ end_month|default:12 }}" min="1" max="12" style="width:50px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="end_day" id="end_day" value="{{ end_day|default:31 }}" min="1" max="31" style="width:50px;">
+                </div>
+            </div>
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
+                <label><i class="fas fa-tags"></i> دسته‌بندی</label>
+                <select name="category" id="categorySelect" class="form-control" style="width:100%;">
+                    <option value="">همه دسته‌ها</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
+                <label><i class="fas fa-store"></i> تأمین‌کننده</label>
+                <select name="supplier" id="supplierSelect" class="form-control" style="width:100%;">
+                    <option value="">همه تأمین‌کنندگان</option>
+                    {% for sup in suppliers %}
+                    <option value="{{ sup.id }}" {% if selected_supplier == sup.id|stringformat:"s" %}selected{% endif %}>{{ sup.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px);">
+                <label><i class="fas fa-layer-group"></i> زیردسته</label>
+                <select name="subcategory" id="subcategorySelect" class="form-control" style="width:100%;">
+                    <option value="">همه زیردسته‌ها</option>
+                </select>
+            </div>
+            <div class="col-md-2" style="flex: 0 0 calc(16.66% - 8px); display: flex; gap: 5px; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary" style="padding:0.5rem 1rem;">
+                    <i class="fas fa-search"></i> جستجو
+                </button>
+                <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="btn btn-secondary" style="padding:0.5rem 1rem;">
+                    <i class="fas fa-redo"></i>
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if stats_data or stats_error %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    {% if stats_data %}
+    <div class="stat-card">
+        <div class="stat-icon-circle primary"><i class="fas fa-shopping-bag"></i></div>
+        <div class="stat-value primary">{{ stats_data.total_purchases|default:"۰" }}</div>
+        <div class="stat-label">تعداد خرید</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon-circle success"><i class="fas fa-money-bill"></i></div>
+        <div class="stat-value success">{{ stats_data.total_amount|default:"۰" }}</div>
+        <div class="stat-label">مجموع هزینه</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon-circle warning"><i class="fas fa-building"></i></div>
+        <div class="stat-value warning">{{ stats_data.supplier_count|default:"۰" }}</div>
+        <div class="stat-label">تعداد تأمین‌کنندگان</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon-circle danger"><i class="fas fa-boxes"></i></div>
+        <div class="stat-value danger">{{ stats_data.product_count|default:"۰" }}</div>
+        <div class="stat-label">تعداد محصولات</div>
+    </div>
+    {% elif stats_error %}
+    <div class="stat-card" style="grid-column:1/-1; border-right-color:var(--danger);">
+        <div class="stat-label" style="color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> {{ stats_error }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
-    <script>
+{% if subcategory_data %}
+<!-- Subcategory Breakdown -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-chart-pie"></i> تفکیک زیردسته‌ها</h3>
+    </div>
+    <div class="chart-body">
+        <div class="chart-wrapper">
+            <canvas id="subcategoryChart"></canvas>
+            <div class="loading-overlay" id="chartLoading"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
 
+<!-- Supplier Breakdown -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-chart-bar"></i> تفکیک تأمین‌کنندگان</h3>
+    </div>
+    <div class="chart-body">
+        <div class="chart-wrapper">
+            <canvas id="supplierChart"></canvas>
+            <div class="loading-overlay" id="supplierChartLoading"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
 
-// نمایش تاریخ شمسی
-function displayPersianDate() {
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('fa-IR', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric'
-    });
-    
-    const dateElement = document.getElementById('persianDate');
-    if (dateElement) {
-        dateElement.textContent = dateStr;
-    }
-}
+<!-- Data Table -->
+<div class="table-card" style="margin-top: 1.5rem;">
+    <div class="table-header">
+        <div class="table-title"><i class="fas fa-table"></i> جزئیات خرید</div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="data-table" id="analysisTable">
+            <thead>
+                <tr>
+                    <th>نام محصول</th>
+                    <th>دسته‌بندی</th>
+                    <th>تأمین‌کننده</th>
+                    <th>تعداد</th>
+                    <th>قیمت واحد</th>
+                    <th>مجموع</th>
+                    <th>تاریخ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in subcategory_data %}
+                <tr>
+                    <td style="font-weight:600; color:var(--dark);">{{ item.product_name }}</td>
+                    <td>{{ item.category_name }}</td>
+                    <td>{{ item.supplier_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td class="amount">{{ item.unit_price }}</td>
+                    <td class="amount">{{ item.total_price }}</td>
+                    <td>{{ item.purchase_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-chart-pie"></i>
+    <p>برای مشاهده تحلیل، فیلترهای مورد نظر را انتخاب کنید.</p>
+</div>
+{% endif %}
+{% endblock %}
 
-// تجزیه تاریخ به فیلدهای جداگانه
-function parseDateToFields() {
-    const startDate = document.getElementById('start_date').value;
-    const endDate = document.getElementById('end_date').value;
-    
-    if (startDate) {
-        const parts = startDate.split('-');
-        if (parts.length === 3) {
-            document.getElementById('start_year').value = parts[0];
-            document.getElementById('start_month').value = parts[1];
-            document.getElementById('start_day').value = parts[2];
-        }
-    }
-    
-    if (endDate) {
-        const parts = endDate.split('-');
-        if (parts.length === 3) {
-            document.getElementById('end_year').value = parts[0];
-            document.getElementById('end_month').value = parts[1];
-            document.getElementById('end_day').value = parts[2];
-        }
-    }
-}
-
-// ترکیب فیلدهای تاریخ قبل از ارسال فرم
-function combineDateFields() {
-    const startYear = document.getElementById('start_year').value;
-    const startMonth = document.getElementById('start_month').value;
-    const startDay = document.getElementById('start_day').value;
-    
-    const endYear = document.getElementById('end_year').value;
-    const endMonth = document.getElementById('end_month').value;
-    const endDay = document.getElementById('end_day').value;
-    
-    if (startYear && startMonth && startDay) {
-        const paddedMonth = startMonth.padStart(2, '0');
-        const paddedDay = startDay.padStart(2, '0');
-        document.getElementById('start_date').value = `${startYear}-${paddedMonth}-${paddedDay}`;
-    } else {
-        document.getElementById('start_date').value = '';
-    }
-    
-    if (endYear && endMonth && endDay) {
-        const paddedMonth = endMonth.padStart(2, '0');
-        const paddedDay = endDay.padStart(2, '0');
-        document.getElementById('end_date').value = `${endYear}-${paddedMonth}-${paddedDay}`;
-    } else {
-        document.getElementById('end_date').value = '';
-    }
-}
-
-// راه‌اندازی
-document.addEventListener('DOMContentLoaded', function() {
-    parseDateToFields();
-    
-    const filterForm = document.getElementById('filterForm');
-    if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
-            combineDateFields();
-        });
-    }
-    
-    // Auto-focus و محدودیت طول برای فیلدهای تاریخ - از تاریخ
-    const startYear = document.getElementById('start_year');
-    const startMonth = document.getElementById('start_month');
-    const startDay = document.getElementById('start_day');
-    
-    if (startYear) {
-        startYear.addEventListener('input', function(e) {
-            // محدود کردن به 4 رقم
-            if (this.value.length > 4) {
-                this.value = this.value.slice(0, 4);
-            }
-            // انتقال خودکار به فیلد بعدی
-            if (this.value.length === 4) {
-                startMonth.focus();
-            }
-        });
-    }
-    
-    if (startMonth) {
-        startMonth.addEventListener('input', function(e) {
-            // محدود کردن به 2 رقم
-            if (this.value.length > 2) {
-                this.value = this.value.slice(0, 2);
-            }
-            // انتقال خودکار به فیلد بعدی
-            if (this.value.length === 2) {
-                startDay.focus();
-            }
-        });
-    }
-    
-    if (startDay) {
-        startDay.addEventListener('input', function(e) {
-            // محدود کردن به 2 رقم
-            if (this.value.length > 2) {
-                this.value = this.value.slice(0, 2);
-            }
-        });
-    }
-    
-    // Auto-focus و محدودیت طول برای فیلدهای تاریخ - تا تاریخ
-    const endYear = document.getElementById('end_year');
-    const endMonth = document.getElementById('end_month');
-    const endDay = document.getElementById('end_day');
-    
-    if (endYear) {
-        endYear.addEventListener('input', function(e) {
-            // محدود کردن به 4 رقم
-            if (this.value.length > 4) {
-                this.value = this.value.slice(0, 4);
-            }
-            // انتقال خودکار به فیلد بعدی
-            if (this.value.length === 4) {
-                endMonth.focus();
-            }
-        });
-    }
-    
-    if (endMonth) {
-        endMonth.addEventListener('input', function(e) {
-            // محدود کردن به 2 رقم
-            if (this.value.length > 2) {
-                this.value = this.value.slice(0, 2);
-            }
-            // انتقال خودکار به فیلد بعدی
-            if (this.value.length === 2) {
-                endDay.focus();
-            }
-        });
-    }
-    
-    if (endDay) {
-        endDay.addEventListener('input', function(e) {
-            // محدود کردن به 2 رقم
-            if (this.value.length > 2) {
-                this.value = this.value.slice(0, 2);
-            }
-        });
-    }
-});
-
-// فراخوانی تابع نمایش تاریخ
-if (document.getElementById('persianDate')) {
-    displayPersianDate();
-}
-
-// Helper function to format numbers with commas
-function formatNumber(num) {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-// Format all numbers on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Format metric cards
-    document.querySelectorAll('.metric-value').forEach(el => {
-        const value = el.textContent.trim();
-        if (value && !isNaN(value.replace(/,/g, ''))) {
-            el.textContent = formatNumber(value.replace(/,/g, ''));
-        }
-    });
-    
-    // Format table cells with numbers
-    document.querySelectorAll('table tbody td').forEach(el => {
-        const value = el.textContent.trim();
-        // Check if it's a number (with possible decimal point)
-        if (value && /^\d+(\.\d+)?$/.test(value)) {
-            const num = parseFloat(value);
-            if (num >= 1000) {
-                // Keep decimal places if they exist
-                const parts = value.split('.');
-                if (parts.length > 1) {
-                    el.textContent = formatNumber(parts[0]) + '.' + parts[1];
-                } else {
-                    el.textContent = formatNumber(value);
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'vendor/select2/select2.min.js' %}"></script>
+<link href="{% static 'vendor/select2/select2.min.css' %}" rel="stylesheet">
+<script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
+<link href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}" rel="stylesheet">
+<script>
+    function getCookie(name) {
+        var value = null;
+        if (document.cookie && document.cookie !== '') {
+            document.cookie.split(';').forEach(function(c) {
+                c = c.trim();
+                if (c.substring(0, name.length + 1) === (name + '=')) {
+                    value = decodeURIComponent(c.substring(name.length + 1));
                 }
-            }
-        }
-    });
-});
-
-// Helper function to get CSRF token from cookie
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// فیلتر آبشاری
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOM LOADED - Starting filter setup ===');
-    
-    const categorySelect = document.getElementById('category');
-    const subcategorySelect = document.getElementById('subcategory');
-    const supplierSelect = document.getElementById('supplier');
-    const startDateInput = document.getElementById('start_date');
-    const endDateInput = document.getElementById('end_date');
-
-    console.log('Elements found:');
-    console.log('- categorySelect:', categorySelect);
-    console.log('- subcategorySelect:', subcategorySelect);
-    console.log('- supplierSelect:', supplierSelect);
-
-    if (!categorySelect || !subcategorySelect || !supplierSelect) {
-        console.error('ERROR: One or more select elements not found!');
-        return;
-    }
-
-    // استخراج کد کافه از URL
-    function getCafeCodeFromUrl() {
-        const pathParts = window.location.pathname.split('/').filter(p => p);
-        return pathParts[0] || 'local';
-    }
-    
-    const cafeCode = getCafeCodeFromUrl();
-    console.log('Cafe code:', cafeCode);
-
-    // ذخیره زیردسته‌های بارگذاری شده
-    let loadedSubcategories = {};
-
-    // وقتی دسته‌بندی تغییر کرد
-    categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
-        console.log('=== Category changed to:', categoryId);
-    
-        // پاک کردن زیردسته و فروشنده
-        subcategorySelect.innerHTML = '<option value="">انتخاب زیردسته</option>';
-        supplierSelect.innerHTML = '<option value="">همه فروشندگان</option>';
-    
-        if (!categoryId) {
-            console.log('No category selected, stopping');
-            return;
-        }
-    
-        // بارگذاری زیردسته‌ها
-        const url = `/${cafeCode}/api/invoices/subcategories/?category_id=${categoryId}`;
-        console.log('Fetching from:', url);
-    
-        fetch(url, {
-            credentials: 'same-origin',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-            .then(response => {
-                console.log('Response received, status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Data received:', data);
-                if (data.subcategories && data.subcategories.length > 0) {
-                    console.log('Adding', data.subcategories.length, 'subcategories');
-                    data.subcategories.forEach(subcat => {
-                        const option = document.createElement('option');
-                        option.value = subcat.id;
-                        option.textContent = subcat.name;
-                        subcategorySelect.appendChild(option);
-                        console.log('Added subcategory:', subcat.name);
-                    });
-                    loadedSubcategories[categoryId] = data.subcategories;
-                } else {
-                    console.log('No subcategories found in response');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading subcategories:', error);
-                alert('خطا در بارگذاری زیردسته‌ها: ' + error.message);
             });
+        }
+        return value;
+    }
+    var csrftoken = getCookie('csrftoken');
+
+    function toFarsiNumber(num) {
+        var d = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        return num.toString().replace(/\d/g, function(x) { return d[x]; });
+    }
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Persian date
+        var dateEl = document.getElementById('persianDate');
+        if (dateEl) {
+            dateEl.textContent = new Intl.DateTimeFormat('fa-IR', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            }).format(new Date());
+        }
+
+        // Initialize Select2
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#categorySelect, #supplierSelect, #subcategorySelect').select2({
+                language: 'fa', width: 'resolve',
+                placeholder: 'انتخاب کنید', allowClear: true
+            });
+        }
+
+        // Load subcategories
+        var catSelect = document.getElementById('categorySelect');
+        if (catSelect) {
+            catSelect.addEventListener('change', function() { loadSubcategories(this.value); });
+            if (catSelect.value) loadSubcategories(catSelect.value);
+        }
+
+        // Render charts if data exists
+        {% if subcategory_data %}
+        renderCharts();
+        {% endif %}
     });
 
-    console.log('Category change listener added successfully');
+    function loadSubcategories(categoryId) {
+        var sel = document.getElementById('subcategorySelect');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">همه زیردسته‌ها</option>';
+        if (!categoryId) return;
 
-    // وقتی زیردسته تغییر کرد
-    subcategorySelect.addEventListener('change', function() {
-        const subcategoryId = this.value;
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-    
-        // پاک کردن فروشنده
-        supplierSelect.innerHTML = '<option value="">همه فروشندگان</option>';
-    
-        if (!subcategoryId) {
-            return;
-        }
-    
-        // ساخت URL با پارامترهای اضافی
-        let url = `/${cafeCode}/api/invoices/suppliers/?subcategory_id=${subcategoryId}`;
-        if (startDate) url += `&start_date=${startDate}`;
-        if (endDate) url += `&end_date=${endDate}`;
-    
-        // بارگذاری فروشندگان
-        fetch(url, {
-            credentials: 'same-origin',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                data.suppliers.forEach(supplier => {
-                    const option = document.createElement('option');
-                    option.value = supplier.id;
-                    option.textContent = supplier.name;
-                    supplierSelect.appendChild(option);
+        fetch('/{{ cafe_code }}/api/analytics/category/' + categoryId + '/subcategories/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                (data.subcategories || []).forEach(function(sc) {
+                    var opt = document.createElement('option');
+                    opt.value = sc.id; opt.textContent = sc.name;
+                    sel.appendChild(opt);
                 });
-                // Submit form automatically after suppliers loaded
-                document.getElementById('filterForm').submit();
+                {% if selected_subcategory %}
+                sel.value = "{{ selected_subcategory }}";
+                {% endif %}
             })
-            .catch(error => console.error('خطا در بارگذاری فروشندگان:', error));
-    });
-
-    // Auto-submit on supplier change
-    supplierSelect.addEventListener('change', function() {
-        if (subcategorySelect.value) {
-            document.getElementById('filterForm').submit();
-        }
-    });
-
-    // Auto-submit on date change
-    startDateInput.addEventListener('change', function() {
-        if (subcategorySelect.value) {
-            document.getElementById('filterForm').submit();
-        }
-    });
-
-    endDateInput.addEventListener('change', function() {
-        if (subcategorySelect.value) {
-            document.getElementById('filterForm').submit();
-        }
-    });
-});
-
-// نگهداری وضعیت تاریخچه‌های باز شده
-const openedHistories = new Set();
-
-// Toggle نمایش تاریخچه خرید
-function toggleHistory(productId, supplierId) {
-    const historyKey = `${productId}-${supplierId}`;
-    const historyRow = document.getElementById(`history-${historyKey}`);
-    const icon = document.getElementById(`icon-${historyKey}`);
-    
-    if (openedHistories.has(historyKey)) {
-        // بستن
-        historyRow.classList.remove('show');
-        icon.classList.remove('fa-chevron-up');
-        icon.classList.add('fa-chevron-down');
-        openedHistories.delete(historyKey);
-    } else {
-        // باز کردن و بارگذاری داده
-        historyRow.classList.add('show');
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-up');
-        openedHistories.add(historyKey);
-        
-        // اگر قبلاً بارگذاری نشده، بارگذاری کن
-        const content = document.getElementById(`history-content-${historyKey}`);
-        if (content.querySelector('.loading-spinner')) {
-            loadProductHistory(productId, supplierId);
-        }
+            .catch(function(e) { console.error('Error loading subcategories:', e); });
     }
-}
 
-// بارگذاری تاریخچه خرید از API
-function loadProductHistory(productId, supplierId) {
-    const historyKey = `${productId}-${supplierId}`;
-    const startDate = document.getElementById('start_date').value;
-    const endDate = document.getElementById('end_date').value;
-    
-    // استخراج کد کافه از URL
-    const pathParts = window.location.pathname.split('/').filter(p => p);
-    const cafeCode = pathParts[0] || 'local';
-    
-    let url = `/${cafeCode}/api/invoices/product-history/?product_id=${productId}&supplier_id=${supplierId}`;
-    if (startDate) url += `&start_date=${startDate}`;
-    if (endDate) url += `&end_date=${endDate}`;
-    
-    fetch(url, {
-        credentials: 'same-origin',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        }
-    })
-        .then(response => response.json())
-        .then(data => {
-            displayProductHistory(historyKey, data.history, data.chart_data);
-        })
-        .catch(error => {
-            console.error('خطا در بارگذاری تاریخچه:', error);
-            const content = document.getElementById(`history-content-${historyKey}`);
-            content.innerHTML = '<div class="alert alert-danger">خطا در بارگذاری تاریخچه</div>';
-        });
-}
+    function renderCharts() {
+        var catCtx = document.getElementById('subcategoryChart');
+        var supCtx = document.getElementById('supplierChart');
+        if (!catCtx || !supCtx) return;
 
-// نمایش تاریخچه خرید
-function displayProductHistory(historyKey, history, chartData) {
-    const content = document.getElementById(`history-content-${historyKey}`);
-    
-    if (history.length === 0) {
-        content.innerHTML = '<div class="alert alert-info">هیچ تاریخچه خریدی یافت نشد.</div>';
-        return;
-    }
-    
-    let html = '<div class="history-content">';
-    html += '<div class="history-title"><i class="fas fa-history"></i> آخرین خریدها:</div>';
-    html += '<div class="history-grid">';
-    
-    // نمایش 3 آخرین خرید (از جدید به قدیم)
-    history.forEach((item, index) => {
-        html += `
-            <div class="history-item">
-                <div class="history-date">
-                    <i class="fas fa-calendar-alt"></i> ${item.invoice_date}
-                </div>
-                <div class="history-label">مقدار</div>
-                <div class="history-value">${parseFloat(item.quantity).toFixed(1)}</div>
-                <div class="history-label">قیمت واحد</div>
-                <div class="history-value">${parseInt(item.unit_price).toLocaleString('fa-IR')}</div>
-                <div class="history-label">مبلغ کل</div>
-                <div class="history-value">${parseInt(item.line_total).toLocaleString('fa-IR')}</div>
-                <div class="history-supplier">
-                    <i class="fas fa-store"></i> ${item.supplier_name}
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div></div>'; // close history-content
-    
-    // اضافه کردن نمودار
-    html += '<div class="history-chart-container">';
-    html += '<div class="history-chart-title"><i class="fas fa-chart-line"></i> روند قیمت</div>';
-    html += `<div class="chart-wrapper"><canvas id="price-chart-${historyKey}"></canvas></div>`;
-    html += '</div>';
-    
-    content.innerHTML = html;
-    
-    // رسم نمودار با داده‌های کامل
-    drawPriceChart(historyKey, chartData || history);
-}
+        // Get chart data from server
+        var params = new URLSearchParams();
+        var cat = document.getElementById('categorySelect');
+        var sup = document.getElementById('supplierSelect');
+        var subcat = document.getElementById('subcategorySelect');
+        if (cat && cat.value) params.append('category', cat.value);
+        if (sup && sup.value) params.append('supplier', sup.value);
+        if (subcat && subcat.value) params.append('subcategory', subcat.value);
 
-// رسم نمودار قیمت
-function drawPriceChart(historyKey, chartData) {
-    const ctx = document.getElementById(`price-chart-${historyKey}`);
-    if (!ctx) return;
-    
-    if (!chartData || chartData.length === 0) {
-        return;
-    }
-    
-    const labels = chartData.map(item => {
-        const date = new Date(item.invoice_date);
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-    });
-    
-    const prices = chartData.map(item => parseFloat(item.unit_price));
-    
-    // محاسبه درصد تغییر
-    const firstPrice = prices[0];
-    const lastPrice = prices[prices.length - 1];
-    const changePercent = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(1);
-    const isIncrease = changePercent >= 0;
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'قیمت واحد',
-                data: prices,
-                borderColor: isIncrease ? '#ef4444' : '#10b981',
-                backgroundColor: isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                tension: 0.3,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: '#ffffff',
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'قیمت: ' + context.parsed.y.toLocaleString('fa-IR') + ' ریال';
-                        }
-                    },
-                    rtl: true,
-                    textDirection: 'rtl'
-                },
-                title: {
-                    display: true,
-                    text: `${isIncrease ? 'رشد' : 'کاهش'} ${Math.abs(changePercent)}%`,
-                    color: isIncrease ? '#ef4444' : '#10b981',
-                    font: {
-                        size: 16,
-                        weight: 'bold',
-                        family: 'Vazir'
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        font: {
-                            family: 'Vazir',
-                            size: 12
+        fetch('/{{ cafe_code }}/api/category-analysis/data/?' + params.toString())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var chartLoading = document.getElementById('chartLoading');
+                if (chartLoading) chartLoading.style.display = 'none';
+
+                if (data.subcategories && data.subcategories.length) {
+                    new Chart(catCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.subcategories.map(function(s) { return s.name; }),
+                            datasets: [{
+                                data: data.subcategories.map(function(s) { return s.total; }),
+                                backgroundColor: ['#6366f1','#ec4899','#10b981','#f59e0b','#3b82f6','#8b5cf6','#06b6d4','#f43f5e'],
+                                borderWidth: 2, borderColor: '#fff'
+                            }]
                         },
-                        callback: function(value) {
-                            return (value / 1000).toFixed(0) + 'K';
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'right', rtl: true, labels: { font: { family: 'Vazir', size: 12 }, usePointStyle: true } },
+                                tooltip: { rtl: true, textDirection: 'rtl' }
+                            }
                         }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            family: 'Vazir',
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        display: false
-                    }
+                    });
+                } else {
+                    catCtx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-pie"></i><p>داده‌ای وجود ندارد</p></div>';
                 }
-            }
-        }
-    });
-}
-    </script>
-</body>
-</html>
 
+                var supChartLoading = document.getElementById('supplierChartLoading');
+                if (supChartLoading) supChartLoading.style.display = 'none';
 
+                if (data.suppliers && data.suppliers.length) {
+                    new Chart(supCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.suppliers.map(function(s) { return s.name; }),
+                            datasets: [{
+                                label: 'مجموع خرید',
+                                data: data.suppliers.map(function(s) { return s.total; }),
+                                backgroundColor: '#6366f1',
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { rtl: true, textDirection: 'rtl' }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { font: { family: 'Vazir' } } },
+                                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Vazir' } } }
+                            }
+                        }
+                    });
+                } else {
+                    supCtx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>داده‌ای وجود ندارد</p></div>';
+                }
+            })
+            .catch(function(e) {
+                console.error('Error loading chart data:', e);
+                var cl = document.getElementById('chartLoading');
+                if (cl) cl.style.display = 'none';
+                var scl = document.getElementById('supplierChartLoading');
+                if (scl) scl.style.display = 'none';
+            });
+    }
+</script>
+{% endblock %}

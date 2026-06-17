@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block title %}ثبت درخواست خرید - Kuker{% endblock %}
 
@@ -33,51 +33,174 @@
         font-size: 0.875rem;
     }
 
-    .items-container { margin-bottom: 1.5rem; }
-
-    .item-row {
+    /* ── Entry Form ── */
+    .entry-form-section {
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 10px;
-        padding: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .entry-form-section h3 {
+        font-size: 1rem;
+        color: #374151;
         margin-bottom: 1rem;
-        transition: border-color .2s;
-    }
-    .item-row:hover { border-color: #9ca3af; }
-
-    .item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.875rem;
+        font-weight: 600;
     }
 
-    .item-number {
-        background: #6366f1;
-        color: white;
-        width: 28px; height: 28px;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.875rem; font-weight: 600;
-    }
-
-    .remove-item-btn {
-        background: transparent; color: #dc2626; border: none;
-        padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.875rem;
-        font-family: 'Vazir', sans-serif;
-    }
-    .remove-item-btn:hover { opacity: .7; }
-
-    /* ── 3-col on desktop, 1-col on mobile ── */
-    .item-fields {
+    .entry-fields {
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
         gap: 0.75rem;
     }
     @media (max-width: 640px) {
-        .item-fields { grid-template-columns: 1fr; }
+        .entry-fields { grid-template-columns: 1fr; }
     }
 
+    .entry-description {
+        margin-top: 0.75rem;
+    }
+
+    .entry-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .btn-add {
+        background: #6366f1;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Vazir', sans-serif;
+        transition: background .15s;
+    }
+    .btn-add:hover { background: #4f46e5; }
+    .btn-add:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    .btn-cancel-edit {
+        background: #f3f4f6;
+        color: #6b7280;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        font-family: 'Vazir', sans-serif;
+    }
+    .btn-cancel-edit:hover { background: #e5e7eb; }
+
+    /* ── Items Table ── */
+    .items-table-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .items-table-section h3 {
+        font-size: 1rem;
+        color: #374151;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .items-table th {
+        background: #f9fafb;
+        color: #6b7280;
+        font-weight: 600;
+        padding: 0.625rem 0.5rem;
+        text-align: right;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+    }
+
+    .items-table td {
+        padding: 0.625rem 0.5rem;
+        color: #374151;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+
+    .items-table tr:last-child td { border-bottom: none; }
+    .items-table tr:hover td { background: #f9fafb; }
+
+    .items-table .col-num {
+        text-align: center;
+        width: 40px;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+
+    .items-table .col-qty {
+        text-align: center;
+        width: 80px;
+        font-weight: 600;
+        direction: ltr;
+    }
+
+    .items-table .col-unit {
+        text-align: center;
+        width: 70px;
+    }
+
+    .items-table .col-actions {
+        text-align: center;
+        width: 80px;
+        white-space: nowrap;
+    }
+
+    .items-table .col-desc {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #9ca3af;
+        font-size: 0.8rem;
+    }
+
+    .action-icon-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 1.05rem;
+        padding: 0.3rem 0.45rem;
+        border-radius: 4px;
+        transition: background .15s;
+        font-family: 'Vazir', sans-serif;
+        vertical-align: middle;
+    }
+    .action-icon-btn:hover { background: #f3f4f6; }
+    .action-icon-btn.edit-btn { color: #6366f1; }
+    .action-icon-btn.delete-btn { color: #dc2626; }
+    .action-icon-btn.edit-btn:hover { background: #eef2ff; }
+    .action-icon-btn.delete-btn:hover { background: #fef2f2; }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #9ca3af;
+        font-size: 0.875rem;
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+    }
+
+    /* ── Reused existing styles ── */
     .form-group { display: flex; flex-direction: column; }
     .form-group label {
         font-size: 0.875rem; color: #6b7280;
@@ -115,15 +238,6 @@
         background: #f5f3ff;
     }
     .ac-item.ac-add-new:hover { background: #ede9fe; }
-
-    /* ── add item btn ── */
-    .add-item-btn {
-        background: #f9fafb; border: 1px dashed #d1d5db; color: #6b7280;
-        padding: 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.875rem;
-        font-weight: 500; transition: all .2s; display: block; width: 100%;
-        margin-bottom: 1.5rem; font-family: 'Vazir', sans-serif;
-    }
-    .add-item-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
 
     /* ── form actions ── */
     .form-actions {
@@ -181,12 +295,71 @@
 
     <form method="post" id="purchaseForm">
         {% csrf_token %}
-        <div class="items-container">
-            <div id="itemsWrapper"></div>
-            <button type="button" class="add-item-btn" onclick="addItem()">+ افزودن کالا</button>
+
+        <!-- 1. Single entry form at the top -->
+        <div class="entry-form-section">
+            <h3>➕ افزودن کالا</h3>
+            <div class="entry-fields">
+                <div class="form-group">
+                    <label>نام کالا *</label>
+                    <div class="autocomplete-wrap">
+                        <input type="text" id="entryProductName" class="form-control ac-input"
+                               placeholder="جستجو یا نام کالا..."
+                               autocomplete="off"
+                               oninput="onAcInput(this)"
+                               onkeydown="onAcKeydown(event)">
+                        <input type="hidden" id="entryProductId" value="">
+                        <div class="autocomplete-dropdown" id="entryAcDrop"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>مقدار *</label>
+                    <input type="number" id="entryQuantity" class="form-control" step="0.01" placeholder="0"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();addItemToList();}">
+                </div>
+                <div class="form-group">
+                    <label>واحد</label>
+                    <select id="entryUnit" class="form-control"></select>
+                </div>
+            </div>
+            <div class="form-group entry-description">
+                <label>توضیحات</label>
+                <textarea id="entryDescription" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
+            </div>
+            <div class="entry-actions">
+                <button type="button" class="btn-add" id="addToListBtn" onclick="addItemToList()">+ افزودن</button>
+                <button type="button" class="btn-cancel-edit" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">انصراف</button>
+            </div>
         </div>
+
+        <!-- 2. Items table -->
+        <div class="items-table-section">
+            <h3>📋 کالاهای افزوده شده</h3>
+            <div class="table-wrap">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">#</th>
+                            <th>نام کالا</th>
+                            <th class="col-qty">مقدار</th>
+                            <th class="col-unit">واحد</th>
+                            <th>توضیحات</th>
+                            <th class="col-actions">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody"></tbody>
+                </table>
+            </div>
+            <div class="empty-state" id="emptyState">هنوز کالایی اضافه نشده است. فرم بالا را پر کرده و دکمه «افزودن» را بزنید.</div>
+        </div>
+
+        <!-- 3. Hidden fields for POST submission -->
+        <div id="hiddenFieldsContainer"></div>
+
+        <!-- 4. Action buttons -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">ارسال درخواست</button>
+            <button type="submit" class="btn btn-primary">ثبت نهایی</button>
+            <button type="submit" class="btn btn-secondary">ارسال</button>
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
         </div>
     </form>
@@ -227,8 +400,11 @@
 
 {% block extra_js %}
 <script>
-    let itemCount = 0;
-    let pendingProductItemId = null; // which item's input triggered add-product modal
+    let items = [];
+    let nextItemId = 1;
+    let editingId = null;
+    let pendingProductItemId = null;
+
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
     const CSRF_TOKEN       = "{{ csrf_token }}";
@@ -238,175 +414,250 @@
         return units.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
     }
 
-    function addItem(prefillName = '', prefillUnit = 'عدد') {
-        itemCount++;
-        const id = itemCount;
-        const html = `
-        <div class="item-row" id="item-${id}">
-            <div class="item-header">
-                <div class="item-number">${id}</div>
-                <button type="button" class="remove-item-btn" onclick="removeItem(${id})">× حذف</button>
-            </div>
-            <div class="item-fields">
-                <div class="form-group">
-                    <label>نام کالا *</label>
-                    <div class="autocomplete-wrap">
-                        <input type="text" name="product_name" class="form-control ac-input"
-                               data-item-id="${id}" placeholder="جستجو یا نام کالا..." required
-                               value="${escapeHtml(prefillName)}"
-                               autocomplete="off"
-                               oninput="onAcInput(this, ${id})"
-                               onkeydown="onAcKeydown(event, ${id})">
-                        <input type="hidden" name="product_id" class="product-id-field" value="">
-                        <div class="autocomplete-dropdown" id="ac-drop-${id}"></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>مقدار *</label>
-                    <input type="number" name="item_quantity" class="form-control" step="0.01" placeholder="0" required>
-                </div>
-                <div class="form-group">
-                    <label>واحد</label>
-                    <select name="item_unit" class="form-control" id="item-unit-${id}">
-                        ${buildUnitOptions(prefillUnit)}
-                    </select>
-                </div>
-            </div>
-            <div class="form-group" style="margin-top: 0.75rem;">
-                <label>توضیحات</label>
-                <textarea name="item_description" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
-            </div>
-        </div>`;
-        document.getElementById('itemsWrapper').insertAdjacentHTML('beforeend', html);
-        // focus the new input
-        const newInput = document.querySelector(`#item-${id} .ac-input`);
-        if (newInput && !prefillName) newInput.focus();
-    }
+    // Init entry unit select
+    document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
 
     function escapeHtml(str) {
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function removeItem(id) {
-        const items = document.querySelectorAll('.item-row');
-        if (items.length > 1) {
-            document.getElementById('item-' + id).remove();
-            updateNumbers();
+    // ── CRUD ────────────────────────────────────────────────────────────
+
+    function addItemToList() {
+        const nameInput = document.getElementById('entryProductName');
+        const qtyInput = document.getElementById('entryQuantity');
+        const name = nameInput.value.trim();
+        const quantity = qtyInput.value;
+        const unit = document.getElementById('entryUnit').value;
+        const description = document.getElementById('entryDescription').value.trim();
+        const productId = document.getElementById('entryProductId').value;
+
+        // Validation
+        if (!name) {
+            nameInput.style.borderColor = '#ef4444';
+            nameInput.focus();
+            alert('⚠️ لطفاً نام کالا را وارد کنید');
+            return;
+        }
+        if (!quantity || parseFloat(quantity) <= 0) {
+            qtyInput.style.borderColor = '#ef4444';
+            qtyInput.focus();
+            alert('⚠️ لطفاً مقدار معتبر وارد کنید');
+            return;
+        }
+
+        // Reset validation styles
+        nameInput.style.borderColor = '';
+        qtyInput.style.borderColor = '';
+
+        if (editingId !== null) {
+            // Update existing item
+            const idx = items.findIndex(it => it.id === editingId);
+            if (idx !== -1) {
+                items[idx] = { ...items[idx], name, quantity, unit, description, productId };
+            }
+            // Reset editing mode
+            editingId = null;
+            document.getElementById('addToListBtn').textContent = '+ افزودن';
+            document.getElementById('cancelEditBtn').style.display = 'none';
         } else {
-            alert('⚠️ باید حداقل یک کالا در درخواست باشد!');
+            // Add new item
+            items.push({
+                id: nextItemId++,
+                name,
+                quantity,
+                unit,
+                description,
+                productId
+            });
+        }
+
+        clearEntryForm();
+        renderItemsTable();
+    }
+
+    function editItem(id) {
+        const item = items.find(it => it.id === id);
+        if (!item) return;
+
+        // Fill entry form with item data
+        document.getElementById('entryProductName').value = item.name;
+        document.getElementById('entryProductId').value = item.productId || '';
+        document.getElementById('entryQuantity').value = item.quantity;
+        document.getElementById('entryUnit').innerHTML = buildUnitOptions(item.unit);
+        document.getElementById('entryDescription').value = item.description || '';
+
+        // Set editing mode
+        editingId = id;
+        document.getElementById('addToListBtn').textContent = '💾 ذخیره تغییرات';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+        // Scroll to form
+        document.querySelector('.entry-form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('entryProductName').focus();
+    }
+
+    function deleteItem(id) {
+        if (items.length <= 1) {
+            if (!confirm('آیا مایل به حذف آخرین کالا هستید؟ پس از حذف، لیست خالی می‌شود.')) return;
+        }
+        items = items.filter(it => it.id !== id);
+        renderItemsTable();
+
+        // If we were editing this item, cancel edit
+        if (editingId === id) {
+            cancelEdit();
         }
     }
 
-    function updateNumbers() {
-        document.querySelectorAll('.item-row').forEach((row, i) => {
-            const nb = row.querySelector('.item-number');
-            if (nb) nb.textContent = i + 1;
+    function cancelEdit() {
+        editingId = null;
+        document.getElementById('addToListBtn').textContent = '+ افزودن';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+        clearEntryForm();
+    }
+
+    function clearEntryForm() {
+        document.getElementById('entryProductName').value = '';
+        document.getElementById('entryProductId').value = '';
+        document.getElementById('entryQuantity').value = '';
+        document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
+        document.getElementById('entryDescription').value = '';
+        document.getElementById('entryProductName').style.borderColor = '';
+        document.getElementById('entryQuantity').style.borderColor = '';
+        document.getElementById('entryProductName').focus();
+    }
+
+    function renderItemsTable() {
+        const tbody = document.getElementById('itemsTableBody');
+        const emptyState = document.getElementById('emptyState');
+
+        tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+
+        items.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="col-num">${idx + 1}</td>
+                <td>${escapeHtml(item.name)}</td>
+                <td class="col-qty">${item.quantity}</td>
+                <td class="col-unit">${item.unit}</td>
+                <td class="col-desc" title="${escapeHtml(item.description || '')}">${item.description ? escapeHtml(item.description) : '—'}</td>
+                <td class="col-actions">
+                    <button type="button" class="action-icon-btn edit-btn" onclick="editItem(${item.id})" title="ویرایش">✏️</button>
+                    <button type="button" class="action-icon-btn delete-btn" onclick="deleteItem(${item.id})" title="حذف">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     }
 
-    // ── Autocomplete logic ──────────────────────────────────────────────
-    let acTimers = {};
-    let acResults = {};
-    let acHighlight = {};
+    // ── Autocomplete (single entry form) ────────────────────────────────
 
-    function onAcInput(input, id) {
+    let acTimer = null;
+    let acResults = [];
+    let acHighlightIdx = -1;
+
+    function onAcInput(input) {
         const q = input.value.trim();
-        clearTimeout(acTimers[id]);
-        if (q.length < 1) { closeDropdown(id); return; }
-        acTimers[id] = setTimeout(() => fetchSuggestions(q, id), 250);
+        clearTimeout(acTimer);
+        if (q.length < 1) { closeDropdown(); return; }
+        acTimer = setTimeout(() => fetchSuggestions(q), 250);
     }
 
-    function fetchSuggestions(q, id) {
+    function fetchSuggestions(q) {
         fetch(`${AUTOCOMPLETE_URL}?q=${encodeURIComponent(q)}`)
             .then(r => r.json())
             .then(data => {
-                acResults[id] = data.results || [];
-                renderDropdown(id, q);
-            }).catch(() => closeDropdown(id));
+                acResults = data.results || [];
+                renderDropdown(q);
+            }).catch(() => closeDropdown());
     }
 
-    function renderDropdown(id, q) {
-        const drop = document.getElementById(`ac-drop-${id}`);
+    function renderDropdown(q) {
+        const drop = document.getElementById('entryAcDrop');
         if (!drop) return;
-        const items = acResults[id] || [];
-        let html = '';
-        items.forEach((p, idx) => {
-            html += `<div class="ac-item" data-idx="${idx}" onmousedown="selectProduct(${id}, ${idx})">
+        let html = acResults.map((p, idx) =>
+            `<div class="ac-item" data-idx="${idx}" onmousedown="selectProduct(${idx})">
                 <div class="ac-name">${escapeHtml(p.name)}</div>
                 ${p.category ? `<div class="ac-cat">${escapeHtml(p.category)}</div>` : ''}
-            </div>`;
-        });
-        // Always offer "add new"
-        html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal(${id}, '${escapeHtml(q)}')">
+            </div>`
+        ).join('');
+        html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
             ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
         </div>`;
         drop.innerHTML = html;
         drop.classList.add('open');
-        acHighlight[id] = -1;
+        acHighlightIdx = -1;
     }
 
-    function closeDropdown(id) {
-        const drop = document.getElementById(`ac-drop-${id}`);
+    function closeDropdown() {
+        const drop = document.getElementById('entryAcDrop');
         if (drop) drop.classList.remove('open');
-        acHighlight[id] = -1;
+        acHighlightIdx = -1;
     }
 
-    function selectProduct(id, idx) {
-        const p = (acResults[id] || [])[idx];
+    function selectProduct(idx) {
+        const p = acResults[idx];
         if (!p) return;
-        const row = document.getElementById(`item-${id}`);
-        row.querySelector('.ac-input').value = p.name;
-        row.querySelector('.product-id-field').value = p.id || '';
-        // If product has a unit, try to select it
+        document.getElementById('entryProductName').value = p.name;
+        document.getElementById('entryProductId').value = p.id || '';
         if (p.unit) {
-            const sel = document.getElementById(`item-unit-${id}`);
-            if (sel) {
-                for (let i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === p.unit) { sel.selectedIndex = i; break; }
-                }
-            }
+            document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
         }
-        closeDropdown(id);
+        closeDropdown();
+        document.getElementById('entryQuantity').focus();
     }
 
-    function onAcKeydown(e, id) {
-        const drop = document.getElementById(`ac-drop-${id}`);
-        if (!drop || !drop.classList.contains('open')) return;
+    function onAcKeydown(e) {
+        const drop = document.getElementById('entryAcDrop');
+        if (!drop || !drop.classList.contains('open')) {
+            // If dropdown is closed, Enter moves to quantity
+            if (e.key === 'Enter' && e.target.id === 'entryProductName') {
+                e.preventDefault();
+                document.getElementById('entryQuantity').focus();
+            }
+            return;
+        }
         const items = drop.querySelectorAll('.ac-item');
         if (!items.length) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            acHighlight[id] = Math.min((acHighlight[id] || -1) + 1, items.length - 1);
-            highlightItem(id, items);
+            acHighlightIdx = Math.min((acHighlightIdx === -1 ? 0 : acHighlightIdx + 1), items.length - 1);
+            items.forEach(el => el.classList.remove('highlighted'));
+            items[acHighlightIdx]?.classList.add('highlighted');
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            acHighlight[id] = Math.max((acHighlight[id] || 0) - 1, 0);
-            highlightItem(id, items);
+            acHighlightIdx = Math.max((acHighlightIdx === -1 ? items.length - 1 : acHighlightIdx - 1), 0);
+            items.forEach(el => el.classList.remove('highlighted'));
+            items[acHighlightIdx]?.classList.add('highlighted');
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            const hi = acHighlight[id];
-            if (hi >= 0 && hi < items.length) items[hi].dispatchEvent(new MouseEvent('mousedown'));
+            if (acHighlightIdx >= 0 && acHighlightIdx < items.length) {
+                items[acHighlightIdx].dispatchEvent(new MouseEvent('mousedown'));
+            }
         } else if (e.key === 'Escape') {
-            closeDropdown(id);
+            closeDropdown();
         }
-    }
-
-    function highlightItem(id, items) {
-        items.forEach(it => it.classList.remove('highlighted'));
-        const hi = acHighlight[id];
-        if (hi >= 0 && hi < items.length) items[hi].classList.add('highlighted');
     }
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.autocomplete-wrap')) {
-            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.remove('open'));
+            closeDropdown();
         }
     });
 
     // ── Add New Product Modal ─────────────────────────────────────────
-    function openAddProductModal(itemId, prefillName = '') {
-        pendingProductItemId = itemId;
+
+    function openAddProductModal(prefillName = '') {
+        pendingProductItemId = 'entry';
         document.getElementById('newProductName').value = prefillName;
         document.getElementById('newProductErr').textContent = '';
         document.getElementById('addProductModal').classList.add('open');
@@ -423,10 +674,8 @@
         const unit = document.getElementById('newProductUnit').value;
         const errEl = document.getElementById('newProductErr');
         if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
-
         const btn = document.querySelector('.modal-btn-save');
         btn.disabled = true; btn.textContent = 'در حال ذخیره...';
-
         fetch(QUICK_ADD_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
@@ -434,21 +683,12 @@
         }).then(r => r.json()).then(data => {
             btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
             if (data.success) {
-                // Fill in the item row that triggered this
-                const id = pendingProductItemId;
-                if (id) {
-                    const row = document.getElementById(`item-${id}`);
-                    row.querySelector('.ac-input').value = data.product.name;
-                    row.querySelector('.product-id-field').value = data.product.id;
-                    const sel = document.getElementById(`item-unit-${id}`);
-                    if (sel && data.product.unit) {
-                        for (let i = 0; i < sel.options.length; i++) {
-                            if (sel.options[i].value === data.product.unit) { sel.selectedIndex = i; break; }
-                        }
-                    }
+                document.getElementById('entryProductName').value = data.product.name;
+                document.getElementById('entryProductId').value = data.product.id;
+                if (data.product.unit) {
+                    document.getElementById('entryUnit').innerHTML = buildUnitOptions(data.product.unit);
                 }
                 closeAddProductModal();
-                // Push to acResults for future typeahead
             } else {
                 errEl.textContent = data.error || 'خطا در افزودن کالا';
             }
@@ -458,31 +698,58 @@
         });
     }
 
-    // Allow Enter key in modal
     document.getElementById('newProductName').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); submitNewProduct(); }
     });
 
-    // Close modal on overlay click
     document.getElementById('addProductModal').addEventListener('click', function(e) {
         if (e.target === this) closeAddProductModal();
     });
 
-    // ── Init ─────────────────────────────────────────────────────────
-    window.addEventListener('load', () => addItem());
+    // ── Form submission ────────────────────────────────────────────────
 
-    // ── Form validation ───────────────────────────────────────────────
-    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-        const items = document.querySelectorAll('.item-row');
-        if (!items.length) { e.preventDefault(); alert('⚠️ لطفاً حداقل یک کالا اضافه کنید'); return; }
-        let valid = true;
+    function populateHiddenFields() {
+        const container = document.getElementById('hiddenFieldsContainer');
+        container.innerHTML = '';
+
         items.forEach(item => {
-            const n = item.querySelector('input[name="product_name"]');
-            const q = item.querySelector('input[name="item_quantity"]');
-            if (!n.value.trim()) { valid = false; n.style.borderColor = '#ef4444'; }
-            if (!q.value) { valid = false; q.style.borderColor = '#ef4444'; }
+            const fields = [
+                { name: 'product_name', value: item.name },
+                { name: 'item_quantity', value: item.quantity },
+                { name: 'item_unit', value: item.unit },
+                { name: 'item_description', value: item.description || '' },
+            ];
+            fields.forEach(f => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = f.name;
+                input.value = f.value;
+                container.appendChild(input);
+            });
         });
-        if (!valid) { e.preventDefault(); alert('⚠️ لطفاً تمام فیلدهای ضروری را پر کنید'); }
+    }
+
+    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+        // Validate at least one item
+        if (items.length === 0) {
+            e.preventDefault();
+            alert('⚠️ لطفاً حداقل یک کالا اضافه کنید');
+            return;
+        }
+
+        // Check for unsaved data in entry form
+        const entryName = document.getElementById('entryProductName').value.trim();
+        if (entryName) {
+            if (!confirm('در فرم افزودن کالا اطلاعاتی وجود دارد که ذخیره نشده است. آیا مایل به ادامه هستید؟')) {
+                e.preventDefault();
+                return;
+            }
+        }
+
+        populateHiddenFields();
     });
+
+    // ── Init ──────────────────────────────────────────────────────────
+    renderItemsTable();
 </script>
 {% endblock %}

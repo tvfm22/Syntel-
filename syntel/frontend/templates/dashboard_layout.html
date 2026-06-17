@@ -1,0 +1,835 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}سیستم مدیریت خرید - Kuker{% endblock %}</title>
+
+    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+
+    <style>
+        /* ===== Reset & Variables ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        /* ===== Layout ===== */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-left: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Brand */
+        .sidebar-brand {
+            padding: 1.25rem 1.5rem 0.875rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .sidebar-brand .brand-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.2rem; flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+        }
+        .sidebar-brand:hover { opacity: 0.85; }
+        .sidebar-brand .brand-text {
+            font-size: 1.2rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* User */
+        .sidebar-user {
+            padding: 0.875rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+        .sidebar-user .user-name {
+            font-weight: 600; font-size: 0.9rem; color: var(--dark);
+        }
+        .sidebar-user .user-role {
+            font-size: 0.775rem; color: var(--gray-500); margin-top: 0.15rem;
+        }
+
+        /* Nav */
+        .sidebar-nav {
+            flex: 1; overflow-y: auto; padding: 0.75rem 0.75rem 0.5rem;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 6px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+
+        .nav-section-title {
+            font-size: 0.675rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--gray-400);
+            padding: 0.75rem 0.75rem 0.4rem;
+        }
+        .nav-section-title:first-child { margin-top: 0; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.65rem 0.75rem; border-radius: var(--radius-md);
+            color: var(--gray-600); text-decoration: none;
+            font-size: 0.85rem; font-weight: 500;
+            transition: all 0.2s ease; cursor: pointer;
+            border: none; background: none; width: 100%;
+            text-align: right; font-family: 'Vazir', sans-serif;
+        }
+        .nav-item:hover { background: var(--gray-100); color: var(--primary); }
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white; box-shadow: var(--shadow-md);
+        }
+        .nav-item i { width: 20px; text-align: center; font-size: 0.9rem; flex-shrink: 0; }
+
+        /* Footer */
+        .sidebar-footer {
+            padding: 0.875rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+        .sidebar-footer .logout-btn {
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            width: 100%; padding: 0.65rem;
+            background: white; color: var(--danger);
+            border: 1px solid var(--danger); border-radius: var(--radius-md);
+            cursor: pointer; font-family: 'Vazir', sans-serif;
+            font-size: 0.85rem; font-weight: 600;
+            transition: all 0.2s ease; text-decoration: none;
+        }
+        .sidebar-footer .logout-btn:hover { background: var(--danger); color: white; }
+
+        /* ===== Main Content ===== */
+        .main-content {
+            flex: 1; min-width: 0; padding: 2rem;
+        }
+
+        /* ===== Mobile Top Bar ===== */
+        .mobile-top-bar {
+            display: none; position: fixed; top: 0; left: 0; right: 0;
+            height: 60px; background: white;
+            border-bottom: 1px solid var(--gray-200);
+            z-index: 1000; padding: 0 1rem;
+            align-items: center; justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+        }
+        .mobile-top-bar-title {
+            font-size: 1.05rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .mobile-menu-btn {
+            display: none; align-items: center; justify-content: center;
+            background: none; border: none; font-size: 1.4rem;
+            color: var(--dark); cursor: pointer;
+            padding: 0.5rem; border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+        .mobile-menu-btn:hover { background: var(--gray-100); color: var(--primary); }
+        .mobile-menu-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+        /* ===== Overlay ===== */
+        .sidebar-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 998;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .sidebar-overlay.show { opacity: 1; visibility: visible; }
+
+        /* ===== Responsive ===== */
+        @media (width >= 1024px) {
+            .sidebar { display: flex !important; }
+            .sidebar-overlay { display: none !important; }
+        }
+
+        @media (width < 1024px) {
+            body.menu-open { overflow: hidden; }
+            .mobile-top-bar { display: flex; }
+            .mobile-menu-btn { display: flex; }
+            .layout { padding-top: 60px; }
+
+            .sidebar {
+                position: fixed; top: 0; right: -100%;
+                height: 100vh; z-index: 999;
+                box-shadow: none; border: none;
+                transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex !important;
+            }
+            .sidebar.open {
+                right: 0;
+                box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);
+            }
+
+            .main-content { padding: 1rem; }
+        }
+
+        @media (width < 480px) {
+            .main-content { padding: 0.75rem; }
+        }
+
+        /* ===== Shared Components ===== */
+        /* Page Header */
+        .page-header {
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .page-title {
+            font-size: 1.4rem; font-weight: 700; color: var(--dark);
+            display: flex; align-items: center; gap: 0.75rem;
+        }
+        .page-title i { color: var(--primary); }
+        .header-actions { display: flex; align-items: center; gap: 1rem; }
+        .current-date {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.875rem; background: var(--gray-50);
+            border-radius: var(--radius-md); font-size: 0.85rem;
+            color: var(--dark); font-weight: 500;
+        }
+        .current-date i { color: var(--primary); }
+
+        /* Buttons */
+        .btn {
+            padding: 0.7rem 1.25rem; border: none; border-radius: var(--radius-md);
+            font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-secondary { background: var(--gray-500); color: white; }
+        .logout-btn {
+            padding: 0.5rem 1rem; background: white; color: var(--danger);
+            border: 1px solid var(--danger); border-radius: var(--radius-md);
+            cursor: pointer; font-weight: 600; font-size: 0.85rem;
+            transition: all 0.2s ease; font-family: 'Vazir', sans-serif;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;
+        }
+        .logout-btn:hover { background: var(--danger); color: white; }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); padding: 1.5rem; text-align: center;
+            transition: all 0.2s;
+        }
+        .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .stat-icon-circle {
+            width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1rem; font-size: 1.2rem;
+        }
+        .stat-icon-circle.danger { background: rgba(239,68,68,0.1); color: var(--danger); }
+        .stat-icon-circle.success { background: rgba(16,185,129,0.1); color: var(--success); }
+        .stat-icon-circle.primary { background: rgba(99,102,241,0.1); color: var(--primary); }
+        .stat-icon-circle.warning { background: rgba(245,158,11,0.1); color: var(--warning); }
+        .stat-value { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .stat-value.danger { color: var(--danger); }
+        .stat-value.success { color: var(--success); }
+        .stat-value.primary { color: var(--primary); }
+        .stat-value.warning { color: var(--warning); }
+        .stat-label { font-size: 0.875rem; color: var(--gray-500); }
+
+        /* Cards */
+        .card {
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); overflow: hidden;
+            border: 1px solid var(--gray-200); margin-bottom: 1.5rem;
+            transition: all 0.2s;
+        }
+        .card:hover { box-shadow: var(--shadow-md); }
+        .card-header {
+            padding: 1.25rem 2rem; border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 0.75rem;
+        }
+        .card-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--dark);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .card-title i { color: var(--primary); }
+        .card-body { padding: 2rem; }
+
+        /* Filters */
+        .filters-container {
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); padding: 1.5rem 2rem; margin-bottom: 1.5rem;
+        }
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem; align-items: end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .filter-label { font-weight: 600; font-size: 0.85rem; color: var(--dark); }
+        .filter-select, .filter-input {
+            padding: 0.7rem 1rem; border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
+            font-size: 0.85rem; background: white; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-select:focus, .filter-input:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        /* Tables */
+        .table-card {
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl); overflow: hidden; margin-bottom: 1.5rem;
+        }
+        .table-header {
+            padding: 1.5rem 2rem; border-bottom: 1px solid var(--gray-200);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .table-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--dark);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table thead { background: var(--gray-50); }
+        .data-table th {
+            padding: 1rem 1.25rem; text-align: right; font-size: 0.85rem;
+            font-weight: 700; color: var(--dark); border-bottom: 2px solid var(--gray-200);
+        }
+        .data-table td {
+            padding: 1rem 1.25rem; font-size: 0.85rem;
+            color: var(--gray-500); border-bottom: 1px solid var(--gray-200);
+        }
+        .data-table tbody tr { transition: all 0.2s; }
+        .data-table tbody tr:hover { background: var(--gray-50); }
+
+        /* Badge */
+        .badge {
+            padding: 0.35rem 0.75rem; border-radius: var(--radius-md);
+            font-size: 0.75rem; font-weight: 700; display: inline-block;
+        }
+        .badge-success { background: rgba(16,185,129,0.1); color: #065f46; }
+        .badge-warning { background: rgba(245,158,11,0.1); color: #92400e; }
+        .badge-danger { background: rgba(239,68,68,0.1); color: #991b1b; }
+        .badge-info { background: rgba(59,130,246,0.1); color: #1e40af; }
+        .badge-primary { background: rgba(99,102,241,0.1); color: var(--primary-dark); }
+        .badge-neutral { background: var(--gray-50); color: var(--gray-500); }
+
+        /* Alert */
+        .alert {
+            padding: 1rem 1.5rem; border-radius: var(--radius-md);
+            margin-bottom: 1.5rem; border-right: 4px solid;
+            font-size: 0.9rem;
+        }
+        .alert-success { background: #d1fae5; color: #065f46; border-color: var(--success); }
+        .alert-error, .alert-danger { background: #fee2e2; color: #991b1b; border-color: var(--danger); }
+        .alert-warning { background: #fef3c7; color: #92400e; border-color: var(--warning); }
+        .alert-info { background: #dbeafe; color: #1e40af; border-color: var(--info); }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center; padding: 2rem; color: var(--gray-500);
+        }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--gray-400); display: block; }
+
+        /* Form */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark); }
+        .form-control {
+            width: 100%; padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200); border-radius: var(--radius-md);
+            font-size: 1rem; transition: all 0.3s ease;
+            font-family: 'Vazir', sans-serif;
+        }
+        .form-control:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block; width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top-color: white; animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--gray-50); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: var(--radius-md); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+
+        /* Period filter (for management dashboard) */
+        .period-filter { display: flex; gap: 0.5rem; }
+        .period-btn {
+            padding: 0.5rem 1rem; border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md); background: white; cursor: pointer;
+            font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 500;
+            transition: all 0.2s;
+        }
+        .period-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .period-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Responsive overrides for shared components */
+        @media (width < 1024px) {
+            .page-header {
+                flex-direction: column; gap: 0.75rem; text-align: center;
+                padding: 1rem 1.25rem;
+            }
+            .page-title { font-size: 1.1rem; justify-content: center; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+            .stat-card { padding: 1rem; }
+            .stat-value { font-size: 1.5rem; }
+            .stat-icon-circle { width: 40px; height: 40px; font-size: 1rem; margin-bottom: 0.5rem; }
+            .card-body { padding: 1rem; }
+            .card-header { padding: 1rem 1.25rem; }
+            .filters-grid { grid-template-columns: 1fr; }
+            .filters-container { padding: 1rem 1.25rem; }
+            .header-actions { flex-wrap: wrap; justify-content: center; }
+            .current-date { font-size: 0.8rem; padding: 0.4rem 0.7rem; }
+            .data-table { font-size: 0.8rem; }
+            .data-table th, .data-table td { padding: 0.6rem 0.5rem; }
+        }
+
+        @media (width < 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .page-header { padding: 0.75rem 1rem; }
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <!-- Mobile Top Bar -->
+    <header class="mobile-top-bar" id="mobileTopBar">
+        <button class="mobile-menu-btn" id="menuToggle" onclick="toggleSidebar()"
+                aria-label="باز کردن منو" aria-controls="sidebar" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
+        <span class="mobile-top-bar-title">Kuker</span>
+        <div class="mobile-top-bar-actions">
+            {% if can_switch_cafe %}
+            <a href="{% url 'select_cafe' %}" class="btn" style="background:var(--secondary); color:white; padding:0.4rem 0.65rem; font-size:0.75rem;" title="تغییر کافه">
+                <i class="fas fa-exchange-alt"></i>
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()" aria-hidden="true"></div>
+
+    <!-- Layout -->
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="منوی اصلی">
+            <!-- Brand -->
+            <a href="{% if cafe_code %}{% if user.role == 'manager' or user.role == 'ceo' or user.role == 'admin' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester,purchasing' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_dashboard' cafe_code=cafe_code %}{% elif user.role == 'finance_manager' or user.role == 'accounting' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
+                <div class="brand-icon"><i class="fas fa-store"></i></div>
+                <span class="brand-text">Kuker</span>
+            </a>
+
+            <!-- Current User -->
+            <div class="sidebar-user">
+                <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                <div class="user-role">{{ user.get_role_display }}</div>
+            </div>
+
+            <!-- Navigation Items -->
+            <nav class="sidebar-nav">
+
+                {% comment %}========== CEO & MANAGER =========={% endcomment %}
+                {% if user.role == 'manager' or user.role == 'ceo' or user.role == 'admin' %}
+                <div class="nav-section-title">داشبورد</div>
+                <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'management_dashboard' %} active{% endif %}">
+                    <i class="fas fa-chart-bar"></i><span>داشبورد مدیریت</span>
+                </a>
+                <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'analytics_dashboard' %} active{% endif %}">
+                    <i class="fas fa-chart-pie"></i><span>تحلیل‌های پیشرفته</span>
+                </a>
+                <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'analytics_line_chart' %} active{% endif %}">
+                    <i class="fas fa-chart-line"></i><span>روند هزینه‌ها</span>
+                </a>
+                <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'analytics_price_monitor' %} active{% endif %}">
+                    <i class="fas fa-tags"></i><span>نظارت بر قیمت</span>
+                </a>
+                <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_category_analysis' %} active{% endif %}">
+                    <i class="fas fa-layer-group"></i><span>تحلیل دسته‌بندی خرید</span>
+                </a>
+
+                <div class="nav-section-title">مدیریت خرید</div>
+                <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'approve_purchase_requests' %} active{% endif %}">
+                    <i class="fas fa-check-double"></i><span>تایید درخواست‌های خرید</span>
+                </a>
+                <a href="{% url 'manager_pending_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'manager_pending_requests' %} active{% endif %}">
+                    <i class="fas fa-clock"></i><span>درخواست‌های در انتظار</span>
+                </a>
+                <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_orders_list' %} active{% endif %}">
+                    <i class="fas fa-shopping-cart"></i><span>سفارشات خرید</span>
+                </a>
+
+                <div class="nav-section-title">مالی</div>
+                <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'finance_dashboard' %} active{% endif %}">
+                    <i class="fas fa-wallet"></i><span>داشبورد مالی</span>
+                </a>
+                <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'payment_analytics' %} active{% endif %}">
+                    <i class="fas fa-chart-line"></i><span>تحلیل‌های پرداخت</span>
+                </a>
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'invoices_list' %} active{% endif %}">
+                    <i class="fas fa-file-invoice-dollar"></i><span>فاکتورها</span>
+                </a>
+
+                <div class="nav-section-title">گزارشات</div>
+                <a href="{% url 'purchase_reports' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_reports' %} active{% endif %}">
+                    <i class="fas fa-file-alt"></i><span>گزارشات خرید</span>
+                </a>
+                <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'supplier_performance_report' %} active{% endif %}">
+                    <i class="fas fa-trophy"></i><span>عملکرد تأمین‌کنندگان</span>
+                </a>
+                <a href="{% url 'inventory_reports' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'inventory_reports' %} active{% endif %}">
+                    <i class="fas fa-warehouse"></i><span>گزارشات موجودی</span>
+                </a>
+                <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'reports_dashboard' %} active{% endif %}">
+                    <i class="fas fa-chart-simple"></i><span>گزارشات جامع</span>
+                </a>
+
+                <div class="nav-section-title">سیستم</div>
+                <a href="{% url 'system_monitoring' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'system_monitoring' %} active{% endif %}">
+                    <i class="fas fa-server"></i><span>مانیتورینگ سیستم</span>
+                </a>
+                <a href="{% url 'backup_management' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'backup_management' %} active{% endif %}">
+                    <i class="fas fa-database"></i><span>پشتیبان‌گیری</span>
+                </a>
+                <a href="{% url 'user_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'user_list' %} active{% endif %}">
+                    <i class="fas fa-users-cog"></i><span>مدیریت کاربران</span>
+                </a>
+                {% endif %}
+
+                {% comment %}========== PURCHASING =========={% endcomment %}
+                {% if user.role == 'purchasing' %}
+                <div class="nav-section-title">داشبورد</div>
+                <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'mobile_dashboard' %} active{% endif %}">
+                    <i class="fas fa-th-large"></i><span>داشبورد</span>
+                </a>
+
+                <div class="nav-section-title">خرید</div>
+                <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_requests_list' %} active{% endif %}">
+                    <i class="fas fa-clipboard-list"></i><span>درخواست‌ها</span>
+                </a>
+                <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_orders_list' %} active{% endif %}">
+                    <i class="fas fa-truck"></i><span>سفارشات</span>
+                </a>
+                <a href="{% url 'approved_requests_for_orders' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'approved_requests_for_orders' %} active{% endif %}">
+                    <i class="fas fa-check-circle"></i><span>درخواست‌های تایید شده</span>
+                </a>
+
+                <div class="nav-section-title">تأمین‌کنندگان</div>
+                <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'supplier_list' %} active{% endif %}">
+                    <i class="fas fa-truck-loading"></i><span>لیست تأمین‌کنندگان</span>
+                </a>
+                <a href="{% url 'supplier_performance_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'supplier_performance_report' %} active{% endif %}">
+                    <i class="fas fa-chart-bar"></i><span>عملکرد تأمین‌کنندگان</span>
+                </a>
+
+                <div class="nav-section-title">گزارشات</div>
+                <a href="{% url 'purchase_reports' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_reports' %} active{% endif %}">
+                    <i class="fas fa-file-alt"></i><span>گزارشات خرید</span>
+                </a>
+                <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'reports_dashboard' %} active{% endif %}">
+                    <i class="fas fa-chart-simple"></i><span>گزارشات جامع</span>
+                </a>
+                {% endif %}
+
+                {% comment %}========== KITCHEN, BAR, COUNTER, CASHIER, FACILITIES, REQUESTER =========={% endcomment %}
+                {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}
+                <div class="nav-section-title">داشبورد</div>
+                <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'mobile_dashboard' %} active{% endif %}">
+                    <i class="fas fa-th-large"></i><span>داشبورد</span>
+                </a>
+
+                <div class="nav-section-title">درخواست‌ها</div>
+                <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_request' %} active{% endif %}">
+                    <i class="fas fa-plus-circle"></i><span>ثبت درخواست جدید</span>
+                </a>
+                <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_requests_list' %} active{% endif %}">
+                    <i class="fas fa-list"></i><span>درخواست‌های من</span>
+                </a>
+                {% endif %}
+
+                {% comment %}========== WAREHOUSE =========={% endcomment %}
+                {% if user.role == 'warehouse' %}
+                <div class="nav-section-title">انبار</div>
+                <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_dashboard' %} active{% endif %}">
+                    <i class="fas fa-warehouse"></i><span>داشبورد انبار</span>
+                </a>
+                <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_list' %} active{% endif %}">
+                    <i class="fas fa-boxes"></i><span>موجودی انبار</span>
+                </a>
+                <a href="{% url 'warehouse_requests_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_requests_list' %} active{% endif %}">
+                    <i class="fas fa-clipboard-list"></i><span>درخواست‌های انبار</span>
+                </a>
+                {% endif %}
+
+                {% comment %}========== FINANCE =========={% endcomment %}
+                {% if user.role == 'finance_manager' or user.role == 'accounting' %}
+                <div class="nav-section-title">مالی</div>
+                <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'finance_dashboard' %} active{% endif %}">
+                    <i class="fas fa-wallet"></i><span>داشبورد مالی</span>
+                </a>
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'invoices_list' %} active{% endif %}">
+                    <i class="fas fa-file-invoice"></i><span>فاکتورها</span>
+                </a>
+                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'payment_list' %} active{% endif %}">
+                    <i class="fas fa-credit-card"></i><span>پرداخت‌ها</span>
+                </a>
+                {% endif %}
+
+            </nav>
+
+            <!-- Sidebar Footer with Logout -->
+            <div class="sidebar-footer">
+                <form method="post" action="{% url 'logout' %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>خروج از سیستم</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+{% else %}
+    <div class="layout">
+        <main class="main-content" id="mainContent" style="padding:0;">
+{% endif %}
+
+{% block messages %}
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% if user.is_authenticated %}
+        </main>
+    </div>
+{% else %}
+        </main>
+    </div>
+{% endif %}
+
+{% if user.is_authenticated %}
+<script>
+/**
+ * Toggle mobile sidebar open/close with animation.
+ * Handles body scroll lock, ARIA states, and icon swap.
+ */
+function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+        var toggle = document.getElementById('menuToggle');
+        var isOpen = sidebar.classList.contains('open');
+
+        if (isOpen) {
+            // ── Close ──
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+            document.body.classList.remove('menu-open');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'باز کردن منو');
+            var icon = toggle.querySelector('i');
+            if (icon) icon.className = 'fas fa-bars';
+            // Return focus to toggle after animation
+            setTimeout(function() { toggle.focus(); }, 100);
+        } else {
+            // ── Open ──
+            sidebar.classList.add('open');
+            overlay.classList.add('show');
+            document.body.classList.add('menu-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.setAttribute('aria-label', 'بستن منو');
+            var icon = toggle.querySelector('i');
+            if (icon) icon.className = 'fas fa-times';
+            // Focus first nav item for keyboard users
+            setTimeout(function() {
+                var firstNav = sidebar.querySelector('.nav-item');
+                if (firstNav) firstNav.focus();
+            }, 150);
+        }
+    }
+
+    // Close sidebar on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var sidebar = document.getElementById('sidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                toggleSidebar();
+                e.preventDefault();
+            }
+        }
+    });
+
+    // DOM ready setup
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close sidebar on nav link click (mobile)
+        document.querySelectorAll('.nav-item').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var sidebar = document.getElementById('sidebar');
+                if (sidebar && window.innerWidth < 1024 && sidebar.classList.contains('open')) {
+                    setTimeout(function() {
+                        sidebar.classList.remove('open');
+                        var overlay = document.getElementById('sidebarOverlay');
+                        if (overlay) overlay.classList.remove('show');
+                        document.body.classList.remove('menu-open');
+                        var toggle = document.getElementById('menuToggle');
+                        if (toggle) {
+                            toggle.setAttribute('aria-expanded', 'false');
+                            toggle.setAttribute('aria-label', 'باز کردن منو');
+                            var icon = toggle.querySelector('i');
+                            if (icon) icon.className = 'fas fa-bars';
+                        }
+                    }, 200);
+                }
+            });
+        });
+
+        // Window resize handler
+        var resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth >= 1024) {
+                    var sidebar = document.getElementById('sidebar');
+                    var overlay = document.getElementById('sidebarOverlay');
+                    if (sidebar && sidebar.classList.contains('open')) {
+                        sidebar.classList.remove('open');
+                        if (overlay) overlay.classList.remove('show');
+                        document.body.classList.remove('menu-open');
+                        var toggle = document.getElementById('menuToggle');
+                        if (toggle) {
+                            toggle.setAttribute('aria-expanded', 'false');
+                            toggle.setAttribute('aria-label', 'باز کردن منو');
+                            var icon = toggle.querySelector('i');
+                            if (icon) icon.className = 'fas fa-bars';
+                        }
+                    }
+                }
+            }, 250);
+        });
+    });
+
+    // Focus trap inside mobile sidebar when open
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            var sidebar = document.getElementById('sidebar');
+            if (!sidebar || !sidebar.classList.contains('open')) return;
+            if (window.innerWidth >= 1024) return;
+
+            var focusable = sidebar.querySelectorAll('a, button, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length === 0) return;
+
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        }
+    });
+
+</script>
+
+{% block extra_js %}{% endblock %}
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+{% endif %}
+</body>
+</html>

@@ -166,6 +166,19 @@
     display: none;
 }
 
+/* ── Add Department Modal ── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,.4); align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: white; border-radius: 14px; padding: 24px;
+    width: min(440px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.2);
+}
+.modal-box h3 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
+.modal-field { margin-bottom: 14px; }
+
 @media (max-width: 768px) {
     .user-form-container {
         padding: 15px;
@@ -273,6 +286,29 @@
             </div>
         </div>
 
+        <!-- انتخاب بخش (فقط برای نقش درخواست‌دهنده) -->
+        <div class="form-group" id="departmentGroup" style="display:none;">
+            <label for="department_id" class="form-label">
+                بخش <span class="required">*</span>
+            </label>
+            <div style="display:flex; gap:8px;">
+                <select id="department_id" name="department_id" class="form-select" style="flex:1;">
+                    <option value="">انتخاب بخش</option>
+                    {% for dep in departments %}
+                    <option value="{{ dep.id }}"
+                            {% if edit_user and edit_user.department and edit_user.department.id == dep.id %}selected
+                            {% elif form_data and form_data.department_id == dep.id|stringformat:"s" %}selected{% endif %}>
+                        {{ dep.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn-submit" style="padding:8px 16px;white-space:nowrap;font-size:13px;" onclick="openAddDepartmentModal()">+ جدید</button>
+            </div>
+            <div class="form-help">
+                بخش یا واحدی که کاربر در آن فعالیت می‌کند.
+            </div>
+        </div>
+
         <!-- انتخاب کافه -->
         <div class="form-group" id="cafeGroup">
             <label for="cafe_id" class="form-label">
@@ -358,6 +394,22 @@
         </div>
         {% endif %}
 
+        <!-- Add new department modal -->
+        <div class="modal-overlay" id="addDepartmentModal">
+            <div class="modal-box">
+                <h3>➕ افزودن بخش جدید</h3>
+                <div class="modal-field">
+                    <label>نام بخش *</label>
+                    <input type="text" id="newDepartmentName" placeholder="نام بخش را وارد کنید..." style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:Vazir,sans-serif;">
+                    <div class="modal-err" id="newDepartmentErr" style="color:#dc2626;font-size:13px;margin-top:6px;"></div>
+                </div>
+                <div class="modal-actions" style="display:flex;gap:10px;margin-top:20px;">
+                    <button class="modal-btn-save" onclick="submitNewDepartment()" style="flex:1;padding:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Vazir,sans-serif;">ذخیره</button>
+                    <button class="modal-btn-cancel" onclick="closeAddDepartmentModal()" style="padding:10px 20px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:Vazir,sans-serif;">انصراف</button>
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions">
             <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
             <button type="submit" class="btn-submit">
@@ -378,6 +430,57 @@ function onRoleChange(roleVal) {
     if (srGroup) {
         srGroup.style.display = (roleVal === 'purchasing' || roleVal === 'warehouse') ? 'block' : 'none';
     }
+    // نمایش انتخاب بخش فقط برای نقش درخواست‌دهنده
+    const depGroup = document.getElementById('departmentGroup');
+    if (depGroup) {
+        depGroup.style.display = (roleVal === 'requester') ? 'block' : 'none';
+        if (roleVal !== 'requester') {
+            document.getElementById('department_id').value = '';
+        }
+    }
+}
+
+const QUICK_ADD_DEP_URL = "{% url 'quick_add_department' cafe_code=cafe_code %}";
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+function openAddDepartmentModal() {
+    document.getElementById('newDepartmentName').value = '';
+    document.getElementById('newDepartmentErr').textContent = '';
+    document.getElementById('addDepartmentModal').classList.add('open');
+    setTimeout(() => document.getElementById('newDepartmentName').focus(), 100);
+}
+
+function closeAddDepartmentModal() {
+    document.getElementById('addDepartmentModal').classList.remove('open');
+}
+
+function submitNewDepartment() {
+    const name = document.getElementById('newDepartmentName').value.trim();
+    const errEl = document.getElementById('newDepartmentErr');
+    if (!name) { errEl.textContent = 'نام بخش الزامی است'; return; }
+    const btn = document.querySelector('#addDepartmentModal .modal-btn-save');
+    btn.disabled = true; btn.textContent = 'در حال ذخیره...';
+    fetch(QUICK_ADD_DEP_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken':CSRF_TOKEN},
+        body: JSON.stringify({name: name})
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false; btn.textContent = 'ذخیره';
+        if (data.success) {
+            const sel = document.getElementById('department_id');
+            const opt = document.createElement('option');
+            opt.value = data.department.id;
+            opt.textContent = data.department.name;
+            opt.selected = true;
+            sel.appendChild(opt);
+            closeAddDepartmentModal();
+        } else {
+            errEl.textContent = data.error || 'خطا در افزودن بخش';
+        }
+    }).catch(() => {
+        btn.disabled = false; btn.textContent = 'ذخیره';
+        errEl.textContent = 'خطای شبکه. لطفاً دوباره تلاش کنید.';
+    });
 }
 
 function onCafeChange(cafeVal) {

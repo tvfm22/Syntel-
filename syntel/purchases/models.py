@@ -31,11 +31,7 @@ class Cafe(models.Model):
 # Custom User model with roles
 class User(AbstractUser):
     ROLE_CHOICES = [
-        ('kitchen', 'آشپزخانه'),
-        ('bar', 'بار'),
-        ('counter', 'کانتر'),
-        ('cashier', 'صندوق'),
-        ('facilities', 'تاسیسات'),
+        ('requester', 'درخواست‌دهنده'),
         ('purchasing', 'خرید'),
         ('warehouse', 'انبار'),
         ('admin', 'ادمین'),
@@ -51,6 +47,7 @@ class User(AbstractUser):
         verbose_name='نقش دوم', help_text='اگر کاربر هم مسئول خرید و هم مسئول انبار باشد'
     )
     cafe = models.ForeignKey('Cafe', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name='کافه')
+    department = models.ForeignKey('Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='users', verbose_name='بخش')
     
     # Roles that can switch between cafes
     ADMIN_ROLES = ['manager', 'ceo']
@@ -98,6 +95,21 @@ class User(AbstractUser):
         """
         return self.role in self.CAFE_SELECTION_ROLES and self.cafe is None
 
+    @property
+    def department_display(self):
+        """بخش نمایشی کاربر - برای کاربران درخواست‌دهنده نام بخش را برمی‌گرداند"""
+        if self.role == 'requester' and self.department:
+            return self.department.name
+        # Fallback mapping for old roles removed from ROLE_CHOICES
+        old_role_names = {
+            'kitchen': 'آشپزخانه',
+            'bar': 'بار',
+            'counter': 'کانتر',
+            'cashier': 'صندوق',
+            'facilities': 'تاسیسات',
+        }
+        return old_role_names.get(self.role, self.get_role_display())
+
 # Requester model
 class Requester(models.Model):
     REQUESTER_CHOICES = [
@@ -133,12 +145,12 @@ class InvoiceIssue(models.Model):
 # Purchase Request model
 class PurchaseRequest(models.Model):
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('pending_manager_approval', 'Pending Manager Approval'),
-        ('pending', 'Pending Purchase'),
-        ('purchased', 'Purchased'),
-        ('partial', 'Partial'),
-        ('rejected', 'Rejected'),
+        ('draft', 'پیش‌نویس'),
+        ('pending_manager_approval', 'منتظر تایید مدیر'),
+        ('pending', 'در انتظار خرید'),
+        ('purchased', 'خریداری شده'),
+        ('partial', 'تکمیل جزئی'),
+        ('rejected', 'رد شده'),
     ]
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='purchase_requests', verbose_name='کافه', null=True, blank=True)
     user: models.ForeignKey = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
@@ -335,6 +347,10 @@ class Category(models.Model):
         verbose_name_plural = 'دسته‌بندی‌ها'
         unique_together = [['name', 'parent', 'cafe']]
 
+DEPARTMENT_CHOICES = [
+    ('general', 'عمومی'),
+]
+
 # Product model for base products
 class Product(models.Model):
     name = models.CharField(max_length=200, verbose_name='نام محصول')
@@ -342,6 +358,7 @@ class Product(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد اصلی')
     min_stock = models.PositiveIntegerField(default=0, verbose_name='حداقل موجودی')
     current_stock = models.PositiveIntegerField(default=0, verbose_name="موجودی فعلی")
+    usage_location = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default='general', verbose_name='محل استفاده')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
@@ -354,6 +371,22 @@ class Product(models.Model):
     class Meta:
         verbose_name = 'محصول'
         verbose_name_plural = 'محصولات'
+        ordering = ['name']
+        unique_together = [['name', 'cafe']]
+
+# Department model for user departments
+class Department(models.Model):
+    name = models.CharField(max_length=100, verbose_name='نام بخش')
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='departments', verbose_name='کافه', null=True, blank=True)
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'بخش'
+        verbose_name_plural = 'بخش‌ها'
         ordering = ['name']
         unique_together = [['name', 'cafe']]
 
