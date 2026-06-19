@@ -1,6 +1,9 @@
 from django import template
 from django.utils.numberformat import format
 import jdatetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 register = template.Library()
 
@@ -27,7 +30,8 @@ def iso_date(value):
         if hasattr(value, 'strftime'):
             return value.strftime('%Y-%m-%d')
         return str(value)
-    except:
+    except Exception:
+        logger.exception('iso_date filter error')
         return str(value)
 
 @register.filter
@@ -82,7 +86,8 @@ def jalali_date(value, format_string='%Y/%m/%d'):
         # Convert numbers to Persian
         persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
         return result.translate(persian_digits)
-    except:
+    except Exception:
+        logger.exception('jalali_date filter error')
         return str(value)
 
 
@@ -120,7 +125,8 @@ def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
         # Convert numbers to Persian
         persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
         return result.translate(persian_digits)
-    except:
+    except Exception:
+        logger.exception('jalali_datetime filter error')
         return str(value)
 
 
@@ -145,9 +151,9 @@ def jalali_time(value, format_string='%H:%M'):
             # Convert numbers to Persian
             persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
             return result.translate(persian_digits)
-    except:
-        pass
-    
+    except Exception:
+        logger.exception('jalali_time filter error')
+
     return str(value)
 
 

@@ -1,8 +1,9 @@
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 from decimal import Decimal
+from typing import Tuple
 
-from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models import DecimalField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -26,7 +27,13 @@ INVOICE_STATUS_INCLUDED = [
 ]
 
 
-def _invoice_items_for_period(*, start, end, end_inclusive=True, cafe=None):
+def _invoice_items_for_period(
+    *,
+    start: datetime,
+    end: datetime,
+    end_inclusive: bool = True,
+    cafe=None,
+) -> QuerySet:
 	created_at_filter = {
 		'invoice__created_at__gte': start,
 		('invoice__created_at__lte' if end_inclusive else 'invoice__created_at__lt'): end,
@@ -37,7 +44,7 @@ def _invoice_items_for_period(*, start, end, end_inclusive=True, cafe=None):
 	return InvoiceItem.objects.filter(**created_at_filter)
 
 
-def get_date_range(period='weekly'):
+def get_date_range(period: str = 'weekly') -> Tuple[datetime, datetime, datetime, datetime]:
 	"""Return (current_start, current_end, previous_start, previous_end).
 	
 	بازه زمانی از امروز (انتهای روز) تا گذشته محاسبه می‌شود:
@@ -89,7 +96,7 @@ def calculate_change_percent(current_value, previous_value):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def department_expenses_api(request):
+def department_expenses_api(request) -> Response:
 	"""Bubble data per department.
 
 	X = sum of requested quantities (PurchaseItem.quantity)

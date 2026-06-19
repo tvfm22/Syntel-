@@ -5,169 +5,189 @@
 
 {% block extra_css %}
 <style>
-    /* ─── Page-specific styles ─── */
-
-    .stat-sublabel {
-        font-size: 0.75rem;
-        color: #9ca3af;
-        margin-top: 0.25rem;
+    /* ─── Card Styles ─── */
+    .fd-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 28px;
+        margin-bottom: 40px;
     }
 
-    .search-box {
+    .fd-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 1px solid #EEEEF4;
+        display: flex;
+        flex-direction: column;
+        min-height: 220px;
+        transition: all 0.3s ease;
+    }
+    .fd-card:hover {
+        box-shadow: 0 8px 32px rgba(108,92,231,0.10);
+        transform: translateY(-3px);
+        border-color: #DDD6F0;
+    }
+
+    .fd-card-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: var(--gray-50);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--gray-200);
+        justify-content: space-between;
+        margin-bottom: 18px;
+        flex-shrink: 0;
     }
-    .search-box i { color: #9ca3af; }
-    .search-box input {
-        border: none;
-        background: transparent;
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.875rem;
-        outline: none;
-        width: 200px;
+    .fd-icon-box {
+        width: 44px; height: 44px;
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; font-size: 18px;
     }
+    .fd-icon-box.indigo { background: #EEF0FF; color: #6366F1; }
+    .fd-icon-box.green  { background: #E8FAF4; color: #10B981; }
+    .fd-icon-box.orange { background: #FFF4EC; color: #F97316; }
+    .fd-icon-box.blue   { background: #EFF4FF; color: #3B82F6; }
+    .fd-icon-box.pink   { background: #FDE8F3; color: #E84393; }
+    .fd-icon-box.purple { background: #F3EEFF; color: #8B5CF6; }
+    .fd-icon-box.teal   { background: #E8FAFA; color: #14B8A6; }
 
-    .chart-link {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        transition: all 0.2s;
+    .fd-card-title {
+        font-size: 17px; font-weight: 700;
+        color: #1A1A2E; margin: 0;
     }
-    .chart-link:hover { color: var(--primary-dark); }
+    .fd-card-title.indigo { color: #6366F1; }
+    .fd-card-title.green  { color: #10B981; }
+    .fd-card-title.orange { color: #F97316; }
+    .fd-card-title.blue   { color: #3B82F6; }
+    .fd-card-title.pink   { color: #E84393; }
+    .fd-card-title.purple { color: #8B5CF6; }
+    .fd-card-title.teal   { color: #14B8A6; }
 
-    /* Modal */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        align-items: center;
+    .fd-menu {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
         justify-content: center;
+        gap: 10px;
+    }
+    .fd-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 14px;
+        background: #F8F8FC;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #333;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+    .fd-item:hover {
+        background: #F0EEFF;
+        transform: translateX(-4px);
+    }
+    .fd-item i {
+        font-size: 15px;
+        color: #999;
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .fd-item:hover i { color: #6C5CE7; }
+    .fd-item .fd-badge {
+        margin-right: auto;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.2rem 0.6rem;
+        border-radius: var(--radius-sm);
+    }
+    .fd-item .fd-badge.green  { background: rgba(34,197,94,0.08); color: #16A34A; }
+    .fd-item .fd-badge.orange { background: rgba(249,115,22,0.08); color: #EA580C; }
+    .fd-item .fd-badge.blue   { background: rgba(59,130,246,0.08); color: #2563EB; }
+    .fd-item .fd-badge.red    { background: rgba(239,68,68,0.08);  color: #DC2626; }
+
+    /* ─── Special item with side accent ─── */
+    .fd-item.accent-green { border-right: 3px solid var(--accent-green); }
+    .fd-item.accent-green i { color: var(--accent-green); }
+
+    /* ─── Section divider for supply warehouses ─── */
+    .fd-section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-bottom: var(--space-5);
+    }
+    .fd-section-title i { color: var(--accent-indigo); }
+
+    /* ─── Empty state ─── */
+    .fd-empty {
+        text-align: center;
+        padding: var(--space-8);
+    }
+    .fd-empty i {
+        font-size: 2.5rem;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: var(--space-4);
+    }
+    .fd-empty p { color: var(--text-secondary); font-size: 0.95rem; }
+    .fd-empty .btn { margin-top: var(--space-4); }
+
+    /* ─── Modal ─── */
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(15,23,42,0.5); z-index: 1000;
+        align-items: center; justify-content: center;
+        backdrop-filter: blur(4px);
     }
     .modal-overlay.show { display: flex; }
     .modal-content {
-        background: white;
-        border-radius: var(--radius-xl);
-        width: 90%;
-        max-width: 900px;
-        box-shadow: var(--shadow-xl);
-        overflow: hidden;
+        background: var(--bg-card); border-radius: var(--radius-3xl);
+        width: 90%; max-width: 900px;
+        box-shadow: var(--shadow-xl); overflow: hidden;
     }
     .modal-header {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        padding: var(--space-6); border-bottom: 1px solid var(--border-light);
+        display: flex; justify-content: space-between; align-items: center;
     }
-    .modal-title { font-size: 1.25rem; font-weight: 700; color: var(--dark); }
+    .modal-title {
+        font-size: 1.25rem; font-weight: 700; color: var(--text-primary);
+    }
     .modal-close {
         background: none; border: none; font-size: 1.5rem;
-        color: #9ca3af; cursor: pointer; transition: all 0.2s;
+        color: var(--text-muted); cursor: pointer; transition: all var(--transition-fast);
     }
-    .modal-close:hover { color: var(--dark); }
-    .modal-body { padding: 2rem; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: var(--space-6); }
     .chart-wrapper { height: 400px; }
 
-    /* Dashboard Grid */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+    /* ─── Responsive ─── */
+    @media (max-width: 1400px) {
+        .fd-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; }
     }
-
-    /* Flash Card Styles */
-    .flash-card {
-        background: white;
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-md);
-        overflow: hidden;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
+    @media (max-width: 1100px) {
+        .fd-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
     }
-    .flash-card:hover {
-        box-shadow: var(--shadow-xl);
-        transform: translateY(-4px);
-        border-color: var(--primary);
-    }
-    .flash-card-header {
-        padding: 1.5rem;
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        text-align: center;
-        font-size: 1.1rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-    }
-    .flash-card-header span { font-size: 1.5rem; }
-    .flash-card-body {
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    .flash-card-link {
-        padding: 0.875rem 1rem;
-        background: var(--gray-50);
-        border-radius: var(--radius-md);
-        text-decoration: none;
-        color: var(--dark);
-        font-size: 0.9rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        border: 1px solid transparent;
-    }
-    .flash-card-link:hover {
-        background: var(--primary);
-        color: white;
-        transform: translateX(-5px);
-        border-color: var(--primary);
-    }
-    .flash-card-link i { font-size: 1rem; width: 20px; }
-
-    .flash-card:nth-child(1) .flash-card-header { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-    .flash-card:nth-child(2) .flash-card-header { background: linear-gradient(135deg, #10b981, #059669); }
-    .flash-card:nth-child(3) .flash-card-header { background: linear-gradient(135deg, #f59e0b, #d97706); }
-    .flash-card:nth-child(4) .flash-card-header { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-    .flash-card:nth-child(5) .flash-card-header { background: linear-gradient(135deg, #ec4899, #db2777); }
-    .flash-card:nth-child(6) .flash-card-header { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-    .flash-card:nth-child(7) .flash-card-header { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-
     @media (max-width: 768px) {
-        .dashboard-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-        .search-box input { width: 150px; }
+        .fd-grid { grid-template-columns: 1fr; gap: 20px; }
+        .fd-card { padding: 20px; min-height: auto; }
+        .fd-card-title { font-size: 16px; }
+        .fd-icon-box { width: 38px; height: 38px; font-size: 16px; }
+        .fd-item { height: 38px; font-size: 13px; padding: 0 12px; }
     }
 
-    @media (max-width: 480px) {
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
+<!-- ===== Header ===== -->
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-chart-bar"></i>
@@ -185,169 +205,191 @@
     </div>
 </div>
 
-<!-- Dashboard Grid -->
-<div class="dashboard-grid">
-    {% comment %}=== Flash Card: درخواست‌ها ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>📊</span>درخواست‌ها</div>
-        <div class="flash-card-body">
-            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+<!-- ===== Dashboard Grid ===== -->
+<div class="fd-grid">
+
+    {% comment %}=== Card: درخواست‌ها (Requests) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title indigo">درخواست‌ها</h2>
+            <div class="fd-icon-box indigo"><i class="fas fa-clipboard-list"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-chart-bar"></i> گزارشات خرید
             </a>
-            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-calendar-alt"></i> لیست خرید به تفکیک تاریخ
             </a>
-            <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="flash-card-link">
+            <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="fd-item">
                 <i class="fas fa-shopping-cart"></i> درخواست‌های خرید
             </a>
-            <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-warehouse"></i> درخواست‌های انبار
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: فاکتورها ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>📋</span>فاکتورها</div>
-        <div class="flash-card-body">
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="flash-card-link">
+    {% comment %}=== Card: فاکتورها (Invoices) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title green">فاکتورها</h2>
+            <div class="fd-icon-box green"><i class="fas fa-file-invoice"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="fd-item">
                 <i class="fas fa-file-invoice"></i> لیست فاکتورهای نقدی
             </a>
-            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-plus-circle"></i> ثبت فاکتور نقدی
             </a>
             {% if user.role == 'manager' %}
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="flash-card-link">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="fd-item">
                 <i class="fas fa-check-circle"></i> فاکتورهای نیازمند تأیید
             </a>
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="flash-card-link">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="fd-item">
                 <i class="fas fa-exclamation-circle"></i> فاکتورهای پرداخت نشده
             </a>
             {% endif %}
-            <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-list-alt"></i> لیست تمامی فاکتورها
             </a>
             {% if user.role == 'manager' %}
-            <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-edit"></i> فاکتورهای ویرایش شده مدیر مالی
             </a>
             {% endif %}
-            <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-exclamation-triangle"></i> مدیریت ایرادات فاکتور
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: تامین‌کنندگان ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>🏪</span>تامین‌کنندگان</div>
-        <div class="flash-card-body">
-            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="flash-card-link">
+    {% comment %}=== Card: تامین‌کنندگان (Suppliers) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title orange">تامین‌کنندگان</h2>
+            <div class="fd-icon-box orange"><i class="fas fa-store"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-store"></i> مدیریت تأمین‌کنندگان
             </a>
-            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-list"></i> لیست تأمین‌کنندگان
             </a>
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-plus"></i> افزودن/ویرایش تأمین‌کننده
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: پرداخت‌ها ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>💰</span>پرداخت‌ها</div>
-        <div class="flash-card-body">
-            <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="flash-card-link">
+    {% comment %}=== Card: پرداخت‌ها (Payments) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title purple">پرداخت‌ها</h2>
+            <div class="fd-icon-box purple"><i class="fas fa-credit-card"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-credit-card"></i> لیست پرداخت‌ها
             </a>
-            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-plus-circle"></i> ثبت پرداخت جدید
             </a>
-            <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-chart-pie"></i> گزارشات پرداخت
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: گزارشات ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>📈</span>گزارشات</div>
-        <div class="flash-card-body">
-            <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+    {% comment %}=== Card: گزارشات (Reports) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title pink">گزارشات</h2>
+            <div class="fd-icon-box pink"><i class="fas fa-chart-line"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-chart-line"></i> نمودار روند قیمت‌ها
             </a>
-            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-calendar-check"></i> گزارشات ماهانه
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: انبار ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>📦</span>انبار</div>
-        <div class="flash-card-body">
-            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="flash-card-link">
+    {% comment %}=== Card: انبار (Inventory) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title blue">انبار</h2>
+            <div class="fd-icon-box blue"><i class="fas fa-warehouse"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-tags"></i> موجودی انبار - دسته‌بندی
             </a>
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-warehouse"></i> لیست کامل موجودی انبار
             </a>
-            <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-plus-square"></i> ثبت موجودی جدید
             </a>
-            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-file-invoice"></i> لیست حواله‌های انبار
             </a>
-            <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-truck"></i> لیست تامین از انبار
             </a>
-            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-building"></i> مدیریت انبارها
             </a>
-            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="flash-card-link" style="border-right: 3px solid #10b981;">
-                <i class="fas fa-plus" style="color:#10b981"></i>
-                ایجاد دسته‌بندی انبار
+            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="fd-item accent-green">
+                <i class="fas fa-plus"></i> ایجاد دسته‌بندی انبار
             </a>
         </div>
     </div>
 
-    {% comment %}=== Flash Card: اطلاعات پایه ==={% endcomment %}
-    <div class="flash-card">
-        <div class="flash-card-header"><span>⚙️</span>اطلاعات پایه</div>
-        <div class="flash-card-body">
-            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="flash-card-link">
+    {% comment %}=== Card: اطلاعات پایه (Base Info) ==={% endcomment %}
+    <div class="fd-card">
+        <div class="fd-card-header">
+            <h2 class="fd-card-title teal">اطلاعات پایه</h2>
+            <div class="fd-icon-box teal"><i class="fas fa-cog"></i></div>
+        </div>
+        <div class="fd-menu">
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-box"></i> لیست محصولات
             </a>
-            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-balance-scale"></i> واحدهای اندازه‌گیری
             </a>
-            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-tags"></i> دسته‌بندی‌ها
             </a>
-            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-map-marker-alt"></i> محل پرداخت
             </a>
-            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="flash-card-link">
+            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-users"></i> مدیریت درخواست‌کنندگان
             </a>
         </div>
     </div>
+
 </div>
 
-{% comment %}=== انبارهای تامین‌کننده ==={% endcomment %}
+{% comment %}=== انبارهای تامین‌کننده (Supply Warehouses) ==={% endcomment %}
 {% if supply_warehouses %}
-<div class="table-card" style="margin-top: 1.5rem;">
+<div class="table-card">
     <div class="table-header">
         <div class="table-title">
-            <i class="fas fa-building" style="color: #6366f1;"></i>
+            <i class="fas fa-building" style="color: var(--accent-indigo);"></i>
             انبارهای تامین‌کننده فعال
         </div>
-        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem; text-decoration: none;">
+        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size: 0.8rem; height: 40px; padding: 0 1rem; text-decoration: none;">
             <i class="fas fa-cog"></i> مدیریت انبارها
         </a>
     </div>
-    <div class="table-body">
+    <div style="overflow-x: auto;">
         <table class="data-table">
             <thead>
                 <tr>
@@ -364,42 +406,48 @@
             <tbody>
                 {% for wh in supply_warehouses %}
                 <tr>
-                    <td style="font-weight: 600; color: #1f2937;">
-                        <i class="fas fa-warehouse" style="color: #6366f1; margin-left: 6px;"></i>
+                    <td style="font-weight: 600; color: var(--text-primary);">
+                        <i class="fas fa-warehouse" style="color: var(--accent-indigo); margin-left: 6px;"></i>
                         {{ wh.name }}
                     </td>
-                    <td><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">{{ wh.code }}</span></td>
-                    <td style="color: #6b7280;">{{ wh.location|default:"—" }}</td>
+                    <td>
+                        <span style="background: var(--bg-subtle); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; color: var(--text-primary);">
+                            {{ wh.code }}
+                        </span>
+                    </td>
+                    <td style="color: var(--text-secondary);">{{ wh.location|default:"—" }}</td>
                     <td style="text-align: center;">
                         {% if wh.total_requests > 0 %}
-                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" style="color: #6366f1; font-weight: 600; text-decoration: none;">{{ wh.total_requests }}</a>
+                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" style="color: var(--accent-indigo); font-weight: 600; text-decoration: none;">
+                            {{ wh.total_requests }}
+                        </a>
                         {% else %}
-                        <span style="color: #9ca3af;">۰</span>
+                        <span style="color: var(--text-muted);">۰</span>
                         {% endif %}
                     </td>
                     <td style="text-align: center;">
                         {% if wh.pending_requests > 0 %}
-                        <span style="background: #fef3c7; color: #d97706; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.pending_requests }}</span>
+                        <span class="badge badge-warning">{{ wh.pending_requests }}</span>
                         {% else %}
-                        <span style="color: #9ca3af;">—</span>
+                        <span style="color: var(--text-muted);">—</span>
                         {% endif %}
                     </td>
                     <td style="text-align: center;">
                         {% if wh.fulfilled_requests > 0 %}
-                        <span style="background: #d1fae5; color: #059669; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.fulfilled_requests }}</span>
+                        <span class="badge badge-success">{{ wh.fulfilled_requests }}</span>
                         {% else %}
-                        <span style="color: #9ca3af;">—</span>
+                        <span style="color: var(--text-muted);">—</span>
                         {% endif %}
                     </td>
                     <td style="text-align: center;">
                         {% if wh.rejected_requests > 0 %}
-                        <span style="background: #fee2e2; color: #dc2626; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">{{ wh.rejected_requests }}</span>
+                        <span class="badge badge-danger">{{ wh.rejected_requests }}</span>
                         {% else %}
-                        <span style="color: #9ca3af;">—</span>
+                        <span style="color: var(--text-muted);">—</span>
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="btn btn-info" style="font-size: 0.75rem; padding: 0.3rem 0.7rem; text-decoration: none;">
+                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="btn btn-info" style="font-size: 0.75rem; height: 34px; padding: 0 0.7rem; text-decoration: none;">
                             <i class="fas fa-list"></i> درخواست‌ها
                         </a>
                     </td>
@@ -410,10 +458,10 @@
     </div>
 </div>
 {% elif supply_warehouses is not None %}
-<div style="background: white; border-radius: 0.75rem; padding: 2rem; margin-top: 1.5rem; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-    <i class="fas fa-warehouse" style="font-size: 2.5rem; color: #d1d5db; display: block; margin-bottom: 1rem;"></i>
-    <p style="color: #6b7280; font-size: 0.95rem;">هیچ انبار تامین‌کننده‌ای تعریف نشده است.</p>
-    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="margin-top: 1rem; text-decoration: none;">
+<div class="fd-empty" style="background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px solid var(--border-light); box-shadow: var(--shadow-md);">
+    <i class="fas fa-warehouse"></i>
+    <p>هیچ انبار تامین‌کننده‌ای تعریف نشده است.</p>
+    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="text-decoration: none;">
         <i class="fas fa-plus"></i> افزودن انبار
     </a>
 </div>
@@ -479,7 +527,9 @@
         const ctx = document.getElementById('categoryChart');
         if (categoryChartInstance) { categoryChartInstance.destroy(); }
         if (!data.categories || data.categories.length === 0) {
-            ctx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-pie"></i><p>داده‌ای برای نمایش وجود ندارد</p></div>';
+            if (ctx && ctx.parentElement) {
+                ctx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-pie"></i><p>داده‌ای برای نمایش وجود ندارد</p></div>';
+            }
             return;
         }
         const labels = data.categories.map(cat => cat.name);
@@ -540,7 +590,8 @@
 
     function loadPriceIncreases() {
         const container = document.getElementById('priceIncreasesList');
-        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        if (!container) return;
+        container.innerHTML = '<div class="loading" style="margin: 2rem auto;"></div>';
         fetch(`/{{ cafe_code }}/api/management/price-increases/?period=${currentPeriod}`, {
             headers: { 'X-CSRFToken': csrftoken }
         })
@@ -548,12 +599,13 @@
         .then(data => renderPriceIncreases(data))
         .catch(error => {
             console.error('Error loading price increases:', error);
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>';
+            if (container) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>';
         });
     }
 
     function renderPriceIncreases(data) {
         const container = document.getElementById('priceIncreasesList');
+        if (!container) return;
         if (!data.products || data.products.length === 0) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>تغییر قیمتی یافت نشد</p><small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small></div>';
             return;
@@ -570,7 +622,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('persianDate').textContent = getPersianDate();
+        const dateEl = document.getElementById('persianDate');
+        if (dateEl) dateEl.textContent = getPersianDate();
         loadCategoryExpenses();
         loadPriceIncreases();
     });

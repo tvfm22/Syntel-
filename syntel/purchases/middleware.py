@@ -5,7 +5,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.middleware.csrf import CsrfViewMiddleware
 from django.http import Http404
-from django.urls import resolve
+from django.urls import resolve, Resolver404
 
 
 class CustomCsrfViewMiddleware(CsrfViewMiddleware):
@@ -116,7 +116,7 @@ class CafeMiddleware:
         try:
             resolved = resolve(request.path)
             return resolved.kwargs.get('cafe_code')
-        except:
+        except Resolver404:
             return None
     
     def _validate_cafe_access(self, request, cafe_code, Cafe):

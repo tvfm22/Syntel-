@@ -1,7 +1,11 @@
 """
 Context Processors for Cafe Multi-Tenant Support
 """
+import logging
+
 from .models import Cafe
+
+logger = logging.getLogger(__name__)
 
 
 def cafe_context(request):
@@ -47,8 +51,8 @@ def cafe_context(request):
             if default_cafe:
                 cafe = default_cafe
                 cafe_code = 'local'
-        except:
-            pass
+        except Exception:
+            logger.exception('Error fetching default cafe in context processor')
     
     context['current_cafe'] = cafe
     context['cafe_code'] = cafe_code

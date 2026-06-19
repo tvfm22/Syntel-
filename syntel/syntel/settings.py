@@ -10,7 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+
+from dotenv import load_dotenv
+
+# لود کردن فایل متغیرهای محیطی
+load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +29,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^rk@&hv4vum8(+93st5ey%gb9itj6l4dc*i#@eh7!-&@9x^xpw'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY environment variable is required. '
+        'Set it to a long, random value (e.g., output of `python -c "import secrets; print(secrets.token_urlsafe(50))"`).'
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
@@ -159,7 +173,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'frontend' / 'static']
 
 # Default primary key field type
@@ -170,7 +183,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Authentication settings
 LOGIN_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/login/'
-import os
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
