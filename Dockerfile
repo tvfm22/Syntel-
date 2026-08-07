@@ -15,7 +15,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=syntel.settings_production \
     PYTHONPATH=/app/syntel \
-    DATA_PATH=/app/data
+    DATA_PATH=/app/data \
+    STATIC_ROOT=/tmp/staticfiles
 
 WORKDIR /app
 
