@@ -113,11 +113,11 @@
         </div>
     </div>
 
-    <!-- Dual-role tabs -->
-    {% if has_dual %}
+    <!-- Role tabs -->
+    {% if has_purchasing or has_warehouse %}
     <div class="tab-row">
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn active-blue">🛒 درخواست‌های خرید</a>
-        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn">📦 درخواست‌های انبار</a>
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn active-blue">🛒 درخواست‌های کالا</a>
+        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="tab-btn">📦 کالا های موجود در انبار</a>
     </div>
     {% endif %}
 
@@ -125,14 +125,14 @@
     {% if has_purchasing %}
     <div class="all-depts-banner banner-purchase">
         <div class="all-depts-banner-left">
-            <h2>📋 درخواست همه بخش‌ها — خرید</h2>
-            <p>مشاهده و ادغام درخواست‌های خرید تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
+            <h2>📋 درخواست کالا همه بخش‌ها</h2>
+            <p>مشاهده و ادغام درخواست‌های کالا تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
         </div>
         <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=purchase" class="banner-btn banner-btn-purple">مشاهده یکجا</a>
     </div>
 
     <div class="section-block">
-        <div class="section-title">🛒 درخواست‌های خرید به تفکیک بخش</div>
+        <div class="section-title">🛒 درخواست‌های کالا به تفکیک بخش</div>
         <div class="departments-grid">
             {% for dept in departments %}
             <div class="department-card">
@@ -158,45 +158,6 @@
     </div>
     {% endif %}
 
-    <!-- All-departments warehouse banner -->
-    {% if has_warehouse %}
-    <div class="all-depts-banner banner-warehouse">
-        <div class="all-depts-banner-left">
-            <h2>📦 درخواست انبار همه بخش‌ها</h2>
-            <p>مشاهده و ادغام درخواست‌های انبار تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
-        </div>
-        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse" class="banner-btn banner-btn-green">مشاهده یکجا</a>
-    </div>
-    {% endif %}
-
-    <!-- Warehouse requests by department -->
-    {% if has_warehouse and warehouse_departments %}
-    <div class="section-block">
-        <div class="section-title">📦 درخواست‌های انبار به تفکیک بخش</div>
-        <div class="departments-grid">
-            {% for dept in warehouse_departments %}
-            <div class="department-card" style="border-right: 4px solid #10b981;">
-                <div class="department-header">
-                    <div class="department-icon">{{ dept.icon }}</div>
-                    <div class="department-info">
-                        <h3>{{ dept.name }}</h3>
-                        <div class="department-stats">
-                            <span class="stat-badge stat-total">{{ dept.total }} کل</span>
-                            {% if dept.pending > 0 %}<span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>{% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="department-actions">
-                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all"
-                       class="action-btn action-btn-green">همه</a>
-                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending"
-                       class="action-btn action-btn-pending">در انتظار</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 
 </div><!-- /page-wrapper -->
 

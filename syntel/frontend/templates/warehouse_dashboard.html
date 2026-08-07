@@ -114,51 +114,14 @@
         </div>
     </div>
 
-    <!-- Dual-role tabs -->
-    {% if has_dual %}
+    <!-- Role tabs -->
+    {% if has_purchasing or has_warehouse %}
     <div class="tab-row">
         <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active">📦 انبار</a>
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn">🛒 خرید</a>
+        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="tab-btn">📦 کالا های موجود در انبار</a>
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn">🛒 درخواست‌های کالا</a>
     </div>
     {% endif %}
-
-    <!-- All-departments banner -->
-    <div class="all-depts-banner">
-        <div>
-            <h2>📋 درخواست انبار همه بخش‌ها</h2>
-            <p>مشاهده یکجا و ادغام درخواست‌های انبار تمام بخش‌ها — محصولات مشابه ادغام می‌شوند</p>
-        </div>
-        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse" class="banner-btn">مشاهده یکجا</a>
-    </div>
-
-    <!-- Requests by department -->
-    <div class="section-block">
-        <div class="section-title">📋 درخواست‌های انبار به تفکیک بخش</div>
-        <div class="departments-grid">
-            {% for dept in departments %}
-            <div class="department-card">
-                <div class="department-header">
-                    <div class="dept-icon">{{ dept.icon }}</div>
-                    <div>
-                        <div class="dept-name">{{ dept.name }}</div>
-                        <div class="dept-stats">
-                            <span class="stat-badge stat-total">{{ dept.total }} کل</span>
-                            {% if dept.pending > 0 %}
-                            <span class="stat-badge stat-pending">{{ dept.pending }} در انتظار</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="dept-actions">
-                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=all"
-                       class="dept-btn dept-btn-all">همه</a>
-                    <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}?role={{ dept.role }}&status=pending"
-                       class="dept-btn dept-btn-pending">در انتظار</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
 
     <!-- Low stock -->
     {% if stock_items_low %}

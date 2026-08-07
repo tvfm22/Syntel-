@@ -47,6 +47,7 @@ cafe_urlpatterns = [
     path('warehouse-request/<int:request_id>/process/', cv(views.process_warehouse_request), name='process_warehouse_request'),
     path('purchase-list/stock-supply/', cv(views.purchase_list_with_stock_supply), name='purchase_list_with_stock_supply'),
     path('warehouse-dashboard/', cv(views.warehouse_dashboard), name='warehouse_dashboard'),
+    path('warehouse/available/', cv(views.warehouse_available_products), name='warehouse_available_products'),
     path('api/stock-items/search/', cv(views.api_search_stock_items), name='api_search_stock_items'),
     path('finance-dashboard/', cv(views.finance_dashboard), name='finance_dashboard'),
     path('finance-manager-dashboard/', cv(views.finance_manager_dashboard), name='finance_manager_dashboard'),
@@ -80,6 +81,10 @@ cafe_urlpatterns = [
     path('products/create/', cv(views.product_create), name='product_create'),
     path('products/<int:product_id>/update/', cv(views.product_update), name='product_update'),
     path('products/<int:product_id>/delete/', cv(views.product_delete), name='product_delete'),
+    # Product Brand (واریانت تجاری) URLs
+    path('products/<int:product_id>/brands/add/', cv(views.product_brand_add), name='product_brand_add'),
+    path('products/brands/<int:brand_id>/update/', cv(views.product_brand_update), name='product_brand_update'),
+    path('products/brands/<int:brand_id>/delete/', cv(views.product_brand_delete), name='product_brand_delete'),
     # Unit Management URLs
     path('units/', cv(views.unit_list), name='unit_list'),
     path('units/create/', cv(views.unit_create), name='unit_create'),
@@ -122,6 +127,7 @@ cafe_urlpatterns = [
     path('invoices/register/', cv(views.invoice_register), name='invoice_register'),
     path('invoices/search-products/', cv(views.search_supplier_products), name='search_supplier_products'),
     path('api/products/autocomplete/', cv(views.search_products_autocomplete), name='products_autocomplete'),
+    path('api/products/<int:product_id>/brands/', cv(views.product_brands_api), name='product_brands_api'),
     path('api/products/quick-add/', cv(views.quick_add_product), name='quick_add_product'),
     path('api/departments/quick-add/', cv(views.quick_add_department), name='quick_add_department'),
     path('api/categories/autocomplete/', cv(views.search_categories_autocomplete), name='categories_autocomplete'),

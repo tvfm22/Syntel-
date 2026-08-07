@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 {% load custom_filters %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -22,15 +22,19 @@
         .form-label { display: block; font-size: 13px; color: #374151; margin-bottom: 6px; font-weight: 500; }
         .form-input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: Vazir, sans-serif; }
         .form-input:focus { outline: none; border-color: #10b981; }
-        .stock-search-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-top: 10px; }
-        .stock-results { max-height: 160px; overflow-y: auto; }
-        .stock-result-item { padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; margin-bottom: 3px; }
-        .stock-result-item:hover { background: #d1fae5; border-color: #10b981; }
-        .stock-result-item.selected { background: #d1fae5; border-color: #10b981; font-weight: 600; }
-        .selected-info { background: #d1fae5; border-radius: 6px; padding: 8px; margin-top: 6px; font-size: 12px; color: #065f46; display: none; }
-        .qty-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-        .qty-row input { flex: 1; }
+        .stock-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-top: 10px; }
+        .stock-row { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+        .stock-row:last-child { margin-bottom: 0; }
+        .brand-name { font-size: 13px; font-weight: 700; color: #6b21a8; }
+        .stock-wh { font-size: 11px; color: #6b7280; margin-right: 8px; }
+        .stock-avail { font-size: 12px; color: #374151; margin-top: 4px; }
+        .stock-avail strong { color: #10b981; }
+        .stock-conv { font-size: 11px; color: #a78bfa; margin-top: 2px; }
+        .stock-qty-line { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .stock-qty-line input { flex: 1; }
+        .stock-max { font-size: 11px; color: #6b7280; white-space: nowrap; }
         .warning { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 6px; display: none; }
+        .no-stock { color: #9ca3af; font-size: 13px; padding: 6px; }
         .item-checkbox { display: flex; align-items: center; gap: 8px; }
         .item-checkbox input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
         .select-label { font-size: 13px; color: #374151; }
@@ -60,8 +64,8 @@
     {% endif %}
 
     <div class="info-box">
-        💡 در مقابل هر قلم می‌توانید در موجودی انبار جستجو کنید و آن را از انبار تامین نمایید.
-        اگر محصولی در انبار موجود نبود، آن قلم برای خرید باقی می‌ماند.
+        💡 با تیک زدن هر قلم، برندهایی که از آن محصول در انبار موجود است نمایش داده می‌شود.
+        می‌توانید از یک یا چند برند مقدار تامین کنید. اگر محصولی در انبار موجود نبود، آن قلم برای خرید باقی می‌ماند.
     </div>
 
     {% if pending_items %}
@@ -88,24 +92,56 @@
                 <input type="hidden" name="action_{{ item.id }}" id="action-{{ item.id }}" value="">
             </div>
 
-            <div class="stock-search-box" id="stock-box-{{ item.id }}" style="display:none">
-                <label class="form-label">🔍 جستجو در موجودی انبار:</label>
-                <input type="text" class="form-input" id="search-{{ item.id }}" style="margin-bottom:6px;"
-                    placeholder="نام محصول را تایپ کنید..." oninput="searchStock('{{ item.id }}', this.value)">
-                <div class="stock-results" id="results-{{ item.id }}"></div>
-                <div class="selected-info" id="sel-info-{{ item.id }}">
-                    <strong>انتخاب‌شده:</strong> <span id="sel-name-{{ item.id }}"></span>
-                    | موجودی: <span id="sel-qty-{{ item.id }}"></span> <span id="sel-unit-{{ item.id }}"></span>
-                    | انبار: <span id="sel-wh-{{ item.id }}"></span>
+            <div class="stock-box" id="stock-box-{{ item.id }}" style="display:none">
+                {% with stocks=item_stock_options|get_item:item.id %}
+                {% if stocks %}
+                <label class="form-label">📦 موجودی‌های این محصول در انبار:</label>
+                {% for si in stocks %}
+                <div class="stock-row">
+                    <div>
+                        {% if si.product_brand %}
+                        <span class="brand-name">🏷️ {{ si.product_brand.brand_name }}</span>
+                        {% else %}
+                        <span class="brand-name" style="color:#64748b;">📦 بدون برند</span>
+                        {% endif %}
+                        {% if si.warehouse %}
+                        <span class="stock-wh">🏬 {{ si.warehouse.name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="stock-avail">
+                        موجودی:
+                        {% if si.product_brand and si.product_brand.conversion_rate %}
+                        <strong>{{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }}</strong> {{ si.product_brand.trade_unit }}
+                        {% else %}
+                        <strong>{{ si.quantity|trim_decimal }}</strong>{% if si.unit %} {{ si.unit.name }}{% endif %}
+                        {% endif %}
+                    </div>
+                    {% if si.product_brand and si.product_brand.conversion_rate %}
+                    <div class="stock-conv">نرخ تبدیل: هر {{ si.product_brand.trade_unit }} = {{ si.product_brand.conversion_rate|trim_decimal }} واحد پایه</div>
+                    {% endif %}
+                    <div class="stock-qty-line">
+                        <input type="hidden" name="stock_sid_{{ item.id }}" value="{{ si.id }}">
+                        <input type="number" name="stock_qty_{{ item.id }}" class="form-input"
+                               step="0.01" min="0" placeholder="مقدار تامین..."
+                               data-max="{{ si.quantity }}"
+                               data-rate="{% if si.product_brand and si.product_brand.conversion_rate %}{{ si.product_brand.conversion_rate }}{% else %}1{% endif %}"
+                               data-warn="warn-{{ item.id }}-{{ si.id }}"
+                               oninput="checkRowQty(this)">
+                        <span class="stock-max">حداکثر:
+                            {% if si.product_brand and si.product_brand.conversion_rate %}
+                            {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
+                            {% else %}
+                            {{ si.quantity|trim_decimal }}{% if si.unit %} {{ si.unit.name }}{% endif %}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="warning" id="warn-{{ item.id }}-{{ si.id }}">⚠️ مقدار بیشتر از موجودی است!</div>
                 </div>
-                <input type="hidden" name="stock_item_{{ item.id }}" id="stock-item-id-{{ item.id }}" value="">
-                <div class="qty-row" id="qty-row-{{ item.id }}" style="display:none">
-                    <input type="number" name="supplied_qty_{{ item.id }}" id="sup-qty-{{ item.id }}"
-                        class="form-input" step="0.01" min="0.01" placeholder="مقدار..."
-                        oninput="checkQty('{{ item.id }}', this.value)">
-                    <span style="font-size:13px; color:#6b7280; white-space:nowrap;">{{ item.unit }}</span>
-                </div>
-                <div class="warning" id="warn-{{ item.id }}">⚠️ مقدار بیشتر از موجودی انبار است!</div>
+                {% endfor %}
+                {% else %}
+                <div class="no-stock">هیچ موجودی در انبار برای این محصول یافت نشد — این قلم باید خریداری شود</div>
+                {% endif %}
+                {% endwith %}
             </div>
         </div>
         {% endfor %}
@@ -122,13 +158,6 @@
     {% endif %}
 
     <script>
-        const allStockItems = [
-            {% for si in stock_items %}
-            { id: {{ si.id }}, name: "{{ si.product.name|escapejs }}", qty: {{ si.quantity }}, unit: "{{ si.unit.name|default:''|escapejs }}", wh: "{{ si.warehouse.name|default:''|escapejs }}" }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
-        const selectedStocks = {};
-
         function toggleCard(itemId, checked) {
             const box = document.getElementById('stock-box-' + itemId);
             const card = document.getElementById('card-' + itemId);
@@ -136,61 +165,35 @@
             box.style.display = checked ? 'block' : 'none';
             card.classList.toggle('selected', checked);
             actionInput.value = checked ? 'from_stock' : '';
-            if (!checked) {
-                document.getElementById('stock-item-id-' + itemId).value = '';
-                document.getElementById('sel-info-' + itemId).style.display = 'none';
-                document.getElementById('qty-row-' + itemId).style.display = 'none';
-                document.getElementById('warn-' + itemId).style.display = 'none';
-                delete selectedStocks[itemId];
-            }
         }
 
-        function searchStock(itemId, q) {
-            const res = document.getElementById('results-' + itemId);
-            if (!q) { res.innerHTML = ''; return; }
-            const fl = allStockItems.filter(s => s.name.toLowerCase().includes(q.toLowerCase()));
-            if (!fl.length) { res.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:6px;">یافت نشد</div>'; return; }
-            res.innerHTML = fl.slice(0,10).map(s => `
-                <div class="stock-result-item" onclick="selectStock('${itemId}',${s.id},'${s.name.replace(/'/g,"\\'")}',${s.qty},'${s.unit}','${s.wh}')">
-                    <span>${s.name} <br><small style="color:#9ca3af">${s.wh}</small></span>
-                    <span style="color:#10b981;font-weight:600">${s.qty} ${s.unit}</span>
-                </div>`).join('');
-        }
-
-        function selectStock(itemId, id, name, qty, unit, wh) {
-            selectedStocks[itemId] = {id, qty, unit};
-            document.getElementById('stock-item-id-' + itemId).value = id;
-            document.getElementById('sel-info-' + itemId).style.display = 'block';
-            document.getElementById('sel-name-' + itemId).textContent = name;
-            document.getElementById('sel-qty-' + itemId).textContent = qty;
-            document.getElementById('sel-unit-' + itemId).textContent = unit;
-            document.getElementById('sel-wh-' + itemId).textContent = wh;
-            document.getElementById('qty-row-' + itemId).style.display = 'flex';
-            document.getElementById('results-' + itemId).innerHTML = '';
-            document.getElementById('search-' + itemId).value = name;
-            const qIn = document.getElementById('sup-qty-' + itemId);
-            if (qIn.value) checkQty(itemId, qIn.value);
-        }
-
-        function checkQty(itemId, val) {
-            const s = selectedStocks[itemId];
-            const w = document.getElementById('warn-' + itemId);
-            w.style.display = (s && parseFloat(val) > s.qty) ? 'block' : 'none';
+        function checkRowQty(input) {
+            const warn = document.getElementById(input.dataset.warn);
+            const entered = parseFloat(input.value) || 0;
+            const baseNeeded = entered * parseFloat(input.dataset.rate);
+            warn.style.display = (baseNeeded > parseFloat(input.dataset.max)) ? 'block' : 'none';
         }
 
         function prepareSubmit() {
-            // اطمینان از اینکه قلم‌های تیک‌خورده، stock_item هم دارند
             const checked = document.querySelectorAll('input[name="item_ids"]:checked');
             let valid = true;
             checked.forEach(cb => {
                 const id = cb.value;
-                const sId = document.getElementById('stock-item-id-' + id).value;
-                const sqty = document.getElementById('sup-qty-' + id);
-                if (!sId) {
-                    alert(`لطفاً برای «${document.querySelector('#card-' + id + ' .item-name').textContent}» یک محصول انبار انتخاب کنید`);
-                    valid = false;
-                } else if (!sqty || !sqty.value) {
-                    alert(`لطفاً مقدار تامین را برای «${document.querySelector('#card-' + id + ' .item-name').textContent}» وارد کنید`);
+                const qtyInputs = document.querySelectorAll('input[name="stock_qty_' + id + '"]');
+                const name = document.querySelector('#card-' + id + ' .item-name').textContent;
+                let hasAny = false;
+                qtyInputs.forEach(inp => {
+                    const v = parseFloat(inp.value);
+                    if (!isNaN(v) && v > 0) {
+                        hasAny = true;
+                        if (v * parseFloat(inp.dataset.rate) > parseFloat(inp.dataset.max)) {
+                            alert('⚠️ مقدار وارد شده برای «' + name + '» بیشتر از موجودی انبار است!');
+                            valid = false;
+                        }
+                    }
+                });
+                if (!hasAny) {
+                    alert('لطفاً حداقل برای یک برند از «' + name + '» مقدار تامین وارد کنید');
                     valid = false;
                 }
             });
@@ -199,4 +202,3 @@
     </script>
 </body>
 </html>
-

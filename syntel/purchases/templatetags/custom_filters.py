@@ -2,6 +2,7 @@ from django import template
 from django.utils.numberformat import format
 import jdatetime
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 
 logger = logging.getLogger(__name__)
 
@@ -198,3 +199,32 @@ def get_item(dictionary, key):
     if dictionary is None:
         return None
     return dictionary.get(key)
+
+
+@register.filter
+def trim_decimal(value, places=2):
+    """
+    نمایش عدد تا حداکثر `places` رقم اعشار بدون صفرهای اضافی
+    5.0000 → '5'، 0.4000 → '0.4'، 1.5000 → '1.5'، 0.25 → '0.25'
+    """
+    if value is None or value == '':
+        return '0'
+    try:
+        d = Decimal(str(value)).quantize(Decimal('0.1') ** int(places), rounding=ROUND_HALF_UP)
+        s = format(d.normalize(), 'f')
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        return s
+    except (ValueError, TypeError, ArithmeticError):
+        return str(value)
+
+
+@register.filter
+def div(value, divisor):
+    """تقسیم مقدار بر مقسوم‌علیه - برگرداندن Decimal"""
+    if value is None or divisor in (None, '', 0):
+        return None
+    try:
+        return Decimal(str(value)) / Decimal(str(divisor))
+    except (ValueError, TypeError, ArithmeticError):
+        return None

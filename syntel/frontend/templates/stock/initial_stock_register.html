@@ -1,89 +1,90 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}ثبت موجودی اولیه انبار{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 800px; margin: 2rem auto;">
+<div class="container" style="max-width: 750px; margin: 2rem auto;">
     <div class="card">
         <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 0.75rem 0.75rem 0 0;">
             <h2 style="margin: 0; font-size: 1.5rem;">
                 📦 ثبت موجودی اولیه انبار
             </h2>
         </div>
-        
+
         <div class="card-body" style="padding: 2rem;">
-            <form method="post" action="{% url 'initial_stock_register' cafe_code=cafe_code %}">
+            <form method="post" id="stock-register-form" action="{% url 'initial_stock_register' cafe_code=cafe_code %}">
                 {% csrf_token %}
-                
+
+                {% if messages %}
+                <div style="margin-bottom: 15px;">
+                    {% for message in messages %}
+                    <div style="padding:10px 14px;border-radius:8px;margin-bottom:8px;font-size:0.9rem;
+                                {% if message.tags == 'success' %}background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;
+                                {% elif message.tags == 'warning' %}background:#fffbeb;border:1px solid #fcd34d;color:#92400e;
+                                {% elif message.tags == 'error' %}background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;
+                                {% else %}background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if form.errors %}
+                <div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:10px 14px;border-radius:8px;margin-bottom:15px;font-size:0.9rem;">
+                    {{ form.errors }}
+                </div>
+                {% endif %}
+
+                <!-- فیلدهای مخفی: محصول و برند انتخابی -->
+                {{ form.product }}
+                {{ form.product_brand }}
+
+                <!-- انتخاب محصول از محصولات تعریف‌شده -->
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label for="{{ form.product.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">محصول *</label>
-                    {{ form.product }}
-                    {% if form.product.errors %}
-                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                            {{ form.product.errors }}
-                        </div>
-                    {% endif %}
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        محصول <span style="color: #dc3545;">*</span>
+                        <small style="color: #9ca3af; font-weight: 400;">(فقط از محصولات تعریف‌شده انتخاب کنید)</small>
+                    </label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="product_search" class="form-control"
+                               autocomplete="off" placeholder="نام محصول را جستجو کنید...">
+                        <div class="autocomplete-list" id="autocomplete_list"></div>
+                    </div>
+                    <div class="selected-product-banner" id="selected_product_banner" style="display:none;"></div>
                 </div>
 
+                <!-- انبار -->
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label for="{{ form.warehouse.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">انبار *</label>
+                    <label for="{{ form.warehouse.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        انبار <span style="color: #dc3545;">*</span>
+                    </label>
                     {{ form.warehouse }}
-                    {% if form.warehouse.errors %}
-                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                            {{ form.warehouse.errors }}
-                        </div>
-                    {% endif %}
                     <small style="color: #6b7280; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
                         موجودی در این انبار ثبت خواهد شد
                     </small>
                 </div>
-                
-                <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div class="form-group">
-                        <label for="{{ form.quantity.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">مقدار *</label>
-                        {{ form.quantity }}
-                        {% if form.quantity.errors %}
-                            <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                                {{ form.quantity.errors }}
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.unit.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">واحد</label>
-                        {{ form.unit }}
-                        {% if form.unit.errors %}
-                            <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                                {{ form.unit.errors }}
-                            </div>
-                        {% endif %}
-                    </div>
+
+                <!-- برند (پویا بر اساس محصول انتخاب‌شده) -->
+                <div class="form-group" id="brand_group" style="margin-bottom: 1.5rem; display: none;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        برند <span style="color: #9ca3af; font-weight: 400;">(اختیاری - اگر محصول برند داشته باشد)</span>
+                    </label>
+                    <select id="brand_select" class="form-control">
+                        <option value="">بدون برند (موجودی عمومی)</option>
+                    </select>
                 </div>
-                
+
+                <!-- مقدار (برچسب بر اساس واحد تجاری برند تغییر می‌کند) -->
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label for="{{ form.min_quantity.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">حداقل موجودی</label>
-                    {{ form.min_quantity }}
-                    <small style="color: #6b7280; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
-                        هنگامی که موجودی به این مقدار برسد، هشدار داده می‌شود
-                    </small>
-                    {% if form.min_quantity.errors %}
-                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                            {{ form.min_quantity.errors }}
-                        </div>
-                    {% endif %}
+                    <label for="id_quantity" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                        مقدار <span id="quantity_unit_label">(واحد پایه)</span> <span style="color: #dc3545;">*</span>
+                    </label>
+                    <input type="number" name="quantity" id="id_quantity" class="form-control"
+                           step="any" min="0" placeholder="مقدار را وارد کنید" required>
+                    <small id="conversion_hint" style="color: #6b7280; display: none; margin-top: 0.25rem;"></small>
                 </div>
-                
-                <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label for="{{ form.description.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">توضیحات</label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                        <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">
-                            {{ form.description.errors }}
-                        </div>
-                    {% endif %}
-                </div>
-                
+
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary" style="flex: 1; padding: 0.75rem; border: none; border-radius: 0.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s;">
                         ✅ ثبت موجودی
@@ -106,41 +107,215 @@
         font-family: 'Vazir', sans-serif;
         font-size: 1rem;
         transition: all 0.3s;
+        box-sizing: border-box;
     }
-    
     .form-control:focus {
         outline: none;
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
-    
-    select.form-control {
-        cursor: pointer;
-    }
-    
-    textarea.form-control {
-        resize: vertical;
-        min-height: 100px;
-    }
-    
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #5568d3 0%, #6941a3 100%);
-    }
-    
-    .btn-secondary:hover {
-        background: #4b5563;
-    }
-    
-    .card {
-        background: white;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-</style>
-{% endblock %}
+    select.form-control { cursor: pointer; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+    .btn-primary:hover { background: linear-gradient(135deg, #5568d3 0%, #6941a3 100%); }
+    .btn-secondary:hover { background: #4b5563; }
+    .card { background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
 
+    .autocomplete-wrapper { position: relative; }
+    .autocomplete-list {
+        position: absolute; top: 100%; left: 0; right: 0; background: white;
+        border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); z-index: 100;
+        max-height: 260px; overflow-y: auto; display: none;
+    }
+    .autocomplete-item {
+        padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f3f4f6;
+    }
+    .autocomplete-item:hover { background: #eef2ff; }
+    .autocomplete-item .item-name { font-weight: 600; color: #2c3e50; }
+    .autocomplete-item .item-meta { font-size: 0.78rem; color: #9ca3af; margin-top: 2px; }
+    .autocomplete-empty { padding: 12px 15px; color: #9ca3af; font-size: 0.85rem; text-align: center; }
+
+    .selected-product-banner {
+        background: #eef2ff; border: 2px solid #6366f1; border-radius: 8px;
+        padding: 12px 15px; margin-top: 10px; position: relative;
+    }
+    .selected-product-banner .banner-title { font-weight: 700; color: #3730a3; font-size: 0.95rem; }
+    .selected-product-banner .banner-detail { color: #6b7280; font-size: 0.85rem; margin-top: 4px; }
+    .selected-product-banner .banner-clear {
+        position: absolute; top: 8px; left: 10px; background: none; border: none;
+        color: #6366f1; font-size: 1.1rem; cursor: pointer; font-weight: bold;
+    }
+    .selected-product-banner .banner-clear:hover { color: #dc3545; }
+</style>
+
+<script>
+(function() {
+    var cafeCode = '{{ cafe_code }}';
+    var autocompleteUrl = '{% url "products_autocomplete" cafe_code=cafe_code %}';
+
+    function brandApiUrl(productId) {
+        return '/' + cafeCode + '/api/products/' + productId + '/brands/';
+    }
+
+    var productSearch = document.getElementById('product_search');
+    var hiddenProductId = document.getElementById('id_product');
+    var hiddenBrandId = document.getElementById('id_product_brand');
+    var autocompleteList = document.getElementById('autocomplete_list');
+    var banner = document.getElementById('selected_product_banner');
+    var brandGroup = document.getElementById('brand_group');
+    var brandSelect = document.getElementById('brand_select');
+    var quantityInput = document.getElementById('id_quantity');
+    var quantityUnitLabel = document.getElementById('quantity_unit_label');
+    var conversionHint = document.getElementById('conversion_hint');
+    var debounceTimer = null;
+    var selectedProduct = null;
+
+    // ---------- جستجوی محصول (اتوکامپلیت) ----------
+    productSearch.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        var query = productSearch.value.trim();
+        if (query.length < 2) {
+            autocompleteList.style.display = 'none';
+            autocompleteList.innerHTML = '';
+            return;
+        }
+        debounceTimer = setTimeout(function() {
+            fetch(autocompleteUrl + '?q=' + encodeURIComponent(query), {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                autocompleteList.innerHTML = '';
+                if (!data.results || data.results.length === 0) {
+                    autocompleteList.innerHTML = '<div class="autocomplete-empty">محصولی یافت نشد - ابتدا محصول را در بخش تعریف محصول ثبت کنید</div>';
+                } else {
+                    data.results.forEach(function(item) {
+                        var div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        div.innerHTML = '<div class="item-name">' + item.name + '</div>' +
+                                        '<div class="item-meta">' +
+                                        (item.category ? item.category + ' | ' : '') +
+                                        (item.unit ? 'واحد پایه: ' + item.unit : '') +
+                                        '</div>';
+                        div.addEventListener('click', function() { selectProduct(item); });
+                        autocompleteList.appendChild(div);
+                    });
+                }
+                autocompleteList.style.display = 'block';
+            })
+            .catch(function() { autocompleteList.style.display = 'none'; });
+        }, 300);
+    });
+
+    function selectProduct(item) {
+        selectedProduct = item;
+        hiddenProductId.value = item.id;
+        productSearch.value = item.name;
+        banner.innerHTML = '<button type="button" class="banner-clear" id="banner_clear_btn" title="لغو انتخاب">&times;</button>' +
+                           '<div class="banner-title">🏷️ ' + item.name + '</div>' +
+                           '<div class="banner-detail">واحد پایه: ' + (item.unit || '—') + '</div>';
+        banner.style.display = 'block';
+        autocompleteList.style.display = 'none';
+        autocompleteList.innerHTML = '';
+        document.getElementById('banner_clear_btn').addEventListener('click', clearProduct);
+        loadBrands(item.id);
+        updateQuantityLabel(null);
+    }
+
+    function clearProduct() {
+        selectedProduct = null;
+        hiddenProductId.value = '';
+        hiddenBrandId.value = '';
+        productSearch.value = '';
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+        brandGroup.style.display = 'none';
+        brandSelect.innerHTML = '<option value="">بدون برند (موجودی عمومی)</option>';
+        updateQuantityLabel(null);
+    }
+
+    // ---------- بارگذاری برندهای محصول ----------
+    function loadBrands(productId) {
+        fetch(brandApiUrl(productId), {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            brandSelect.innerHTML = '<option value="">بدون برند (موجودی عمومی)</option>';
+            if (data.brands && data.brands.length > 0) {
+                data.brands.forEach(function(b) {
+                    var opt = document.createElement('option');
+                    opt.value = b.id;
+                    var label = b.brand_name;
+                    if (b.trade_unit) label += ' (' + b.trade_unit + ')';
+                    opt.textContent = label;
+                    opt.dataset.tradeUnit = b.trade_unit;
+                    opt.dataset.conversionRate = b.conversion_rate;
+                    brandSelect.appendChild(opt);
+                });
+                brandGroup.style.display = 'block';
+            } else {
+                brandGroup.style.display = 'none';
+            }
+            hiddenBrandId.value = '';
+            updateQuantityLabel(null);
+        })
+        .catch(function() {
+            brandGroup.style.display = 'none';
+        });
+    }
+
+    // ---------- تغییر برند -> بروزرسانی برچسب واحد و راهنمای تبدیل ----------
+    brandSelect.addEventListener('change', function() {
+        hiddenBrandId.value = this.value;
+        var opt = this.options[this.selectedIndex];
+        updateQuantityLabel(opt);
+    });
+
+    function updateQuantityLabel(selectedOption) {
+        var tradeUnit = '';
+        var rate = '';
+        if (selectedOption && selectedOption.dataset) {
+            tradeUnit = selectedOption.dataset.tradeUnit || '';
+            rate = selectedOption.dataset.conversionRate || '';
+        }
+        var baseUnit = selectedProduct ? (selectedProduct.unit || 'واحد پایه') : 'واحد پایه';
+
+        if (tradeUnit && rate) {
+            quantityUnitLabel.textContent = '(' + tradeUnit + ')';
+            conversionHint.style.display = 'block';
+            conversionHint.textContent = 'هر ' + tradeUnit + ' = ' + rate + ' ' + baseUnit +
+                ' — موجودی به واحد پایه (' + baseUnit + ') تبدیل و ذخیره می‌شود';
+        } else if (tradeUnit) {
+            quantityUnitLabel.textContent = '(' + tradeUnit + ')';
+            conversionHint.style.display = 'none';
+        } else {
+            quantityUnitLabel.textContent = '(' + baseUnit + ')';
+            conversionHint.style.display = 'none';
+        }
+    }
+
+    // بستن لیست اتوکامپلیت با کلیک بیرون
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-wrapper')) {
+            autocompleteList.style.display = 'none';
+        }
+    });
+
+    // اعتبارسنجی قبل از ارسال
+    document.getElementById('stock-register-form').addEventListener('submit', function(e) {
+        if (!hiddenProductId.value) {
+            e.preventDefault();
+            alert('لطفاً یک محصول از لیست انتخاب کنید.');
+            return;
+        }
+        var qty = parseFloat(quantityInput.value);
+        if (isNaN(qty) || qty <= 0) {
+            e.preventDefault();
+            alert('لطفاً مقدار معتبر وارد کنید.');
+            return;
+        }
+    });
+})();
+</script>
+{% endblock %}

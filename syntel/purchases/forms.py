@@ -19,13 +19,10 @@ class PurchaseRequestForm(forms.ModelForm):
 
 
 class InitialStockForm(forms.ModelForm):
-    """فرم ثبت موجودی اولیه انبار"""
-    product = forms.ModelChoiceField(
-        queryset=Product.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='محصول',
-        empty_label='انتخاب محصول'
-    )
+    """فرم ثبت موجودی اولیه انبار - برندمحور
+    محصول و برند به صورت فیلد مخفی (از طریق اتوکامپلیت) ارسال می‌شوند"""
+    product = forms.IntegerField(widget=forms.HiddenInput(), required=True, label='شناسه محصول')
+    product_brand = forms.IntegerField(widget=forms.HiddenInput(), required=False, label='شناسه برند')
     warehouse = forms.ModelChoiceField(
         queryset=Warehouse.objects.filter(is_active=True),
         widget=forms.Select(attrs={'class': 'form-control'}),
@@ -33,30 +30,12 @@ class InitialStockForm(forms.ModelForm):
         empty_label='انتخاب انبار'
     )
     quantity = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'مقدار', 'step': '0.01'}),
+        max_digits=12,
+        decimal_places=4,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'مقدار', 'step': 'any'}),
         label='مقدار'
-    )
-    unit = forms.ModelChoiceField(
-        queryset=Unit.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='واحد',
-        required=False
-    )
-    min_quantity = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'حداقل موجودی', 'step': '0.01'}),
-        label='حداقل موجودی',
-        initial=0
-    )
-    description = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'توضیحات'}),
-        label='توضیحات',
-        required=False
     )
 
     class Meta:
         model = StockItem
-        fields = ['product', 'warehouse', 'quantity', 'unit', 'min_quantity']
+        fields = ['warehouse']

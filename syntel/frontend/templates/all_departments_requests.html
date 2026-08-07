@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>درخواست همه بخش‌ها - Kuker</title>
+    <title>{% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %} - Kuker</title>
     <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
@@ -160,6 +160,72 @@
             font-family: Vazir, sans-serif; background: white; color: #374151; cursor: pointer;
         }
         .filter-select:focus { outline: none; border-color: #6366f1; }
+
+        /* ── کالا های موجود در انبار (تامین از انبار) ── */
+        .supply-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 28px; }
+        .supply-step { margin-bottom: 20px; }
+        .supply-step:last-of-type { margin-bottom: 0; }
+        .step-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .step-badge {
+            min-width: 26px; height: 26px; border-radius: 50%; background: #3b82f6; color: white;
+            display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+        }
+
+        .product-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 14px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px;
+            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
+        }
+        .product-item:hover { border-color: #93c5fd; background: #eff6ff; }
+        .product-item.active { border-color: #3b82f6; background: #eff6ff; }
+        .product-name { font-size: 15px; font-weight: 600; color: #1f2937; }
+        .product-meta { font-size: 12px; color: #6b7280; margin-top: 3px; }
+        .product-arrow { color: #9ca3af; font-size: 16px; }
+
+        .warehouse-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px;
+            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
+        }
+        .warehouse-item:hover { border-color: #10b981; background: #ecfdf5; }
+        .warehouse-item.active { border-color: #10b981; background: #ecfdf5; }
+        .warehouse-name { font-size: 14px; font-weight: 600; color: #1f2937; }
+
+        .brand-row { padding: 14px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; background: white; }
+        .brand-row.disabled { opacity: .5; background: #f9fafb; }
+        .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .brand-badge { background: #6b21a8; color: white; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 12px; }
+        .brand-badge.generic { background: #4b5563; }
+        .brand-avail { font-size: 13px; color: #374151; font-weight: 600; margin-right: auto; }
+        .brand-rate { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+        .brand-controls { display: flex; gap: 8px; align-items: center; }
+        .qty-input { flex: 1; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 15px; font-family: Vazir, sans-serif; min-width: 0; }
+        .qty-input:focus { outline: none; border-color: #3b82f6; }
+        .add-btn { padding: 10px 18px; border: none; border-radius: 8px; background: #3b82f6; color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif; white-space: nowrap; }
+        .add-btn:active { background: #2563eb; }
+        .add-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+        .qty-warning { font-size: 12px; color: #dc2626; margin-top: 8px; display: none; }
+
+        .hint { font-size: 12.5px; color: #6b7280; margin-bottom: 12px; line-height: 1.8; }
+
+        .review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .review-table th {
+            background: #1f2937; color: white; padding: 10px 8px; font-weight: 600;
+            text-align: right; white-space: nowrap; font-size: 12px;
+        }
+        .review-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        .review-table tr:last-child td { border-bottom: none; }
+        .status-select { padding: 8px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 12.5px; font-family: Vazir, sans-serif; background: white; }
+        .remove-btn { border: none; background: #fee2e2; color: #dc2626; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 15px; }
+        .empty-review { text-align: center; color: #9ca3af; font-size: 13px; padding: 24px 0; }
+
+        .submit-btn { padding: 12px 28px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif; }
+        .submit-btn:active { background: #059669; }
+
+        .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
+        .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .msg-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .msg-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     </style>
 </head>
 <body>
@@ -180,14 +246,102 @@
         </div>
     </div>
 
-    <!-- Type toggle -->
+    {% if request_type != 'purchase' %}
+    <!-- Type toggle (فقط برای داده‌های قدیمی انبار؛ ورودی جدیدی ندارد) -->
     <div class="type-toggle">
         <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=purchase"
-           class="type-btn {% if request_type == 'purchase' %}active-purchase{% endif %}">🛒 درخواست خرید</a>
-        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=warehouse"
-           class="type-btn {% if request_type == 'warehouse' %}active-warehouse{% endif %}">📦 درخواست انبار</a>
+           class="type-btn active-purchase">🛒 درخواست کالا</a>
+    </div>
+    {% endif %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'success' %}msg-success{% else %}msg-info{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if request_type == 'purchase' %}
+    <!-- Tab bar: جابه‌جایی بین درخواست کالا و کالا های موجود در انبار -->
+    <div class="type-toggle">
+        <button type="button" class="type-btn active-purchase" data-view="requests" onclick="switchView('requests')">🛒 درخواست کالا</button>
+        <button type="button" class="type-btn active-warehouse" data-view="stock" onclick="switchView('stock')">📦 کالا های موجود در انبار</button>
     </div>
 
+    <div id="viewStock" style="display:none;">
+    <!-- کالا های موجود در انبار -->
+    <div class="supply-card">
+        <div class="section-title">📦 کالا های موجود در انبار</div>
+        <div class="hint">فقط کالاهایی که در درخواست‌های این روز آمده‌اند و در انبار موجودی دارند: محصول را انتخاب کنید، سپس انبار دارای موجودی و برند را مشخص کرده و «افزودن» را بزنید. برای هر قلم وضعیت نهایی را تعیین کنید — اقلام «تامین از انبار» پس از تایید نهایی از موجودی کسر می‌شوند.</div>
+        <form method="post" id="supplyForm">
+            {% csrf_token %}
+
+            <div class="supply-step">
+                <div class="step-title"><span class="step-badge">۱</span> محصول را انتخاب کنید</div>
+                <div id="productList"></div>
+            </div>
+
+            <div class="supply-step" id="warehouseCard" style="display:none;">
+                <div class="step-title"><span class="step-badge">۲</span> انبار دارای موجودی را انتخاب کنید</div>
+                <div id="warehouseList"></div>
+            </div>
+
+            <div class="supply-step" id="brandCard" style="display:none;">
+                <div class="step-title"><span class="step-badge">۳</span> برند و مقدار را مشخص کنید</div>
+                <div class="hint">مقدار را بر حسب واحد تجاری برند وارد کنید و دکمه «افزودن» را بزنید. برای افزودن واریانت/برند دیگری از همین محصول، مراحل را تکرار کنید.</div>
+                <div id="brandList"></div>
+            </div>
+
+            <div class="supply-step">
+                <div class="step-title"><span class="step-badge">✓</span> جدول بررسی اقلام</div>
+                <div style="overflow-x:auto;">
+                    <table class="review-table" id="reviewTable">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th>برند</th>
+                                <th>انبار</th>
+                                <th>مقدار</th>
+                                <th>وضعیت</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewBody">
+                            {% for row in submitted_rows %}
+                            <tr data-row-idx="{{ forloop.counter0 }}">
+                                <td>{{ row.product.name }}</td>
+                                <td>{% if row.brand %}{{ row.brand.brand_name }}{% else %}بدون برند{% endif %}</td>
+                                <td>{{ row.warehouse.name }}</td>
+                                <td>{{ row.qty|trim_decimal }}{% if row.brand and row.brand.trade_unit %} {{ row.brand.trade_unit }}{% endif %}</td>
+                                <td>
+                                    <select name="status" class="status-select">
+                                        <option value="from_stock" {% if row.status == 'from_stock' %}selected{% endif %}>📦 تامین از انبار</option>
+                                        <option value="to_purchase" {% if row.status == 'to_purchase' %}selected{% endif %}>🛒 ارسال به لیست خرید</option>
+                                        <option value="not_supplied" {% if row.status == 'not_supplied' %}selected{% endif %}>❌ تامین نشده</option>
+                                    </select>
+                                </td>
+                                <td><button type="button" class="remove-btn" onclick="removeRow(this)">✕</button></td>
+                                <input type="hidden" name="product_id" value="{{ row.product.id }}">
+                                <input type="hidden" name="warehouse_id" value="{{ row.warehouse.id }}">
+                                <input type="hidden" name="brand_id" value="{% if row.brand %}{{ row.brand.id }}{% endif %}">
+                                <input type="hidden" name="qty" value="{{ row.qty }}">
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6"><div class="empty-review" id="emptyReview">هنوز قلمی افزوده نشده است</div></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="text-align:left;margin-top:14px;">
+                <button type="submit" class="submit-btn" onclick="return confirmSubmit()">✅ تایید نهایی</button>
+            </div>
+        </form>
+    </div>
+    </div><!-- /viewStock -->
+    {% endif %}
+
+    <div id="viewRequests">
     <!-- Merged products section -->
     {% if merged_products %}
     <div class="section-title">🔀 محصولات ادغام‌شده (درخواست چند بخش)</div>
@@ -260,10 +414,13 @@
         <select class="filter-select" onchange="filterByStatus(this.value)">
             <option value="">همه وضعیت‌ها</option>
             <option value="pending">در انتظار</option>
+            <option value="pending_manager_approval">منتظر تایید مدیر</option>
+            <option value="purchased">خریداری شده</option>
+            <option value="partial">تکمیل جزئی</option>
+            <option value="rejected">رد شده</option>
             <option value="approved_from_stock">تامین از انبار</option>
             <option value="approved_purchase">ارجاع به خرید</option>
             <option value="fulfilled">تامین شده</option>
-            <option value="declined">رد شده</option>
         </select>
     </div>
 
@@ -307,6 +464,7 @@
         <p>هیچ درخواستی وجود ندارد</p>
     </div>
     {% endif %}
+    </div><!-- /viewRequests -->
 
 </div><!-- /page-wrapper -->
 
@@ -330,6 +488,171 @@
             card.style.display = (matchDept && matchStatus) ? '' : 'none';
         });
     }
+
+    /* جابه‌جایی بین «درخواست کالا» و «کالا های موجود در انبار» در همین صفحه */
+    function switchView(view) {
+        document.querySelectorAll('.type-btn[data-view]').forEach(btn => {
+            btn.classList.remove('active-purchase', 'active-warehouse');
+            if (btn.dataset.view === view) {
+                btn.classList.add(view === 'requests' ? 'active-purchase' : 'active-warehouse');
+            }
+        });
+        document.getElementById('viewRequests').style.display = view === 'requests' ? '' : 'none';
+        const stockView = document.getElementById('viewStock');
+        if (stockView) stockView.style.display = view === 'stock' ? '' : 'none';
+    }
+
+    /* ── کالا های موجود در انبار ── */
+    const PRODUCTS = {{ products_json|safe }};
+    let currentProduct = null;
+    let currentWarehouse = null;
+    let nextIdx = {{ submitted_rows|length }};
+
+    /* رندر محصولات */
+    function renderProducts() {
+        const container = document.getElementById('productList');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!PRODUCTS.length) {
+            container.innerHTML = '<div class="empty-review">هیچ کالای درخواستیِ دارای موجودی در انبار یافت نشد</div>';
+            return;
+        }
+        PRODUCTS.forEach(p => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'product-item';
+            btn.innerHTML = `<div>
+                <div class="product-name">${p.name}</div>
+                <div class="product-meta">${p.warehouses.length} انبار دارای موجودی</div>
+            </div><span class="product-arrow">◀</span>`;
+            btn.onclick = (e) => selectProduct(p.id, e.currentTarget);
+            container.appendChild(btn);
+        });
+    }
+
+    /* انتخاب محصول → انبارها */
+    function selectProduct(productId, btnEl) {
+        currentProduct = PRODUCTS.find(p => p.id === productId);
+        currentWarehouse = null;
+
+        document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
+        btnEl.classList.add('active');
+
+        const card = document.getElementById('warehouseCard');
+        const list = document.getElementById('warehouseList');
+        list.innerHTML = '';
+        currentProduct.warehouses.forEach(w => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'warehouse-item';
+            btn.innerHTML = `<span class="warehouse-name">🏬 ${w.name}</span><span class="product-arrow">◀</span>`;
+            btn.onclick = (e) => selectWarehouse(w.id, e.currentTarget);
+            list.appendChild(btn);
+        });
+        card.style.display = '';
+        document.getElementById('brandCard').style.display = 'none';
+    }
+
+    /* انتخاب انبار → برندها */
+    function selectWarehouse(warehouseId, btnEl) {
+        currentWarehouse = currentProduct.warehouses.find(w => w.id === warehouseId);
+        document.querySelectorAll('.warehouse-item').forEach(el => el.classList.remove('active'));
+        btnEl.classList.add('active');
+
+        const list = document.getElementById('brandList');
+        list.innerHTML = '';
+        currentWarehouse.brands.forEach(b => {
+            const row = document.createElement('div');
+            row.className = 'brand-row' + (b.has_stock ? '' : ' disabled');
+
+            const unitPart = b.trade_unit ? ` ${b.trade_unit}` : '';
+            row.innerHTML = `
+                <div class="brand-head">
+                    <span class="brand-badge ${b.id ? '' : 'generic'}">${b.id ? '🏷️ ' + b.name : '📦 ' + b.name}</span>
+                    <span class="brand-avail">موجودی: ${b.available}${unitPart}</span>
+                </div>
+                ${b.id ? `<div class="brand-rate">نرخ تبدیل: هر ${b.trade_unit || 'واحد'} = ${b.rate} واحد پایه</div>` : ''}
+                <div class="brand-controls">
+                    <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${b.trade_unit || 'واحد'})" ${b.has_stock ? '' : 'disabled'}>
+                    <button type="button" class="add-btn" ${b.has_stock ? '' : 'disabled'}>افزودن</button>
+                </div>
+                <div class="qty-warning">⚠️ مقدار وارد شده بیشتر از موجودی انبار است</div>`;
+
+            if (b.has_stock) {
+                const qtyInput = row.querySelector('.qty-input');
+                const warn = row.querySelector('.qty-warning');
+                row.querySelector('.add-btn').onclick = () => {
+                    const val = parseFloat(qtyInput.value);
+                    const maxVal = parseFloat(b.available);
+                    if (!val || val <= 0 || isNaN(val)) { qtyInput.focus(); return; }
+                    if (val > maxVal) { warn.style.display = ''; return; }
+                    warn.style.display = 'none';
+                    addRow(b, val);
+                    qtyInput.value = '';
+                };
+                qtyInput.addEventListener('input', () => {
+                    const val = parseFloat(qtyInput.value);
+                    if (val && val > parseFloat(b.available)) warn.style.display = '';
+                    else warn.style.display = 'none';
+                });
+            }
+            list.appendChild(row);
+        });
+        document.getElementById('brandCard').style.display = '';
+    }
+
+    /* افزودن به جدول بررسی */
+    function addRow(brand, qty) {
+        const tbody = document.getElementById('reviewBody');
+        const empty = document.getElementById('emptyReview');
+        if (empty) { empty.closest('tr').remove(); }
+
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-row-idx', nextIdx);
+        const unitPart = brand.trade_unit ? ` ${brand.trade_unit}` : '';
+        tr.innerHTML = `
+            <td>${currentProduct.name}</td>
+            <td>${brand.id ? brand.name : 'بدون برند'}</td>
+            <td>${currentWarehouse.name}</td>
+            <td>${qty}${unitPart}</td>
+            <td>
+                <select name="status" class="status-select">
+                    <option value="from_stock" selected>📦 تامین از انبار</option>
+                    <option value="to_purchase">🛒 ارسال به لیست خرید</option>
+                    <option value="not_supplied">❌ تامین نشده</option>
+                </select>
+            </td>
+            <td><button type="button" class="remove-btn" onclick="removeRow(this)">✕</button></td>
+            <input type="hidden" name="product_id" value="${currentProduct.id}">
+            <input type="hidden" name="warehouse_id" value="${currentWarehouse.id}">
+            <input type="hidden" name="brand_id" value="${brand.id || ''}">
+            <input type="hidden" name="qty" value="${qty}">`;
+        tbody.appendChild(tr);
+        nextIdx++;
+    }
+
+    /* حذف ردیف */
+    function removeRow(btn) {
+        const tr = btn.closest('tr');
+        tr.remove();
+        const tbody = document.getElementById('reviewBody');
+        if (!tbody.children.length) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-review">هنوز قلمی افزوده نشده است</div></td></tr>';
+        }
+    }
+
+    /* تایید نهایی */
+    function confirmSubmit() {
+        const rows = document.querySelectorAll('#reviewBody tr');
+        const hasReal = [...rows].some(tr => tr.querySelector('input[name="qty"]'));
+        if (!hasReal) {
+            alert('لطفاً حداقل یک قلم کالا اضافه کنید.');
+            return false;
+        }
+        return confirm('تایید نهایی؟ اقلام با وضعیت «تامین از انبار» از موجودی کسر می‌شوند.');
+    }
+
+    if (document.getElementById('productList')) { renderProducts(); }
 </script>
 </body>
 </html>

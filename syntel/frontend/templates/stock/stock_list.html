@@ -1,5 +1,6 @@
 ﻿{% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}لیست موجودی انبار{% endblock %}
 
@@ -74,54 +75,94 @@
     </div>
     {% endif %}
 
-    <!-- Stock Items Grid -->
+    <!-- Stock Items Grid - کارت جمع‌وجور؛ برندها با کلیک باز می‌شوند -->
     {% if page_obj %}
-    <div class="stock-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
-        {% for item in page_obj %}
-        <div class="stock-card {% if item.is_low_stock %}low-stock{% endif %}" style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 4px solid {% if item.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                <div>
-                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">
-                        {{ item.product.name }}
-                    </h3>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem;">
-                        {% if item.product.category %}
-                        <span style="display: inline-block; padding: 0.2rem 0.6rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.8rem;">
-                            {{ item.product.category.name }}
-                        </span>
-                        {% endif %}
-                        {% if item.warehouse %}
-                        <span style="display: inline-block; padding: 0.2rem 0.6rem; background: #d1fae5; color: #065f46; border-radius: 0.375rem; font-size: 0.8rem;">
-                            🏬 {{ item.warehouse.name }}
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-                {% if item.is_low_stock %}
-                <span style="font-size: 1.5rem;">⚠️</span>
+    <div class="stock-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;">
+        {% for group in page_obj %}
+        <div class="stock-card {% if group.is_low_stock %}low-stock{% endif %}" style="background: white; border-radius: 0.75rem; padding: 1.25rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 4px solid {% if group.is_low_stock %}#ef4444{% else %}#10b981{% endif %}; cursor: pointer;" onclick="this.classList.toggle('expanded')" title="برای مشاهده برندها کلیک کنید">
+            <!-- هدر: نام محصول + فلش باز شدن + هشدار موجودی کم -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #1f2937; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                    {{ group.product.name }}
+                    <span class="chevron" style="font-size: 0.8rem; color: #9ca3af;">▾</span>
+                </h3>
+                {% if group.is_low_stock %}
+                <span style="font-size: 1.25rem;">⚠️</span>
                 {% endif %}
             </div>
 
-            <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="color: #6b7280; font-weight: 500;">موجودی فعلی:</span>
-                    <span style="font-size: 1.5rem; font-weight: 700; color: {% if item.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
-                        {{ item.quantity|floatformat:2 }} {{ item.unit.name }}
-                    </span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #6b7280; font-weight: 500;">حداقل موجودی:</span>
-                    <span style="font-weight: 600; color: #374151;">
-                        {{ item.min_quantity|floatformat:2 }} {{ item.unit.name }}
-                    </span>
-                </div>
+            <!-- نشان‌های دسته‌بندی و انبار -->
+            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem;">
+                {% if group.product.category %}
+                <span style="display: inline-block; padding: 0.15rem 0.5rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.75rem;">
+                    {{ group.product.category.name }}
+                </span>
+                {% endif %}
+                {% if group.warehouse %}
+                <span style="display: inline-block; padding: 0.15rem 0.5rem; background: #d1fae5; color: #065f46; border-radius: 0.375rem; font-size: 0.75rem;">
+                    🏬 {{ group.warehouse.name }}
+                </span>
+                {% endif %}
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+            <!-- کادر اصلی: موجودی کل تبدیل‌شده با واحد پایه -->
+            <div style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #6b7280; font-weight: 500; font-size: 0.9rem;">موجودی کل (واحد پایه):</span>
+                <span style="font-size: 1.35rem; font-weight: 700; color: {% if group.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
+                    {{ group.total_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
+                </span>
+            </div>
+            {% if group.total_min_quantity > 0 %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 1rem 0;">
+                <span style="color: #9ca3af; font-weight: 500; font-size: 0.8rem;">حداقل موجودی:</span>
+                <span style="font-weight: 600; color: #374151; font-size: 0.85rem;">
+                    {{ group.total_min_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            <!-- بخش بازشونده با کلیک: برندها (نام تجاری + مقدار + واحد + نرخ تبدیل) -->
+            <div class="card-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #e5e7eb;">
+                {% if group.brand_items %}
+                <div style="margin-bottom: 0.4rem;">
+                    {% for si in group.brand_items %}
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:#faf5ff;border:1px solid #f3e8ff;border-radius:0.375rem;margin-bottom:0.2rem;">
+                        <span style="font-size:0.85rem;font-weight:600;color:#6b21a8;">
+                            🏷️ {{ si.product_brand.brand_name }}
+                        </span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#6b21a8;">
+                            {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
+                                {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
+                            {% else %}
+                                {{ si.quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
+                    <div style="font-size:0.75rem;color:#a78bfa;margin:0 0.6rem 0.35rem;">
+                        نرخ تبدیل: هر {{ si.product_brand.trade_unit }} = {{ si.product_brand.conversion_rate|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% for si in group.unbranded_items %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.375rem;margin-bottom:0.2rem;">
+                    <span style="font-size:0.85rem;color:#64748b;font-weight:500;">موجودی عمومی:</span>
+                    <span style="font-size:0.85rem;font-weight:600;color:#334155;">
+                        {{ si.quantity|trim_decimal }}{% if si.unit %} {{ si.unit.name }}{% elif group.product.unit %} {{ group.product.unit.name }}{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- پاورقی -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb;">
                 <small style="color: #9ca3af;">
-                    آخرین بروزرسانی: {{ item.last_updated|date:"Y/m/d H:i" }}
+                    آخرین بروزرسانی: {{ group.first_item.last_updated|date:"Y/m/d H:i" }}
                 </small>
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" style="color: #6366f1; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=group.first_item.id %}" onclick="event.stopPropagation()" style="color: #6366f1; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem;">
                     📊 تاریخچه
                 </a>
             </div>
@@ -170,6 +211,11 @@
         transform: translateY(-4px);
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
     }
+    /* برندها فقط با کلیک روی کارت نمایش داده می‌شوند */
+    .stock-card .card-details { display: none; }
+    .stock-card.expanded .card-details { display: block; }
+    .stock-card .chevron { display: inline-block; transition: transform 0.25s; }
+    .stock-card.expanded .chevron { transform: rotate(180deg); }
     .page-link:hover {
         background: #f3f4f6;
         border-color: #6366f1;

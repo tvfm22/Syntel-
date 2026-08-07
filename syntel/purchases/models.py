@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -245,6 +247,7 @@ class WarehouseRequestItem(models.Model):
         ('pending', 'در انتظار'),
         ('from_stock', 'تامین از انبار'),
         ('to_purchase', 'ارجاع به خرید'),
+        ('not_supplied', 'تامین نشده'),
         ('declined', 'عدم تامین'),
     ]
 
@@ -368,11 +371,45 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def total_converted_amount(self):
+        """مقدار تبدیل‌شده محصول = جمع نرخ‌های تبدیل همه برندهای فعال
+        (مثلاً روغن با دو برند قوطی ۵ لیتری → ۵ + ۵ = ۱۰)"""
+        total = self.brands.filter(is_active=True, conversion_rate__isnull=False).aggregate(
+            total=models.Sum('conversion_rate'))['total']
+        return total or Decimal('0')
+
+    @property
+    def active_brands(self):
+        return self.brands.filter(is_active=True)
+
     class Meta:
         verbose_name = 'محصول'
         verbose_name_plural = 'محصولات'
         ordering = ['name']
         unique_together = [['name', 'cafe']]
+
+
+class ProductBrand(models.Model):
+    """واریانت تجاری محصول - هر محصول می‌تواند چند نام تجاری داشته باشد.
+    مثال: روغن (محصول) با برندهای دمس و لادن، هر کدام قوطی ۵ لیتری"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='brands', verbose_name='محصول')
+    brand_name = models.CharField(max_length=200, verbose_name='نام تجاری')
+    trade_unit = models.CharField(max_length=50, blank=True, verbose_name='واحد تجاری')
+    # میزان محتوای بسته‌بندی بر اساس واحد پایه (مثلاً 5 لیتر برای قوطی روغن)
+    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='میزان بسته‌بندی (واحد پایه)')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
+
+    def __str__(self):
+        return f"{self.product.name} - {self.brand_name}"
+
+    class Meta:
+        verbose_name = 'واریانت تجاری'
+        verbose_name_plural = 'واریانت‌های تجاری'
+        ordering = ['brand_name']
+        unique_together = [['product', 'brand_name']]
 
 # Department model for user departments
 class Department(models.Model):
@@ -1542,8 +1579,9 @@ class Warehouse(models.Model):
 # Stock Item model - موجودی انبار
 class StockItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_items', verbose_name='محصول')
+    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True, related_name='stock_items', verbose_name='برند')
     warehouse = models.ForeignKey('Warehouse', on_delete=models.CASCADE, related_name='stock_items', verbose_name='انبار', null=True, blank=True)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='موجودی')
+    quantity = models.DecimalField(max_digits=10, decimal_places=4, default=0, verbose_name='موجودی (واحد پایه)')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
     min_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='حداقل موجودی')
     last_updated = models.DateTimeField(auto_now=True, verbose_name='آخرین بروزرسانی')
@@ -1551,17 +1589,25 @@ class StockItem(models.Model):
 
     def __str__(self):
         warehouse_name = self.warehouse.name if self.warehouse else 'نامشخص'
-        return f"{self.product.name} [{warehouse_name}] - موجودی: {self.quantity} {self.unit}"
+        brand_part = f" - {self.product_brand.brand_name}" if self.product_brand else ''
+        return f"{self.product.name}{brand_part} [{warehouse_name}] - موجودی: {self.quantity} {self.unit}"
 
     @property
     def is_low_stock(self):
         """بررسی اینکه موجودی کمتر از حداقل است"""
         return self.quantity <= self.min_quantity
 
+    @property
+    def trade_quantity(self):
+        """مقدار موجودی بر حسب واحد تجاری برند (ذخیره ÷ نرخ تبدیل)"""
+        if self.product_brand and self.product_brand.conversion_rate:
+            return self.quantity / self.product_brand.conversion_rate
+        return None
+
     class Meta:
         verbose_name = 'موجودی انبار'
         verbose_name_plural = 'موجودی‌های انبار'
-        unique_together = [['product', 'warehouse']]
+        unique_together = [['product', 'product_brand', 'warehouse']]
         indexes = [
             models.Index(fields=['product']),
             models.Index(fields=['warehouse']),
