@@ -25,10 +25,10 @@ fi
 
 echo ""
 
-# Check recent errors
-if [ -f "logs/gunicorn-error.log" ]; then
+# Check recent errors (logs live under DATA_PATH, default /app/data)
+if [ -f "${DATA_PATH:-/app/data}/logs/gunicorn-error.log" ]; then
     echo "📋 Recent Error Log (last 5 lines):"
-    tail -5 logs/gunicorn-error.log
+    tail -5 "${DATA_PATH:-/app/data}/logs/gunicorn-error.log"
 else
     echo "📋 No error log found"
 fi

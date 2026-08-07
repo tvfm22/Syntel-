@@ -1979,8 +1979,8 @@ def backup_management(request):
 def backup_database(request):
     """Create a server-side backup of the database."""
     try:
-        # Create backups directory if it doesn't exist
-        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        # Create backups directory if it doesn't exist (under DATA_PATH/backups)
+        backup_dir = settings.BACKUPS_DIR
         os.makedirs(backup_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -2101,8 +2101,8 @@ def import_data_json(request):
     if request.method == 'POST' and request.FILES.get('backup_file'):
         backup_file = request.FILES['backup_file']
         
-        # Save temporarily
-        temp_dir = os.path.join(settings.BASE_DIR, 'temp')
+        # Save temporarily (under DATA_PATH/tmp)
+        temp_dir = settings.TMP_DIR
         os.makedirs(temp_dir, exist_ok=True)
         temp_path = os.path.join(temp_dir, f'restore_{datetime.now().strftime("%Y%m%d%H%M%S")}.json')
         

@@ -15,11 +15,8 @@ if [ -f .env.production ]; then
     export $(cat .env.production | grep -v '^#' | xargs)
 fi
 
-# Create necessary directories
-mkdir -p logs
-mkdir -p media
-mkdir -p backups
-mkdir -p staticfiles
+# Create necessary directories (writable data under DATA_PATH, default /app/data)
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 
 # Activate virtual environment if exists
 if [ -d "venv" ]; then
@@ -50,5 +47,5 @@ gunicorn syntel.wsgi:application \
     --daemon
 
 echo "✅ Syntel is now running on http://45.159.150.199:8000"
-echo "📊 Check logs at: logs/gunicorn-access.log and logs/gunicorn-error.log"
+echo "📊 Check logs at: ${DATA_PATH:-/app/data}/logs/gunicorn-access.log and ${DATA_PATH:-/app/data}/logs/gunicorn-error.log"
 echo "🔧 To stop: ./stop_production.sh"

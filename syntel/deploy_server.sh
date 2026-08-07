@@ -68,18 +68,17 @@ DJANGO_SETTINGS_MODULE=syntel.settings_production
 DEBUG=False
 SECRET_KEY=$(python3 -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
 ALLOWED_HOSTS=45.159.150.199,localhost
-DATABASE_URL=sqlite:///$(pwd)/db.sqlite3
+DATA_PATH=${DATA_PATH:-/app/data}
+DATABASE_URL=sqlite:///${DATA_PATH}/db/db.sqlite3
 WORKERS=5
 EOF
     fi
     print_warning "Please edit .env.production and set your configuration!"
 fi
 
-# Step 5: Create necessary directories
+# Step 5: Create necessary directories (writable data under DATA_PATH, default /app/data)
 print_info "Step 5: Creating necessary directories..."
-mkdir -p logs
-mkdir -p media
-mkdir -p staticfiles
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 
 # Step 6: Django setup
 print_info "Step 6: Running Django migrations and collecting static files..."

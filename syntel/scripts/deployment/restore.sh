@@ -27,12 +27,13 @@ print_warning() {
 if [ -z "$1" ]; then
     print_error "Please provide the backup date (e.g., 20260208_143000)"
     print_info "Available backups:"
-    ls -1 backups/syntel_backup_* 2>/dev/null | grep -o '[0-9]\{8\}_[0-9]\{6\}' | sort -u || echo "No backups found"
+    ls -1 "${DATA_PATH:-/app/data}"/backups/syntel_backup_* 2>/dev/null | grep -o '[0-9]\{8\}_[0-9]\{6\}' | sort -u || echo "No backups found"
     exit 1
 fi
 
 BACKUP_DATE=$1
-BACKUP_DIR="./backups"
+# All writable data lives under DATA_PATH (default: /app/data)
+BACKUP_DIR="${DATA_PATH:-/app/data}/backups"
 DB_BACKUP="${BACKUP_DIR}/syntel_backup_${BACKUP_DATE}_db.sql"
 MEDIA_BACKUP="${BACKUP_DIR}/syntel_backup_${BACKUP_DATE}_media.tar.gz"
 
@@ -63,11 +64,11 @@ print_info "Restoring database..."
 docker-compose exec -T db psql -U syntel_user -d syntel_prod -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 docker-compose exec -T db psql -U syntel_user -d syntel_prod < "${DB_BACKUP}"
 
-# Restore media files
+# Restore media files (uploads live under DATA_PATH/uploads)
 if [ -f "${MEDIA_BACKUP}" ]; then
     print_info "Restoring media files..."
-    rm -rf media/*
-    tar -xzf "${MEDIA_BACKUP}"
+    rm -rf "${DATA_PATH:-/app/data}"/uploads/*
+    tar -xzf "${MEDIA_BACKUP}" -C "${DATA_PATH:-/app/data}"
 fi
 
 print_info "Restore completed successfully!"

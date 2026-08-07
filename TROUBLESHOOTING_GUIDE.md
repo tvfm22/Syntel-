@@ -315,7 +315,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': 'logs/django.log',
+            'filename': '{DATA_PATH}/logs/django.log',  # پیش‌فرض: /app/data/logs/django.log
         },
     },
     'root': {

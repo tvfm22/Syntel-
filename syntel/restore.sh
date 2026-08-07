@@ -9,7 +9,7 @@ if [ $# -eq 0 ]; then
     echo "Usage: ./restore.sh <backup_file>"
     echo ""
     echo "Available backups:"
-    ls -lh ./backups/*.sql.gz 2>/dev/null || echo "No backups found"
+    ls -lh "${DATA_PATH:-/app/data}"/backups/*.sql.gz 2>/dev/null || echo "No backups found"
     exit 1
 fi
 

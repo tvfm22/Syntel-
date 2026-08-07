@@ -14,7 +14,8 @@ print_info() {
 }
 
 # Configuration
-BACKUP_DIR="./backups"
+# All writable data lives under DATA_PATH (default: /app/data)
+BACKUP_DIR="${DATA_PATH:-/app/data}/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_NAME="syntel_backup_${DATE}"
 
@@ -27,9 +28,9 @@ print_info "Starting backup process..."
 print_info "Backing up database..."
 docker-compose exec -T db pg_dump -U syntel_user syntel_prod > "${BACKUP_DIR}/${BACKUP_NAME}_db.sql"
 
-# Backup media files
+# Backup media files (uploads now live under DATA_PATH/uploads)
 print_info "Backing up media files..."
-tar -czf "${BACKUP_DIR}/${BACKUP_NAME}_media.tar.gz" media/
+tar -czf "${BACKUP_DIR}/${BACKUP_NAME}_media.tar.gz" -C "${DATA_PATH:-/app/data}" uploads/
 
 # Create backup info file
 cat > "${BACKUP_DIR}/${BACKUP_NAME}_info.txt" << EOF

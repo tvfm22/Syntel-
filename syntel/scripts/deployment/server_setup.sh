@@ -120,7 +120,7 @@ systemctl start docker
 # Setup log rotation
 print_info "Setting up log rotation..."
 cat > /etc/logrotate.d/syntel << 'EOF'
-/opt/syntel/logs/*.log {
+/app/data/logs/*.log {
     daily
     missingok
     rotate 14

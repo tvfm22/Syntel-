@@ -85,9 +85,8 @@ echo -e "${GREEN}✓ Fail2ban configured${NC}"
 # Create project directory
 echo -e "${YELLOW}[7/8] Creating project directory...${NC}"
 mkdir -p /opt/syntel
-mkdir -p /opt/syntel/backups
-mkdir -p /opt/syntel/logs
-mkdir -p /opt/syntel/media
+# All writable data lives under DATA_PATH (default: /app/data)
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups}
 chmod 755 /opt/syntel
 echo -e "${GREEN}✓ Project directories created${NC}"
 

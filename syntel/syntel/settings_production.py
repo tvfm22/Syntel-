@@ -14,6 +14,39 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# =============================================================================
+# DATA PATH — all writable data (database, uploads, logs, cache, temp files,
+# sessions, backups) is centralized under a single base directory.
+# Default: /app/data — override per environment via the DATA_PATH env var.
+# =============================================================================
+DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data'))
+
+DATA_SUBDIRS = {
+    'logs': DATA_PATH / 'logs',
+    'db': DATA_PATH / 'db',
+    'uploads': DATA_PATH / 'uploads',
+    'cache': DATA_PATH / 'cache',
+    'tmp': DATA_PATH / 'tmp',
+    'sessions': DATA_PATH / 'sessions',
+    'backups': DATA_PATH / 'backups',
+}
+LOGS_DIR = DATA_SUBDIRS['logs']
+DB_DIR = DATA_SUBDIRS['db']
+UPLOADS_DIR = DATA_SUBDIRS['uploads']
+CACHE_DIR = DATA_SUBDIRS['cache']
+TMP_DIR = DATA_SUBDIRS['tmp']
+SESSIONS_DIR = DATA_SUBDIRS['sessions']
+BACKUPS_DIR = DATA_SUBDIRS['backups']
+
+
+def ensure_data_dirs():
+    """Create every writable data directory at startup (idempotent)."""
+    for path in DATA_SUBDIRS.values():
+        path.mkdir(parents=True, exist_ok=True)
+
+
+ensure_data_dirs()
+
 # SECURITY SETTINGS - PRODUCTION HARDENED
 # ======================================
 
@@ -142,8 +175,8 @@ if os.environ.get('DB_HOST'):
     }
 else:
     # SQLite Database (Fallback)
-    # Use environment variable for database path (writable location)
-    db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'db.sqlite3'))
+    # Stored under DATA_PATH/db (legacy DATABASE_PATH env override still wins)
+    db_path = os.environ.get('DATABASE_PATH', str(DB_DIR / 'db.sqlite3'))
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -189,9 +222,9 @@ STATICFILES_DIRS = [
     BASE_DIR / 'frontend' / 'static',
 ]
 
-# Media files
+# Media files — stored under DATA_PATH/uploads (legacy MEDIA_ROOT env override still wins)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media'))
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(UPLOADS_DIR))
 
 # AUTHENTICATION SETTINGS
 # =======================
@@ -217,7 +250,7 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@syntel.com')
 
 # LOGGING CONFIGURATION
 # ====================
-# Optimized for Docker/Cloud environments - logs to stdout/stderr only
+# Logs to console (Docker/cloud) AND to a rotating file under DATA_PATH/logs
 
 LOGGING = {
     'version': 1,
@@ -238,19 +271,28 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        'django_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'django.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'django_file'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'django_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'purchases': {
-            'handlers': ['console'],
+            'handlers': ['console', 'django_file'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -260,25 +302,27 @@ LOGGING = {
 # CUSTOM SETTINGS
 # ===============
 
-# Cache configuration - Use local memory cache for Liara
+# Cache configuration — file-based, stored under DATA_PATH/cache
 # (Redis can be added later if needed)
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(CACHE_DIR),
     }
 }
 
 # Session configuration
-# Use db backend (not cached_db) to avoid multi-worker session sharing issues
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# Sessions stored as files under DATA_PATH/sessions.
+# NOTE: this requires a shared persistent disk for DATA_PATH across workers.
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+SESSION_FILE_PATH = str(SESSIONS_DIR)
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_SAVE_EVERY_REQUEST = True
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'temp')  # Use project temp directory
+FILE_UPLOAD_TEMP_DIR = str(TMP_DIR)  # Large uploads spill to DATA_PATH/tmp
 
 # Admin URL customization (change from default /admin/)
 # from django.urls import reverse_lazy

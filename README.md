@@ -30,7 +30,7 @@ Syntel/
 │   │   └── tests/             # ابزارهای تست
 │   ├── staticfiles/           # فایل‌های استاتیک جمع‌آوری شده
 │   ├── syntel/                # تنظیمات Django
-│   ├── temp/                  # فایل‌های موقت
+│   ├── data/                  # همه داده‌های قابل نوشتن (DATA_PATH، پیش‌فرض /app/data)
 │   ├── tests/                 # تست‌های کل پروژه
 │   ├── manage.py              # اسکریپت مدیریت Django
 │   ├── requirements.txt       # وابستگی‌های Python
@@ -260,7 +260,7 @@ syntel/
 ├── frontend/              # قالب‌ها و فایل‌های استاتیک
 │   └── templates/        # قالب‌های HTML
 ├── static/               # فایل‌های استاتیک (CSS, JS, images)
-├── media/                # فایل‌های آپلود شده توسط کاربران
+├── data/                 # همه داده‌های قابل نوشتن: db, uploads, logs, cache, tmp, sessions, backups
 └── docs/                 # مستندات پروژه
 ```
 
@@ -462,7 +462,7 @@ server {
     }
 
     location /media/ {
-        alias /path/to/media/files/;
+        alias /app/data/uploads/;   # آپلودها زیر DATA_PATH/uploads (پیش‌فرض /app/data)
         expires 1M;
         add_header Cache-Control "public";
     }

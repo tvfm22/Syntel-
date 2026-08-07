@@ -34,8 +34,8 @@ docker-compose down || true
 # Step 2: Backup database (if exists)
 echo -e "${YELLOW}[2/10] Creating database backup...${NC}"
 if docker ps -a | grep -q syntel_db; then
-    mkdir -p ./backups
-    BACKUP_FILE="./backups/backup_$(date +%Y%m%d_%H%M%S).sql"
+    mkdir -p "${DATA_PATH:-/app/data}/backups"
+    BACKUP_FILE="${DATA_PATH:-/app/data}/backups/backup_$(date +%Y%m%d_%H%M%S).sql"
     docker exec syntel_db pg_dump -U syntel_user syntel_prod > "$BACKUP_FILE" 2>/dev/null || echo "No previous database to backup"
     echo -e "${GREEN}Backup created: $BACKUP_FILE${NC}"
 fi

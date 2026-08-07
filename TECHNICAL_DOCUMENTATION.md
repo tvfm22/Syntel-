@@ -205,8 +205,8 @@ python manage.py runserver
 # پشتیبان‌گیری روزانه از پایگاه داده
 pg_dump -U syntel_user -h localhost syntel_db > backup_$(date +%Y%m%d_%H%M%S).sql
 
-# پشتیبان‌گیری از فایل‌های رسانه
-tar -czf media_backup_$(date +%Y%m%d).tar.gz media/
+# پشتیبان‌گیری از فایل‌های رسانه (آپلودها در {DATA_PATH}/uploads قرار دارند)
+tar -czf media_backup_$(date +%Y%m%d).tar.gz -C "${DATA_PATH:-/app/data}" uploads/
 ```
 
 ### بازیابی
@@ -221,9 +221,9 @@ tar -xzf media_backup.tar.gz
 ## مانیتورینگ و نگهداری
 
 ### لاگ‌ها
-- Django logs: `logs/django.log`
+- Django logs: `{DATA_PATH}/logs/django.log` (پیش‌فرض: `/app/data/logs/django.log`)
 - PostgreSQL logs: `/var/log/postgresql/`
-- Application logs: تنظیم شده در `settings.py`
+- Application logs: تنظیم شده در `settings.py` (همه داده‌های قابل نوشتن زیر `DATA_PATH` متمرکز شده‌اند)
 
 ### معیارهای کلیدی
 - Response time < 2 seconds
@@ -310,7 +310,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': 'logs/django.log',
+            'filename': '{DATA_PATH}/logs/django.log',  # پیش‌فرض: /app/data/logs/django.log
         },
     },
     'loggers': {

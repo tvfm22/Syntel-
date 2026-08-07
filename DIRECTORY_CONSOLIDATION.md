@@ -40,8 +40,15 @@ D:\Syntel\                    ← STANDARD Django project root
 ├── purchases/                 ← main app
 ├── frontend/                  ← templates & static
 ├── scripts/                   ← utility scripts
-├── staticfiles/               ← collected static
-├── media/                     ← user uploads
+├── staticfiles/               ← collected static (build output, unchanged)
+└── data/                      ← ALL writable data (DATA_PATH, default /app/data)
+    ├── db/                    ← SQLite database (db.sqlite3)
+    ├── uploads/               ← user uploads (media)
+    ├── logs/                  ← application logs (django.log)
+    ├── cache/                 ← file-based cache
+    ├── tmp/                   ← upload temp files
+    ├── sessions/              ← session files
+    └── backups/               ← database backups
 ├── .env.example
 ├── Dockerfile
 ├── docker-compose.yml

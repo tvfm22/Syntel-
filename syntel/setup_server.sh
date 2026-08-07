@@ -38,11 +38,8 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install gunicorn
 
-# Create necessary directories
-mkdir -p logs
-mkdir -p media
-mkdir -p backups
-mkdir -p staticfiles
+# Create necessary directories (writable data under DATA_PATH, default /app/data)
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 
 # Set permissions
 chmod +x *.sh

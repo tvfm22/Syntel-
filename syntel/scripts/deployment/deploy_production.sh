@@ -10,6 +10,8 @@ APP_DIR="/var/www/syntel"
 VENV_DIR="/var/www/syntel/venv"
 USER="syntel"
 GROUP="www-data"
+# All writable data lives under DATA_PATH (default: /app/data)
+DATA_DIR="${DATA_PATH:-/app/data}"
 
 echo "🚀 Starting Syntel Production Deployment"
 
@@ -64,10 +66,10 @@ python manage.py migrate
 echo "📄 Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Create logs directory
-echo "📝 Setting up logging..."
-mkdir -p logs
-chmod 755 logs
+# Create data directories
+echo "📝 Setting up data directories..."
+mkdir -p "$DATA_DIR"/{logs,db,uploads,cache,tmp,sessions,backups}
+chmod 755 "$DATA_DIR"
 
 # Configure Gunicorn
 echo "⚙️ Configuring Gunicorn..."
@@ -82,6 +84,7 @@ Group=$GROUP
 WorkingDirectory=$APP_DIR
 Environment="PATH=$VENV_DIR/bin"
 Environment="DJANGO_SETTINGS_MODULE=syntel.settings_production"
+Environment="DATA_PATH=$DATA_DIR"
 ExecStart=$VENV_DIR/bin/gunicorn --workers 3 --bind unix:/run/gunicorn.sock syntel.wsgi:application
 Restart=always
 
@@ -103,7 +106,7 @@ server {
     }
 
     location /media/ {
-        alias $APP_DIR/media/;
+        alias $DATA_DIR/uploads/;
     }
 
     location / {
@@ -140,15 +143,15 @@ python manage.py check --deploy
 echo "💾 Setting up backup script..."
 sudo tee /usr/local/bin/syntel-backup > /dev/null <<EOF
 #!/bin/bash
-BACKUP_DIR="/var/backups/syntel"
+BACKUP_DIR="$DATA_DIR/backups"
 DATE=\$(date +%Y%m%d_%H%M%S)
 mkdir -p \$BACKUP_DIR
 
 # Database backup
 pg_dump -U $DB_USER -h localhost $DB_NAME > \$BACKUP_DIR/syntel_db_\$DATE.sql
 
-# Files backup
-tar -czf \$BACKUP_DIR/syntel_files_\$DATE.tar.gz -C $APP_DIR media staticfiles
+# Files backup (uploads live under DATA_PATH/uploads)
+tar -czf \$BACKUP_DIR/syntel_files_\$DATE.tar.gz -C $DATA_DIR uploads
 
 # Clean old backups (keep last 7 days)
 find \$BACKUP_DIR -name "*.sql" -mtime +7 -delete

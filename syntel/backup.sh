@@ -5,7 +5,8 @@
 
 set -e
 
-BACKUP_DIR="./backups"
+# All writable data lives under DATA_PATH (default: /app/data)
+BACKUP_DIR="${DATA_PATH:-/app/data}/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/syntel_backup_${TIMESTAMP}.sql"
 

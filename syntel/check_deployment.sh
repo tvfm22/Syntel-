@@ -53,7 +53,7 @@ fi
 echo ""
 echo "Recent Gunicorn Logs:"
 echo "-----------------------------------"
-tail -n 20 /opt/project/Syntel-/syntel/logs/gunicorn-error.log 2>/dev/null || echo "No logs found"
+tail -n 20 "${DATA_PATH:-/app/data}/logs/gunicorn-error.log" 2>/dev/null || echo "No logs found"
 
 echo ""
 echo "Recent Nginx Error Logs:"

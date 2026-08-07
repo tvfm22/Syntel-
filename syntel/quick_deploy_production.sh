@@ -29,12 +29,9 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install gunicorn
 
-# Create necessary directories
+# Create necessary directories (writable data under DATA_PATH, default /app/data)
 echo "📁 Creating necessary directories..."
-mkdir -p logs
-mkdir -p media
-mkdir -p backups
-mkdir -p staticfiles
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 
 # Run migrations
 echo "🗄️ Running database migrations..."
@@ -71,18 +68,18 @@ if pgrep -f gunicorn > /dev/null; then
     echo "  - URL: http://45.159.150.199:8000"
     echo ""
     echo "📝 Logs:"
-    echo "  - Access: logs/gunicorn-access.log"
-    echo "  - Error: logs/gunicorn-error.log"
+    echo "  - Access: ${DATA_PATH:-/app/data}/logs/gunicorn-access.log"
+    echo "  - Error: ${DATA_PATH:-/app/data}/logs/gunicorn-error.log"
     echo ""
     echo "🔧 Management Commands:"
     echo "  - Stop: ./stop_production.sh"
     echo "  - Restart: ./restart_production.sh"
-    echo "  - Logs: tail -f logs/gunicorn-error.log"
+    echo "  - Logs: tail -f ${DATA_PATH:-/app/data}/logs/gunicorn-error.log"
     echo ""
     echo "================================================="
 else
     echo ""
     echo "❌ Failed to start server!"
-    echo "Check logs at: logs/gunicorn-error.log"
+    echo "Check logs at: ${DATA_PATH:-/app/data}/logs/gunicorn-error.log"
     exit 1
 fi

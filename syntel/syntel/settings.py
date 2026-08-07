@@ -24,6 +24,39 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# =============================================================================
+# DATA PATH — all writable data (database, uploads, logs, cache, temp files,
+# sessions, backups) is centralized under a single base directory.
+# Default: /app/data — override per environment via the DATA_PATH env var.
+# =============================================================================
+DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data'))
+
+DATA_SUBDIRS = {
+    'logs': DATA_PATH / 'logs',
+    'db': DATA_PATH / 'db',
+    'uploads': DATA_PATH / 'uploads',
+    'cache': DATA_PATH / 'cache',
+    'tmp': DATA_PATH / 'tmp',
+    'sessions': DATA_PATH / 'sessions',
+    'backups': DATA_PATH / 'backups',
+}
+LOGS_DIR = DATA_SUBDIRS['logs']
+DB_DIR = DATA_SUBDIRS['db']
+UPLOADS_DIR = DATA_SUBDIRS['uploads']
+CACHE_DIR = DATA_SUBDIRS['cache']
+TMP_DIR = DATA_SUBDIRS['tmp']
+SESSIONS_DIR = DATA_SUBDIRS['sessions']
+BACKUPS_DIR = DATA_SUBDIRS['backups']
+
+
+def ensure_data_dirs():
+    """Create every writable data directory at startup (idempotent)."""
+    for path in DATA_SUBDIRS.values():
+        path.mkdir(parents=True, exist_ok=True)
+
+
+ensure_data_dirs()
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -63,6 +96,10 @@ CSRF_TRUSTED_ORIGINS = [
 SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Sessions are stored as files under DATA_PATH/sessions
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+SESSION_FILE_PATH = str(SESSIONS_DIR)
 
 
 # Application definition
@@ -134,7 +171,7 @@ WSGI_APPLICATION = 'syntel.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': DB_DIR / 'db.sqlite3',
     }
 }
 
@@ -185,9 +222,72 @@ LOGIN_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # Static files (CSS, JavaScript, Images)
+# NOTE: STATIC_ROOT stays at BASE_DIR/staticfiles — it is build output of
+# `collectstatic`, not runtime writable data.
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Media files
+# Media files — stored under DATA_PATH/uploads
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = str(UPLOADS_DIR)
+
+# Large uploads spill to DATA_PATH/tmp while streaming
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_TEMP_DIR = str(TMP_DIR)
+
+# Cache — file-based, stored under DATA_PATH/cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': str(CACHE_DIR),
+    }
+}
+
+# Logging — console plus a file under DATA_PATH/logs
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'django_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'django.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'django_file'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'django_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'purchases': {
+            'handlers': ['console', 'django_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

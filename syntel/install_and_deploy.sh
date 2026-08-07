@@ -91,10 +91,10 @@ else
     echo -e "${YELLOW}⚠ UFW not found, skipping firewall configuration${NC}"
 fi
 
-# Step 5: Create directories
+# Step 5: Create directories (writable data under DATA_PATH, default /app/data)
 echo -e "\n${YELLOW}[STEP 5] Creating directories...${NC}"
-mkdir -p backups logs media staticfiles ssl
-chmod 755 backups logs media staticfiles
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles ssl
+chmod 755 "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 echo -e "${GREEN}✓ Directories created${NC}"
 
 # Step 6: Run deployment

@@ -55,9 +55,9 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# Create necessary directories
+# Create necessary directories (writable data under DATA_PATH, default /app/data)
 print_info "Creating necessary directories..."
-mkdir -p media staticfiles logs backups
+mkdir -p "${DATA_PATH:-/app/data}"/{logs,db,uploads,cache,tmp,sessions,backups} staticfiles
 
 # Stop existing containers
 print_info "Stopping existing containers..."
