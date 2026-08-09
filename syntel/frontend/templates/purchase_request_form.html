@@ -216,6 +216,11 @@
     .form-control:focus, select:focus { outline: none; border-color: #6366f1; }
     textarea.form-control { resize: vertical; min-height: 60px; }
 
+    select:disabled {
+        background: #f9fafb; color: #6b7280;
+        cursor: not-allowed; opacity: 0.8;
+    }
+
     /* ── autocomplete ── */
     .autocomplete-wrap { position: relative; }
     .autocomplete-dropdown {
@@ -288,11 +293,6 @@
 
 {% block content %}
 <div class="page-container">
-    <div class="page-header">
-        <h1>ثبت درخواست کالا</h1>
-        <div class="user-badge">{{ user.get_role_display }}</div>
-    </div>
-
     <form method="post" id="purchaseForm">
         {% csrf_token %}
 
@@ -319,7 +319,8 @@
                 </div>
                 <div class="form-group">
                     <label>واحد</label>
-                    <select id="entryUnit" class="form-control"></select>
+                    <select id="entryUnit" class="form-control"
+                            {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}disabled{% endif %}></select>
                 </div>
             </div>
             <div class="form-group entry-description">
@@ -358,8 +359,7 @@
 
         <!-- 4. Action buttons -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">ثبت نهایی</button>
-            <button type="submit" class="btn btn-secondary">ارسال</button>
+            <button type="submit" class="btn btn-primary">ارسال</button>
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
         </div>
     </form>

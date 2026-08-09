@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}ویرایش بدهی — {{ debt.company }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
+<style>
+    .debt-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+    .debt-form-grid .full { grid-column: 1 / -1; }
+    .page-note { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-edit"></i>
+        ویرایش بدهی
+    </h1>
+</div>
+
+<div class="page-note">
+    <i class="fas fa-info-circle"></i>
+    تغییرات بلافاصله برای مدیرعامل هم اعمال می‌شود.
+    {% if debt.paid_total > 0 %}
+    این بدهی پرداخت جزئی دارد ({{ debt.paid_total|number_format }} تومان) — باقی‌مانده با مبلغ جدید دوباره محاسبه می‌شود.
+    {% endif %}
+</div>
+
+<div class="card debt-form-card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-money-bill-wave"></i>
+            {{ debt.company }}
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'debt_edit' cafe_code=cafe_code debt_id=debt.id %}">
+            {% csrf_token %}
+            <div class="debt-form-grid">
+                <div class="form-group">
+                    <label for="company">نام شرکت <span style="color:var(--danger);">*</span></label>
+                    <input type="text" id="company" name="company" class="form-control" required
+                           value="{{ debt.company }}">
+                </div>
+                <div class="form-group">
+                    <label for="edit_amount">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
+                    <input type="text" id="edit_amount" name="amount" class="form-control" required
+                           inputmode="numeric" value="{{ debt.amount|floatformat:'0' }}">
+                </div>
+                <div class="form-group">
+                    <label for="edit_date">تاریخ بدهی (شمسی)</label>
+                    <input type="text" id="edit_date" name="debt_date" class="form-control"
+                           value="{{ debt_date_jalali|default:today_jalali }}">
+                </div>
+                <div class="form-group">
+                    <label for="priority">اولویت</label>
+                    <select id="priority" name="priority" class="form-control">
+                        {% for value, label in priority_choices %}
+                        <option value="{{ value }}"{% if debt.priority == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label for="description">توضیحات</label>
+                    <textarea id="description" name="description" class="form-control" rows="2"
+                              style="height:auto; min-height:60px; padding-top:0.6rem;"
+                              placeholder="توضیحات اختیاری">{{ debt.description }}</textarea>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    ذخیره تغییرات
+                </button>
+                <a href="{% url 'debt_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right"></i>
+                    انصراف
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
+<script>
+    // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ — سرور کاماها را حذف می‌کند
+    const amountInput = document.getElementById('edit_amount');
+    if (amountInput) {
+        const applyComma = function() {
+            const digits = this.value.replace(/\D/g, '');
+            this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+        };
+        amountInput.addEventListener('input', applyComma);
+        applyComma.call(amountInput);  // نمایش اولیه با کاما
+    }
+
+    // تقویم شمسی برای فیلد تاریخ — اگر اسکریپت تقویم لود نشده باشد بقیه صفحه کار می‌کند
+    if (typeof persianDatepicker === 'function') {
+        document.querySelectorAll('#edit_date').forEach(function(input) {
+            new persianDatepicker(input, {
+                format: 'YYYY/MM/DD',
+                year: 1404,
+                month: 1,
+                day: 1,
+                observer: true,
+                altField: input,
+                altFormat: 'YYYY/MM/DD',
+                calendar: {
+                    persian: {
+                        locale: 'fa'
+                    }
+                }
+            });
+        });
+    }
+</script>
+{% endblock %}

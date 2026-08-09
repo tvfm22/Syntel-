@@ -66,3 +66,10 @@ urlpatterns = [
     path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='legacy-swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='legacy-redoc'),
 ]
+
+# Serving uploaded media (receipt photos for debt payments, etc.) from MEDIA_ROOT.
+# Works in dev and production (gunicorn behind Liara) alike.
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,0 +1,180 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مسئول خرید - کوکر</title>
+    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; }
+
+        .page-wrapper { max-width: 1000px; margin: 0 auto; padding: 20px 24px 100px; }
+
+        .header {
+            background: white; padding: 18px 24px; border-radius: 12px;
+            margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+        }
+        .header-left h1 { font-size: 22px; color: #1f2937; margin-bottom: 4px; }
+        .header-left p  { color: #6b7280; font-size: 14px; }
+
+        .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .stat-card {
+            background: white; border-radius: 10px; padding: 12px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); flex: 1; min-width: 140px;
+        }
+        .stat-card .stat-num { font-size: 22px; font-weight: 700; color: #1f2937; }
+        .stat-card .stat-lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+        .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
+        .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .msg-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .msg-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+        .row-card {
+            background: white; border-radius: 12px; padding: 18px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 14px;
+            border-right: 4px solid #6366f1;
+        }
+        .row-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+        .row-name { font-size: 17px; font-weight: 700; color: #1f2937; }
+        .row-qty  { font-size: 15px; font-weight: 700; color: #059669; white-space: nowrap; }
+
+        .dept-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        .dept-pill {
+            padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;
+            background: #e0e7ff; color: #4338ca;
+        }
+
+        .item-line {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            background: #f9fafb; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; flex-wrap: wrap;
+        }
+        .item-line-info { font-size: 13.5px; color: #374151; }
+        .item-line-qty  { font-weight: 700; color: #1f2937; }
+        .item-actions   { display: flex; gap: 8px; }
+        .btn {
+            border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px;
+            font-weight: 600; cursor: pointer; font-family: Vazir, sans-serif;
+            transition: opacity .15s, transform .1s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn:hover { opacity: .88; }
+        .btn:active { transform: scale(.98); }
+        .btn-green { background: #10b981; color: white; }
+        .btn-amber { background: #f59e0b; color: white; }
+
+        .desc-list { margin-top: 8px; }
+        .desc-item {
+            font-size: 12.5px; color: #6b7280; background: #fffbeb; border-right: 3px solid #f59e0b;
+            border-radius: 8px; padding: 7px 12px; margin-bottom: 6px;
+        }
+        .desc-item b { color: #92400e; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; background: white; border-radius: 12px; }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 14px; }
+
+        .logout-btn {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 11px 28px; background: white; border: 1px solid #e5e7eb;
+            border-radius: 8px; color: #ef4444; text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 14px; font-weight: 600; z-index: 100;
+        }
+        .logout-btn:hover { background: #fef2f2; }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1>🛒 داشبورد مسئول خرید</h1>
+            <p>{{ user.first_name }} {{ user.last_name }}</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'success' %}msg-success{% else %}msg-info{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="stats">
+        <div class="stat-card"><div class="stat-num">{{ rows|length }}</div><div class="stat-lbl">کالای در انتظار</div></div>
+        <div class="stat-card"><div class="stat-num">{{ total_items }}</div><div class="stat-lbl">قلم درخواستی</div></div>
+    </div>
+
+    <div style="font-size:12.5px;color:#6b7280;margin-bottom:14px;line-height:1.9;">
+        فقط اقلامی که مدیرعامل برای شما ارسال کرده است نمایش داده می‌شود.
+        اگر کالا را خریداری می‌کنید «خریداری شد» و اگر نمی‌توانید آن را تهیه کنید «بازگشت به مدیرعامل» را بزنید.
+    </div>
+
+    {% if rows %}
+        {% for row in rows %}
+        <div class="row-card">
+            <div class="row-head">
+                <div class="row-name">{{ row.name }}</div>
+                <div class="row-qty">جمع: {{ row.total_qty|trim_decimal }} {{ row.unit }}</div>
+            </div>
+
+            <div class="dept-pills">
+                {% for s in row.sections %}
+                <span class="dept-pill">{{ s.name }}: {{ s.qty|trim_decimal }} {{ row.unit }}</span>
+                {% endfor %}
+            </div>
+
+            {% for a in row.assignments %}
+            <div class="item-line">
+                <div class="item-line-info">
+                    {{ row.name }} — <span class="item-line-qty">{{ a.item.quantity }} {{ row.unit }}</span>
+                    <span style="color:#6b7280;">
+                        ({{ a.item.request.user.department.name|default:a.item.request.user.get_role_display }})
+                        {% if a.item.description %} 📝 {{ a.item.description }}{% endif %}
+                    </span>
+                    <span style="color:#9ca3af;font-size:12px;">{{ a.item.request.created_at|jalali_date }}</span>
+                </div>
+                <div class="item-actions">
+                    <form method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="item_id" value="{{ a.id }}">
+                        <button type="submit" name="action" value="purchased" class="btn btn-green"
+                                onclick="return confirm('«{{ row.name }}» خریداری شد؟');">✅ خریداری شد</button>
+                    </form>
+                    <form method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="item_id" value="{{ a.id }}">
+                        <button type="submit" name="action" value="return" class="btn btn-amber"
+                                onclick="return confirm('این قلم به لیست مدیرعامل برگردانده شود؟');">↩️ بازگشت به مدیرعامل</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if row.descriptions %}
+            <div class="desc-list">
+                {% for d in row.descriptions %}
+                <div class="desc-item">📝 <b>{{ d.dept }}:</b> {{ d.text }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>لیست خرید شما خالی است</h3>
+            <p>هنوز قلمی توسط مدیرعامل برای شما ارسال نشده است.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<div style="text-align:center;padding:12px 0 24px;">
+    <a href="{% url 'logout' %}" style="color:#9ca3af;font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px;transition:all.15s;display:inline-block;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">🚪 خروج</a>
+</div>
+
+</body>
+</html>

@@ -1,357 +1,411 @@
-﻿{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %} - Kuker</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        body { background: #f3f4f6; min-height: 100vh; }
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        .page-wrapper { max-width: 1280px; margin: 0 auto; padding: 20px 24px 80px; }
+{% block title %}{% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %} - Kuker{% endblock %}
 
-        /* ── header ── */
-        .header {
-            background: white; padding: 12px 20px; border-radius: 12px;
-            margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            display: flex; align-items: center; justify-content: center;
-        }
+{% block extra_css %}
+<style>
+    /* ═══ صفحه «درخواست کالا/انبار همه بخش‌ها» — طراحی دسکتاپ با توکن‌های قالب ═══ */
+    .all-depts-wrap { max-width: 1200px; margin: 0 auto; }
 
-        /* ── date navigation ── */
-        .date-nav {
-            display: flex; align-items: center; gap: 10px;
-            padding: 6px 10px;
-        }
-        .date-arrow {
-            width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e5e7eb;
-            background: white; color: #374151; font-size: 20px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-            text-decoration: none; transition: all .15s; cursor: pointer; line-height: 1;
-        }
-        .date-arrow:hover { background: #6366f1; color: white; border-color: #6366f1; }
-        .date-display {
-            cursor: pointer; padding: 4px 12px; border-radius: 6px;
-            transition: background .15s; text-align: center; min-width: 140px;
-            user-select: none;
-        }
-        .date-display:hover { background: #e5e7eb; }
-        .date-jalali { display: block; font-size: 15px; font-weight: 700; color: #1f2937; }
-        .date-gregorian { display: block; font-size: 11px; color: #9ca3af; }
+    /* هدر صفحه: بلندتر از حالت عادی تا ناوبری تاریخ جا شود */
+    .page-header { height: auto; min-height: var(--header-height); flex-wrap: wrap; gap: var(--space-3); padding-block: var(--space-4); }
 
-        /* ── type toggle ── */
-        .type-toggle {
-            display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .type-btn {
-            padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
-            text-decoration: none; background: white; border: 1px solid #e5e7eb;
-            color: #374151; transition: all .15s;
-        }
-        .type-btn:hover { background: #f9fafb; }
-        .type-btn.active-purchase  { background: #6366f1; color: white; border-color: #6366f1; }
-        .type-btn.active-warehouse { background: #10b981; color: white; border-color: #10b981; }
+    /* ── ناوبری تاریخ ── */
+    .date-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .date-arrow {
+        width: 38px; height: 38px; border-radius: var(--radius-md);
+        border: 1px solid var(--border-default); background: var(--bg-card);
+        color: var(--text-secondary); font-size: 1.1rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: all var(--transition-fast); cursor: pointer; line-height: 1;
+    }
+    .date-arrow:hover { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
+    .date-display {
+        cursor: pointer; padding: 0.45rem 1rem; border-radius: var(--radius-lg);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        text-align: center; min-width: 150px; user-select: none; transition: all var(--transition-fast);
+    }
+    .date-display:hover { border-color: var(--accent-indigo); }
+    .date-jalali { display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+    .date-gregorian { display: block; font-size: 0.7rem; color: var(--text-muted); }
 
-        /* ── stats bar ── */
-        .stats-bar {
-            display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px;
-        }
-        .stat-card {
-            background: white; border-radius: 10px; padding: 14px 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07); flex: 1; min-width: 130px;
-        }
-        .stat-card .stat-num  { font-size: 24px; font-weight: 700; color: #1f2937; }
-        .stat-card .stat-lbl  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    /* ── جابه‌جایی نوع درخواست (خرید / انبار) ── */
+    .type-toggle {
+        display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        background: var(--bg-card); overflow: hidden; margin-bottom: var(--space-6); box-shadow: var(--shadow-sm);
+    }
+    .type-btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.65rem 1.6rem; font-size: 0.85rem; font-weight: 700;
+        text-decoration: none; color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .type-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+    .type-btn.active-purchase { background: var(--accent-indigo); color: white; }
+    .type-btn.active-warehouse { background: var(--accent-green); color: white; }
 
-        /* ── section title ── */
-        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    /* ── فیلتر بخش (قرص‌ها) ── */
+    .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-6); }
+    .filter-pill {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 1.15rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+        text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
+        color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .filter-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .filter-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
 
-        /* ── merged products table / cards ── */
-        .merged-table-wrap { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; margin-bottom: 28px; }
-        .merged-table { width: 100%; border-collapse: collapse; }
-        .merged-table th {
-            background: #f9fafb; padding: 12px 16px; font-size: 13px; font-weight: 700;
-            color: #6b7280; text-align: right; border-bottom: 1px solid #e5e7eb;
-        }
-        .merged-table td { padding: 12px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-        .merged-table tr:last-child td { border-bottom: none; }
-        .merged-table tr:hover td { background: #fafafa; }
+    /* ── نوار ارسال به مسئول ── */
+    .send-bar {
+        background: var(--bg-card); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-light); border-right: 4px solid var(--accent-indigo);
+        padding: var(--space-5) var(--space-6); margin-bottom: var(--space-6);
+        display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap;
+    }
+    .send-bar select {
+        height: 44px; padding: 0 var(--space-4); border: 1.5px solid var(--border-default); border-radius: var(--radius-lg);
+        font-size: 0.85rem; font-family: 'Vazir', sans-serif; background: var(--bg-card); color: var(--text-primary);
+        flex: 1; min-width: 220px; cursor: pointer;
+    }
+    .send-bar select:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+    .send-btn {
+        background: var(--accent-indigo); color: white; border: none; height: 44px; padding: 0 1.6rem;
+        border-radius: var(--radius-lg); font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        font-family: 'Vazir', sans-serif; display: inline-flex; align-items: center; gap: 0.5rem;
+        transition: all var(--transition-fast);
+    }
+    .send-btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .sel-count { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }
 
-        .product-name-cell { font-weight: 600; color: #1f2937; }
-        .qty-cell { font-weight: 700; color: #059669; font-size: 15px; }
+    /* ── جدول ادغام‌شده ── */
+    .merged-table-wrap {
+        background: var(--bg-card); border-radius: var(--radius-3xl); box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-light); overflow-x: auto; margin-bottom: var(--space-6);
+    }
+    .merged-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    .merged-table th {
+        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
+        color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
+    }
+    .merged-table td { padding: 0.85rem 1rem; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .merged-table tbody tr:hover td { background: var(--bg-subtle); }
 
-        .dept-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-        .dept-pill {
-            padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;
-            background: #e0e7ff; color: #4338ca;
-        }
-        .dept-pill.warehouse-pill { background: #d1fae5; color: #065f46; }
+    tr.row-faded td { opacity: 0.45; }
+    tr.row-faded:hover td { background: var(--bg-subtle); }
+    tr.row-faded .chk-cell, tr.row-faded .item-chk { opacity: 1; pointer-events: auto; }
 
-        /* ── mobile card view for merged products ── */
-        .merged-cards { display: none; }
-        .merged-card {
-            background: white; border-radius: 12px; padding: 16px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px;
-        }
-        .merged-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .merged-card-name  { font-size: 16px; font-weight: 700; color: #1f2937; }
-        .merged-card-qty   { font-size: 16px; font-weight: 700; color: #059669; }
-        .merged-card-depts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .product-name-cell { font-weight: 600; color: var(--text-primary); }
+    .qty-cell { font-weight: 700; color: var(--accent-green); white-space: nowrap; }
 
-        @media (max-width: 700px) {
-            .merged-table-wrap { display: none; }
-            .merged-cards      { display: block; }
-        }
+    .section-box { margin-bottom: 0.4rem; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-light); }
+    .section-box.sent { background: rgba(34,197,94,0.07); border-color: rgba(34,197,94,0.25); }
+    .section-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .section-dept { font-weight: 600; color: var(--text-primary); font-size: 0.8rem; }
+    .section-qty { color: var(--accent-green); font-weight: 700; font-size: 0.82rem; }
+    .sent-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.65rem; border-radius: 999px;
+        font-size: 0.7rem; font-weight: 600; background: rgba(34,197,94,0.12); color: #166534; white-space: nowrap;
+    }
+    .returned-chip { background: rgba(239,68,68,0.1); color: #991b1b; }
+    .section-actions { display: flex; gap: 0.4rem; margin-top: 0.35rem; flex-wrap: wrap; }
+    .mini-link {
+        font-size: 0.72rem; text-decoration: none; padding: 0.3rem 0.75rem; border-radius: var(--radius-sm); font-weight: 600;
+        display: inline-flex; align-items: center; gap: 0.3rem; border: none; cursor: pointer; font-family: 'Vazir', sans-serif;
+        transition: all var(--transition-fast);
+    }
+    .ml-edit { background: #fef3c7; color: #92400e; }
+    .ml-edit:hover { background: #fde68a; }
+    .ml-delete { background: #fee2e2; color: #dc2626; }
+    .ml-delete:hover { background: #fecaca; }
 
-        /* ── individual requests list ── */
-        .requests-list { margin-bottom: 28px; }
-        .request-card {
-            background: white; border-radius: 12px; padding: 16px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px;
-        }
-        .request-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-        .request-user  { font-size: 15px; font-weight: 600; color: #1f2937; }
-        .request-meta  { font-size: 12px; color: #6b7280; margin-top: 3px; }
-        .status-badge  { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-        .status-draft                  { background: #f3f4f6; color: #6b7280; }
-        .status-pending_manager_approval { background: #fef3c7; color: #92400e; }
-        .status-pending                { background: #fef3c7; color: #92400e; }
-        .status-purchased              { background: #d1fae5; color: #065f46; }
-        .status-partial                { background: #dbeafe; color: #1e40af; }
-        .status-rejected               { background: #fee2e2; color: #991b1b; }
-        .status-approved_from_stock    { background: #d1fae5; color: #065f46; }
-        .status-approved_purchase      { background: #dbeafe; color: #1e40af; }
-        .status-declined               { background: #fee2e2; color: #991b1b; }
-        .status-fulfilled              { background: #d1fae5; color: #065f46; }
+    .item-chk, .chk-all { width: 17px; height: 17px; accent-color: var(--accent-indigo); cursor: pointer; }
+    .sent-badge-row { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.45rem; }
 
-        .request-items { background: #f9fafb; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
-        .req-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; color: #374151; border-bottom: 1px solid #e5e7eb; }
-        .req-item:last-child { border-bottom: none; }
+    /* ── درخواست‌های فردی (جدول دسکتاپ) ── */
+    .filter-select {
+        height: 44px; padding: 0 var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+    }
+    .req-table-wrap { overflow-x: auto; }
+    .req-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 780px; }
+    .req-table th {
+        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
+        color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
+    }
+    .req-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .req-table tbody tr:hover td { background: var(--bg-subtle); }
 
-        .dept-badge {
-            display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px;
-            font-weight: 500; background: #e5e7eb; color: #374151; margin-bottom: 4px;
-        }
+    .dept-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
+    }
+    .req-user { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+    .req-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .status-badge { display: inline-flex; padding: 0.25rem 0.8rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .status-pending_manager_approval { background: #fef3c7; color: #92400e; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-purchased { background: #d1fae5; color: #065f46; }
+    .status-partial { background: #dbeafe; color: #1e40af; }
+    .status-rejected { background: #fee2e2; color: #991b1b; }
+    .status-approved_from_stock { background: #d1fae5; color: #065f46; }
+    .status-approved_purchase { background: #dbeafe; color: #1e40af; }
+    .status-declined { background: #fee2e2; color: #991b1b; }
+    .status-fulfilled { background: #d1fae5; color: #065f46; }
+    .status-draft { background: #f3f4f6; color: #6b7280; }
 
-        /* ── empty state ── */
-        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; background: white; border-radius: 12px; }
-        .empty-state .empty-icon { font-size: 48px; margin-bottom: 14px; }
+    .item-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .item-chip {
+        display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.65rem; border-radius: var(--radius-sm);
+        background: var(--bg-subtle); border: 1px solid var(--border-light); font-size: 0.75rem; color: var(--text-secondary);
+    }
+    .item-chip b { color: var(--text-primary); font-weight: 700; }
 
-        /* ── process btn ── */
-        .process-btn {
-            display: inline-block; padding: 8px 18px; background: #10b981; color: white;
-            border-radius: 8px; font-size: 13px; text-decoration: none; font-weight: 600;
-            transition: background .15s; margin-top: 10px;
-        }
-        .process-btn:hover { background: #059669; }
-        .view-btn {
-            display: inline-block; padding: 8px 18px; background: #3b82f6; color: white;
-            border-radius: 8px; font-size: 13px; text-decoration: none; font-weight: 600;
-            transition: background .15s; margin-top: 10px;
-        }
-        .view-btn:hover { background: #2563eb; }
+    .action-btn {
+        display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: var(--radius-md);
+        font-size: 0.78rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: all var(--transition-fast);
+    }
+    .action-btn.process { background: var(--accent-green); color: white; }
+    .action-btn.process:hover { background: #16A34A; box-shadow: var(--shadow-sm); }
+    .action-btn.view { background: var(--accent-blue); color: white; }
+    .action-btn.view:hover { background: #2563EB; box-shadow: var(--shadow-sm); }
 
-        /* ── filter bar ── */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .filter-select {
-            padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;
-            font-family: Vazir, sans-serif; background: white; color: #374151; cursor: pointer;
-        }
-        .filter-select:focus { outline: none; border-color: #6366f1; }
+    .empty-state {
+        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px dashed var(--border-strong);
+        box-shadow: var(--shadow-sm);
+    }
+    .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
 
-        /* ── کالا های موجود در انبار (تامین از انبار) ── */
-        .supply-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 28px; }
-        .supply-step { margin-bottom: 20px; }
-        .supply-step:last-of-type { margin-bottom: 0; }
-        .step-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .step-badge {
-            min-width: 26px; height: 26px; border-radius: 50%; background: #3b82f6; color: white;
-            display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
-        }
+    @media (width < 768px) {
+        .page-header { padding-block: var(--space-3); }
+        .type-toggle { display: flex; width: 100%; }
+        .type-btn { flex: 1; justify-content: center; }
+        .send-bar { border-right: none; border-top: 4px solid var(--accent-indigo); }
+    }
+</style>
+{% endblock %}
 
-        .product-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            padding: 14px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px;
-            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
-        }
-        .product-item:hover { border-color: #93c5fd; background: #eff6ff; }
-        .product-item.active { border-color: #3b82f6; background: #eff6ff; }
-        .product-name { font-size: 15px; font-weight: 600; color: #1f2937; }
-        .product-meta { font-size: 12px; color: #6b7280; margin-top: 3px; }
-        .product-arrow { color: #9ca3af; font-size: 16px; }
+{% block content %}
+<div class="all-depts-wrap">
 
-        .warehouse-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            padding: 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px;
-            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
-        }
-        .warehouse-item:hover { border-color: #10b981; background: #ecfdf5; }
-        .warehouse-item.active { border-color: #10b981; background: #ecfdf5; }
-        .warehouse-name { font-size: 14px; font-weight: 600; color: #1f2937; }
-
-        .brand-row { padding: 14px 16px; border: 1.5px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; background: white; }
-        .brand-row.disabled { opacity: .5; background: #f9fafb; }
-        .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .brand-badge { background: #6b21a8; color: white; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 12px; }
-        .brand-badge.generic { background: #4b5563; }
-        .brand-avail { font-size: 13px; color: #374151; font-weight: 600; margin-right: auto; }
-        .brand-rate { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
-        .brand-controls { display: flex; gap: 8px; align-items: center; }
-        .qty-input { flex: 1; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 15px; font-family: Vazir, sans-serif; min-width: 0; }
-        .qty-input:focus { outline: none; border-color: #3b82f6; }
-        .add-btn { padding: 10px 18px; border: none; border-radius: 8px; background: #3b82f6; color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif; white-space: nowrap; }
-        .add-btn:active { background: #2563eb; }
-        .add-btn:disabled { background: #93c5fd; cursor: not-allowed; }
-        .qty-warning { font-size: 12px; color: #dc2626; margin-top: 8px; display: none; }
-
-        .hint { font-size: 12.5px; color: #6b7280; margin-bottom: 12px; line-height: 1.8; }
-
-        .review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .review-table th {
-            background: #1f2937; color: white; padding: 10px 8px; font-weight: 600;
-            text-align: right; white-space: nowrap; font-size: 12px;
-        }
-        .review-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-        .review-table tr:last-child td { border-bottom: none; }
-        .status-select { padding: 8px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 12.5px; font-family: Vazir, sans-serif; background: white; }
-        .remove-btn { border: none; background: #fee2e2; color: #dc2626; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 15px; }
-        .empty-review { text-align: center; color: #9ca3af; font-size: 13px; padding: 24px 0; }
-
-        .submit-btn { padding: 12px 28px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif; }
-        .submit-btn:active { background: #059669; }
-
-        .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
-        .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-        .msg-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-        .msg-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    </style>
-</head>
-<body>
-<div class="page-wrapper">
-
-    <!-- Header with Shamsi date navigation -->
-    <div class="header" style="justify-content:center;">
-        <!-- Date navigation -->
-        <div class="date-nav">
-            <a href="?type={{ request_type }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow">‹</a>
-            <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
-                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
-                <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+    <!-- هدر صفحه: عنوان + ناوبری تاریخ -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-clipboard-list"></i>
+            {% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %}
+        </h1>
+        <div class="header-actions">
+            <div class="date-nav">
+                <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow" title="روز قبل">‹</a>
+                <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
+                    <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+                </div>
+                <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
+                       onchange="if(this.value) window.location.href='?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date=' + this.value;">
+                <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date={{ next_date|date:'Y-m-d' }}" class="date-arrow" title="روز بعد">›</a>
             </div>
-            <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
-                   onchange="if(this.value) window.location.href='?type={{ request_type }}&date=' + this.value;">
-            <a href="?type={{ request_type }}&date={{ next_date|date:'Y-m-d' }}" class="date-arrow">›</a>
         </div>
     </div>
 
-    {% if request_type != 'purchase' %}
-    <!-- Type toggle (فقط برای داده‌های قدیمی انبار؛ ورودی جدیدی ندارد) -->
+    <!-- جابه‌جایی نوع درخواست: خرید / انبار -->
     <div class="type-toggle">
-        <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}?type=purchase"
-           class="type-btn active-purchase">🛒 درخواست کالا</a>
+        <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
+           class="type-btn {% if request_type == 'purchase' %}active-purchase{% endif %}">
+            <i class="fas fa-shopping-cart"></i> درخواست خرید
+        </a>
+        <a href="?type=warehouse{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
+           class="type-btn {% if request_type == 'warehouse' %}active-warehouse{% endif %}">
+            <i class="fas fa-boxes-stacked"></i> درخواست انبار
+        </a>
     </div>
-    {% endif %}
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'success' %}msg-success{% else %}msg-info{% endif %}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
 
     {% if request_type == 'purchase' %}
-    <!-- Tab bar: جابه‌جایی بین درخواست کالا و کالا های موجود در انبار -->
-    <div class="type-toggle">
-        <button type="button" class="type-btn active-purchase" data-view="requests" onclick="switchView('requests')">🛒 درخواست کالا</button>
-        <button type="button" class="type-btn active-warehouse" data-view="stock" onclick="switchView('stock')">📦 کالا های موجود در انبار</button>
+
+    <!-- ── فیلتر بخش ── -->
+    <div class="filter-bar">
+        <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}" class="filter-pill {% if not section_filter %}active{% endif %}"><i class="fas fa-building"></i> همه بخش‌ها</a>
+        {% for sec in row_sections %}
+        <a href="?type=purchase&section={{ sec|urlencode }}{% if date_str %}&date={{ date_str }}{% endif %}" class="filter-pill {% if section_filter == sec %}active{% endif %}">{{ sec }}</a>
+        {% endfor %}
     </div>
 
-    <div id="viewStock" style="display:none;">
-    <!-- کالا های موجود در انبار -->
-    <div class="supply-card">
-        <div class="section-title">📦 کالا های موجود در انبار</div>
-        <div class="hint">فقط کالاهایی که در درخواست‌های این روز آمده‌اند و در انبار موجودی دارند: محصول را انتخاب کنید، سپس انبار دارای موجودی و برند را مشخص کرده و «افزودن» را بزنید. برای هر قلم وضعیت نهایی را تعیین کنید — اقلام «تامین از انبار» پس از تایید نهایی از موجودی کسر می‌شوند.</div>
-        <form method="post" id="supplyForm">
-            {% csrf_token %}
+    {% if rows %}
+    <!-- ── نوار ارسال به مسئول ── -->
+    <form method="post" id="sendForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send">
+        <input type="hidden" name="item_ids" id="sendItemIds" value="">
+        <div class="send-bar">
+            <select name="officer_user_id" required>
+                <option value="">— مسئول خرید / انبار را انتخاب کنید —</option>
+                {% for o in officer_users %}
+                <option value="{{ o.user.id }}">{{ o.user.get_full_name|default:o.user.username }} ({{ o.label }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="send-btn" onclick="return collectSelected();"><i class="fas fa-paper-plane"></i> ارسال به مسئول</button>
+            <span class="sel-count" id="selCount"><i class="fas fa-check-square"></i> هیچ قلمی انتخاب نشده است</span>
+        </div>
+    </form>
 
-            <div class="supply-step">
-                <div class="step-title"><span class="step-badge">۱</span> محصول را انتخاب کنید</div>
-                <div id="productList"></div>
-            </div>
-
-            <div class="supply-step" id="warehouseCard" style="display:none;">
-                <div class="step-title"><span class="step-badge">۲</span> انبار دارای موجودی را انتخاب کنید</div>
-                <div id="warehouseList"></div>
-            </div>
-
-            <div class="supply-step" id="brandCard" style="display:none;">
-                <div class="step-title"><span class="step-badge">۳</span> برند و مقدار را مشخص کنید</div>
-                <div class="hint">مقدار را بر حسب واحد تجاری برند وارد کنید و دکمه «افزودن» را بزنید. برای افزودن واریانت/برند دیگری از همین محصول، مراحل را تکرار کنید.</div>
-                <div id="brandList"></div>
-            </div>
-
-            <div class="supply-step">
-                <div class="step-title"><span class="step-badge">✓</span> جدول بررسی اقلام</div>
-                <div style="overflow-x:auto;">
-                    <table class="review-table" id="reviewTable">
-                        <thead>
-                            <tr>
-                                <th>کالا</th>
-                                <th>برند</th>
-                                <th>انبار</th>
-                                <th>مقدار</th>
-                                <th>وضعیت</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="reviewBody">
-                            {% for row in submitted_rows %}
-                            <tr data-row-idx="{{ forloop.counter0 }}">
-                                <td>{{ row.product.name }}</td>
-                                <td>{% if row.brand %}{{ row.brand.brand_name }}{% else %}بدون برند{% endif %}</td>
-                                <td>{{ row.warehouse.name }}</td>
-                                <td>{{ row.qty|trim_decimal }}{% if row.brand and row.brand.trade_unit %} {{ row.brand.trade_unit }}{% endif %}</td>
-                                <td>
-                                    <select name="status" class="status-select">
-                                        <option value="from_stock" {% if row.status == 'from_stock' %}selected{% endif %}>📦 تامین از انبار</option>
-                                        <option value="to_purchase" {% if row.status == 'to_purchase' %}selected{% endif %}>🛒 ارسال به لیست خرید</option>
-                                        <option value="not_supplied" {% if row.status == 'not_supplied' %}selected{% endif %}>❌ تامین نشده</option>
-                                    </select>
-                                </td>
-                                <td><button type="button" class="remove-btn" onclick="removeRow(this)">✕</button></td>
-                                <input type="hidden" name="product_id" value="{{ row.product.id }}">
-                                <input type="hidden" name="warehouse_id" value="{{ row.warehouse.id }}">
-                                <input type="hidden" name="brand_id" value="{% if row.brand %}{{ row.brand.id }}{% endif %}">
-                                <input type="hidden" name="qty" value="{{ row.qty }}">
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="6"><div class="empty-review" id="emptyReview">هنوز قلمی افزوده نشده است</div></td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div style="text-align:left;margin-top:14px;">
-                <button type="submit" class="submit-btn" onclick="return confirmSubmit()">✅ تایید نهایی</button>
-            </div>
-        </form>
-    </div>
-    </div><!-- /viewStock -->
-    {% endif %}
-
-    <div id="viewRequests">
-    <!-- Merged products section -->
-    {% if merged_products %}
-    <div class="section-title">🔀 محصولات ادغام‌شده (درخواست چند بخش)</div>
-
-    <!-- Table view (desktop) -->
+    <!-- ── جدول ادغام‌شده ── -->
     <div class="merged-table-wrap">
         <table class="merged-table">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th style="width:44px;"><input type="checkbox" class="chk-all" onclick="toggleAll(this)" title="انتخاب همه"></th>
+                    <th>نام کالا</th>
+                    <th>جمع کل</th>
+                    <th>سهم هر بخش (قابل انتخاب و ارسال)</th>
+                    <th>وضعیت ارسال</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="{% if row.all_sent %}row-faded{% endif %}">
+                    <td>
+                        {% for s in row.sections %}
+                        <input type="checkbox" class="item-chk" value="{{ s.item_ids }}"
+                               data-ids="{{ s.item_ids }}" data-count="{{ s.entries|length }}"
+                               {% if s.all_sent %}checked disabled title="قبلاً ارسال شده"{% endif %}>
+                        {% endfor %}
+                    </td>
+                    <td class="product-name-cell">{{ row.name }}</td>
+                    <td class="qty-cell">{{ row.total_qty|trim_decimal }} {{ row.unit }}</td>
+                    <td>
+                        {% for s in row.sections %}
+                        <div class="section-box {% if s.any_sent %}sent{% endif %}">
+                            <div class="section-head">
+                                <span class="section-dept">{{ s.dept }}</span>
+                                <span class="section-qty">{{ s.qty|trim_decimal }} {{ row.unit }}</span>
+                                {% if s.any_sent %}<span class="sent-chip"><i class="fas fa-check"></i> ارسال شده</span>{% endif %}
+                                {% if s.any_returned %}<span class="sent-chip returned-chip"><i class="fas fa-rotate-left"></i> برگشت خورده</span>{% endif %}
+                            </div>
+                            {% if not s.all_sent %}
+                            <div class="section-actions">
+                                {% for e in s.entries %}
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="item_id" value="{{ e.item_id }}">
+                                    <button type="submit" name="action" value="edit_item" class="mini-link ml-edit"><i class="fas fa-pen"></i> ویرایش</button>
+                                </form>
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="item_id" value="{{ e.item_id }}">
+                                    <button type="submit" name="action" value="delete_item" class="mini-link ml-delete"
+                                            onclick="return confirm('«{{ e.name }}» حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
+                                </form>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        {% if row.all_sent %}
+                        <span class="sent-chip"><i class="fas fa-check-circle"></i> همه قلم‌ها ارسال شد</span>
+                        {% elif row.any_sent %}
+                        <span class="sent-chip">{{ row.sent_items }} از {{ row.total_items }} قلم ارسال شده</span>
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <p>{% if section_filter %}در این روز برای این بخش درخواستی ثبت نشده است.{% else %}در این روز درخواستی ثبت نشده است.{% endif %}</p>
+    </div>
+    {% endif %}
+
+    <!-- ── درخواست‌های فردی ── -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
+                    <option value="">همه بخش‌ها</option>
+                    {% for dep in all_departments %}
+                    <option value="{{ dep.name }}">{{ dep.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="pending">در انتظار</option>
+                    <option value="pending_manager_approval">منتظر تایید مدیر</option>
+                    <option value="purchased">خریداری شده</option>
+                    <option value="partial">تکمیل جزئی</option>
+                    <option value="rejected">رد شده</option>
+                </select>
+            </div>
+        </div>
+        {% if requests %}
+        <div class="req-table-wrap">
+            <table class="req-table">
+                <thead>
+                    <tr>
+                        <th>بخش</th>
+                        <th>درخواست‌دهنده</th>
+                        <th>وضعیت</th>
+                        <th>اقلام</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsList">
+                    {% for req in requests %}
+                    <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
+                        <td><span class="dept-badge"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
+                        <td>
+                            <div class="req-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                            <div class="req-meta">{{ req.created_at|jalali_datetime }}</div>
+                        </td>
+                        <td><span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span></td>
+                        <td>
+                            {% if req.items.all %}
+                            <div class="item-chips">
+                                {% for item in req.items.all %}
+                                <span class="item-chip">{{ item.name }} <b>{{ item.quantity }} {{ item.unit }}</b></span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}"
+                               class="action-btn {% if req.status == 'pending' %}process{% else %}view{% endif %}">
+                                <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
+                                {% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <p>هیچ درخواستی وجود ندارد</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- ═══════════ نمای انبار ═══════════ -->
+
+    {% if merged_products %}
+    <div class="merged-table-wrap">
+        <table class="merged-table">
+            <thead>
+                <tr>
+                    <th style="width:52px;">#</th>
                     <th>نام محصول</th>
                     <th>جمع مقدار</th>
                     <th>واحد</th>
@@ -361,16 +415,14 @@
             <tbody>
                 {% for mp in merged_products %}
                 <tr>
-                    <td style="color:#9ca3af;font-size:13px;">{{ forloop.counter }}</td>
+                    <td style="color:var(--text-muted);font-size:0.8rem;">{{ forloop.counter }}</td>
                     <td class="product-name-cell">{{ mp.name }}</td>
                     <td class="qty-cell">{{ mp.total_qty }}</td>
                     <td>{{ mp.unit }}</td>
                     <td>
-                        <div class="dept-pills">
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
                             {% for dept in mp.departments %}
-                            <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
-                                {{ dept.name }}
-                            </span>
+                            <span class="dept-badge">{{ dept.name }}</span>
                             {% endfor %}
                         </div>
                     </td>
@@ -379,281 +431,137 @@
             </tbody>
         </table>
     </div>
+    {% endif %}
 
-    <!-- Card view (mobile) -->
-    <div class="merged-cards">
-        {% for mp in merged_products %}
-        <div class="merged-card">
-            <div class="merged-card-header">
-                <div class="merged-card-name">{{ mp.name }}</div>
-                <div class="merged-card-qty">{{ mp.total_qty }} {{ mp.unit }}</div>
-            </div>
-            <div class="merged-card-depts">
-                {% for dept in mp.departments %}
-                <span class="dept-pill {% if request_type == 'warehouse' %}warehouse-pill{% endif %}">
-                    {{ dept.name }}
-                </span>
-                {% endfor %}
+    <!-- ── درخواست‌های فردی ── -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
+                    <option value="">همه بخش‌ها</option>
+                    {% for dep in all_departments %}
+                    <option value="{{ dep.name }}">{{ dep.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="pending">در انتظار</option>
+                    <option value="pending_manager_approval">منتظر تایید مدیر</option>
+                    <option value="purchased">خریداری شده</option>
+                    <option value="partial">تکمیل جزئی</option>
+                    <option value="rejected">رد شده</option>
+                </select>
             </div>
         </div>
-        {% endfor %}
+        {% if requests %}
+        <div class="req-table-wrap">
+            <table class="req-table">
+                <thead>
+                    <tr>
+                        <th>بخش</th>
+                        <th>درخواست‌دهنده</th>
+                        <th>وضعیت</th>
+                        <th>اقلام</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsList">
+                    {% for req in requests %}
+                    <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
+                        <td><span class="dept-badge"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
+                        <td>
+                            <div class="req-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                            <div class="req-meta">{{ req.created_at|jalali_datetime }}</div>
+                        </td>
+                        <td><span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span></td>
+                        <td>
+                            {% if req.items.all %}
+                            <div class="item-chips">
+                                {% for item in req.items.all %}
+                                <span class="item-chip">{{ item.name }} <b>{{ item.quantity }} {{ item.unit }}</b></span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}"
+                               class="action-btn {% if req.status == 'pending' %}process{% else %}view{% endif %}">
+                                <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
+                                {% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body">
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <p>هیچ درخواستی وجود ندارد</p>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
-    <!-- Individual requests -->
-    <div class="section-title" style="margin-top: 8px;">📄 همه درخواست‌ها</div>
+</div><!-- /all-depts-wrap -->
+{% endblock %}
 
-    <!-- Department filter -->
-    <div class="filter-bar">
-        <select class="filter-select" onchange="filterByDept(this.value)">
-            <option value="">همه بخش‌ها</option>
-            {% for dep in all_departments %}
-            <option value="{{ dep.name }}">{{ dep.name }}</option>
-            {% endfor %}
-        </select>
-        <select class="filter-select" onchange="filterByStatus(this.value)">
-            <option value="">همه وضعیت‌ها</option>
-            <option value="pending">در انتظار</option>
-            <option value="pending_manager_approval">منتظر تایید مدیر</option>
-            <option value="purchased">خریداری شده</option>
-            <option value="partial">تکمیل جزئی</option>
-            <option value="rejected">رد شده</option>
-            <option value="approved_from_stock">تامین از انبار</option>
-            <option value="approved_purchase">ارجاع به خرید</option>
-            <option value="fulfilled">تامین شده</option>
-        </select>
-    </div>
-
-    {% if requests %}
-    <div class="requests-list" id="requestsList">
-        {% for req in requests %}
-        <div class="request-card" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
-            <div class="request-header">
-                <div>
-                    <span class="dept-badge">{{ req.user.department_display }}</span>
-                    <div class="request-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
-                    <div class="request-meta">{{ req.created_at|jalali_datetime }}</div>
-                </div>
-                <span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span>
-            </div>
-
-            {% if req.items.all %}
-            <div class="request-items">
-                {% for item in req.items.all %}
-                <div class="req-item">
-                    <span>{{ item.name }}</span>
-                    <span style="color:#6b7280;">{{ item.quantity }} {{ item.unit }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if req.status == 'pending' %}
-            <a href="{% if request_type == 'warehouse' %}{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}{% else %}{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}{% endif %}"
-               class="process-btn">پردازش درخواست</a>
-            {% else %}
-            <a href="{% if request_type == 'warehouse' %}{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}{% else %}{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}{% endif %}"
-               class="view-btn">مشاهده جزئیات</a>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <p>هیچ درخواستی وجود ندارد</p>
-    </div>
-    {% endif %}
-    </div><!-- /viewRequests -->
-
-</div><!-- /page-wrapper -->
-
-<div style="text-align:center;padding:12px 0 24px;">
-    <a href="{% url 'logout' %}" style="color:#9ca3af;font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px;transition:all.15s;display:inline-block;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">🚪 خروج</a>
-</div>
-
+{% block extra_js %}
 <script>
-    function filterByDept(role) {
-        filterCards();
-    }
-    function filterByStatus(status) {
-        filterCards();
-    }
+    /* ── فیلتر درخواست‌ها بر اساس بخش و وضعیت ── */
     function filterCards() {
         const deptFilter   = document.querySelectorAll('.filter-select')[0].value;
         const statusFilter = document.querySelectorAll('.filter-select')[1].value;
-        document.querySelectorAll('.request-card').forEach(card => {
-            const matchDept   = !deptFilter   || card.dataset.dept   === deptFilter;
-            const matchStatus = !statusFilter || card.dataset.status === statusFilter;
-            card.style.display = (matchDept && matchStatus) ? '' : 'none';
+        document.querySelectorAll('.request-row').forEach(row => {
+            const matchDept   = !deptFilter   || row.dataset.dept   === deptFilter;
+            const matchStatus = !statusFilter || row.dataset.status === statusFilter;
+            row.style.display = (matchDept && matchStatus) ? '' : 'none';
         });
     }
 
-    /* جابه‌جایی بین «درخواست کالا» و «کالا های موجود در انبار» در همین صفحه */
-    function switchView(view) {
-        document.querySelectorAll('.type-btn[data-view]').forEach(btn => {
-            btn.classList.remove('active-purchase', 'active-warehouse');
-            if (btn.dataset.view === view) {
-                btn.classList.add(view === 'requests' ? 'active-purchase' : 'active-warehouse');
-            }
+    /* ── انتخاب قلم‌ها و ارسال به مسئول ── */
+    function selectedIds() {
+        const ids = [];
+        document.querySelectorAll('.item-chk:checked').forEach(chk => {
+            chk.value.split(',').forEach(id => { if (id && !ids.includes(id)) ids.push(id); });
         });
-        document.getElementById('viewRequests').style.display = view === 'requests' ? '' : 'none';
-        const stockView = document.getElementById('viewStock');
-        if (stockView) stockView.style.display = view === 'stock' ? '' : 'none';
+        return ids;
     }
+    function updateCount() {
+        const ids = selectedIds();
+        const el = document.getElementById('selCount');
+        if (ids.length) el.textContent = ids.length + ' قلم انتخاب شده';
+        else el.textContent = 'هیچ قلمی انتخاب نشده است';
+        return ids;
+    }
+    document.querySelectorAll('.item-chk').forEach(chk => chk.addEventListener('change', updateCount));
 
-    /* ── کالا های موجود در انبار ── */
-    const PRODUCTS = {{ products_json|safe }};
-    let currentProduct = null;
-    let currentWarehouse = null;
-    let nextIdx = {{ submitted_rows|length }};
-
-    /* رندر محصولات */
-    function renderProducts() {
-        const container = document.getElementById('productList');
-        if (!container) return;
-        container.innerHTML = '';
-        if (!PRODUCTS.length) {
-            container.innerHTML = '<div class="empty-review">هیچ کالای درخواستیِ دارای موجودی در انبار یافت نشد</div>';
-            return;
-        }
-        PRODUCTS.forEach(p => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'product-item';
-            btn.innerHTML = `<div>
-                <div class="product-name">${p.name}</div>
-                <div class="product-meta">${p.warehouses.length} انبار دارای موجودی</div>
-            </div><span class="product-arrow">◀</span>`;
-            btn.onclick = (e) => selectProduct(p.id, e.currentTarget);
-            container.appendChild(btn);
+    function toggleAll(master) {
+        document.querySelectorAll('.item-chk:not(:disabled)').forEach(chk => {
+            chk.checked = master.checked;
         });
+        updateCount();
     }
 
-    /* انتخاب محصول → انبارها */
-    function selectProduct(productId, btnEl) {
-        currentProduct = PRODUCTS.find(p => p.id === productId);
-        currentWarehouse = null;
-
-        document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
-        btnEl.classList.add('active');
-
-        const card = document.getElementById('warehouseCard');
-        const list = document.getElementById('warehouseList');
-        list.innerHTML = '';
-        currentProduct.warehouses.forEach(w => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'warehouse-item';
-            btn.innerHTML = `<span class="warehouse-name">🏬 ${w.name}</span><span class="product-arrow">◀</span>`;
-            btn.onclick = (e) => selectWarehouse(w.id, e.currentTarget);
-            list.appendChild(btn);
-        });
-        card.style.display = '';
-        document.getElementById('brandCard').style.display = 'none';
-    }
-
-    /* انتخاب انبار → برندها */
-    function selectWarehouse(warehouseId, btnEl) {
-        currentWarehouse = currentProduct.warehouses.find(w => w.id === warehouseId);
-        document.querySelectorAll('.warehouse-item').forEach(el => el.classList.remove('active'));
-        btnEl.classList.add('active');
-
-        const list = document.getElementById('brandList');
-        list.innerHTML = '';
-        currentWarehouse.brands.forEach(b => {
-            const row = document.createElement('div');
-            row.className = 'brand-row' + (b.has_stock ? '' : ' disabled');
-
-            const unitPart = b.trade_unit ? ` ${b.trade_unit}` : '';
-            row.innerHTML = `
-                <div class="brand-head">
-                    <span class="brand-badge ${b.id ? '' : 'generic'}">${b.id ? '🏷️ ' + b.name : '📦 ' + b.name}</span>
-                    <span class="brand-avail">موجودی: ${b.available}${unitPart}</span>
-                </div>
-                ${b.id ? `<div class="brand-rate">نرخ تبدیل: هر ${b.trade_unit || 'واحد'} = ${b.rate} واحد پایه</div>` : ''}
-                <div class="brand-controls">
-                    <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${b.trade_unit || 'واحد'})" ${b.has_stock ? '' : 'disabled'}>
-                    <button type="button" class="add-btn" ${b.has_stock ? '' : 'disabled'}>افزودن</button>
-                </div>
-                <div class="qty-warning">⚠️ مقدار وارد شده بیشتر از موجودی انبار است</div>`;
-
-            if (b.has_stock) {
-                const qtyInput = row.querySelector('.qty-input');
-                const warn = row.querySelector('.qty-warning');
-                row.querySelector('.add-btn').onclick = () => {
-                    const val = parseFloat(qtyInput.value);
-                    const maxVal = parseFloat(b.available);
-                    if (!val || val <= 0 || isNaN(val)) { qtyInput.focus(); return; }
-                    if (val > maxVal) { warn.style.display = ''; return; }
-                    warn.style.display = 'none';
-                    addRow(b, val);
-                    qtyInput.value = '';
-                };
-                qtyInput.addEventListener('input', () => {
-                    const val = parseFloat(qtyInput.value);
-                    if (val && val > parseFloat(b.available)) warn.style.display = '';
-                    else warn.style.display = 'none';
-                });
-            }
-            list.appendChild(row);
-        });
-        document.getElementById('brandCard').style.display = '';
-    }
-
-    /* افزودن به جدول بررسی */
-    function addRow(brand, qty) {
-        const tbody = document.getElementById('reviewBody');
-        const empty = document.getElementById('emptyReview');
-        if (empty) { empty.closest('tr').remove(); }
-
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-row-idx', nextIdx);
-        const unitPart = brand.trade_unit ? ` ${brand.trade_unit}` : '';
-        tr.innerHTML = `
-            <td>${currentProduct.name}</td>
-            <td>${brand.id ? brand.name : 'بدون برند'}</td>
-            <td>${currentWarehouse.name}</td>
-            <td>${qty}${unitPart}</td>
-            <td>
-                <select name="status" class="status-select">
-                    <option value="from_stock" selected>📦 تامین از انبار</option>
-                    <option value="to_purchase">🛒 ارسال به لیست خرید</option>
-                    <option value="not_supplied">❌ تامین نشده</option>
-                </select>
-            </td>
-            <td><button type="button" class="remove-btn" onclick="removeRow(this)">✕</button></td>
-            <input type="hidden" name="product_id" value="${currentProduct.id}">
-            <input type="hidden" name="warehouse_id" value="${currentWarehouse.id}">
-            <input type="hidden" name="brand_id" value="${brand.id || ''}">
-            <input type="hidden" name="qty" value="${qty}">`;
-        tbody.appendChild(tr);
-        nextIdx++;
-    }
-
-    /* حذف ردیف */
-    function removeRow(btn) {
-        const tr = btn.closest('tr');
-        tr.remove();
-        const tbody = document.getElementById('reviewBody');
-        if (!tbody.children.length) {
-            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-review">هنوز قلمی افزوده نشده است</div></td></tr>';
-        }
-    }
-
-    /* تایید نهایی */
-    function confirmSubmit() {
-        const rows = document.querySelectorAll('#reviewBody tr');
-        const hasReal = [...rows].some(tr => tr.querySelector('input[name="qty"]'));
-        if (!hasReal) {
-            alert('لطفاً حداقل یک قلم کالا اضافه کنید.');
+    function collectSelected() {
+        const ids = updateCount();
+        if (!ids.length) {
+            alert('حداقل یک قلم را انتخاب کنید.');
             return false;
         }
-        return confirm('تایید نهایی؟ اقلام با وضعیت «تامین از انبار» از موجودی کسر می‌شوند.');
+        const officer = document.getElementById('sendForm').elements['officer_user_id'].value;
+        if (!officer) {
+            alert('مسئول خرید/انبار را انتخاب کنید.');
+            return false;
+        }
+        document.getElementById('sendItemIds').value = ids.join(',');
+        return true;
     }
-
-    if (document.getElementById('productList')) { renderProducts(); }
 </script>
-</body>
-</html>
-
+{% endblock %}

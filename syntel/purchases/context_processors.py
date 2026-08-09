@@ -17,6 +17,7 @@ def cafe_context(request):
         'cafe_code': None,
         'can_switch_cafe': False,
         'all_cafes': [],
+        'other_cafe': None,
     }
     
     if not request.user.is_authenticated:
@@ -62,6 +63,15 @@ def cafe_context(request):
     
     # لیست کافه‌ها برای کاربرانی که می‌توانند تغییر کافه دهند
     if context['can_switch_cafe']:
-        context['all_cafes'] = Cafe.objects.filter(is_active=True)
-    
+        cafes = list(Cafe.objects.filter(is_active=True))
+        context['all_cafes'] = cafes
+
+        # کافه «دیگر» برای تغییر مستقیم کافه (بدون صفحه انتخاب) — اولین کافه‌ای که فعلی نیست
+        if cafe:
+            context['other_cafe'] = next(
+                (c for c in cafes if c.id != cafe.id), None
+            )
+        elif cafes:
+            context['other_cafe'] = cafes[0]
+
     return context

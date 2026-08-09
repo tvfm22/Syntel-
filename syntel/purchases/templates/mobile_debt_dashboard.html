@@ -1,0 +1,701 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}بدهی‌ها - موبایل{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
+<style>
+    /* ===== داشبورد موبایل بدهی‌ها — رابط لمسی تک‌ستونه ===== */
+    .m-wrap { max-width: 640px; margin: 0 auto; padding-bottom: 2.5rem; }
+
+    /* هدر چسبان */
+    .m-header {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border-light); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        padding: 0.75rem 1rem; margin: -1rem -1rem 1rem;
+        box-shadow: var(--shadow-sm);
+    }
+    .m-header-top {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+    .m-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+    .m-title i { color: var(--accent-purple); margin-left: 0.4rem; }
+    /* دکمه گوشه ادمین: تعریف حساب‌های پرداخت */
+    .m-acc-btn {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.45rem 0.85rem; border: 1px solid var(--border-default); border-radius: 999px;
+        background: white; color: var(--text-primary); font-family: 'Vazir', sans-serif;
+        font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .m-acc-btn:active { background: var(--bg-subtle); transform: scale(0.97); }
+    /* مجموع بدهی — مینیمال */
+    .m-total {
+        display: flex; align-items: center; justify-content: space-between;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg); padding: 0.7rem 1rem;
+        margin-bottom: 1rem; font-size: 0.85rem;
+    }
+    .m-total-label {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        color: var(--text-secondary); font-weight: 600;
+    }
+    .m-total-label i { color: var(--accent-purple); }
+    .m-total-value { font-weight: 800; color: var(--danger); font-size: 1rem; white-space: nowrap; }
+
+    /* کارت‌های فرم */
+    .m-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 1rem; margin-bottom: 1rem;
+    }
+    .m-card-title {
+        font-size: 0.95rem; font-weight: 700; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem;
+    }
+    .m-card-title i { color: var(--accent-purple); }
+
+    /* کشویی پرداخت خارج از لیست */
+    .m-offlist-summary {
+        list-style: none; cursor: pointer; user-select: none;
+        justify-content: space-between;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .m-offlist-summary::-webkit-details-marker { display: none; }
+    .m-offlist-chevron {
+        color: var(--text-secondary); font-size: 0.8rem;
+        transition: transform 0.2s ease;
+    }
+    .m-offlist[open] .m-offlist-chevron { transform: rotate(180deg); }
+
+    .m-form-group { margin-bottom: 0.8rem; }
+    .m-form-group label {
+        display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-primary);
+        margin-bottom: 0.35rem;
+    }
+    .m-input {
+        width: 100%; min-height: 48px; padding: 0.6rem 0.85rem;
+        border: 2px solid var(--border-default); border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.95rem; background: white;
+        color: var(--text-primary); -webkit-appearance: none; appearance: none;
+    }
+    .m-input:focus {
+        outline: none; border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+    .m-input-file {
+        width: 100%; min-height: 48px; padding: 0.6rem 0.85rem;
+        border: 2px dashed var(--border-strong); border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; color: var(--text-secondary);
+        background: var(--bg-subtle);
+    }
+    .m-btn {
+        width: 100%; min-height: 50px; border: none; border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.95rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
+        transition: transform 0.1s ease;
+    }
+    .m-btn:active { transform: scale(0.98); }
+    .m-btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+    .m-btn-green { background: var(--accent-green); color: white; }
+    .m-btn-green:active { background: #16A34A; }
+    .m-help { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem; }
+
+    /* اولویت — دکمه‌های انتخابی */
+    .m-priority { display: flex; gap: 0.4rem; }
+    .m-priority input { display: none; }
+    .m-priority label {
+        flex: 1; text-align: center; padding: 0.55rem 0; border-radius: var(--radius-md);
+        border: 2px solid var(--border-default); font-size: 0.8rem; font-weight: 600;
+        color: var(--text-secondary); cursor: pointer; min-height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .m-priority input:checked + label[for^="pr-high"] { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.06); }
+    .m-priority input:checked + label[for^="pr-medium"] { border-color: var(--accent-orange); color: var(--accent-orange); background: rgba(249,115,22,0.06); }
+    .m-priority input:checked + label[for^="pr-low"] { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(59,130,246,0.06); }
+
+    /* کارت بدهی — خلاصه: فقط شرکت + مبلغ + تاریخ ریز */
+    .m-debt {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 0.9rem 1rem; margin-bottom: 0.8rem;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
+        transition: transform 0.1s ease;
+    }
+    .m-debt:active { transform: scale(0.98); }
+    .m-debt-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .m-debt-company { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .m-debt-chevron { color: var(--text-muted); font-size: 0.7rem; }
+    /* اعداد مبلغ کارت‌ها مشکی شدند (قبلاً بنفش/سبز) */
+    .m-debt-amount { font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem; }
+    .m-debt-amount .unit { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+    /* تاریخ ریز در گوشه کارت */
+    .m-debt-date { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .m-debt-date i { margin-left: 0.3rem; color: var(--accent-pink); }
+    /* تیک پرداخت (چک‌دایره) — همان سبز دکمه «ثبت پرداخت»: هم پیام پرداخت را می‌رساند هم با صفحه هماهنگ است */
+    .m-debt-date i.fa-check-circle { color: var(--accent-green); }
+    .m-section-title i.fa-check-circle { color: var(--accent-green); }
+
+    /* بخش‌ها */
+    .m-section-title {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 0.9rem; font-weight: 700; color: var(--text-primary);
+        margin: 1.2rem 0 0.7rem;
+    }
+    .m-section-title i { color: var(--accent-purple); margin-left: 0.4rem; }
+    .m-count-badge {
+        font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 999px;
+        background: rgba(249,115,22,0.1); color: #EA580C;
+    }
+
+    .m-empty {
+        text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;
+    }
+    .m-empty i { font-size: 2rem; display: block; margin-bottom: 0.5rem; color: var(--text-muted); }
+
+    /* چپ‌به‌راست برای آپلود فایل */
+    .m-input-file { direction: ltr; text-align: right; }
+
+    /* ===== شیت جزئیات — مثل الرت موبایل از پایین باز می‌شود ===== */
+    .m-sheet-backdrop {
+        position: fixed; inset: 0; z-index: 90;
+        background: rgba(15, 23, 42, 0.55);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    .m-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+    .m-sheet {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 95;
+        max-width: 640px; margin: 0 auto;
+        background: var(--bg-card);
+        border-radius: 1.5rem 1.5rem 0 0;
+        box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25);
+        max-height: 88vh; overflow-y: auto;
+        transform: translateY(105%);
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        padding: 0.6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom));
+        -webkit-overflow-scrolling: touch;
+    }
+    .m-sheet.open { transform: translateY(0); }
+    /* دکمه ضربدر در جریان صفحه است تا روی اولویت/عنوان شیت نیفتد */
+    .m-sheet-top { display: flex; align-items: center; padding-bottom: 0.4rem; }
+    .m-sheet-handle {
+        width: 44px; height: 5px; border-radius: 999px;
+        background: var(--border-strong); margin: 0 auto;
+    }
+    .m-sheet-close {
+        width: 34px; height: 34px; border-radius: 50%;
+        border: none; background: var(--bg-subtle); color: var(--text-secondary);
+        display: flex; align-items: center; justify-content: center;
+        margin-left: auto;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .m-sheet-close:active { background: var(--border-default); }
+    .m-sheet-content { display: none; }
+    .m-sheet-content.active { display: block; }
+    .m-sheet-title {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+        font-size: 1.05rem; font-weight: 800; color: var(--text-primary);
+    }
+    .m-sheet-rows { margin: 0.7rem 0 0.2rem; }
+    .m-sheet-row {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+        padding: 0.5rem 0; border-bottom: 1px solid var(--border-light);
+        font-size: 0.82rem;
+    }
+    .m-sheet-row > span { color: var(--text-secondary); flex-shrink: 0; }
+    .m-sheet-row > b { color: var(--text-primary); text-align: left; font-weight: 700; word-break: break-word; }
+    .m-sheet-desc { margin: 0.6rem 0; }
+    .m-sheet-desc span { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+    .m-sheet-desc p {
+        font-size: 0.85rem; color: var(--text-primary); line-height: 1.7; margin: 0;
+        background: var(--bg-subtle); padding: 0.6rem 0.8rem; border-radius: var(--radius-md);
+    }
+    .m-sheet-photo { display: block; margin-top: 0.6rem; }
+    .m-sheet-photo img {
+        width: 100%; max-height: 220px; object-fit: contain;
+        border-radius: var(--radius-md); border: 1px solid var(--border-default);
+        background: var(--bg-subtle);
+    }
+    .m-sheet-photo span { display: block; text-align: center; font-size: 0.72rem; color: var(--accent-indigo); margin-top: 0.35rem; }
+    .m-sheet-pay { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-default); }
+    .m-sheet-pay-title {
+        display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.6rem;
+    }
+    .m-sheet-pay-title i { color: var(--accent-green); }
+    /* عنوان شیت حساب‌های پرداخت */
+    .m-sheet-acc-title {
+        display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.95rem; font-weight: 800; color: var(--text-primary);
+        margin: 0.6rem 0 0.9rem;
+    }
+    .m-sheet-acc-title i { color: var(--accent-purple); }
+
+    /* دکمه‌های ویرایش/حذف داخل شیت */
+    .m-sheet-actions {
+        display: flex; gap: 0.6rem; margin-top: 0.9rem;
+        padding-top: 0.75rem; border-top: 1px dashed var(--border-default);
+    }
+    .m-sheet-actions a, .m-sheet-actions button {
+        flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+        height: 44px; border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
+        font-size: 0.82rem; font-weight: 700; cursor: pointer; border: none;
+        -webkit-tap-highlight-color: transparent; text-decoration: none;
+    }
+    .m-btn-edit { background: var(--bg-subtle); color: var(--accent-indigo); }
+    .m-btn-danger { background: rgba(239,68,68,0.1); color: var(--danger); }
+
+    body.sheet-open { overflow: hidden; }
+
+    @media (min-width: 768px) {
+        .m-header { margin: -1.5rem -1.5rem 1.5rem; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-wrap">
+
+    <!-- هدر چسبان -->
+    <div class="m-header">
+        <div class="m-header-top">
+            <div class="m-title"><i class="fas fa-money-bill-wave"></i>بدهی شرکت‌ها</div>
+            {% if user.role == 'admin' %}
+            <button type="button" class="m-acc-btn" id="openAccSheet">
+                <i class="fas fa-wallet"></i> حساب‌ها
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- مجموع بدهی (مینیمال) -->
+    <div class="m-total">
+        <span class="m-total-label"><i class="fas fa-hand-holding-usd"></i>مجموع بدهی</span>
+        <span class="m-total-value">{{ total_pending_amount|number_format }}</span>
+    </div>
+
+    {% if user.role == 'admin' %}
+    <!-- ادمین: تعریف بدهی جدید -->
+    <div class="m-card">
+        <div class="m-card-title"><i class="fas fa-plus-circle"></i>تعریف بدهی جدید</div>
+        <form method="post" action="{% url 'debt_list' cafe_code=cafe_code %}?from=mobile">
+            {% csrf_token %}
+            <div class="m-form-group">
+                <label>نام شرکت <span style="color:var(--danger);">*</span></label>
+                <input type="text" name="company" class="m-input" required placeholder="مثلاً: شرکت لبنیات آریا">
+            </div>
+            <div class="m-form-group">
+                <label>مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
+                <input type="text" id="m-debt-amount" name="amount" class="m-input" required
+                       inputmode="numeric" placeholder="مبلغ بدهی — مثلاً ۱٬۵۰۰٬۰۰۰">
+            </div>
+            <div class="m-form-group">
+                <label>تاریخ بدهی (شمسی)</label>
+                <input type="text" id="m-debt-date" name="debt_date" class="m-input"
+                       value="{{ today_jalali }}">
+            </div>
+            <div class="m-form-group">
+                <label>اولویت</label>
+                <div class="m-priority">
+                    <input type="radio" name="priority" value="high" id="pr-high">
+                    <label for="pr-high">بالا</label>
+                    <input type="radio" name="priority" value="medium" id="pr-medium" checked>
+                    <label for="pr-medium">متوسط</label>
+                    <input type="radio" name="priority" value="low" id="pr-low">
+                    <label for="pr-low">پایین</label>
+                </div>
+            </div>
+            <div class="m-form-group">
+                <label>توضیحات</label>
+                <input type="text" name="description" class="m-input" placeholder="توضیحات اختیاری">
+            </div>
+            <button type="submit" class="m-btn m-btn-primary">
+                <i class="fas fa-paper-plane"></i> ثبت بدهی و ارسال به مدیرعامل
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <!-- مدیرعامل/مدیر: پرداخت خارج از لیست — کشویی: با لمس عنوان باز می‌شود -->
+    <details class="m-card m-offlist">
+        <summary class="m-card-title m-offlist-summary">
+            <span><i class="fas fa-plus-circle"></i>پرداخت خارج از لیست</span>
+            <i class="fas fa-chevron-down m-offlist-chevron"></i>
+        </summary>
+        <form method="post" action="{% url 'debt_pay_offlist' cafe_code=cafe_code %}?from=mobile"
+              enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="m-form-group">
+                <label>نام شرکت <span style="color:var(--danger);">*</span></label>
+                <input type="text" name="company" class="m-input" required placeholder="نام شرکت یا گیرنده">
+            </div>
+            <div class="m-form-group">
+                <label>مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
+                <input type="text" name="amount" class="m-input js-comma" required
+                       inputmode="numeric" placeholder="مبلغ پرداختی — مثلاً ۱٬۵۰۰٬۰۰۰">
+            </div>
+            <div class="m-form-group">
+                <label>پرداخت از حساب (بانک)</label>
+                <select name="account_id" class="m-input">
+                    <option value="">— انتخاب حساب —</option>
+                    {% for acc in payment_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="m-form-group">
+                <label>تصویر رسید (اختیاری)</label>
+                <input type="file" name="payment_photo" class="m-input-file" accept="image/*">
+            </div>
+            <div class="m-form-group">
+                <label>توضیحات</label>
+                <input type="text" name="description" class="m-input" placeholder="توضیحات اختیاری">
+            </div>
+            <button type="submit" class="m-btn m-btn-green">
+                <i class="fas fa-check"></i> ثبت پرداخت
+            </button>
+            <div class="m-help">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود</div>
+        </form>
+    </details>
+    {% endif %}
+
+    <!-- بدهی‌های در انتظار — کارت خلاصه؛ لمس کارت = جزئیات در شیت -->
+    <div class="m-section-title">
+        <span><i class="fas fa-hourglass-half"></i>بدهی‌های در انتظار پرداخت</span>
+        <span class="m-count-badge">{{ pending_debts|length }}</span>
+    </div>
+
+    {% for debt in pending_debts %}
+    <div class="m-debt" data-sheet="debt-{{ debt.id }}" role="button" tabindex="0"
+         aria-haspopup="dialog" aria-label="جزئیات بدهی {{ debt.company }}">
+        <div class="m-debt-top">
+            <div class="m-debt-company">{{ debt.company }}</div>
+            <i class="fas fa-chevron-left m-debt-chevron"></i>
+        </div>
+        <div class="m-debt-amount">{{ debt.remaining|number_format }} <span class="unit">تومان</span></div>
+        {% if debt.paid_total > 0 %}
+        <div class="m-debt-date"><i class="fas fa-check-circle"></i>پرداخت شده: {{ debt.paid_total|number_format }} تومان</div>
+        {% endif %}
+        <div class="m-debt-date"><i class="fas fa-calendar-alt"></i>{{ debt.debt_date|jalali_date }}</div>
+    </div>
+    {% empty %}
+    <div class="m-card">
+        <div class="m-empty">
+            <i class="fas fa-inbox"></i>
+            بدهی در انتظار پرداختی وجود ندارد
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- لیست پرداخت‌ها — کارت خلاصه؛ لمس کارت = جزئیات در شیت -->
+    <div class="m-section-title">
+        <span><i class="fas fa-check-circle"></i>لیست پرداخت‌ها</span>
+    </div>
+
+    {% for payment in payments %}
+    <div class="m-debt" data-sheet="paid-{{ payment.id }}" role="button" tabindex="0"
+         aria-haspopup="dialog" aria-label="جزئیات پرداخت {{ payment.company }}">
+        <div class="m-debt-top">
+            <div class="m-debt-company">{{ payment.company }}
+                {% if payment.is_off_list %}<span class="badge badge-info">خارج از لیست</span>{% endif %}
+            </div>
+            <i class="fas fa-chevron-left m-debt-chevron"></i>
+        </div>
+        <div class="m-debt-amount">{{ payment.amount|number_format }} <span class="unit">تومان</span></div>
+        <div class="m-debt-date"><i class="fas fa-check-circle"></i>{{ payment.paid_at|jalali_datetime }}</div>
+    </div>
+    {% empty %}
+    <div class="m-card">
+        <div class="m-empty">
+            <i class="fas fa-money-check-alt"></i>
+            هنوز پرداختی ثبت نشده است
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<!-- شیت جزئیات (الرت موبایل) — محتوای هر کارت به صورت مخفی سمت سرور رندر شده است -->
+<div class="m-sheet-backdrop" id="sheetBackdrop"></div>
+<div class="m-sheet" id="debtSheet" role="dialog" aria-modal="true" aria-label="جزئیات بدهی">
+    <div class="m-sheet-top">
+        <div class="m-sheet-handle"></div>
+        <button type="button" class="m-sheet-close" id="sheetClose" aria-label="بستن">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    {% for debt in pending_debts %}
+    <div class="m-sheet-content" data-sheet-content="debt-{{ debt.id }}">
+        <div class="m-sheet-title">
+            <span>{{ debt.company }}</span>
+            {% if debt.priority == 'high' %}<span class="badge badge-danger">اولویت بالا</span>
+            {% elif debt.priority == 'low' %}<span class="badge badge-info">اولویت پایین</span>
+            {% else %}<span class="badge badge-warning">اولویت متوسط</span>{% endif %}
+        </div>
+        <div class="m-sheet-rows">
+            <div class="m-sheet-row"><span>مبلغ بدهی</span><b>{{ debt.amount|number_format }} تومان</b></div>
+            {% if debt.paid_total > 0 %}
+            <div class="m-sheet-row"><span>پرداخت شده</span><b>{{ debt.paid_total|number_format }} تومان</b></div>
+            <div class="m-sheet-row"><span>باقی‌مانده</span><b style="color:var(--accent-orange);">{{ debt.remaining|number_format }} تومان</b></div>
+            {% endif %}
+            <div class="m-sheet-row"><span>تاریخ بدهی</span><b>{{ debt.debt_date|jalali_date }}</b></div>
+            {% if debt.created_by %}
+            <div class="m-sheet-row"><span>ثبت توسط</span><b>{{ debt.created_by.get_full_name|default:debt.created_by.username }}</b></div>
+            {% endif %}
+        </div>
+        {% if debt.description %}
+        <div class="m-sheet-desc">
+            <span>توضیحات</span>
+            <p>{{ debt.description }}</p>
+        </div>
+        {% endif %}
+
+        {% if user.role == 'admin' %}
+        <!-- ویرایش/حذف بدهی — فقط ادمین -->
+        <div class="m-sheet-actions">
+            <a class="m-btn-edit" href="{% url 'debt_edit' cafe_code=cafe_code debt_id=debt.id %}">
+                <i class="fas fa-edit"></i> ویرایش بدهی
+            </a>
+            <form method="post" action="{% url 'debt_delete' cafe_code=cafe_code debt_id=debt.id %}"
+                  onsubmit="return confirm('بدهی شرکت {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
+                {% csrf_token %}
+                <button type="submit" class="m-btn-danger">
+                    <i class="fas fa-trash"></i> حذف بدهی
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if user.role != 'admin' %}
+        <!-- ثبت پرداخت داخل شیت — فقط مدیرعامل/مدیر -->
+        <form method="post" action="{% url 'debt_pay' cafe_code=cafe_code debt_id=debt.id %}?from=mobile"
+              enctype="multipart/form-data" class="m-sheet-pay">
+            {% csrf_token %}
+            <div class="m-sheet-pay-title"><i class="fas fa-hand-holding-usd"></i>ثبت پرداخت این بدهی</div>
+            <input type="text" name="paid_amount" class="m-input js-comma" required
+                   inputmode="numeric" placeholder="مبلغ پرداختی (تومان)">
+            <select name="account_id" class="m-input" style="margin-top:0.5rem;">
+                <option value="">— انتخاب بانک/حساب —</option>
+                {% for acc in payment_accounts %}
+                <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                {% endfor %}
+            </select>
+            <input type="file" name="payment_photo" class="m-input-file" accept="image/*"
+                   style="margin-top:0.5rem;">
+            <button type="submit" class="m-btn m-btn-green" style="margin-top:0.6rem;">
+                <i class="fas fa-check"></i> ثبت و تایید پرداخت
+            </button>
+            <div class="m-help">تصویر رسید اختیاری است — تاریخ ثبت به صورت خودکار درج می‌شود</div>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% for payment in payments %}
+    <div class="m-sheet-content" data-sheet-content="paid-{{ payment.id }}">
+        <div class="m-sheet-title">
+            <span>{{ payment.company }}{% if payment.is_off_list %} <span class="badge badge-info">خارج از لیست</span>{% endif %}</span>
+        </div>
+        <div class="m-sheet-rows">
+            <div class="m-sheet-row"><span>مبلغ بدهی</span><b>{{ payment.debt_amount|number_format }} تومان</b></div>
+            <div class="m-sheet-row"><span>مبلغ پرداخت شده</span><b>{{ payment.amount|number_format }} تومان</b></div>
+            {% if payment.debt %}
+            <div class="m-sheet-row"><span>تاریخ بدهی</span><b>{{ payment.debt.debt_date|jalali_date }}</b></div>
+            {% endif %}
+            <div class="m-sheet-row"><span>تاریخ و زمان پرداخت</span><b>{{ payment.paid_at|jalali_datetime }}</b></div>
+            {% if payment.account_display %}
+            <div class="m-sheet-row"><span>پرداخت از حساب</span><b>{{ payment.account_display.bank_name }}{% if payment.account_display.account_name %} — {{ payment.account_display.account_name }}{% endif %}</b></div>
+            {% endif %}
+            {% if payment.paid_by %}
+            <div class="m-sheet-row"><span>پرداخت توسط</span><b>{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}</b></div>
+            {% endif %}
+        </div>
+        {% if payment.description %}
+        <div class="m-sheet-desc">
+            <span>توضیحات</span>
+            <p>{{ payment.description }}</p>
+        </div>
+        {% endif %}
+        {% if payment.payment_photo %}
+        <a href="{{ payment.payment_photo.url }}" target="_blank" class="m-sheet-photo">
+            <img src="{{ payment.payment_photo.url }}" alt="رسید پرداخت {{ payment.company }}">
+            <span><i class="fas fa-search-plus"></i> مشاهده کامل تصویر رسید</span>
+        </a>
+        {% endif %}
+        {% if user.role != 'admin' %}
+        <!-- ویرایش پرداخت — فقط مدیرعامل/مدیر -->
+        <div class="m-sheet-actions">
+            <a class="m-btn-edit" href="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}">
+                <i class="fas fa-edit"></i> ویرایش پرداخت
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if user.role == 'admin' %}
+<!-- شیت حساب‌های پرداخت (ادمین) — از دکمه گوشه هدر باز می‌شود -->
+<div class="m-sheet-backdrop" id="accSheetBackdrop"></div>
+<div class="m-sheet" id="accSheet" role="dialog" aria-modal="true" aria-label="تعریف حساب‌های پرداخت">
+    <div class="m-sheet-top">
+        <div class="m-sheet-handle"></div>
+        <button type="button" class="m-sheet-close" id="accSheetClose" aria-label="بستن">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="m-sheet-acc-title"><i class="fas fa-wallet"></i> تعریف حساب‌های پرداخت</div>
+    {% include 'partials/_payment_accounts_panel.html' %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
+<script>
+    // شیت حساب‌های پرداخت (ادمین) — مستقل از بقیه اسکریپت‌ها:
+    // حتی اگر بخش دیگری از صفحه خطا بدهد (مثلاً اسکریپت تقویم لود نشود) شیت باز می‌شود
+    (function() {
+        var backdrop = document.getElementById('accSheetBackdrop');
+        var sheetEl = document.getElementById('accSheet');
+        if (!backdrop || !sheetEl) return;  // فقط برای ادمین رندر می‌شود
+        var debtSheetEl = document.getElementById('debtSheet');
+        var debtBackdrop = document.getElementById('sheetBackdrop');
+        function closeDebtSheet() {
+            if (debtSheetEl) debtSheetEl.classList.remove('open');
+            if (debtBackdrop) debtBackdrop.classList.remove('show');
+        }
+        function openAccSheet() {
+            closeDebtSheet();
+            if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+            sheetEl.classList.add('open');
+            backdrop.classList.add('show');
+            document.body.classList.add('sheet-open');
+        }
+        function closeAccSheet() {
+            sheetEl.classList.remove('open');
+            backdrop.classList.remove('show');
+            if (!debtSheetEl || !debtSheetEl.classList.contains('open')) document.body.classList.remove('sheet-open');
+        }
+        document.addEventListener('click', function(e) {
+            if (!e.target || !e.target.closest) return;
+            if (e.target.closest('#openAccSheet')) openAccSheet();
+            else if (e.target.closest('#accSheetClose')) closeAccSheet();
+            else if (e.target === backdrop) closeAccSheet();
+            else if (e.target.closest('[data-sheet]')) closeAccSheet();  // لمس کارت بدهی → بستن شیت حساب‌ها
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeAccSheet();
+        });
+    })();
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ بدهی — سرور کاماها را حذف می‌کند
+        const debtAmountInput = document.getElementById('m-debt-amount');
+        if (debtAmountInput) {
+            debtAmountInput.addEventListener('input', function() {
+                const digits = this.value.replace(/\D/g, '');
+                this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+            });
+        }
+
+        // جداکننده سه‌رقمی برای مبالغ پرداخت (شیت پرداخت + فرم خارج از لیست)
+        document.querySelectorAll('.js-comma').forEach(function(input) {
+            const applyComma = function() {
+                const digits = this.value.replace(/\D/g, '');
+                this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+            };
+            input.addEventListener('input', applyComma);
+            applyComma.call(input);  // نمایش اولیه با کاما
+        });
+
+        // تقویم شمسی برای فیلد تاریخ (فقط ادمین)
+        // اگر اسکریپت تقویم لود نشده باشد بقیه اسکریپت صفحه ادامه پیدا می‌کند
+        if (typeof persianDatepicker === 'function') {
+            document.querySelectorAll('#m-debt-date').forEach(function(input) {
+                new persianDatepicker(input, {
+                    format: 'YYYY/MM/DD',
+                    year: 1404,
+                    month: 1,
+                    day: 1,
+                    observer: true,
+                    altField: input,
+                    altFormat: 'YYYY/MM/DD',
+                    calendar: {
+                        persian: {
+                            locale: 'fa'
+                        }
+                    }
+                });
+            });
+        }
+
+        // ---------- شیت جزئیات بدهی (الرت موبایل) ----------
+        const backdrop = document.getElementById('sheetBackdrop');
+        const sheet = document.getElementById('debtSheet');
+        const sheets = {};
+        document.querySelectorAll('[data-sheet-content]').forEach(function(el) {
+            sheets[el.dataset.sheetContent] = el;
+        });
+
+        function openSheet(key) {
+            const content = sheets[key];
+            if (!content) return;
+            document.querySelectorAll('.m-sheet-content').forEach(function(c) { c.classList.remove('active'); });
+            content.classList.add('active');
+            sheet.classList.add('open');
+            backdrop.classList.add('show');
+            document.body.classList.add('sheet-open');
+            sheet.scrollTop = 0;
+        }
+        function closeSheet() {
+            sheet.classList.remove('open');
+            backdrop.classList.remove('show');
+            document.body.classList.remove('sheet-open');
+            // حذف هش از آدرس تا دکمه برگشت گوشی گیر نکند
+            if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+        }
+
+        // لمس کارت → باز شدن شیت. وضعیت باز در هش آدرس ذخیره می‌شود:
+        // با جابه‌جایی بین برنامه‌ها مرورگر تب را زنده نگه می‌دارد و اگر صفحه را
+        // دوباره لود کرد، همان شیت باز برمی‌گردد.
+        document.querySelectorAll('[data-sheet]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                location.hash = card.dataset.sheet;
+            });
+            card.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    location.hash = card.dataset.sheet;
+                }
+            });
+        });
+        window.addEventListener('hashchange', function() {
+            const key = location.hash.slice(1);
+            if (sheets[key]) {
+                openSheet(key);
+            } else {
+                closeSheet();
+            }
+        });
+
+        // بازیابی شیت باز بعد از رفرش صفحه (مثلاً توسط مرورگر موبایل)
+        const initialKey = location.hash.slice(1);
+        if (sheets[initialKey]) openSheet(initialKey);
+
+        backdrop.addEventListener('click', closeSheet);
+        document.getElementById('sheetClose').addEventListener('click', closeSheet);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSheet();
+        });
+    });
+</script>
+{% endblock %}

@@ -168,6 +168,24 @@
         .sidebar-user .user-role {
             font-size: 0.775rem; color: var(--gray-500); margin-top: 0.15rem;
         }
+        .sidebar-user .user-cafe {
+            font-size: 0.775rem; font-weight: 600; color: var(--accent-indigo);
+            margin-top: 0.35rem; display: flex; align-items: center; gap: 0.35rem;
+        }
+        /* تغییر کافه در منوی کناری — هدر موبایل برای همه فقط Kuker + دکمه منو دارد */
+        .sidebar-switch-cafe {
+            padding: 0.5rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+        .switch-cafe-link {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.55rem 0.75rem; border-radius: var(--radius-md);
+            background: var(--bg-card); border: 1px solid var(--border-default);
+            color: var(--accent-indigo); font-size: 0.8rem; font-weight: 600;
+            text-decoration: none; transition: all var(--transition-fast);
+        }
+        .switch-cafe-link:hover { border-color: var(--accent-indigo); background: var(--bg-subtle); }
 
         /* Nav */
         .sidebar-nav {
@@ -227,7 +245,8 @@
             height: 60px; background: white;
             border-bottom: 1px solid var(--gray-200);
             z-index: 1000; padding: 0 1rem;
-            align-items: center; justify-content: space-between;
+            align-items: center;
+            grid-template-columns: 1fr auto 1fr;  /* ستون وسط (Kuker) دقیقاً وسط هدر می‌ماند */
             box-shadow: var(--shadow-sm);
         }
         .mobile-top-bar-title {
@@ -236,8 +255,20 @@
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+        .mobile-top-bar-cafe {
+            font-size: 0.72rem; font-weight: 600; color: var(--primary-dark);
+            background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25);
+            padding: 0.15rem 0.6rem; border-radius: 999px; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 0.3rem;
+        }
+        .mobile-top-bar-cafe i { font-size: 0.68rem; }
+        .mobile-top-bar-center {
+            display: flex; align-items: center; gap: 0.6rem; min-width: 0;
+            justify-self: center;  /* عنوان Kuker وسط ستون میانی هدر */
+        }
         .mobile-menu-btn {
             display: none; align-items: center; justify-content: center;
+            justify-self: start;  /* دکمه منو در ابتدای ستون اول (راست در RTL) */
             background: none; border: none; font-size: 1.4rem;
             color: var(--dark); cursor: pointer;
             padding: 0.5rem; border-radius: var(--radius-md);
@@ -266,7 +297,7 @@
 
         @media (width < 1024px) {
             body.menu-open { overflow: hidden; }
-            .mobile-top-bar { display: flex; }
+            .mobile-top-bar { display: grid; }
             .mobile-menu-btn { display: flex; }
             .layout { padding-top: 60px; }
 
@@ -566,19 +597,15 @@
 </head>
 <body>
     {% if user.is_authenticated %}
-    <!-- Mobile Top Bar -->
+    <!-- Mobile Top Bar — برای همه کاربران فقط نوشته Kuker + دکمه منوی همبرگری؛
+         نام کافه و تغییر کافه در سایدبار (منوی همبرگری) هستند -->
     <header class="mobile-top-bar" id="mobileTopBar">
         <button class="mobile-menu-btn" id="menuToggle" onclick="toggleSidebar()"
                 aria-label="باز کردن منو" aria-controls="sidebar" aria-expanded="false">
             <i class="fas fa-bars"></i>
         </button>
-        <span class="mobile-top-bar-title">Kuker</span>
-        <div class="mobile-top-bar-actions">
-            {% if can_switch_cafe %}
-            <a href="{% url 'select_cafe' %}" class="btn" style="background:var(--secondary); color:white; padding:0.4rem 0.65rem; font-size:0.75rem;" title="تغییر کافه">
-                <i class="fas fa-exchange-alt"></i>
-            </a>
-            {% endif %}
+        <div class="mobile-top-bar-center">
+            <span class="mobile-top-bar-title">Kuker</span>
         </div>
     </header>
 
@@ -590,7 +617,7 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar" role="navigation" aria-label="منوی اصلی">
             <!-- Brand -->
-            <a href="{% if cafe_code %}{% if user.role == 'manager' or user.role == 'ceo' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role == 'admin' or user.role == 'accounting' or user.role == 'finance_manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester,purchasing' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
+            <a href="{% if cafe_code %}{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=cafe_code %}{% elif user.role == 'manager' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role == 'admin' or user.role == 'accounting' or user.role == 'finance_manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'purchasing' %}{% url 'purchase_officer_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
                 <div class="brand-icon"><i class="fas fa-store"></i></div>
                 <span class="brand-text">Kuker</span>
             </a>
@@ -599,6 +626,32 @@
             <div class="sidebar-user">
                 <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
                 <div class="user-role">{{ user.get_role_display }}</div>
+                {% if user.role not in 'kitchen,bar,counter,cashier,facilities,requester' %}
+                    {% if current_cafe %}
+                    <div class="user-cafe"><i class="fas fa-store"></i> {{ current_cafe.name }}</div>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- تغییر کافه — در منوی همبرگری؛ از هدر موبایل به اینجا منتقل شده -->
+            <!-- سوپرادمین‌ها: لینک مستقیم به کافه «دیگر» (بدون صفحه انتخاب) — فقط اگر فقط یک کافه فعال باشد به select_cafe برمی‌گردد -->
+            <div class="sidebar-switch-cafe">
+                {% if can_switch_cafe %}
+                    {% if other_cafe %}
+                    <a href="{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=other_cafe.code %}{% else %}{% url 'management_dashboard' cafe_code=other_cafe.code %}{% endif %}" class="switch-cafe-link"
+                       title="تغییر کافه به {{ other_cafe.name }}">
+                        <i class="fas fa-exchange-alt"></i> تغییر کافه
+                    </a>
+                    {% else %}
+                    <a href="{% url 'select_cafe' %}" class="switch-cafe-link">
+                        <i class="fas fa-exchange-alt"></i> تغییر کافه
+                    </a>
+                    {% endif %}
+                {% else %}
+                <a href="{% url 'select_cafe' %}" class="switch-cafe-link">
+                    <i class="fas fa-exchange-alt"></i> تغییر کافه
+                </a>
+                {% endif %}
             </div>
 
             <!-- Navigation Items -->
@@ -624,6 +677,9 @@
                 <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'payment_list' %} active{% endif %}">
                     <i class="fas fa-credit-card"></i><span>پرداخت‌ها</span>
                 </a>
+                <a href="{% url 'debt_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'debt_list' or request.resolver_match.url_name == 'mobile_debt_dashboard' %} active{% endif %}">
+                    <i class="fas fa-money-bill-wave"></i><span>لیست بدهی شرکت‌ها</span>
+                </a>
 
                 <div class="nav-section-title">مدیریت</div>
                 <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'supplier_list' %} active{% endif %}">
@@ -638,6 +694,9 @@
                 <a href="{% url 'user_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'user_list' %} active{% endif %}">
                     <i class="fas fa-users"></i><span>مدیریت کاربران</span>
                 </a>
+                <a href="{% url 'user_list' cafe_code=cafe_code %}?officer=1" class="nav-item" title="مسئول خرید، مسئول انبار یا مسئول خرید و انبار (نقش دوم)">
+                    <i class="fas fa-user-cog"></i><span>مسئولان خرید و انبار</span>
+                </a>
 
                 <div class="nav-section-title">سیستم</div>
                 <a href="{% url 'system_monitoring' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'system_monitoring' %} active{% endif %}">
@@ -650,6 +709,15 @@
 
                 {% comment %}========== CEO & MANAGER (داشبورد مدیر عامل / مدیر) =========={% endcomment %}
                 {% if user.role == 'manager' or user.role == 'ceo' %}
+                <!-- منوی کامل مدیرعامل: از ۱۴۰۴/۰۵/۱۷ موقتاً ساده شده بود؛ همزمان با افزودن «وضعیت سفارش‌های خرید» و «درخواست کالا» کامل برگردانده شد. -->
+                <div class="nav-section-title">مدیریت</div>
+                <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'approve_purchase_requests' %} active{% endif %}">
+                    <i class="fas fa-check-double"></i><span>تایید درخواست‌های خرید</span>
+                </a>
+                <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'ceo_debt_payments' or request.resolver_match.url_name == 'debt_pay' or request.resolver_match.url_name == 'mobile_debt_dashboard' %} active{% endif %}">
+                    <i class="fas fa-hand-holding-usd"></i><span>پرداخت بدهی‌ها</span>
+                </a>
+
                 <div class="nav-section-title">داشبورد</div>
                 <a href="{% url 'management_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'management_dashboard' %} active{% endif %}">
                     <i class="fas fa-chart-bar"></i><span>داشبورد مدیریت</span>
@@ -668,8 +736,11 @@
                 </a>
 
                 <div class="nav-section-title">مدیریت خرید</div>
-                <a href="{% url 'approve_purchase_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'approve_purchase_requests' %} active{% endif %}">
-                    <i class="fas fa-check-double"></i><span>تایید درخواست‌های خرید</span>
+                <a href="{% url 'all_departments_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'all_departments_requests' %} active{% endif %}">
+                    <i class="fas fa-clipboard-check"></i><span>درخواست کالا</span>
+                </a>
+                <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_orders_status' %} active{% endif %}">
+                    <i class="fas fa-tasks"></i><span>وضعیت سفارش‌های خرید</span>
                 </a>
                 <a href="{% url 'manager_pending_requests' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'manager_pending_requests' %} active{% endif %}">
                     <i class="fas fa-clock"></i><span>درخواست‌های در انتظار</span>
@@ -722,6 +793,16 @@
                     <i class="fas fa-th-large"></i><span>داشبورد</span>
                 </a>
 
+                <div class="nav-section-title">لیست مسئول خرید</div>
+                <a href="{% url 'purchase_officer_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_officer_dashboard' %} active{% endif %}">
+                    <i class="fas fa-shopping-basket"></i><span>لیست خرید من</span>
+                </a>
+                {% if user.secondary_role == 'warehouse' %}
+                <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_officer_dashboard' %} active{% endif %}">
+                    <i class="fas fa-warehouse"></i><span>درخواست‌های تامین انبار</span>
+                </a>
+                {% endif %}
+
                 <div class="nav-section-title">خرید</div>
                 <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'purchase_requests_list' %} active{% endif %}">
                     <i class="fas fa-clipboard-list"></i><span>درخواست‌ها</span>
@@ -769,6 +850,9 @@
                 {% comment %}========== WAREHOUSE =========={% endcomment %}
                 {% if user.role == 'warehouse' %}
                 <div class="nav-section-title">انبار</div>
+                <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_officer_dashboard' %} active{% endif %}">
+                    <i class="fas fa-clipboard-list"></i><span>درخواست‌های تامین انبار</span>
+                </a>
                 <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_dashboard' %} active{% endif %}">
                     <i class="fas fa-warehouse"></i><span>داشبورد انبار</span>
                 </a>

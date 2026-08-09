@@ -1,0 +1,98 @@
+{% load custom_filters %}
+<style>
+    /* پنل حساب‌های پرداخت — استایل مستقل (در مودال دسکتاپ و شیت موبایل استفاده می‌شود) */
+    .acc-add-form { margin-bottom: 0.75rem; }
+    .acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .acc-field label {
+        display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    .acc-field input {
+        width: 100%; min-height: 42px; padding: 0.5rem 0.75rem; box-sizing: border-box;
+        border: 2px solid var(--border-default); border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; background: white; color: var(--text-primary);
+    }
+    .acc-field input:focus {
+        outline: none; border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+    .acc-btn {
+        width: 100%; min-height: 44px; border: none; border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+        margin-top: 0.6rem;
+    }
+    .acc-btn:active { transform: scale(0.98); }
+    .acc-list { margin-top: 0.9rem; }
+    .acc-list-title {
+        font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;
+        display: flex; align-items: center; gap: 0.4rem;
+    }
+    .acc-list-title i { color: var(--accent-purple); }
+    .acc-item {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+        padding: 0.55rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);
+        margin-bottom: 0.45rem; background: var(--bg-card);
+    }
+    .acc-item-main b { color: var(--text-primary); font-size: 0.85rem; }
+    .acc-item-main .acc-detail { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .acc-del {
+        border: none; background: none; color: var(--danger); cursor: pointer;
+        font-size: 0.9rem; padding: 0.3rem; -webkit-tap-highlight-color: transparent;
+    }
+    .acc-empty { font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 0.75rem; }
+    @media (max-width: 480px) { .acc-grid { grid-template-columns: 1fr; } }
+</style>
+
+<!-- فرم افزودن حساب پرداخت -->
+<form method="post" action="{% url 'payment_accounts' cafe_code=cafe_code %}" class="acc-add-form">
+    {% csrf_token %}
+    <div class="acc-grid">
+        <div class="acc-field">
+            <label>نام بانک <span style="color:var(--danger);">*</span></label>
+            <input type="text" name="bank_name" required placeholder="مثلاً: بانک ملت">
+        </div>
+        <div class="acc-field">
+            <label>نام حساب / صاحب حساب</label>
+            <input type="text" name="account_name" placeholder="مثلاً: حساب جاری">
+        </div>
+        <div class="acc-field">
+            <label>شماره حساب</label>
+            <input type="text" name="account_number" placeholder="شماره حساب">
+        </div>
+        <div class="acc-field">
+            <label>شماره کارت</label>
+            <input type="text" name="card_number" placeholder="شماره کارت (۱۶ رقمی)">
+        </div>
+    </div>
+    <button type="submit" class="acc-btn">
+        <i class="fas fa-plus"></i> افزودن حساب پرداخت
+    </button>
+</form>
+
+<!-- لیست حساب‌های پرداخت -->
+<div class="acc-list">
+    <div class="acc-list-title"><i class="fas fa-wallet"></i>حساب‌های پرداخت کافه</div>
+    {% for acc in payment_accounts %}
+    <div class="acc-item">
+        <div class="acc-item-main">
+            <b>{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</b>
+            <div class="acc-detail">
+                {% if acc.account_number %}شماره حساب: {{ acc.account_number }}{% endif %}
+                {% if acc.card_number %}{% if acc.account_number %} — {% endif %}کارت: {{ acc.card_number }}{% endif %}
+            </div>
+        </div>
+        <form method="post" action="{% url 'payment_accounts' cafe_code=cafe_code %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="account_id" value="{{ acc.id }}">
+            <button type="submit" class="acc-del" title="حذف حساب">
+                <i class="fas fa-trash"></i>
+            </button>
+        </form>
+    </div>
+    {% empty %}
+    <div class="acc-empty">حساب پرداختی تعریف نشده است — فرم بالا را پر کنید</div>
+    {% endfor %}
+</div>

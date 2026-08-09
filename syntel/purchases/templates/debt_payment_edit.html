@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}ویرایش پرداخت — {{ payment.company }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pay-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+    .pay-form-grid .full { grid-column: 1 / -1; }
+    .page-note { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .info-rows { margin-bottom: 1.1rem; }
+    .info-row {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+        padding: 0.45rem 0; border-bottom: 1px solid var(--border-light);
+        font-size: 0.85rem;
+    }
+    .info-row span { color: var(--text-secondary); flex-shrink: 0; }
+    .info-row b { color: var(--text-primary); text-align: left; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-edit"></i>
+        ویرایش پرداخت
+    </h1>
+</div>
+
+<div class="page-note">
+    <i class="fas fa-info-circle"></i>
+    با تغییر مبلغ، وضعیت بدهی (در انتظار / پرداخت‌شده) دوباره محاسبه می‌شود.
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-money-check-alt"></i>
+            {{ payment.company }}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="info-rows">
+            <div class="info-row"><span>مبلغ کل بدهی</span><b>{{ payment.debt_amount|number_format }} تومان</b></div>
+            <div class="info-row"><span>تاریخ و زمان پرداخت (سیستمی)</span><b>{{ payment.paid_at|jalali_datetime }}</b></div>
+            <div class="info-row">
+                <span>پرداخت توسط</span>
+                <b>{% if payment.paid_by %}{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}{% else %}—{% endif %}</b>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}"
+              enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="pay-form-grid">
+                <div class="form-group">
+                    <label for="edit_pay_amount">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
+                    <input type="text" id="edit_pay_amount" name="amount" class="form-control" required
+                           inputmode="numeric" value="{{ payment.amount|floatformat:'0' }}">
+                </div>
+                <div class="form-group">
+                    <label for="edit_pay_account">پرداخت از حساب (بانک)</label>
+                    <select id="edit_pay_account" name="account_id" class="form-control">
+                        <option value="">— انتخاب حساب —</option>
+                        {% for acc in payment_accounts %}
+                        <option value="{{ acc.id }}"{% if payment.account and payment.account.id == acc.id %} selected{% endif %}>{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label for="edit_pay_desc">توضیحات</label>
+                    <textarea id="edit_pay_desc" name="description" class="form-control" rows="2"
+                              style="height:auto; min-height:60px; padding-top:0.6rem;">{{ payment.description }}</textarea>
+                </div>
+                {% if payment.payment_photo %}
+                <div class="form-group full">
+                    <label>رسید فعلی</label>
+                    <div>
+                        <a href="{{ payment.payment_photo.url }}" target="_blank">
+                            <img src="{{ payment.payment_photo.url }}" alt="رسید پرداخت {{ payment.company }}"
+                                 style="max-height:120px; border-radius:var(--radius-md); border:1px solid var(--border-default);">
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="form-group full">
+                    <label for="edit_pay_photo">تصویر رسید جدید (اختیاری — جایگزین قبلی می‌شود)</label>
+                    <input type="file" id="edit_pay_photo" name="payment_photo" class="form-control"
+                           accept="image/*" style="padding-top:0.35rem;">
+                </div>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    ذخیره تغییرات
+                </button>
+                <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right"></i>
+                    انصراف
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ — سرور کاماها را حذف می‌کند
+    const amountInput = document.getElementById('edit_pay_amount');
+    if (amountInput) {
+        const applyComma = function() {
+            const digits = this.value.replace(/\D/g, '');
+            this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+        };
+        amountInput.addEventListener('input', applyComma);
+        applyComma.call(amountInput);  // نمایش اولیه با کاما
+    }
+</script>
+{% endblock %}

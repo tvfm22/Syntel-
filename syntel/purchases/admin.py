@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
-    User, PurchaseRequest, PurchaseItem, Category, Product, 
-    Unit, Supplier, Invoice, InvoiceItem, Payment
+    User, PurchaseRequest, PurchaseItem, Category, Product,
+    Unit, Supplier, Invoice, InvoiceItem, Payment, OfficerAssignment
 )
 
 # Custom User Admin
@@ -92,4 +92,9 @@ class PaymentAdmin(admin.ModelAdmin):
     search_fields = ('invoice__invoice_number', 'reference_number')
     date_hierarchy = 'payment_date'
 
-# Register your models here.
+@admin.register(OfficerAssignment)
+class OfficerAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'item', 'target_role', 'assigned_to', 'status', 'assigned_at')
+    list_filter = ('target_role', 'status', 'assigned_at')
+    search_fields = ('item__name', 'assigned_to__username')
+    date_hierarchy = 'assigned_at'

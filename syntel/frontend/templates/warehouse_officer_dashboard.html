@@ -1,0 +1,208 @@
+{% load static %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مسئول انبار - کوکر</title>
+    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
+        body { background: #f3f4f6; min-height: 100vh; }
+
+        .page-wrapper { max-width: 1100px; margin: 0 auto; padding: 20px 24px 100px; }
+
+        .header {
+            background: white; padding: 18px 24px; border-radius: 12px;
+            margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .header-left h1 { font-size: 22px; color: #1f2937; margin-bottom: 4px; }
+        .header-left p  { color: #6b7280; font-size: 14px; }
+
+        .date-nav { display: flex; align-items: center; gap: 10px; }
+        .date-arrow {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e5e7eb;
+            background: white; color: #374151; font-size: 20px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; transition: all .15s; cursor: pointer; line-height: 1;
+        }
+        .date-arrow:hover { background: #10b981; color: white; border-color: #10b981; }
+        .date-display { text-align: center; min-width: 140px; user-select: none; }
+        .date-jalali { display: block; font-size: 15px; font-weight: 700; color: #1f2937; }
+        .date-gregorian { display: block; font-size: 11px; color: #9ca3af; }
+
+        .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
+        .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .msg-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .msg-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .msg-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin: 20px 0 14px; display: flex; align-items: center; gap: 8px; }
+        .section-block { margin-bottom: 30px; }
+
+        .item-card {
+            background: white; border-radius: 12px; padding: 18px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 14px;
+            border-right: 4px solid #10b981;
+        }
+        .item-card.assigned { border-right-color: #6366f1; }
+
+        .item-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+        .item-name { font-size: 17px; font-weight: 700; color: #1f2937; }
+        .item-qty { font-size: 15px; font-weight: 700; color: #059669; white-space: nowrap; }
+        .item-meta { font-size: 12.5px; color: #6b7280; margin-bottom: 6px; line-height: 1.9; }
+        .item-desc { font-size: 13px; color: #374151; background: #f9fafb; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; border-right: 3px solid #e5e7eb; }
+
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .status-auto  { background: #d1fae5; color: #065f46; }
+        .status-sent  { background: #dbeafe; color: #1e40af; }
+
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+        .btn {
+            border: none; border-radius: 8px; padding: 10px 18px; font-size: 13.5px;
+            font-weight: 600; cursor: pointer; font-family: Vazir, sans-serif;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+            transition: opacity .15s, transform .1s;
+        }
+        .btn:hover { opacity: .88; }
+        .btn:active { transform: scale(.98); }
+        .btn-green  { background: #10b981; color: white; }
+        .btn-blue   { background: #3b82f6; color: white; }
+        .btn-amber  { background: #f59e0b; color: white; }
+        .btn-red    { background: #ef4444; color: white; }
+
+        .fulfill-form {
+            display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+            background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 10px;
+            padding: 12px; margin-top: 12px;
+        }
+        .fulfill-form select, .fulfill-form input {
+            padding: 9px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: 13.5px; font-family: Vazir, sans-serif; background: white; color: #374151;
+        }
+        .fulfill-form select:focus, .fulfill-form input:focus { outline: none; border-color: #10b981; }
+        .fulfill-form .stock-select { min-width: 280px; flex: 1; }
+        .fulfill-form .qty-input { width: 110px; }
+
+        .empty-state { text-align: center; padding: 50px 20px; color: #6b7280; background: white; border-radius: 12px; }
+        .empty-state .empty-icon { font-size: 44px; margin-bottom: 12px; }
+
+        .logout-btn {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 11px 28px; background: white; border: 1px solid #e5e7eb;
+            border-radius: 8px; color: #ef4444; text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 14px; font-weight: 600; z-index: 100;
+        }
+        .logout-btn:hover { background: #fef2f2; }
+
+        @media (max-width: 700px) {
+            .fulfill-form .stock-select { min-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- Header + date navigation -->
+    <div class="header">
+        <div class="header-left">
+            <h1>📦 داشبورد مسئول انبار</h1>
+            <p>{{ user.first_name }} {{ user.last_name }}</p>
+        </div>
+        <div class="date-nav">
+            <a href="?date={{ prev_date|date:'Y-m-d' }}" class="date-arrow">‹</a>
+            <div class="date-display">
+                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+            </div>
+            <a href="?date={{ next_date|date:'Y-m-d' }}" class="date-arrow">›</a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'success' %}msg-success{% elif message.tags == 'warning' %}msg-warning{% else %}msg-info{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="section-block">
+        <div class="section-title">🧾 کالاهای درخواستی این روز</div>
+        <div class="hint" style="font-size:12.5px;color:#6b7280;margin-bottom:14px;line-height:1.9;">
+            کالاهایی که در انبار موجودی دارند بدون نیاز به تایید مدیرعامل مستقیم برای شما ارسال شده‌اند.
+            می‌توانید از انبار تامین کنید یا در صورت عدم موجودی، آن را به درخواست خرید ارجاع دهید.
+        </div>
+
+        {% if visible_items %}
+            {% for v in visible_items %}
+            <div class="item-card {% if v.assignment %}assigned{% endif %}">
+                <div class="item-head">
+                    <div>
+                        <div class="item-name">{{ v.item.product.name|default:v.item.name }}</div>
+                        <div class="item-meta">
+                            بخش: {{ v.item.request.user.department.name|default:v.item.request.user.get_role_display }}
+                            &nbsp;•&nbsp; {{ v.item.request.created_at|jalali_datetime }}
+                            &nbsp;•&nbsp; درخواست #{{ v.item.request_id }}
+                        </div>
+                    </div>
+                    <div style="text-align:left;">
+                        <div class="item-qty">{{ v.item.quantity }} {{ v.item.unit }}</div>
+                        <span class="status-tag {% if v.assignment %}status-sent{% else %}status-auto{% endif %}"
+                              style="margin-top:4px;display:inline-block;">
+                            {% if v.assignment %}ارسال شده توسط مدیرعامل{% else %}ارسال خودکار (موجود در انبار){% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if v.item.description %}
+                <div class="item-desc">📝 {{ v.item.description }}</div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_id" value="{{ v.item.id }}">
+                    <div class="actions">
+                        {% if stock_options|get_item:v.item.product_id %}
+                        <div class="fulfill-form" style="width:100%;">
+                            <select name="stock_item_id" class="stock-select" required>
+                                <option value="">— انبار / برند دارای موجودی را انتخاب کنید —</option>
+                                {% for opt in stock_options|get_item:v.item.product_id %}
+                                <option value="{{ opt.id }}">
+                                    🏬 {{ opt.warehouse_name }} — {{ opt.brand_name }} (موجودی: {{ opt.available|trim_decimal }} {{ opt.unit_label }}{% if opt.rate %}، نرخ تبدیل: هر {{ opt.unit_label }} = {{ opt.rate }}{% endif %})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input type="number" name="qty" class="qty-input" min="0.01" step="any" placeholder="مقدار" required>
+                            <button type="submit" name="action" value="fulfill" class="btn btn-green">✅ تامین از انبار</button>
+                        </div>
+                        {% else %}
+                        <div style="width:100%;font-size:12.5px;color:#b45309;background:#fffbeb;border-radius:8px;padding:8px 12px;">
+                            ⚠️ برای این کالا در انبارهای این کافه موجودی ثبت نشده است.
+                        </div>
+                        {% endif %}
+                        <button type="submit" name="action" value="to_purchase" class="btn btn-blue"
+                                onclick="return confirm('این کالا به درخواست خرید ارجاع شود؟ به لیست مدیرعامل برمی‌گردد.');">🛒 ارسال به درخواست خرید</button>
+                        <button type="submit" name="action" value="not_in_stock" class="btn btn-red"
+                                onclick="return confirm('عدم موجودی ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');">❌ عدم موجودی</button>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>در این روز درخواستی برای تامین از انبار وجود ندارد.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<div style="text-align:center;padding:12px 0 24px;">
+    <a href="{% url 'logout' %}" style="color:#9ca3af;font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px;transition:all.15s;display:inline-block;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">🚪 خروج</a>
+</div>
+
+</body>
+</html>
