@@ -1778,6 +1778,7 @@ class StockTransaction(models.Model):
     stock_item = models.ForeignKey(StockItem, on_delete=models.CASCADE, related_name='transactions', verbose_name='موجودی')
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES, verbose_name='نوع تراکنش')
     quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار')
+    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='نرخ تبدیل برند')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
     reference_type = models.CharField(max_length=50, blank=True, verbose_name='نوع مرجع')  # 'invoice', 'stock_request', 'initial'
     reference_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='شناسه مرجع')

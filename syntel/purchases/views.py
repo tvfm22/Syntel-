@@ -628,6 +628,7 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                     stock_item=s_item,
                     transaction_type='out',
                     quantity=item.supplied_quantity,
+                    conversion_rate=s_item.product_brand.conversion_rate if s_item.product_brand else None,
                     unit=s_item.unit,
                     reference_type='warehouse_request',
                     reference_id=wh_request.id,
@@ -853,6 +854,7 @@ def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
                     stock_item=s_item,
                     transaction_type='out',
                     quantity=base_deduction,
+                    conversion_rate=brand.conversion_rate if brand else None,
                     unit=s_item.unit,
                     reference_type='purchase_item',
                     reference_id=item.id,
@@ -1092,6 +1094,7 @@ def _process_available_products_post(request, cafe):
                     stock_item=stock_item,
                     transaction_type='out',
                     quantity=base_deduction,
+                    conversion_rate=brand.conversion_rate if brand else None,
                     unit=stock_item.unit,
                     reference_type='warehouse_request',
                     reference_id=wh_request.id,
@@ -6097,6 +6100,7 @@ def initial_stock_register(request: HttpRequest) -> HttpResponse:
                 stock_item=stock_item,
                 transaction_type='initial',
                 quantity=quantity_base,
+                conversion_rate=product_brand_obj.conversion_rate if product_brand_obj else None,
                 unit=unit_obj,
                 reference_type='initial',
                 description=desc,
@@ -6209,7 +6213,7 @@ def stock_list(request: HttpRequest) -> HttpResponse:
 def stock_transactions(request: HttpRequest, stock_id: int) -> HttpResponse:
     """تاریخچه تراکنش‌های یک موجودی"""
     stock_item = get_object_or_404(StockItem, id=stock_id)
-    transactions = stock_item.transactions.select_related('created_by').all()
+    transactions = stock_item.transactions.select_related('created_by', 'stock_item__product_brand').all()
     
     # صفحه‌بندی
     paginator = Paginator(transactions, 50)
@@ -6347,6 +6351,7 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
                     stock_item=stock_item,
                     transaction_type='out',
                     quantity=quantity,
+                    conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
                     unit=stock_item.unit,
                     reference_type='stock_request',
                     reference_id=stock_request.id,
@@ -6921,6 +6926,7 @@ def voucher_create(request: HttpRequest, voucher_type: str, warehouse_id: int) -
                         stock_item=stock_item,
                         transaction_type='in' if voucher_type == 'in' else 'out',
                         quantity=qty,
+                        conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
                         unit=unit_obj or product.unit,
                         reference_type='voucher',
                         reference_id=voucher.id,
@@ -7267,6 +7273,7 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
             stock_item=stock_item,
             transaction_type='adjustment',
             quantity=abs(physical_qty - prev_qty),
+            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
             unit=stock_item.unit,
             reference_type='inventory_check',
             reference_id=warehouse.id,
@@ -7605,7 +7612,13 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     else:
         selected_date = datetime.now().date()
         date_str = selected_date.isoformat()
-    dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code]) + f'?date={date_str}'
+    # ── بخش انتخابی (پیش‌فرض: همه بخش‌ها) — همراه تاریخ در ریدایرکت‌ها حفظ می‌شود ──
+    from urllib.parse import urlencode
+    dept = request.GET.get('department', '')
+    dash_params = {'date': date_str}
+    if dept:
+        dash_params['department'] = dept
+    dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code]) + '?' + urlencode(dash_params)
 
     # ── پردازش فرم ──
     if request.method == 'POST':
@@ -7687,7 +7700,6 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
                 return redirect(dash_url)
 
-            total_supplied = 0
             for idx, (stock_item, base_deduction, qty) in enumerate(validated):
                 # کسر از موجودی انبار
                 prev_qty = stock_item.quantity
@@ -7697,6 +7709,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                     stock_item=stock_item,
                     transaction_type='out',
                     quantity=base_deduction,
+                    conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
                     unit=stock_item.unit,
                     reference_type='officer_assignment',
                     reference_id=item.id,
@@ -7722,7 +7735,6 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                     extra_assignment.supplied_quantity = base_deduction
                     extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
                     extra_assignment.save()
-                total_supplied += base_deduction
             _sync_request_status(item.request)
             messages.success(request, f'«{item.name}» از انبار تامین شد.')
             return redirect(dash_url)
@@ -7788,6 +7800,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     )
     if cafe:
         date_items = date_items.filter(request__cafe=cafe)
+    if dept:
+        # فیلتر بخش: نام بخش کاربر، یا نقش قدیمی کاربرانی که بخش ندارند
+        date_items = date_items.filter(
+            Q(request__user__department__name=dept) | Q(request__user__role=dept))
 
     visible_items = []
     done_items = []
@@ -7855,6 +7871,31 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             if not hide_select and n_brands == 1 and len(opts) == 1:
                 opts[0]['default_selected'] = True
 
+    # ── فهرست بخش‌ها برای فیلتر بالای صفحه: بخش‌های فعال این کافه + بخش‌های
+    # قدیمیِ نقش‌محور (کاربر بدون بخش) که در این روز درخواست دارند ──
+    departments_list = []  # [(کلید فیلتر، برچسب نمایش)]
+    seen = set()
+    for d in Department.objects.filter(is_active=True):
+        if d.cafe_id is not None and cafe and d.cafe_id != cafe.id:
+            continue
+        if d.name not in seen:
+            seen.add(d.name)
+            departments_list.append((d.name, d.name))
+    for it in date_items:
+        u = it.request.user
+        if not u:
+            continue
+        if u.department_id:
+            key, label = u.department.name, u.department.name
+        else:
+            key, label = u.role or '', u.get_role_display()
+        if key and key not in seen:
+            seen.add(key)
+            departments_list.append((key, label))
+    if dept and dept not in seen:
+        departments_list.append((dept, dept))
+    departments_list.sort(key=lambda x: x[1])
+
     return render(request, 'warehouse_officer_dashboard.html', {
         'visible_items': visible_items,
         'done_items': done_items,
@@ -7864,6 +7905,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         'prev_date': prev_date,
         'next_date': next_date,
         'date_str': date_str,
+        'departments': departments_list,
+        'selected_department': dept,
         'cafe_code': cafe_code,
         'user': request.user,
     })

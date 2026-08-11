@@ -22,7 +22,13 @@
         .header-left h1 { font-size: 22px; color: #1f2937; margin-bottom: 4px; }
         .header-left p  { color: #6b7280; font-size: 14px; }
 
-        .date-nav { display: flex; align-items: center; gap: 10px; }
+        .date-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .dept-select {
+            padding: 7px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+            font-size: 13.5px; font-family: Vazir, sans-serif; background: white;
+            color: #374151; cursor: pointer; max-width: 220px;
+        }
+        .dept-select:focus { outline: none; border-color: #10b981; }
         .date-arrow {
             width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e5e7eb;
             background: white; color: #374151; font-size: 20px; font-weight: 700;
@@ -142,12 +148,19 @@
             <p>{{ user.first_name }} {{ user.last_name }}</p>
         </div>
         <div class="date-nav">
-            <a href="?date={{ prev_date|date:'Y-m-d' }}" class="date-arrow">‹</a>
+            <select class="dept-select" title="فیلتر بخش"
+                    onchange="var d = this.value; location.href = '?date={{ date_str }}' + (d ? '&amp;department=' + encodeURIComponent(d) : '');">
+                <option value="">همه بخش‌ها</option>
+                {% for key, label in departments %}
+                <option value="{{ key }}"{% if key == selected_department %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <a href="?date={{ prev_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow">‹</a>
             <div class="date-display">
                 <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
                 <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
             </div>
-            <a href="?date={{ next_date|date:'Y-m-d' }}" class="date-arrow">›</a>
+            <a href="?date={{ next_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow">›</a>
         </div>
     </div>
 

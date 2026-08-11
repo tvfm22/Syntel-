@@ -1,5 +1,4 @@
 from django import template
-from django.utils.numberformat import format
 import jdatetime
 import logging
 from decimal import Decimal, ROUND_HALF_UP

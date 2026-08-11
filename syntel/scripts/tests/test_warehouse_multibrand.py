@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """تست چندبرندی تأمین از انبار — اجرا با PYTHONIOENCODING=utf-8"""
-import sys, os
+import sys, os, urllib.parse
 sys.path.insert(0, 'D:/Syntel/syntel')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
 import django
@@ -13,6 +13,7 @@ from datetime import datetime
 from purchases.models import (
     Cafe, Unit, Product, ProductBrand, Warehouse, StockItem,
     StockTransaction, PurchaseRequest, PurchaseItem, OfficerAssignment,
+    Department,
 )
 
 User = get_user_model()
@@ -106,7 +107,7 @@ ok(assigns[1].status == 'fulfilled' and assigns[1].stock_item_id == si_b.id
 req1.refresh_from_db()
 ok(req1.status == 'purchased', f'وضعیت درخواست همگام‌سازی شد → {req1.status}')
 body = r.content.decode('utf-8', errors='replace')
-ok('2 برند' in body, 'پیام موفقیت تعداد برندها را ذکر می‌کند')
+ok('از انبار تامین شد' in body, 'پیام موفقیت تامین نمایش داده می‌شود')
 
 # ---------- ۳) نرخ تبدیل: برند گاما (هر کارتن = ۲ واحد پایه) ----------
 req2, item2 = make_item()
@@ -238,8 +239,9 @@ item_nb = PurchaseItem.objects.create(
     request=req_nb, product=prod_nb, name=TEST_PRODUCT_NB, quantity=5, unit='کیلوگرم')
 r = c.get(DASH)
 body = r.content.decode('utf-8', errors='replace')
-ok(f'value="{si_nb.id}" selected' in body, 'گزینه «بدون برند» برای محصول بدون نام تجاری دیفالت انتخاب شده است')
+ok(f'value="{si_nb.id}"' in body, 'موجودی «بدون برند» به صورت پیش‌فرض در ردیف تامین قرار دارد')
 ok('بدون برند' in body, 'برچسب «بدون برند» نمایش داده می‌شود')
+ok('stock-label' in body, 'محصول بدون برند تک‌گزینه‌ای به جای سلکت، برچسب اطلاعاتی می‌گیرد')
 
 # ---------- ۱۲) PDF «درخواست کالا از انبار» (راست به چپ + عنوان/تاریخ/امضا) ----------
 admin_pdf, _ = User.objects.get_or_create(username='test_admin_pdf')
@@ -258,6 +260,43 @@ ok(len(r.content) > 1000, f'PDF خالی نیست ({len(r.content)} بایت)')
 ok('attachment' in r['Content-Disposition'], 'PDF به صورت دانلود (attachment) ارسال می‌شود')
 r = c_pdf.get(f'/baba_adam/request-management/warehouse-pdf/?date={today}')
 ok(r.status_code == 200, 'PDF برای کافه دوم هم ساخته می‌شود')
+
+# ---------- ۱۳) فیلتر بخش در داشبورد مسئول انبار ----------
+dept1, _ = Department.objects.get_or_create(name='بخش تست فیلتر', cafe=cafe, defaults={'is_active': True})
+dept2, _ = Department.objects.get_or_create(name='بخش تست فیلتر ۲', cafe=cafe, defaults={'is_active': True})
+user_dept, _ = User.objects.get_or_create(username='test_req_dept')
+user_dept.role = 'kitchen'; user_dept.cafe = cafe; user_dept.department = dept1; user_dept.save()
+req13 = PurchaseRequest.objects.create(cafe=cafe, user=user_dept, status='pending')
+item13 = PurchaseItem.objects.create(request=req13, product=prod, name=TEST_PRODUCT, quantity=5, unit='کیلوگرم')
+
+r = c.get(DASH)
+body = r.content.decode('utf-8', errors='replace')
+ok('همه بخش‌ها' in body, 'گزینه «همه بخش‌ها» بالای صفحه هست')
+ok('بخش تست فیلتر' in body, 'بخش‌های فعال در فهرست فیلتر نمایش داده می‌شوند')
+ok(f'rows-{item13.id}' in body, 'بدون فیلتر، درخواست بخش جدید هم دیده می‌شود')
+
+q_dept1 = urllib.parse.quote(dept1.name)
+r = c.get(DASH + '?department=' + q_dept1)
+body = r.content.decode('utf-8', errors='replace')
+ok(f'rows-{item13.id}' in body, 'با فیلتر بخش، درخواست همان بخش نمایش داده می‌شود')
+ok(f'rows-{item12.id}' not in body and f'reopen-form-{item12.id}' not in body,
+   'با فیلتر بخش، درخواست بخش‌های دیگر (فعال و ثبت‌شده) دیده نمی‌شود')
+ok(f'value="{dept1.name}" selected' in body, 'بخش انتخاب‌شده در فهرست بالا مشخص است')
+
+q_dept2 = urllib.parse.quote(dept2.name)
+r = c.get(DASH + '?department=' + q_dept2)
+body = r.content.decode('utf-8', errors='replace')
+ok(f'rows-{item13.id}' not in body, 'بخش دیگری که درخواستی ندارد خالی است')
+
+# فیلتر بخش بعد از ثبت تأمین حفظ می‌شود
+r = c.post(DASH + '?department=' + q_dept1,
+           {'item_id': item13.id, 'action': 'fulfill', 'stock_item_id': si_a.id, 'qty': '1'}, follow=True)
+final_url = r.redirect_chain[-1][0] if r.redirect_chain else ''
+ok(f'department={urllib.parse.quote_plus(dept1.name)}' in final_url,
+   f'بعد از تامین، فیلتر بخش حفظ می‌شود → {final_url}')
+body_after = r.content.decode('utf-8', errors='replace')
+ok(f'rows-{item13.id}' not in body_after and f'reopen-form-{item13.id}' in body_after,
+   'کالای تامین‌شده در فیلتر همان بخش به «ثبت‌شده‌ها» رفت')
 
 # ---------- پاکسازی ----------
 Warehouse.objects.filter(code='TST-MB2').delete()
