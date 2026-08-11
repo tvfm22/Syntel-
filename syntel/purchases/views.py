@@ -6,10 +6,14 @@ import json
 import os
 import platform
 import re
+import secrets
+import shutil
+import zipfile
 import django
 from datetime import datetime, timedelta
 from decimal import Decimal
 from functools import wraps
+from pathlib import Path
 
 import psutil
 from django.core.management import call_command
@@ -20,12 +24,13 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, F
-from django.db import models
-from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse, HttpRequest
+from django.db import connections, models, transaction
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse, HttpRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from . import drive_backup
 from .models import (
     ActivityLog,
     Cafe,
@@ -1962,6 +1967,122 @@ def export_analytics_to_pdf(request, analytics_type):
 # ---------------------------------------------------------------------------
 
 
+def _human_size(num_bytes):
+    """Format a byte count into a human-readable string."""
+    size = float(num_bytes)
+    for unit in ('B', 'KB', 'MB', 'GB'):
+        if size < 1024:
+            return f'{int(size)} {unit}' if unit == 'B' else f'{size:.1f} {unit}'
+        size /= 1024
+    return f'{size:.1f} TB'
+
+
+def _snapshot_db_before_restore():
+    """Copy the current SQLite DB to BACKUPS_DIR before a destructive restore."""
+    db_path = Path(settings.DATABASES['default']['NAME'])
+    if not os.path.exists(db_path):
+        return None
+    os.makedirs(settings.BACKUPS_DIR, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    snapshot_path = Path(settings.BACKUPS_DIR) / f'autorestore_{timestamp}.sqlite3'
+    shutil.copyfile(db_path, snapshot_path)
+    return snapshot_path
+
+
+def _is_sqlite_engine():
+    return settings.DATABASES['default']['ENGINE'].endswith('sqlite3')
+
+
+# Subfolders of DATA_PATH excluded from a full data-folder backup:
+# backups (would recurse into old archives), cache/logs/tmp (regenerable)
+_EXCLUDED_FOLDER_BACKUP_DIRS = {'backups', 'cache', 'logs', 'tmp'}
+
+
+def _build_data_folder_zip(zip_path):
+    """Zip the whole DATA_PATH folder (db, uploads, sessions, ...) into zip_path."""
+    root = Path(settings.DATA_PATH)
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in _EXCLUDED_FOLDER_BACKUP_DIRS]
+            rel_dir = Path(dirpath).relative_to(root)
+            for fname in filenames:
+                full_path = Path(dirpath) / fname
+                arcname = (rel_dir / fname).as_posix()
+                try:
+                    zf.write(full_path, arcname)
+                except OSError:
+                    continue  # skip files locked/unreadable during the walk
+
+
+class _TempBackupFile:
+    """File-like wrapper that deletes its temp file when the response closes it.
+
+    Delegates read/seek/tell to the underlying file so FileResponse can
+    determine length and headers (Content-Disposition) before streaming.
+    """
+
+    def __init__(self, path):
+        self._file = open(path, 'rb')
+        self._path = path
+        self.name = path
+
+    def __iter__(self):
+        return iter(self._file)
+
+    def __getattr__(self, item):
+        # Delegate everything else (read, seek, tell, seekable, ...) to the file
+        return getattr(self._file, item)
+
+    def close(self):
+        try:
+            self._file.close()
+        finally:
+            try:
+                os.remove(self._path)
+            except OSError:
+                pass
+
+
+def run_auto_backup_if_due():
+    """If Drive is connected and the interval (default 12h) has passed,
+    automatically back up the whole data folder to Google Drive.
+    Returns (ran, message)."""
+    if not drive_backup.is_configured() or not drive_backup.is_connected():
+        return False, ''
+
+    state = drive_backup.get_auto_state()
+    interval_hours = drive_backup.auto_backup_interval_hours()
+    last_raw = state.get('last_auto')
+    if last_raw:
+        try:
+            last_run = datetime.fromisoformat(last_raw)
+            if (datetime.now() - last_run).total_seconds() < interval_hours * 3600:
+                return False, ''  # not due yet
+        except ValueError:
+            pass
+
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    os.makedirs(settings.TMP_DIR, exist_ok=True)
+    zip_path = Path(settings.TMP_DIR) / f'syntel_data_autobackup_{timestamp}.zip'
+    try:
+        _build_data_folder_zip(zip_path)
+        drive_backup.upload_file_to_drive(zip_path.name, zip_path)
+        drive_backup.set_auto_state(
+            last_auto=datetime.now().isoformat(timespec='seconds'),
+            status='ok',
+            last_error='',
+        )
+        return True, f'پشتیبان خودکار «{zip_path.name}» با موفقیت به گوگل‌درایو ارسال شد.'
+    except Exception as e:
+        drive_backup.set_auto_state(status='error', last_error=str(e))
+        return False, f'خطا در پشتیبان خودکار: {str(e)}'
+    finally:
+        try:
+            os.remove(zip_path)
+        except OSError:
+            pass
+
+
 @custom_login_required
 @role_required(["manager"])
 def backup_management(request):
@@ -1973,6 +2094,41 @@ def backup_management(request):
         pr_qs = pr_qs.filter(cafe=cafe)
         inv_qs = inv_qs.filter(cafe=cafe)
         sup_qs = sup_qs.filter(cafe=cafe)
+
+    # Automatic backup: run when the interval (default 12h) has passed
+    auto_ran, auto_message = run_auto_backup_if_due()
+    if auto_ran and auto_message:
+        messages.success(request, auto_message)
+
+    drive_cfg = drive_backup.load_config()
+    auto_state = drive_backup.get_auto_state()
+    interval_hours = drive_backup.auto_backup_interval_hours()
+    last_auto = auto_state.get('last_auto', '')
+    next_auto = ''
+    if last_auto:
+        try:
+            next_auto = (datetime.fromisoformat(last_auto) + timedelta(hours=interval_hours)).strftime('%Y-%m-%d %H:%M')
+        except ValueError:
+            pass
+
+    is_sqlite = _is_sqlite_engine()
+    db_path = Path(settings.DATABASES['default']['NAME'])
+    db_size = os.path.getsize(db_path) if is_sqlite and os.path.exists(db_path) else 0
+
+    # List server-side backups (under DATA_PATH/backups), newest first
+    backups = []
+    if os.path.isdir(settings.BACKUPS_DIR):
+        for name in sorted(os.listdir(settings.BACKUPS_DIR), reverse=True):
+            full_path = os.path.join(settings.BACKUPS_DIR, name)
+            if os.path.isfile(full_path):
+                stat = os.stat(full_path)
+                backups.append({
+                    'name': name,
+                    'size': stat.st_size,
+                    'size_display': _human_size(stat.st_size),
+                    'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M'),
+                })
+
     context = {
         "title": "مدیریت پشتیبان‌گیری و داده‌ها",
         "total_users": User.objects.count(),
@@ -1980,8 +2136,24 @@ def backup_management(request):
         "total_invoices": inv_qs.count(),
         "total_payments": Payment.objects.count(),
         "total_suppliers": sup_qs.count(),
-        "database_name": settings.DATABASES['default']['NAME'],
+        "database_name": os.path.basename(db_path),
         "database_host": settings.DATABASES['default']['HOST'] or 'localhost',
+        "database_type": 'SQLite' if is_sqlite else 'PostgreSQL',
+        "database_path": str(db_path),
+        "database_size": _human_size(db_size) if db_size else '-',
+        "is_sqlite": is_sqlite,
+        "backups": backups,
+        "drive_configured": drive_backup.is_configured(),
+        "drive_connected": drive_backup.is_connected(),
+        "drive_email": drive_backup.get_connected_email(),
+        "drive_client_id": drive_cfg['client_id'],
+        "drive_folder_id": drive_cfg['folder_id'],
+        "drive_has_file_config": os.path.exists(settings.DATA_PATH / drive_backup.CONFIG_FILENAME),
+        "auto_interval_hours": interval_hours,
+        "auto_last_run": last_auto,
+        "auto_next_run": next_auto,
+        "auto_status": auto_state.get('status', ''),
+        "auto_last_error": auto_state.get('last_error', ''),
     }
     return render(request, "backup_management.html", context)
 
@@ -1989,24 +2161,299 @@ def backup_management(request):
 @custom_login_required
 @role_required(["manager"])
 def backup_database(request):
-    """Create a server-side backup of the database."""
+    """Create a server-side backup of the database (JSON dump)."""
     try:
         # Create backups directory if it doesn't exist (under DATA_PATH/backups)
         backup_dir = settings.BACKUPS_DIR
         os.makedirs(backup_dir, exist_ok=True)
-        
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'backup_{timestamp}.json'
         filepath = os.path.join(backup_dir, filename)
-        
+
         with open(filepath, 'w', encoding='utf-8') as f:
             call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=f)
-            
-        messages.success(request, f"Database backup created successfully: {filename}")
+
+        messages.success(request, f"نسخه پشتیبان روی سرور ذخیره شد: {filename}")
     except Exception as e:
-        messages.error(request, f"Error creating backup: {str(e)}")
-        
-    return redirect('backup_management')
+        messages.error(request, f"خطا در ایجاد پشتیبان: {str(e)}")
+
+    return get_cafe_redirect_url('backup_management', request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def download_database_file(request):
+    """Download the actual SQLite database file as a full backup."""
+    if not _is_sqlite_engine():
+        messages.error(request, "دانلود فایل دیتابیس فقط برای دیتابیس SQLite پشتیبانی می‌شود. برای PostgreSQL از دانلود JSON استفاده کنید.")
+        return get_cafe_redirect_url('backup_management', request)
+    db_path = Path(settings.DATABASES['default']['NAME'])
+    if not os.path.exists(db_path):
+        messages.error(request, "فایل دیتابیس یافت نشد.")
+        return get_cafe_redirect_url('backup_management', request)
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    return FileResponse(
+        open(db_path, 'rb'),
+        content_type='application/x-sqlite3',
+        as_attachment=True,
+        filename=f'syntel_db_backup_{timestamp}.sqlite3',
+    )
+
+
+@custom_login_required
+@role_required(["manager"])
+def restore_database_file(request):
+    """Restore the database by uploading a SQLite database file (full restore)."""
+    if not _is_sqlite_engine():
+        messages.error(request, "بازیابی فایل دیتابیس فقط برای دیتابیس SQLite پشتیبانی می‌شود. برای PostgreSQL از بازیابی JSON استفاده کنید.")
+        return get_cafe_redirect_url('backup_management', request)
+
+    if request.method == 'POST' and request.FILES.get('db_file'):
+        db_file = request.FILES['db_file']
+
+        # Validate extension and SQLite magic bytes
+        ext = Path(db_file.name).suffix.lower()
+        if ext not in ('.db', '.sqlite', '.sqlite3'):
+            messages.error(request, "فرمت فایل نامعتبر است. لطفاً فایل دیتابیس (.sqlite3 یا .db) انتخاب کنید.")
+            return get_cafe_redirect_url('backup_management', request)
+        header = db_file.read(16)
+        db_file.seek(0)
+        if header[:15] != b'SQLite format 3':
+            messages.error(request, "فایل انتخاب‌شده یک فایل دیتابیس SQLite معتبر نیست.")
+            return get_cafe_redirect_url('backup_management', request)
+
+        db_path = Path(settings.DATABASES['default']['NAME'])
+        os.makedirs(settings.TMP_DIR, exist_ok=True)
+        temp_path = Path(settings.TMP_DIR) / f'restore_db_{datetime.now().strftime("%Y%m%d%H%M%S")}.sqlite3'
+
+        try:
+            with open(temp_path, 'wb+') as destination:
+                for chunk in db_file.chunks():
+                    destination.write(chunk)
+
+            # Snapshot the current DB first so a bad restore is recoverable
+            snapshot_path = _snapshot_db_before_restore()
+
+            connections.close_all()
+            # Remove stale WAL/SHM files so they cannot shadow the new database
+            for suffix in ('-wal', '-shm'):
+                stale = Path(str(db_path) + suffix)
+                if stale.exists():
+                    stale.unlink()
+            shutil.copyfile(temp_path, db_path)
+
+            try:
+                call_command('migrate', verbosity=0, interactive=False)
+                note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
+                messages.success(request, f"دیتابیس با موفقیت بازیابی شد.{note}")
+            except Exception as e:
+                # Roll back to the snapshot on failure
+                connections.close_all()
+                if snapshot_path and os.path.exists(snapshot_path):
+                    shutil.copyfile(snapshot_path, db_path)
+                messages.error(request, f"خطا در اعمال دیتابیس جدید ({e}). دیتابیس قبلی برگردانده شد.")
+        except Exception as e:
+            messages.error(request, f"خطا در بازیابی دیتابیس: {str(e)}")
+        finally:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+        return get_cafe_redirect_url('backup_management', request)
+
+    messages.error(request, "فایلی انتخاب نشده است.")
+    return get_cafe_redirect_url('backup_management', request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def download_backup_file(request, filename):
+    """Download a server-side backup file from BACKUPS_DIR."""
+    safe_name = os.path.basename(filename)
+    filepath = os.path.join(settings.BACKUPS_DIR, safe_name)
+    if not os.path.isfile(filepath):
+        raise Http404("فایل پشتیبان یافت نشد")
+    return FileResponse(
+        open(filepath, 'rb'),
+        as_attachment=True,
+        filename=safe_name,
+    )
+
+
+@custom_login_required
+@role_required(["manager"])
+def delete_backup_file(request, filename):
+    """Delete a server-side backup file."""
+    if request.method == 'POST':
+        safe_name = os.path.basename(filename)
+        filepath = os.path.join(settings.BACKUPS_DIR, safe_name)
+        if os.path.isfile(filepath):
+            try:
+                os.remove(filepath)
+                messages.success(request, f"فایل پشتیبان حذف شد: {safe_name}")
+            except OSError as e:
+                messages.error(request, f"خطا در حذف فایل: {e}")
+        else:
+            messages.error(request, "فایل پشتیبان یافت نشد.")
+    return get_cafe_redirect_url('backup_management', request)
+
+
+def _drive_back_to_backup(request):
+    """Return to the backup page (or login) after the Drive OAuth callback."""
+    cafe_code = get_cafe_code(request)
+    if cafe_code:
+        return redirect('backup_management', cafe_code=cafe_code)
+    return redirect('login')
+
+
+@custom_login_required
+@role_required(["manager"])
+def drive_connect(request):
+    """Start the Google OAuth flow to connect Google Drive."""
+    if not drive_backup.is_configured():
+        messages.error(request, "گوگل‌درایو تنظیم نشده است. ابتدا GOOGLE_DRIVE_CLIENT_ID و GOOGLE_DRIVE_CLIENT_SECRET را در تنظیمات سرور قرار دهید.")
+        return get_cafe_redirect_url('backup_management', request)
+    state = secrets.token_urlsafe(32)
+    request.session['drive_oauth_state'] = state
+    redirect_uri = request.build_absolute_uri(reverse('drive_callback'))
+    return redirect(drive_backup.build_authorize_url(state, redirect_uri))
+
+
+def drive_callback(request):
+    """OAuth callback — exchange the code and store the token."""
+    error = request.GET.get('error')
+    if error:
+        messages.error(request, f"اتصال به گوگل‌درایو انجام نشد: {error}")
+        return _drive_back_to_backup(request)
+
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    expected_state = request.session.pop('drive_oauth_state', None)
+    if not code or not state or not expected_state or state != expected_state:
+        messages.error(request, "پاسخ نامعتبر از گوگل دریافت شد. دوباره تلاش کنید.")
+        return _drive_back_to_backup(request)
+
+    try:
+        redirect_uri = request.build_absolute_uri(reverse('drive_callback'))
+        drive_backup.exchange_code(code, redirect_uri)
+        email = drive_backup.get_connected_email()
+        messages.success(request, f"اتصال گوگل‌درایو برقرار شد{(' (' + email + ')') if email else ''}.")
+    except Exception as e:
+        messages.error(request, f"خطا در اتصال به گوگل‌درایو: {str(e)}")
+    return _drive_back_to_backup(request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def drive_save_config(request):
+    """Save Google Drive credentials from the page (no server restart needed)."""
+    if request.method == 'POST':
+        if request.POST.get('clear_config'):
+            drive_backup.clear_config()
+            messages.success(request, "تنظیمات ذخیره‌شده گوگل‌درایو حذف شد؛ مقادیر محیطی (در صورت وجود) استفاده می‌شوند.")
+            return get_cafe_redirect_url('backup_management', request)
+
+        client_id = request.POST.get('client_id', '').strip()
+        client_secret = request.POST.get('client_secret', '').strip()
+        folder_id = request.POST.get('folder_id', '').strip()
+
+        if not client_id and not client_secret:
+            drive_backup.clear_config()
+            messages.success(request, "تنظیمات ذخیره‌شده گوگل‌درایو حذف شد؛ مقادیر محیطی (در صورت وجود) استفاده می‌شوند.")
+        elif not client_id:
+            messages.error(request, "وارد کردن Client ID الزامی است.")
+        elif not client_secret:
+            # Empty secret means "keep the existing one" (it is not shown on the page)
+            existing = drive_backup.load_config()['client_secret']
+            if existing:
+                drive_backup.save_config(client_id, existing, folder_id)
+                messages.success(request, "تنظیمات گوگل‌درایو ذخیره شد و بلافاصله اعمال می‌شود.")
+            else:
+                messages.error(request, "وارد کردن Client Secret الزامی است.")
+        else:
+            drive_backup.save_config(client_id, client_secret, folder_id)
+            messages.success(request, "تنظیمات گوگل‌درایو ذخیره شد و بلافاصله اعمال می‌شود.")
+    return get_cafe_redirect_url('backup_management', request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def drive_disconnect(request):
+    """Disconnect Google Drive (removes the stored token)."""
+    if request.method == 'POST':
+        drive_backup.clear_token()
+        messages.success(request, "اتصال گوگل‌درایو قطع شد.")
+    return get_cafe_redirect_url('backup_management', request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def drive_backup_now(request):
+    """Send a fresh backup of the database to Google Drive."""
+    if request.method != 'POST':
+        return get_cafe_redirect_url('backup_management', request)
+    if not drive_backup.is_configured():
+        messages.error(request, "گوگل‌درایو تنظیم نشده است.")
+        return get_cafe_redirect_url('backup_management', request)
+    if not drive_backup.is_connected():
+        messages.error(request, "ابتدا به گوگل‌درایو متصل شوید.")
+        return get_cafe_redirect_url('backup_management', request)
+
+    backup_type = request.POST.get('type', 'json')
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    try:
+        if backup_type == 'folder':
+            # Full backup of the whole DATA_PATH folder as a ZIP
+            os.makedirs(settings.TMP_DIR, exist_ok=True)
+            zip_path = Path(settings.TMP_DIR) / f'syntel_data_backup_{timestamp}.zip'
+            _build_data_folder_zip(zip_path)
+            filename = zip_path.name
+            with open(zip_path, 'rb') as f:
+                payload = f.read()
+            try:
+                os.remove(zip_path)
+            except OSError:
+                pass
+        elif backup_type == 'db' and _is_sqlite_engine():
+            db_path = Path(settings.DATABASES['default']['NAME'])
+            if not os.path.exists(db_path):
+                raise ValueError('فایل دیتابیس یافت نشد.')
+            filename = f'syntel_db_backup_{timestamp}.sqlite3'
+            with open(db_path, 'rb') as f:
+                payload = f.read()
+        else:
+            buffer = io.StringIO()
+            call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=buffer)
+            filename = f'syntel_export_{timestamp}.json'
+            payload = buffer.getvalue().encode('utf-8')
+
+        drive_backup.upload_backup(filename, payload)
+        messages.success(request, f"پشتیبان «{filename}» با موفقیت به گوگل‌درایو ارسال شد.")
+    except Exception as e:
+        messages.error(request, f"خطا در ارسال به گوگل‌درایو: {str(e)}")
+    return get_cafe_redirect_url('backup_management', request)
+
+
+@custom_login_required
+@role_required(["manager"])
+def export_data_folder(request):
+    """Download the whole DATA_PATH folder (db + uploads + sessions) as a ZIP."""
+    os.makedirs(settings.TMP_DIR, exist_ok=True)
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    zip_path = Path(settings.TMP_DIR) / f'syntel_data_backup_{timestamp}.zip'
+    try:
+        _build_data_folder_zip(zip_path)
+    except Exception as e:
+        messages.error(request, f"خطا در ساخت پشتیبان: {str(e)}")
+        return get_cafe_redirect_url('backup_management', request)
+    return FileResponse(
+        _TempBackupFile(zip_path),
+        content_type='application/zip',
+        as_attachment=True,
+        filename=zip_path.name,
+    )
 
 
 @custom_login_required
@@ -2015,11 +2462,11 @@ def export_data_json(request):
     """Download a full database backup as JSON."""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f'syntel_export_{timestamp}.json'
-    
+
     buffer = io.StringIO()
     call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=buffer)
     buffer.seek(0)
-    
+
     response = HttpResponse(buffer.getvalue(), content_type='application/json')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
@@ -2109,35 +2556,50 @@ def export_data_csv(request):
 @custom_login_required
 @role_required(["manager"])
 def import_data_json(request):
-    """Import data from a JSON backup file."""
+    """Restore data from a JSON backup file (replaces all current data)."""
     if request.method == 'POST' and request.FILES.get('backup_file'):
         backup_file = request.FILES['backup_file']
-        
+
         # Save temporarily (under DATA_PATH/tmp)
         temp_dir = settings.TMP_DIR
         os.makedirs(temp_dir, exist_ok=True)
         temp_path = os.path.join(temp_dir, f'restore_{datetime.now().strftime("%Y%m%d%H%M%S")}.json')
-        
+
         try:
             with open(temp_path, 'wb+') as destination:
                 for chunk in backup_file.chunks():
                     destination.write(chunk)
-                    
-            call_command('loaddata', temp_path)
-            messages.success(request, "Data imported successfully.")
+
+            # Quick validation that the file is a JSON fixture before touching the DB
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                fixture = json.load(f)
+            if not isinstance(fixture, list):
+                raise ValueError("فرمت فایل JSON نامعتبر است (لیست اشیاء مورد انتظار است).")
+
+            # Snapshot the current DB so a bad restore is recoverable
+            snapshot_path = _snapshot_db_before_restore()
+
+            # Full restore: clear existing data, then load the fixture (atomic so a
+            # failure rolls everything back)
+            with transaction.atomic():
+                call_command('flush', verbosity=0, interactive=False)
+                call_command('loaddata', temp_path, verbosity=0)
+
+            note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
+            messages.success(request, f"داده‌ها با موفقیت بازیابی شد و جایگزین داده‌های قبلی شد.{note}")
         except Exception as e:
-            messages.error(request, f"Error importing data: {str(e)}")
+            messages.error(request, f"خطا در بازیابی داده‌ها: {str(e)}")
         finally:
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
-                except:
+                except OSError:
                     pass
-                
-        return redirect('backup_management')
-        
-    messages.error(request, "No file provided.")
-    return redirect('backup_management')
+
+        return get_cafe_redirect_url('backup_management', request)
+
+    messages.error(request, "فایلی انتخاب نشده است.")
+    return get_cafe_redirect_url('backup_management', request)
 
 
 @custom_login_required
@@ -2641,11 +3103,12 @@ def payment_type_delete(request, payment_type_id):
 @role_required(["manager", "admin"])
 def user_list(request, cafe_code=None):
     cafe = get_cafe_from_request(request)
+    from django.db.models import Q
     users = User.objects.all()
 
-    # فیلتر بر اساس کافه جاری - فقط کاربران همین کافه/رستوران نشان داده شوند
+    # فیلتر بر اساس کافه جاری - کاربران همین کافه + کاربران مشترک (cafe=None که به همه کافه‌ها دسترسی دارند)
     if cafe:
-        users = users.filter(cafe=cafe)
+        users = users.filter(Q(cafe=cafe) | Q(cafe__isnull=True))
 
     search_query = request.GET.get("search", "").strip()
     selected_role = request.GET.get("role", "")
@@ -2658,7 +3121,6 @@ def user_list(request, cafe_code=None):
         users = users.filter(role=selected_role)
     if officer_filter:
         # مسئولان خرید/انبار: نقش اصلی یا نقش دوم آن‌ها purchasing/warehouse باشد
-        from django.db.models import Q
         officer_q = Q(role__in=['purchasing', 'warehouse']) | Q(secondary_role__in=['purchasing', 'warehouse'])
         users = users.filter(officer_q)
     return render(request, "user_list.html", {
@@ -2667,6 +3129,7 @@ def user_list(request, cafe_code=None):
         "search_query": search_query,
         "selected_role": selected_role,
         "officer_filter": officer_filter,
+        "current_cafe": cafe,
     })
 
 
@@ -3873,7 +4336,7 @@ def payment_list(request):
 
 
 # ---------------------------------------------------------------------------
-# لیست بدهی شرکت‌ها — تعریف توسط ادمین، پرداخت و تایید توسط مدیرعامل
+# لیست بدهی تأمین‌کنندگان — تعریف توسط ادمین، پرداخت و تایید توسط مدیرعامل
 # ---------------------------------------------------------------------------
 
 
@@ -3964,14 +4427,50 @@ def _parse_payment_account(request, cafe):
     return _get_payment_accounts(cafe).filter(id=account_id).first()
 
 
+def _get_active_suppliers(cafe):
+    """تأمین‌کنندگان فعال کافه — برای جستجو و انتخاب در فرم‌های ثبت بدهی"""
+    suppliers = Supplier.objects.filter(status='active')
+    if cafe:
+        suppliers = suppliers.filter(cafe=cafe)
+    return suppliers.order_by('name')
+
+
+def _suppliers_list(cafe):
+    """تأمین‌کنندگان فعال کافه برای سرچ سمت کلاینت (picker انتخاب تأمین‌کننده) — با json_script در قالب رندر می‌شود"""
+    return [
+        {
+            'id': s.id,
+            'name': s.name,
+            'bank_name': s.bank_name or '',
+            'bank_account': s.bank_account or '',
+            'card_number': s.card_number or '',
+            'sheba_number': s.sheba_number or '',
+            'contact_person': s.contact_person or '',
+            'mobile': s.mobile or '',
+        }
+        for s in _get_active_suppliers(cafe)
+    ]
+
+
+def _parse_supplier(request, cafe):
+    """پارسه تأمین‌کننده انتخابی فرم بدهی — فقط تأمین‌کننده فعال همان کافه پذیرفته می‌شود"""
+    supplier_id = request.POST.get("supplier_id")
+    if not supplier_id:
+        return None
+    return _get_active_suppliers(cafe).filter(id=supplier_id).first()
+
+
 @custom_login_required
 @role_required(["admin"])
 def debt_list(request):
-    """لیست بدهی شرکت‌ها — ادمین بدهی جدید تعریف می‌کند و لیست بدهی‌ها و پرداخت‌های مدیرعامل را می‌بیند"""
+    """لیست بدهی تأمین‌کنندگان — ادمین بدهی جدید تعریف می‌کند و لیست بدهی‌ها و پرداخت‌های مدیرعامل را می‌بیند"""
     cafe = get_cafe_from_request(request)
 
     if request.method == "POST":
         company = request.POST.get("company", "").strip()
+        supplier = _parse_supplier(request, cafe)  # انتخاب تأمین‌کننده از لیست (اختیاری)
+        if supplier:
+            company = supplier.name
         amount = _parse_decimal(request.POST.get("amount", ""))
         debt_date = _parse_debt_date(request.POST.get("debt_date"))
         description = request.POST.get("description", "").strip()
@@ -3979,7 +4478,7 @@ def debt_list(request):
 
         errors = []
         if not company:
-            errors.append("نام شرکت الزامی است")
+            errors.append("نام تأمین‌کننده الزامی است")
         if amount is None or amount <= 0:
             errors.append("مبلغ بدهی معتبر نیست")
         if priority not in dict(Debt.PRIORITY_CHOICES):
@@ -3989,6 +4488,7 @@ def debt_list(request):
         else:
             Debt.objects.create(
                 company=company,
+                supplier=supplier,
                 amount=amount,
                 debt_date=debt_date,
                 description=description,
@@ -3996,20 +4496,20 @@ def debt_list(request):
                 cafe=cafe,
                 created_by=request.user,
             )
-            messages.success(request, f"بدهی شرکت {company} با موفقیت ثبت شد و به داشبورد مدیرعامل ارسال شد")
+            messages.success(request, f"بدهی تأمین‌کننده {company} با موفقیت ثبت شد و به داشبورد مدیرعامل ارسال شد")
         return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
 
     # تشخیص خودکار دستگاه: موبایل → داشبورد موبایل (بدون انتخاب دستی)
     if is_mobile_request(request):
         return _redirect_preserving_query(request, "mobile_debt_dashboard")
 
-    debts = Debt.objects.select_related("paid_by", "created_by").all()
+    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
     if cafe:
         debts = debts.filter(cafe=cafe)
 
     pending_debts = list(debts.filter(status="pending"))
     # لیست بدهی‌ها همیشه کامل نمایش داده می‌شود — فقط بخش پرداخت‌ها فیلتر بازه زمانی دارد
-    all_payments = DebtPayment.objects.select_related("debt__account", "paid_by", "account")
+    all_payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
     if cafe:
         all_payments = all_payments.filter(cafe=cafe)
     payments, selected_period = _filter_debt_payments_by_period(all_payments, request)
@@ -4021,6 +4521,7 @@ def debt_list(request):
         "today_jalali": _today_jalali(),
         "selected_period": selected_period,
         "payment_accounts": _get_payment_accounts(cafe),
+        "suppliers_data": _suppliers_list(cafe),
         "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
         "total_paid_amount": payments.aggregate(total=Sum("amount"))["total"] or 0,
     }
@@ -4037,13 +4538,13 @@ def ceo_debt_payments(request):
     if is_mobile_request(request):
         return _redirect_preserving_query(request, "mobile_debt_dashboard")
 
-    debts = Debt.objects.select_related("paid_by", "created_by").all()
+    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
     if cafe:
         debts = debts.filter(cafe=cafe)
 
     pending_debts = list(debts.filter(status="pending"))
     # لیست بدهی‌ها همیشه کامل — فقط بخش پرداخت‌ها فیلتر بازه زمانی دارد
-    all_payments = DebtPayment.objects.select_related("debt__account", "paid_by", "account")
+    all_payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
     if cafe:
         all_payments = all_payments.filter(cafe=cafe)
     payments, selected_period = _filter_debt_payments_by_period(all_payments, request)
@@ -4053,6 +4554,7 @@ def ceo_debt_payments(request):
         "priority_choices": Debt.PRIORITY_CHOICES,
         "selected_period": selected_period,
         "payment_accounts": _get_payment_accounts(cafe),
+        "suppliers_data": _suppliers_list(cafe),
         "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
     }
     return render(request, "ceo_debt_payments.html", context)
@@ -4101,15 +4603,15 @@ def debt_pay(request, debt_id):
         debt.account = account
         if photo:
             debt.payment_photo = photo  # آپلود تصویر اختیاری است
-        # اگر مجموع پرداخت‌ها بیش از ۹۰٪ مبلغ بدهی شد، بدهی بسته می‌شود و از لیست بدهی‌ها حذف می‌شود
+        # اگر باقی‌مانده بدهی ۱٬۰۰۰٬۰۰۰ تومان یا کمتر شد، بدهی بسته می‌شود و از لیست بدهی‌ها حذف می‌شود
         # در غیر این صورت باقی‌مانده در لیست بدهی‌ها می‌ماند
-        if total_paid > debt.amount * Decimal("0.9"):
+        if debt.remaining <= 1_000_000:
             debt.status = "paid"
         debt.save()
         if debt.status == "paid":
-            messages.success(request, f"پرداخت بدهی شرکت {debt.company} با موفقیت ثبت و تایید شد")
+            messages.success(request, f"پرداخت بدهی تأمین‌کننده {debt.company} با موفقیت ثبت و تایید شد")
         else:
-            messages.success(request, f"پرداخت جزئی شرکت {debt.company} ثبت شد — باقی‌مانده: {debt.remaining:,} تومان")
+            messages.success(request, f"پرداخت جزئی تأمین‌کننده {debt.company} ثبت شد — باقی‌مانده: {debt.remaining:,} تومان")
 
     return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
@@ -4122,10 +4624,13 @@ def debt_pay_offlist(request):
 
     if request.method == "POST":
         company = request.POST.get("company", "").strip()
+        supplier = _parse_supplier(request, cafe)  # انتخاب تأمین‌کننده از لیست (اختیاری)
+        if supplier:
+            company = supplier.name
         amount = _parse_decimal(request.POST.get("amount", ""))
         errors = []
         if not company:
-            errors.append("نام شرکت الزامی است")
+            errors.append("نام تأمین‌کننده الزامی است")
         if amount is None or amount <= 0:
             errors.append("مبلغ پرداختی معتبر نیست")
         if errors:
@@ -4135,6 +4640,7 @@ def debt_pay_offlist(request):
             account = _parse_payment_account(request, cafe)  # انتخاب بانک/حساب پرداخت
             debt = Debt.objects.create(
                 company=company,
+                supplier=supplier,
                 amount=amount,
                 description=request.POST.get("description", "").strip(),
                 debt_date=timezone.now().date(),
@@ -4162,7 +4668,7 @@ def debt_pay_offlist(request):
             if photo:
                 debt.payment_photo = photo  # آپلود تصویر اختیاری است
                 debt.save(update_fields=["payment_photo"])
-            messages.success(request, f"پرداخت خارج از لیست شرکت {company} با موفقیت ثبت شد")
+            messages.success(request, f"پرداخت خارج از لیست تأمین‌کننده {company} با موفقیت ثبت شد")
 
     return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
@@ -4210,6 +4716,9 @@ def debt_edit(request, debt_id):
 
     if request.method == "POST":
         company = request.POST.get("company", "").strip()
+        supplier = _parse_supplier(request, cafe)  # انتخاب تأمین‌کننده از لیست (اختیاری)
+        if supplier:
+            company = supplier.name
         amount = _parse_decimal(request.POST.get("amount", ""))
         debt_date = _parse_debt_date(request.POST.get("debt_date"))
         description = request.POST.get("description", "").strip()
@@ -4217,7 +4726,7 @@ def debt_edit(request, debt_id):
 
         errors = []
         if not company:
-            errors.append("نام شرکت الزامی است")
+            errors.append("نام تأمین‌کننده الزامی است")
         if amount is None or amount <= 0:
             errors.append("مبلغ بدهی معتبر نیست")
         if priority not in dict(Debt.PRIORITY_CHOICES):
@@ -4226,12 +4735,13 @@ def debt_edit(request, debt_id):
             messages.error(request, "؛ ".join(errors))
         else:
             debt.company = company
+            debt.supplier = supplier
             debt.amount = amount
             debt.debt_date = debt_date
             debt.description = description
             debt.priority = priority
             debt.save()
-            messages.success(request, f"بدهی شرکت {company} ویرایش شد و برای مدیرعامل هم اعمال شد")
+            messages.success(request, f"بدهی تأمین‌کننده {company} ویرایش شد و برای مدیرعامل هم اعمال شد")
         return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
 
     # تاریخ بدهی به شمسی برای باکس تقویم (فرمت 1404/05/17 — مثل فرم ثبت بدهی)
@@ -4248,6 +4758,7 @@ def debt_edit(request, debt_id):
         "priority_choices": Debt.PRIORITY_CHOICES,
         "today_jalali": _today_jalali(),
         "debt_date_jalali": debt_date_jalali,
+        "suppliers_data": _suppliers_list(cafe),
     })
 
 
@@ -4263,11 +4774,11 @@ def debt_delete(request, debt_id):
 
     if request.method == "POST":
         if debt.payments.exists():
-            messages.error(request, f"بدهی شرکت {debt.company} پرداخت شده است و قابل حذف نیست")
+            messages.error(request, f"بدهی تأمین‌کننده {debt.company} پرداخت شده است و قابل حذف نیست")
         else:
             name = debt.company
             debt.delete()
-            messages.success(request, f"بدهی شرکت {name} حذف شد و از داشبورد مدیرعامل هم حذف شد")
+            messages.success(request, f"بدهی تأمین‌کننده {name} حذف شد و از داشبورد مدیرعامل هم حذف شد")
     return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
 
 
@@ -4295,13 +4806,13 @@ def debt_payment_edit(request, payment_id):
             payment.payment_photo = photo
         payment.save()
 
-        # وضعیت بدهی متصل دوباره محاسبه می‌شود — همان قانون ثبت پرداخت (بیش از ۹۰٪ → بسته)
+        # وضعیت بدهی متصل دوباره محاسبه می‌شود — همان قانون ثبت پرداخت (باقی‌مانده ≤ ۱٬۰۰۰٬۰۰۰ → بسته)
         debt = payment.debt
         if debt:
             total_paid = debt.paid_total
             debt.paid_amount = total_paid
             debt.account = payment.account or debt.account
-            if total_paid > debt.amount * Decimal("0.9"):
+            if debt.remaining <= 1_000_000:
                 debt.status = "paid"
                 debt.paid_at = timezone.now()
                 debt.paid_by = payment.paid_by
@@ -4310,13 +4821,60 @@ def debt_payment_edit(request, payment_id):
                 debt.paid_at = None
                 debt.paid_by = None
             debt.save()
-        messages.success(request, f"پرداخت شرکت {payment.company} ویرایش شد")
+        messages.success(request, f"پرداخت تأمین‌کننده {payment.company} ویرایش شد")
         return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
     return render(request, "debt_payment_edit.html", {
         "payment": payment,
         "payment_accounts": _get_payment_accounts(cafe),
     })
+
+
+@custom_login_required
+@role_required(["ceo", "manager"])
+def debt_payment_delete(request, payment_id):
+    """حذف پرداخت توسط مدیرعامل — رسید آپلود شده هم حذف می‌شود؛ وضعیت بدهی دوباره محاسبه می‌شود"""
+    cafe = get_cafe_from_request(request)
+    payment = get_object_or_404(DebtPayment, id=payment_id)
+    if cafe and payment.cafe != cafe:
+        messages.error(request, "دسترسی غیرمجاز")
+        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
+
+    if request.method == "POST":
+        debt = payment.debt
+        company = payment.company
+
+        # حذف فایل رسید از دیسک
+        if payment.payment_photo:
+            payment.payment_photo.delete(save=False)
+
+        payment.delete()
+
+        # وضعیت بدهی متصل دوباره محاسبه می‌شود — همان قانون ثبت پرداخت (باقی‌مانده ≤ ۱٬۰۰۰٬۰۰۰ → بسته)
+        if debt:
+            total_paid = debt.paid_total
+            debt.paid_amount = total_paid
+            if debt.remaining <= 1_000_000 and total_paid > 0:
+                debt.status = "paid"
+                debt.paid_at = timezone.now()
+                # اگر پرداخت دیگری باقی مانده، مشخصات آن به عنوان آخرین پرداخت ثبت می‌شود
+                last_payment = debt.payments.order_by('-paid_at').first()
+                if last_payment:
+                    debt.paid_by = last_payment.paid_by
+                    debt.account = last_payment.account
+                    debt.payment_photo = last_payment.payment_photo
+            else:
+                debt.status = "pending"
+                debt.paid_at = None
+                debt.paid_by = None
+                debt.account = None
+                debt.payment_photo = None
+            debt.save()
+
+        messages.success(request, f"پرداخت تأمین‌کننده {company} حذف شد")
+        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
+
+    return render(request, "debt_payment_confirm_delete.html", {"payment": payment})
 
 
 @custom_login_required
@@ -4329,19 +4887,20 @@ def mobile_debt_dashboard(request):
         return _redirect_preserving_query(request, target)
 
     cafe = get_cafe_from_request(request)
-    debts = Debt.objects.select_related("paid_by", "created_by").all()
+    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
     if cafe:
         debts = debts.filter(cafe=cafe)
 
     pending_debts = list(debts.filter(status="pending"))
     # نسخه موبایل فیلتر بازه زمانی ندارد — همه پرداخت‌ها کامل نمایش داده می‌شوند
-    payments = DebtPayment.objects.select_related("debt__account", "paid_by", "account")
+    payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
     if cafe:
         payments = payments.filter(cafe=cafe)
     context = {
         "pending_debts": pending_debts,
         "payments": payments,
         "payment_accounts": _get_payment_accounts(cafe),
+        "suppliers_data": _suppliers_list(cafe),
         "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
         "today": timezone.now().date(),
         "today_jalali": _today_jalali(),
@@ -4706,25 +5265,47 @@ def supplier_select(request):
 @role_required(["purchasing", "manager", "finance_manager"])
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager"])
+def _supplier_form_data(request):
+    """همه فیلدهای فرم تأمین‌کننده — برای ایجاد و ویرایش مشترک"""
+    return {
+        'name': request.POST.get("name", ""),
+        'supplier_type': request.POST.get("supplier_type", "company"),
+        'contact_person': request.POST.get("contact_person", ""),
+        'email': request.POST.get("email", ""),
+        'phone': request.POST.get("phone", ""),
+        'mobile': request.POST.get("mobile", ""),
+        'address': request.POST.get("address", ""),
+        'city': request.POST.get("city", ""),
+        'state': request.POST.get("state", ""),
+        'postal_code': request.POST.get("postal_code", ""),
+        'country': request.POST.get("country", "ایران"),
+        'tax_id': request.POST.get("tax_id", ""),
+        'registration_number': request.POST.get("registration_number", ""),
+        'business_license': request.POST.get("business_license", ""),
+        'website': request.POST.get("website", ""),
+        'bank_name': request.POST.get("bank_name", ""),
+        'bank_account': request.POST.get("bank_account", ""),
+        'bank_routing': request.POST.get("bank_routing", ""),
+        'card_number': request.POST.get("card_number", ""),
+        'sheba_number': request.POST.get("sheba_number", ""),
+        'payment_terms': request.POST.get("payment_terms", ""),
+        'notes': request.POST.get("notes", ""),
+    }
+
+
 def supplier_create(request):
     cafe = get_cafe_from_request(request)
     if request.method == "POST":
-        name = request.POST.get("name")
-        supplier_type = request.POST.get("supplier_type")
-        if name and supplier_type:
+        data = _supplier_form_data(request)
+        if data['name'] and data['supplier_type']:
             try:
-                Supplier.objects.create(
-                    name=name,
-                    supplier_type=supplier_type,
-                    contact_person=request.POST.get("contact_person", ""),
-                    email=request.POST.get("email", ""),
-                    phone=request.POST.get("phone", ""),
-                    mobile=request.POST.get("mobile", ""),
-                    address=request.POST.get("address", ""),
-                    cafe=cafe,
-                )
-                messages.success(request, f'تأمین‌کننده "{name}" با موفقیت ایجاد شد.')
-                return redirect("supplier_list")
+                supplier = Supplier.objects.create(cafe=cafe, **data)
+                # دسته‌بندی‌های انتخابی
+                categories = request.POST.getlist("categories")
+                if categories:
+                    supplier.categories.set(Category.objects.filter(id__in=categories))
+                messages.success(request, f'تأمین‌کننده "{supplier.name}" با موفقیت ایجاد شد.')
+                return get_cafe_redirect_url("supplier_list", request)
             except Exception as e:
                 messages.error(request, f'خطا در ایجاد تأمین‌کننده: {str(e)}')
         else:
@@ -4744,17 +5325,18 @@ def supplier_detail(request, supplier_id):
 def supplier_update(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     if request.method == "POST":
-        supplier.name = request.POST.get("name", supplier.name)
-        supplier.supplier_type = request.POST.get("supplier_type", supplier.supplier_type)
-        supplier.contact_person = request.POST.get("contact_person", supplier.contact_person)
-        supplier.email = request.POST.get("email", supplier.email)
-        supplier.phone = request.POST.get("phone", supplier.phone)
-        supplier.mobile = request.POST.get("mobile", supplier.mobile)
-        supplier.address = request.POST.get("address", supplier.address)
+        data = _supplier_form_data(request)
+        if not data['name']:
+            messages.error(request, 'نام تأمین‌کننده الزامی است.')
+            return render(request, "supplier_form.html", {"supplier": supplier, "supplier_types": Supplier.SUPPLIER_TYPE_CHOICES})
+        for field, value in data.items():
+            setattr(supplier, field, value)
         try:
             supplier.save()
+            categories = request.POST.getlist("categories")
+            supplier.categories.set(Category.objects.filter(id__in=categories))
             messages.success(request, f'تأمین‌کننده "{supplier.name}" با موفقیت بروزرسانی شد.')
-            return redirect("supplier_list")
+            return get_cafe_redirect_url("supplier_list", request)
         except Exception as e:
             messages.error(request, f'خطا در بروزرسانی تأمین‌کننده: {str(e)}')
     return render(request, "supplier_form.html", {"supplier": supplier, "supplier_types": Supplier.SUPPLIER_TYPE_CHOICES})
@@ -4766,7 +5348,7 @@ def supplier_delete(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     if request.method == "POST":
         supplier.delete()
-        return redirect("supplier_list")
+        return get_cafe_redirect_url("supplier_list", request)
     return render(request, "supplier_confirm_delete.html", {"supplier": supplier})
 
 
@@ -4842,7 +5424,7 @@ def supplier_activate(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     supplier.status = "active"
     supplier.save()
-    return redirect("supplier_detail", supplier_id=supplier.id)
+    return get_cafe_redirect_url("supplier_detail", request, supplier_id=supplier.id)
 
 
 @custom_login_required
@@ -4851,7 +5433,7 @@ def supplier_deactivate(request, supplier_id):
     supplier = get_object_or_404(Supplier, id=supplier_id)
     supplier.status = "inactive"
     supplier.save()
-    return redirect("supplier_detail", supplier_id=supplier.id)
+    return get_cafe_redirect_url("supplier_detail", request, supplier_id=supplier.id)
 
 
 @custom_login_required
@@ -4880,7 +5462,7 @@ def supplier_evaluation_create(request, supplier_id):
             comments=request.POST.get("comments", ""),
             evaluator=request.user,
         )
-        return redirect("supplier_evaluation_list", supplier_id=supplier.id)
+        return get_cafe_redirect_url("supplier_evaluation_list", request, supplier_id=supplier.id)
     return render(request, "supplier_evaluation_form.html", {"supplier": supplier})
 
 
@@ -4914,7 +5496,7 @@ def supplier_evaluation_create_general(request):
                 comments=request.POST.get("comments", ""),
                 evaluator=request.user,
             )
-            return redirect("supplier_evaluation_all_list")
+            return get_cafe_redirect_url("supplier_evaluation_all_list", request)
     return render(request, "supplier_evaluation_form.html", {"suppliers": suppliers})
 
 
@@ -5827,46 +6409,6 @@ def management_dashboard(request):
 
 @custom_login_required
 @role_required(["manager", "ceo"])
-def approve_purchase_requests(request):
-    """
-    صفحه تایید درخواست‌های خرید - نمایش همه درخواست‌های در انتظار تایید
-    """
-    cafe = get_cafe_from_request(request)
-    cafe_code = cafe.code if cafe else None
-    
-    # دریافت درخواست‌های در انتظار تایید مدیر
-    requests_qs = PurchaseRequest.objects.filter(
-        status='pending_manager_approval'
-    ).select_related('user', 'cafe').prefetch_related('items__product').order_by('-created_at')
-    
-    if cafe:
-        requests_qs = requests_qs.filter(cafe=cafe)
-    
-    # فیلتر بر اساس دپارتمان
-    department_filter = request.GET.get('department', '')
-    if department_filter:
-        requests_qs = requests_qs.filter(user__role=department_filter)
-    
-    # محاسبه آمار
-    total_requests = requests_qs.count()
-    departments_count = requests_qs.values('user__role').annotate(count=models.Count('id'))
-    
-    context = {
-        'cafe_code': cafe_code,
-        'current_cafe': cafe,
-        'user': request.user,
-        'requests': requests_qs,
-        'total_requests': total_requests,
-        'departments': User.ROLE_CHOICES,
-        'selected_department': department_filter,
-        'departments_count': {item['user__role']: item['count'] for item in departments_count},
-    }
-    
-    return render(request, 'approve_purchase_requests.html', context)
-
-
-@custom_login_required
-@role_required(["manager", "ceo"])
 def manager_pending_requests(request):
     """
     لیست درخواست‌های در انتظار تایید مدیر
@@ -5906,11 +6448,11 @@ def manager_approve_request(request, request_id):
     
     if cafe and purchase_request.cafe != cafe:
         messages.error(request, 'دسترسی غیرمجاز')
-        return redirect('approve_purchase_requests', cafe_code=cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code)
     
     if purchase_request.status != 'pending_manager_approval':
         messages.warning(request, 'این درخواست قبلاً پردازش شده است')
-        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
     
     if request.method == 'POST':
         # تایید درخواست
@@ -5930,13 +6472,13 @@ def manager_approve_request(request, request_id):
         
         messages.success(request, f'درخواست کالا #{purchase_request.id} با موفقیت تایید شد و به واحد خرید ارسال شد')
         
-        # برگشت به صفحه قبلی یا approve_purchase_requests
+        # برگشت به صفحه قبلی یا درخواست‌های در انتظار
         next_url = request.GET.get('next')
         if next_url:
             return redirect(next_url)
-        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
     
-    return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
 
 
 @custom_login_required
@@ -5950,11 +6492,11 @@ def manager_reject_request(request, request_id):
     
     if cafe and purchase_request.cafe != cafe:
         messages.error(request, 'دسترسی غیرمجاز')
-        return redirect('approve_purchase_requests', cafe_code=cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code)
     
     if purchase_request.status != 'pending_manager_approval':
         messages.warning(request, 'این درخواست قبلاً پردازش شده است')
-        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
     
     if request.method == 'POST':
         rejection_reason = request.POST.get('rejection_reason', '')
@@ -5977,13 +6519,13 @@ def manager_reject_request(request, request_id):
         
         messages.success(request, f'درخواست کالا #{purchase_request.id} رد شد')
         
-        # برگشت به صفحه قبلی یا approve_purchase_requests
+        # برگشت به صفحه قبلی یا درخواست‌های در انتظار
         next_url = request.POST.get('next', request.GET.get('next'))
         if next_url:
             return redirect(next_url)
-        return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+        return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
     
-    return redirect('approve_purchase_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
+    return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
 
 
 # ---------------------------------------------------------------------------  
@@ -6809,11 +7351,21 @@ def _item_section_name(user):
     return dept_names.get(getattr(user, 'role', ''), getattr(user, 'role', '—'))
 
 
-def _product_key(item):
-    """کلید ادغام کالا: شناسه محصول اگر موجود باشد وگرنه نام کوچک‌شده"""
+def _product_key(item, include_description=False):
+    """کلید ادغام کالا: شناسه محصول اگر موجود باشد وگرنه نام کوچک‌شده.
+
+    اگر include_description=True باشد، توضیحات قلم هم جزئی از کلید می‌شود تا
+    اقلام همنام با توضیحات متفاوت به‌عنوان گزینه‌های جدا نمایش داده شوند.
+    """
     if item.product_id:
-        return f"product_{item.product_id}"
-    return (item.name or '').strip().lower()
+        key = f"product_{item.product_id}"
+    else:
+        key = (item.name or '').strip().lower()
+    if include_description:
+        desc = (getattr(item, 'description', '') or '').strip()
+        if desc:
+            key += f"|desc:{desc}"
+    return key
 
 
 def _sync_request_status(request_obj):
@@ -6915,20 +7467,31 @@ def _notify_officer(officer, item, target_role, cafe):
 # ═══════════════════════════════════════════════════════════════════════════
 
 @custom_login_required
-@role_required(['purchasing', 'warehouse'])
+@role_required(['purchasing', 'warehouse', 'manager', 'ceo'])
 def purchase_officer_dashboard(request: HttpRequest) -> HttpResponse:
     """لیست خرید مسئول خرید: اقلامی که مدیرعامل برای او (یا مشترک) ارسال کرده است.
 
-    اقلام مشترک بین بخش‌ها جمع می‌شوند (با ذکر سهم هر بخش)؛ اگر توضیحاتی داشته باشند
-    در زیر همان ردیف جداگانه نمایش داده می‌شوند. مسئول خرید هر قلم را یا «خریداری شده»
-    می‌کند یا به لیست مدیرعامل برمی‌گرداند.
+    اقلام مشترک بین بخش‌ها جمع می‌شوند (با ذکر سهم هر بخش)؛ اقلام همنام با توضیحات
+    متفاوت در ردیف‌های جدا نمایش داده می‌شوند تا هر گزینه جدا خریداری شود.
+    مسئول خرید هر قلم را یا «خریداری شده» می‌کند یا به لیست مدیرعامل برمی‌گرداند.
+
+    برای مدیرعامل/مدیر (نقش «خرید توسط خودم») همین صفحه «لیست خرید من» است:
+    فقط اقلامِ تخصیص‌یافته به خودش دیده می‌شود (بدون سهم مشترک مسئولان خرید).
     """
     from collections import defaultdict
 
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
 
-    if not (request.user.role == 'admin' or request.user.is_superuser or request.user.has_purchasing_role):
+    # نقش «خرید توسط خودم»: مدیرعامل/مدیرِ بدون نقش خرید، خریدِ خودش را انجام می‌دهد
+    is_self_buy = (
+        request.user.role in ('manager', 'ceo')
+        and not request.user.has_purchasing_role
+        and not request.user.has_warehouse_role
+    )
+
+    if not (request.user.role == 'admin' or request.user.is_superuser
+            or request.user.has_purchasing_role or is_self_buy):
         return redirect('warehouse_officer_dashboard', cafe_code=cafe_code)
 
     if request.method == 'POST':
@@ -6957,12 +7520,19 @@ def purchase_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 messages.info(request, f'«{assignment.item.name}» به لیست مدیرعامل بازگشت.')
         return redirect('purchase_officer_dashboard', cafe_code=cafe_code)
 
-    # اقلام در انتظار مسئول خرید
-    assignments = (
-        _visible_assignments_q(request.user, 'purchasing')
+    # اقلام در انتظار مسئول خرید؛ برای «خرید توسط خودم» فقط تخصیص‌های خودِ مدیرعامل
+    assignments_qs = (
+        OfficerAssignment.objects
+        .filter(target_role='purchasing', status='pending')
         .select_related('item', 'item__request', 'item__request__user', 'item__product', 'assigned_to')
-        .order_by('assigned_at')
     )
+    if is_self_buy:
+        assignments_qs = assignments_qs.filter(assigned_to=request.user)
+    else:
+        assignments_qs = assignments_qs.filter(
+            Q(assigned_to=request.user) | Q(assigned_to__isnull=True)
+        )
+    assignments = assignments_qs.order_by('assigned_at')
     if cafe:
         assignments = assignments.filter(item__request__cafe=cafe)
 
@@ -6974,7 +7544,8 @@ def purchase_officer_dashboard(request: HttpRequest) -> HttpResponse:
     })
     for a in assignments:
         item = a.item
-        key = _product_key(item)
+        # اقلام همنام با توضیحات متفاوت، ردیف‌های جدا می‌شوند
+        key = _product_key(item, include_description=True)
         row = rows_map[key]
         row['name'] = item.product.name if item.product else item.name
         row['unit'] = item.unit
@@ -7002,6 +7573,7 @@ def purchase_officer_dashboard(request: HttpRequest) -> HttpResponse:
         'total_items': sum(len(r['assignments']) for r in rows),
         'cafe_code': cafe_code,
         'user': request.user,
+        'is_self_buy': is_self_buy,
     })
 
 
@@ -7021,6 +7593,20 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if not (request.user.role == 'admin' or request.user.is_superuser or request.user.has_warehouse_role):
         return redirect('purchase_officer_dashboard', cafe_code=cafe_code)
 
+    # ── تاریخ انتخابی (پیش‌فرض: امروز) — قبل از پردازش فرم محاسبه می‌شود تا
+    # بعد از هر ثبت/ریدایرکت همان تاریخ باقی بماند و به امروز برنگردد ──
+    date_str = request.GET.get('date', '') or request.POST.get('date', '')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_date = datetime.now().date()
+            date_str = selected_date.isoformat()
+    else:
+        selected_date = datetime.now().date()
+        date_str = selected_date.isoformat()
+    dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code]) + f'?date={date_str}'
+
     # ── پردازش فرم ──
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -7034,7 +7620,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             item = None
         if item is None:
             messages.error(request, 'قلم درخواست یافت نشد')
-            return redirect('warehouse_officer_dashboard', cafe_code=cafe_code)
+            return redirect(dash_url)
 
         # تخصیص موجود (در انتظار) یا ساخت تخصیص جدید
         assignment = item.officer_assignments.filter(
@@ -7042,24 +7628,48 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True)).first()
 
         if action == 'fulfill':
-            stock_item_id = request.POST.get('stock_item_id', '')
-            qty_raw = request.POST.get('qty', '')
-            qty = _parse_decimal(qty_raw)
-            try:
-                stock_item = StockItem.objects.get(id=int(stock_item_id))
-            except (StockItem.DoesNotExist, ValueError, TypeError):
-                stock_item = None
+            # ردیف‌های انتخابی: ردیف اول (stock_item_id/qty) + ردیف‌های پویای JS (stock_item_id_X/qty_X)
+            stock_ids = request.POST.getlist("stock_item_id")
+            qtys = request.POST.getlist("qty")
+            extra_rows = []
+            i = 1
+            while f"stock_item_id_{i}" in request.POST:
+                extra_rows.append((request.POST.get(f"stock_item_id_{i}", ""), request.POST.get(f"qty_{i}", "")))
+                i += 1
+            all_rows = list(zip(stock_ids, qtys)) + extra_rows
+
+            # تجمیع ردیف‌های تکراری (همان انبار/برند چند بار انتخاب شده) تا از یک موجودی دوبار کم نشود
+            merged = {}
+            order = []
+            for sid, qty_str in all_rows:
+                if not sid:
+                    continue
+                qty = _parse_decimal(qty_str)
+                if sid not in merged:
+                    merged[sid] = {'qty': qty, 'order': len(order)}
+                    order.append(sid)
+                elif qty is not None:
+                    merged[sid]['qty'] = (merged[sid]['qty'] or 0) + qty
 
             has_error = False
-            if stock_item is None or qty is None or qty <= 0:
-                messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
-                has_error = True
-            else:
+            validated = []  # (stock_item, base_deduction, qty) — هر عنصر یک برند/انبار
+            for sid in order:
+                qty = merged[sid]['qty']
+                try:
+                    stock_item = StockItem.objects.get(id=int(sid))
+                except (StockItem.DoesNotExist, ValueError, TypeError):
+                    stock_item = None
+
+                if stock_item is None or qty is None or qty <= 0:
+                    messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
+                    has_error = True
+                    break
                 # برند و نرخ تبدیل از خود ردیف موجودی انبار گرفته می‌شود
                 brand = stock_item.product_brand
                 if stock_item.product_id != item.product_id:
                     messages.error(request, f'موجودی انبار با کالای «{item.name}» مطابقت ندارد')
                     has_error = True
+                    break
                 base_deduction = qty
                 if brand and brand.conversion_rate:
                     base_deduction = qty * brand.conversion_rate
@@ -7067,8 +7677,18 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                     messages.error(request,
                         f'موجودی «{stock_item.product.name}» ({stock_item.quantity}) کمتر از مقدار درخواستی است')
                     has_error = True
+                    break
+                validated.append((stock_item, base_deduction, qty))
 
-            if not has_error:
+            if has_error:
+                return redirect(dash_url)
+
+            if not validated:
+                messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
+                return redirect(dash_url)
+
+            total_supplied = 0
+            for idx, (stock_item, base_deduction, qty) in enumerate(validated):
                 # کسر از موجودی انبار
                 prev_qty = stock_item.quantity
                 stock_item.quantity -= base_deduction
@@ -7085,16 +7705,27 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                     previous_quantity=prev_qty,
                     new_quantity=stock_item.quantity,
                 )
-                if assignment is None:
-                    assignment = _assign_item(item, 'warehouse', request.user, request.user)
-                assignment.status = 'fulfilled'
-                assignment.stock_item = stock_item
-                assignment.supplied_quantity = base_deduction
-                assignment.notes = (assignment.notes or '') + f' تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
-                assignment.save()
-                _sync_request_status(item.request)
-                messages.success(request, f'«{item.name}» از انبار تامین شد.')
-            return redirect('warehouse_officer_dashboard', cafe_code=cafe_code)
+                if idx == 0:
+                    # ردیف اول: تخصیص در انتظار قبلی (یا تخصیص جدید) تکمیل می‌شود
+                    if assignment is None:
+                        assignment = _assign_item(item, 'warehouse', request.user, request.user)
+                    assignment.status = 'fulfilled'
+                    assignment.stock_item = stock_item
+                    assignment.supplied_quantity = base_deduction
+                    assignment.notes = (assignment.notes or '') + f' تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
+                    assignment.save()
+                else:
+                    # هر برند اضافه، تخصیص جداگانه می‌گیرد (مدل فقط یک StockItem در هر تخصیص دارد)
+                    extra_assignment = _assign_item(
+                        item, 'warehouse', request.user, request.user, status='fulfilled')
+                    extra_assignment.stock_item = stock_item
+                    extra_assignment.supplied_quantity = base_deduction
+                    extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
+                    extra_assignment.save()
+                total_supplied += base_deduction
+            _sync_request_status(item.request)
+            messages.success(request, f'«{item.name}» از انبار تامین شد.')
+            return redirect(dash_url)
 
         elif action in ('to_purchase', 'not_in_stock'):
             if assignment is None:
@@ -7111,18 +7742,31 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 assignment.save()
                 _sync_request_status(item.request)
                 messages.warning(request, f'برای «{item.name}» عدم موجودی ثبت شد و به لیست مدیرعامل بازگشت.')
-            return redirect('warehouse_officer_dashboard', cafe_code=cafe_code)
+            return redirect(dash_url)
 
-    # ── تاریخ انتخابی (پیش‌فرض: امروز) ──
-    date_str = request.GET.get('date', '')
-    if date_str:
-        try:
-            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        except (ValueError, TypeError):
-            selected_date = datetime.now().date()
-    else:
-        selected_date = datetime.now().date()
-        date_str = selected_date.isoformat()
+        elif action == 'reopen':
+            # بازگشایی کالای ثبت‌شده برای ثبت مجدد: موجودی قبلی به انبار برمی‌گردد
+            done_assigns = item.officer_assignments.filter(
+                target_role='warehouse',
+                status__in=('fulfilled', 'not_in_stock', 'returned'),
+            ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True))
+            if not done_assigns.exists():
+                messages.error(request, 'این کالا برای بازگشایی آماده نیست')
+                return redirect(dash_url)
+            # معکوس‌سازی تراکنش‌های تامین قبلی این قلم (برگشت موجودی به انبار)
+            for tx in StockTransaction.objects.filter(
+                    reference_type='officer_assignment', reference_id=item.id, transaction_type='out'):
+                si = tx.stock_item
+                if si:
+                    si.quantity = si.quantity + tx.quantity
+                    si.save()
+            StockTransaction.objects.filter(
+                reference_type='officer_assignment', reference_id=item.id).delete()
+            done_assigns.delete()
+            _sync_request_status(item.request)
+            messages.info(request, f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.')
+            return redirect(dash_url)
+
     prev_date = selected_date - timedelta(days=1)
     next_date = selected_date + timedelta(days=1)
 
@@ -7146,6 +7790,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         date_items = date_items.filter(request__cafe=cafe)
 
     visible_items = []
+    done_items = []
     for item in date_items:
         assigns = list(item.officer_assignments.all())
         my_pending = [a for a in assigns if a.target_role == 'warehouse' and a.status == 'pending'
@@ -7154,32 +7799,67 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             visible_items.append({'item': item, 'assignment': my_pending[0]})
         elif not assigns and _item_in_stock(item, cafe, stocked_product_ids):
             visible_items.append({'item': item, 'assignment': None})
+        else:
+            # کالاهای ثبت‌شده (تامین/عدم موجودی/ارجاع) — کمرنگ پایین صفحه با قابلیت بازگشایی
+            my_done = [a for a in assigns if a.target_role == 'warehouse'
+                       and a.status in ('fulfilled', 'not_in_stock', 'returned')
+                       and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
+            if my_done:
+                done_items.append({'item': item, 'assignment': my_done[0]})
 
     # ── گزینه‌های تامین از انبار برای هر محصول (بر اساس ردیف‌های موجودی) ──
     product_ids = sorted({v['item'].product_id for v in visible_items if v['item'].product_id})
     stock_options = {}
+    stock_meta = {}
     if product_ids:
         sis = StockItem.objects.filter(product_id__in=product_ids, quantity__gt=0)
         if cafe:
             sis = sis.filter(warehouse__cafe=cafe)
         sis = sis.select_related('product_brand', 'warehouse', 'unit').order_by('warehouse__name')
+        # تعداد برندهای فعال هر محصول
+        from django.db.models import Count
+        brand_counts = dict(
+            ProductBrand.objects.filter(product_id__in=product_ids, is_active=True)
+            .values('product_id').annotate(c=Count('id')).values_list('product_id', 'c'))
+        branded_product_ids = set(brand_counts.keys())
         for si in sis:
             brand = si.product_brand
             avail = si.trade_quantity if si.trade_quantity is not None else si.quantity
-            unit_label = brand.trade_unit if brand and brand.trade_unit else (si.unit.name if si.unit else '')
+            unit_label = brand.trade_unit if brand and brand.trade_unit else (
+                (si.unit.symbol or si.unit.name) if si.unit else '')
             stock_options.setdefault(si.product_id, []).append({
                 'id': si.id,
                 'warehouse_name': si.warehouse.name if si.warehouse else '',
                 'brand_name': brand.brand_name if brand else 'بدون برند',
+                'default_selected': si.product_id not in branded_product_ids and not stock_options.get(si.product_id),
                 'available': avail,
                 'unit_label': unit_label,
                 'rate': brand.conversion_rate if brand and brand.conversion_rate else None,
                 'qty': si.quantity,
             })
+        # اگر همان برند در چند انبار موجود باشد، نام انبار هم کنار برند نشان داده می‌شود
+        for opts in stock_options.values():
+            wh_count = {}
+            for opt in opts:
+                wh_count[opt['brand_name']] = wh_count.get(opt['brand_name'], 0) + 1
+            for opt in opts:
+                opt['multi_warehouse'] = wh_count[opt['brand_name']] > 1
+
+        # محصول بدون برند که فقط در یک انبار موجودی دارد → انتخاب برند و افزودن
+        # برند معنایی ندارد، نمایش داده نشود (همان ردیف تنها، نامرئی ارسال می‌شود)
+        # محصول با دقیقاً یک برند که فقط در یک انبار موجودی دارد → همان انتخاب شود
+        for pid, opts in stock_options.items():
+            n_brands = brand_counts.get(pid, 0)
+            hide_select = n_brands == 0 and len(opts) == 1
+            stock_meta[pid] = {'hide_select': hide_select}
+            if not hide_select and n_brands == 1 and len(opts) == 1:
+                opts[0]['default_selected'] = True
 
     return render(request, 'warehouse_officer_dashboard.html', {
         'visible_items': visible_items,
+        'done_items': done_items,
         'stock_options': stock_options,
+        'stock_meta': stock_meta,
         'selected_date': selected_date,
         'prev_date': prev_date,
         'next_date': next_date,
@@ -7309,7 +7989,14 @@ def all_departments_requests(request):
                 officer = None
                 if officer_id.strip().isdigit():
                     officer = User.objects.filter(id=int(officer_id), is_active=True).first()
-                if not officer or not (officer.has_purchasing_role or officer.has_warehouse_role):
+                # «خرید توسط خودم»: مدیرعامل/مدیر قلم را برای خودش نگه می‌دارد
+                # (به «لیست خرید من» خودش می‌رود، نه به مسئول خرید)
+                is_self_buy = (
+                    officer is not None
+                    and officer.id == request.user.id
+                    and request.user.role in ('manager', 'ceo')
+                )
+                if not officer or (not is_self_buy and not (officer.has_purchasing_role or officer.has_warehouse_role)):
                     messages.error(request, 'لطفاً یک مسئول خرید/انبار معتبر انتخاب کنید')
                 elif not item_ids:
                     messages.error(request, 'هیچ قلمی برای ارسال انتخاب نشده است')
@@ -7317,7 +8004,7 @@ def all_departments_requests(request):
                     items = PurchaseItem.objects.filter(id__in=item_ids)
                     if cafe:
                         items = items.filter(request__cafe=cafe)
-                    target_role = 'purchasing' if officer.has_purchasing_role else 'warehouse'
+                    target_role = 'purchasing' if (is_self_buy or officer.has_purchasing_role) else 'warehouse'
                     sent = skipped = 0
                     affected_request_ids = set()
                     for item in items:
@@ -7325,16 +8012,23 @@ def all_departments_requests(request):
                             skipped += 1
                             continue
                         _assign_item(item, target_role, officer, request.user)
-                        _notify_officer(officer, item, target_role, cafe)
+                        if not is_self_buy:
+                            _notify_officer(officer, item, target_role, cafe)
                         sent += 1
                         affected_request_ids.add(item.request_id)
                     for rid in affected_request_ids:
                         _sync_request_status(PurchaseRequest.objects.get(id=rid))
                     if sent:
-                        messages.success(
-                            request,
-                            f'{sent} قلم به {officer.get_full_name() or officer.username} ({_officer_role_label(officer)}) ارسال شد.'
-                        )
+                        if is_self_buy:
+                            messages.success(
+                                request,
+                                f'{sent} قلم به «لیست خرید من» شما ارسال شد (خرید توسط خودم).'
+                            )
+                        else:
+                            messages.success(
+                                request,
+                                f'{sent} قلم به {officer.get_full_name() or officer.username} ({_officer_role_label(officer)}) ارسال شد.'
+                            )
                     if skipped:
                         messages.info(request, f'{skipped} قلم قبلاً ارسال شده بودند و نادیده گرفته شدند.')
             elif action == 'delete_item':
@@ -7357,6 +8051,67 @@ def all_departments_requests(request):
                     item = PurchaseItem.objects.filter(id=int(item_id)).first()
                     if item and (not cafe or item.request.cafe_id == cafe.id):
                         return redirect('update_purchase_request', cafe_code=cafe_code, request_id=item.request_id)
+            elif action == 'edit_section':
+                # ویرایش درجا: مقدار جدید کل بخش در همان صفحه — قلم‌های بخش به یک قلم تبدیل می‌شوند
+                ids = [i for i in request.POST.get('item_ids', '').split(',') if i.strip().isdigit()]
+                try:
+                    new_qty = int(request.POST.get('new_qty', ''))
+                except (TypeError, ValueError):
+                    new_qty = 0
+                items = list(PurchaseItem.objects.filter(id__in=ids)) if ids else []
+                if cafe:
+                    items = [it for it in items if it.request.cafe_id == cafe.id]
+                if new_qty <= 0:
+                    messages.error(request, 'مقدار جدید نامعتبر است (باید عدد صحیح مثبت باشد)')
+                elif not items:
+                    messages.error(request, 'قلمی برای ویرایش پیدا نشد')
+                else:
+                    unsent = [it for it in items
+                              if not it.officer_assignments.filter(status__in=ASSIGNMENT_ACTIVE_STATUSES).exists()]
+                    if not unsent:
+                        messages.error(request, 'همه قلم‌های این بخش قبلاً ارسال شده‌اند و قابل ویرایش نیستند')
+                    else:
+                        name = unsent[0].name or (unsent[0].product.name if unsent[0].product else '')
+                        target = unsent[0]
+                        target.quantity = new_qty
+                        target.save()
+                        affected = {target.request_id}
+                        for it in unsent[1:]:
+                            affected.add(it.request_id)
+                            it.delete()
+                        for rid in affected:
+                            req = PurchaseRequest.objects.filter(id=rid).first()
+                            if req:
+                                _sync_request_status(req)
+                                if not req.items.exists():
+                                    req.delete()
+                        messages.success(request, f'«{name}» در این بخش به {new_qty} {target.unit or ""} تغییر کرد')
+            elif action == 'delete_section':
+                # حذف همه قلم‌های یک بخش در ردیف کالا (فقط قلم‌های ارسال‌نشده)
+                ids = [i for i in request.POST.get('item_ids', '').split(',') if i.strip().isdigit()]
+                items = list(PurchaseItem.objects.filter(id__in=ids)) if ids else []
+                if cafe:
+                    items = [it for it in items if it.request.cafe_id == cafe.id]
+                if not items:
+                    messages.error(request, 'قلمی برای حذف پیدا نشد')
+                else:
+                    name = items[0].name or (items[0].product.name if items[0].product else '')
+                    unsent = [it for it in items
+                              if not it.officer_assignments.filter(status__in=ASSIGNMENT_ACTIVE_STATUSES).exists()]
+                    sent_skipped = len(items) - len(unsent)
+                    affected = {it.request_id for it in unsent}
+                    for it in unsent:
+                        it.delete()
+                    for rid in affected:
+                        req = PurchaseRequest.objects.filter(id=rid).first()
+                        if req:
+                            _sync_request_status(req)
+                            if not req.items.exists():
+                                req.delete()
+                    if unsent:
+                        messages.info(request, f'«{name}» حذف شد ({len(unsent)} قلم)')
+                    if sent_skipped:
+                        messages.info(request, f'{sent_skipped} قلم قبلاً ارسال شده بودند و حذف نشدند')
         redirect_url = reverse('all_departments_requests', kwargs={'cafe_code': cafe_code})
         params = {'type': request_type}
         if date_str:
@@ -7482,6 +8237,8 @@ def all_departments_requests(request):
         for req in requests_list:
             dept_name = _item_section_name(req.user)
             for item in req.items.all():
+                # کالای مشترک بین چند بخش در یک ردیف جمع می‌شود؛ سهم هر بخش
+                # در همان ردیف (تگ بخش + مقدار) نمایش داده می‌شود
                 key = _product_key(item)
                 row = rows_map[key]
                 row['name'] = item.product.name if item.product else (item.name or '').strip()
@@ -7519,10 +8276,13 @@ def all_departments_requests(request):
                     'any_returned': any(e['returned'] for e in entries),
                 })
             sections.sort(key=lambda s: s['dept'])
+            # همه قلم‌های ردیف با هم — یک باکس انتخاب برای کل کالا
+            all_item_ids = ','.join(str(e['item_id']) for s in sections for e in s['entries'])
             rows.append({
                 'name': data['name'],
                 'unit': data['unit'],
                 'total_qty': round(data['total_qty'], 2),
+                'all_item_ids': all_item_ids,
                 'sections': sections,
                 'total_items': data['total_items'],
                 'sent_items': data['sent_items'],
@@ -7555,6 +8315,7 @@ def all_departments_requests(request):
                     'all_sent': sent_items > 0 and sent_items == total_items,
                     'any_sent': sent_items > 0,
                     'dept_count': 1,
+                    'all_item_ids': ','.join(str(e['item_id']) for s in secs for e in s['entries']),
                 })
             filtered.sort(key=lambda r: (r['all_sent'], -r['total_qty']))
             rows = filtered
@@ -7592,6 +8353,425 @@ def all_departments_requests(request):
         'section_filter': section_filter,
         'officer_users': officer_users,
     })
+
+
+# ---------------------------------------------------------------------------
+# مدیریت درخواست‌ها (داشبورد ادمین) — لیست خرید ارسالی به مسئولان خرید + CSV
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(['admin', 'manager', 'ceo'])
+def request_management_dashboard(request: HttpRequest) -> HttpResponse:
+    """صفحه «مدیریت درخواست‌ها» در داشبورد ادمین.
+
+    - لیست خرید: اقلام درخواستی هر روز که برای مسئولان خرید ارسال شده‌اند؛
+      با فیلتر تاریخ و جابه‌جایی روز قبل/بعد (مثل صفحه «درخواست کالا» مدیرعامل).
+    - اقلامی که به داشبورد مدیرعامل برگشت خورده‌اند نمایش داده نمی‌شوند.
+    - لیست انبار: بخش در تسک بعدی؛ فعلاً جای‌خالی نمایش داده می‌شود.
+    """
+    from datetime import datetime, timedelta
+
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+    tab = request.GET.get('tab', 'purchase')  # purchase | warehouse
+
+    # تاریخ انتخاب‌شده (پیش‌فرض: امروز)
+    date_str = request.GET.get('date', '')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_date = datetime.now().date()
+    else:
+        selected_date = datetime.now().date()
+        date_str = selected_date.isoformat()
+
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
+
+    # ── لیست خرید: اقلام ارسالی به مسئولان خرید در روز انتخاب‌شده ──
+    assignments = (
+        OfficerAssignment.objects
+        .filter(
+            target_role='purchasing',
+            item__request__created_at__date=selected_date,
+        )
+        .exclude(status__in=ASSIGNMENT_RETURNED_STATUSES)
+        .select_related('item', 'item__request', 'item__request__user', 'assigned_to')
+        .order_by('item__request__created_at', 'item__request_id', 'item_id')
+    )
+    if cafe:
+        assignments = assignments.filter(item__request__cafe=cafe)
+
+    rows = []
+    for a in assignments:
+        item = a.item
+        req = item.request
+        requester = req.user if req.user else None
+        rows.append({
+            'item_id': item.id,
+            'name': item.product.name if item.product else item.name,
+            'quantity': item.quantity,
+            'unit': item.unit,
+            'section': _item_section_name(requester),
+            'requester': (requester.get_full_name() or requester.username) if requester else '—',
+            'officer': (a.assigned_to.get_full_name() or a.assigned_to.username) if a.assigned_to else 'همه مسئولان خرید',
+            'status': a.status,
+            'status_display': a.get_status_display(),
+            'assigned_at': a.assigned_at,
+        })
+
+    # ── لیست انبار: اقلام تحویل‌شده از انبار در روز انتخاب‌شده ──
+    wh_rows = []
+    if tab == 'warehouse':
+        from collections import defaultdict
+        wh_assignments = (
+            OfficerAssignment.objects
+            .filter(
+                target_role='warehouse',
+                status='fulfilled',
+                item__request__created_at__date=selected_date,
+            )
+            .select_related(
+                'item', 'item__request', 'item__request__user',
+                'stock_item', 'stock_item__product_brand',
+            )
+            .order_by('item__request__created_at', 'item__request_id', 'item_id')
+        )
+        if cafe:
+            wh_assignments = wh_assignments.filter(item__request__cafe=cafe)
+
+        # هر قلم درخواست یک ردیف؛ چند برند تحویلی با هم جمع می‌شوند
+        wh_map = defaultdict(lambda: {
+            'name': '', 'unit': '', 'requested_qty': 0.0, 'supplied_qty': 0.0,
+            'section': '', 'requester': '', 'brands': [], 'description': '',
+        })
+        for a in wh_assignments:
+            item = a.item
+            req = item.request
+            requester = req.user if req.user else None
+            row = wh_map[item.id]
+            row['name'] = item.product.name if item.product else item.name
+            row['unit'] = item.unit or ''
+            row['requested_qty'] = float(item.quantity or 0)
+            row['supplied_qty'] += float(a.supplied_quantity or 0)
+            row['section'] = _item_section_name(requester)
+            row['requester'] = (requester.get_full_name() or requester.username) if requester else '—'
+            brand = a.stock_item.product_brand if a.stock_item and a.stock_item.product_brand else None
+            brand_name = brand.brand_name if brand else ''
+            if brand_name and brand_name not in row['brands']:
+                row['brands'].append(brand_name)
+            if item.description and item.description not in row['description']:
+                row['description'] = item.description
+
+        wh_rows = []
+        for item_id, data in wh_map.items():
+            wh_rows.append({
+                'item_id': item_id,
+                **data,
+                'supplied_qty': round(data['supplied_qty'], 2),
+                'brands_text': '، '.join(data['brands']) if data['brands'] else '—',
+            })
+        wh_rows.sort(key=lambda r: (r['section'], r['name']))
+
+    return render(request, 'request_management.html', {
+        'tab': tab,
+        'rows': rows,
+        'total_items': len(rows),
+        'wh_rows': wh_rows,
+        'wh_total_items': len(wh_rows),
+        'cafe_code': cafe_code,
+        'selected_date': selected_date,
+        'prev_date': prev_date,
+        'next_date': next_date,
+        'date_str': date_str,
+        'user': request.user,
+    })
+
+
+@custom_login_required
+@role_required(['admin', 'manager', 'ceo'])
+def request_management_csv(request: HttpRequest) -> HttpResponse:
+    """دانلود CSV درخواست‌های خرید روز انتخاب‌شده (اقلام ارسالی به مسئولان خرید).
+
+    ستون‌ها: کالای درخواست‌شده، مقدار، واحد، بخش درخواست‌دهنده، درخواست‌دهنده،
+    مسئول خرید، وضعیت. اقلام برگشت‌خورده به داشبورد مدیرعامل در فایل نیستند.
+    """
+    from datetime import datetime
+    import csv
+
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    date_str = request.GET.get('date', '')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_date = datetime.now().date()
+    else:
+        selected_date = datetime.now().date()
+
+    assignments = (
+        OfficerAssignment.objects
+        .filter(
+            target_role='purchasing',
+            item__request__created_at__date=selected_date,
+        )
+        .exclude(status__in=ASSIGNMENT_RETURNED_STATUSES)
+        .select_related('item', 'item__request', 'item__request__user', 'assigned_to')
+        .order_by('item__request__created_at', 'item__request_id', 'item_id')
+    )
+    if cafe:
+        assignments = assignments.filter(item__request__cafe=cafe)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="purchase_requests_{selected_date.isoformat()}.csv"'
+    response.write('﻿')  # BOM برای باز شدن صحیح در اکسل
+
+    writer = csv.writer(response)
+    writer.writerow(['کالای درخواست‌شده', 'مقدار', 'واحد', 'بخش درخواست‌دهنده', 'درخواست‌دهنده', 'مسئول خرید', 'وضعیت'])
+    for a in assignments:
+        item = a.item
+        req = item.request
+        requester = req.user if req.user else None
+        writer.writerow([
+            item.product.name if item.product else item.name,
+            item.quantity,
+            item.unit,
+            _item_section_name(requester),
+            (requester.get_full_name() or requester.username) if requester else '—',
+            (a.assigned_to.get_full_name() or a.assigned_to.username) if a.assigned_to else 'همه مسئولان خرید',
+            a.get_status_display(),
+        ])
+
+    return response
+
+
+@custom_login_required
+@role_required(['admin', 'manager', 'ceo'])
+def request_management_warehouse_pdf(request: HttpRequest) -> HttpResponse:
+    """خروجی PDF «درخواست کالا از انبار» برای روز انتخاب‌شده.
+
+    - برگه A5 افقی (لنداسکیپ)
+    - بالای برگه: عنوان، نام کافه و تاریخ روز درخواست‌ها
+    - جدول: ردیف / مرکز هزینه / کالا (نام عمومی) / شرح کالا (نام تجاری) /
+      مقدار و واحد درخواستی / مقدار و واحد تحویلی / توضیحات
+      (مقدار تحویلی چند برند تجاری با هم جمع شده و از موجودی انبار کم شده است)
+    - پایین برگه: محل امضای درخواست‌کننده، تحویل‌گیرنده و مسئول انبار
+    """
+    from datetime import datetime
+    from io import BytesIO
+    import os
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A5
+    from reportlab.lib.units import cm
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import Table, TableStyle
+    import jdatetime
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    date_str = request.GET.get('date', '')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_date = datetime.now().date()
+    else:
+        selected_date = datetime.now().date()
+
+    # اقلام تحویل‌شده از انبار (چند برند تجاری هر قلم با هم جمع می‌شوند)
+    from collections import defaultdict
+    wh_assignments = (
+        OfficerAssignment.objects
+        .filter(
+            target_role='warehouse',
+            status='fulfilled',
+            item__request__created_at__date=selected_date,
+        )
+        .select_related(
+            'item', 'item__request', 'item__request__user',
+            'stock_item', 'stock_item__product_brand',
+        )
+        .order_by('item__request__created_at', 'item__request_id', 'item_id')
+    )
+    if cafe:
+        wh_assignments = wh_assignments.filter(item__request__cafe=cafe)
+
+    wh_map = defaultdict(lambda: {
+        'name': '', 'unit': '', 'requested_qty': 0.0, 'supplied_qty': 0.0,
+        'section': '', 'brands': [], 'description': '',
+    })
+    for a in wh_assignments:
+        item = a.item
+        req = item.request
+        requester = req.user if req.user else None
+        row = wh_map[item.id]
+        row['name'] = item.product.name if item.product else item.name
+        row['unit'] = item.unit or ''
+        row['requested_qty'] = float(item.quantity or 0)
+        row['supplied_qty'] += float(a.supplied_quantity or 0)
+        row['section'] = _item_section_name(requester)
+        brand = a.stock_item.product_brand if a.stock_item and a.stock_item.product_brand else None
+        brand_name = brand.brand_name if brand else ''
+        if brand_name and brand_name not in row['brands']:
+            row['brands'].append(brand_name)
+        if item.description and item.description not in row['description']:
+            row['description'] = item.description
+
+    rows = []
+    for item_id, data in wh_map.items():
+        rows.append({
+            'item_id': item_id,
+            **data,
+            'supplied_qty': round(data['supplied_qty'], 2),
+            'brands_text': '، '.join(data['brands']) if data['brands'] else '—',
+        })
+    rows.sort(key=lambda r: (r['section'], r['name']))
+
+    # ── ساخت PDF — A5 افقی ──
+    buffer = BytesIO()
+    page_width, page_height = A5[1], A5[0]  # landscape
+    c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
+
+    # فونت فارسی
+    font_name = 'Helvetica'
+    try:
+        from django.conf import settings
+        font_path = os.path.join(settings.BASE_DIR, 'frontend', 'static', 'fonts', 'Vazir.ttf')
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont('Vazir', font_path))
+            font_name = 'Vazir'
+    except Exception:
+        pass
+
+    def persian(text):
+        """بازآرایی متن فارسی برای نمایش صحیح در PDF"""
+        if not text:
+            return ''
+        return get_display(arabic_reshaper.reshape(str(text)))
+
+    margin = 1.2 * cm
+    content_width = page_width - 2 * margin
+
+    # ── بالای برگه (راست به چپ): عنوان وسط + تاریخ شمسی گوشه چپ همان ردیف ──
+    jalali = jdatetime.date.fromgregorian(date=selected_date)
+    jalali_months = {
+        1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد', 4: 'تیر',
+        5: 'مرداد', 6: 'شهریور', 7: 'مهر', 8: 'آبان',
+        9: 'آذر', 10: 'دی', 11: 'بهمن', 12: 'اسفند',
+    }
+    jalali_str = f"{jalali.day} {jalali_months[jalali.month]} {jalali.year}"
+
+    cafe_name = cafe.name if cafe else ''
+    title = persian(f'درخواست کالا از انبار ({cafe_name})' if cafe_name else 'درخواست کالا از انبار')
+    title_y = page_height - margin
+    c.setFont(font_name, 14)
+    c.drawString((page_width - c.stringWidth(title, font_name, 14)) / 2, title_y, title)
+    # فقط تاریخ شمسی، بدون کلمهٔ «تاریخ» — گوشه چپ روبه‌روی عنوان
+    c.setFont(font_name, 10)
+    c.drawString(margin, title_y, persian(jalali_str))
+    y = title_y - 0.9 * cm  # شروع جدول
+
+    # ── جدول (راست به چپ: اولین ستون سمت راست صفحه است) ──
+    logical_cols = ['ردیف', 'مرکز هزینه', 'کالا', 'شرح کالا (نام تجاری)',
+                    'مقدار و واحد درخواستی', 'مقدار و واحد تحویلی', 'توضیحات']
+    header_rev = list(reversed(logical_cols))
+    data = [[persian(h) for h in header_rev]]
+    for i, r in enumerate(rows, start=1):
+        row = [
+            persian(str(i)),
+            persian(r['section']),
+            persian(r['name']),
+            persian('\n'.join(r['brands']) if r['brands'] else '—'),
+            persian(f"{r['requested_qty']:.2f} {r['unit']}".strip()),
+            persian(f"{r['supplied_qty']:.2f} {r['unit']}".strip()),
+            persian(r['description']),
+        ]
+        data.append(list(reversed(row)))
+
+    # ── عرض ستون‌ها: اندازهٔ بزرگترین رشتهٔ همان ستون، نه کمتر از مقدار
+    # پیش‌فرض، با سقف برای بیرون نزدن از صفحه؛ اگر جا اضافه بود همان مقادیر قبلی ──
+    fixed_cm = [0.8, 2.6, 3.2, 3.2, 2.6, 2.6, 3.4]  # مقادیر مشخص‌شدهٔ قبلی
+    fixed_rev = list(reversed(fixed_cm))
+    col_widths = []
+    for col in range(len(header_rev)):
+        longest = 0.0
+        for cell in data:
+            for line in str(cell[col]).split('\n'):
+                longest = max(longest, c.stringWidth(line, font_name, 7.5))
+        w = max(fixed_rev[col] * cm, longest + 0.35 * cm)
+        col_widths.append(min(w, fixed_rev[col] * cm * 1.9))  # سقف هر ستون
+    if sum(col_widths) > content_width:
+        factor = content_width / sum(col_widths)
+        col_widths = [w * factor for w in col_widths]
+
+    # ── ارتفاع ردیف‌ها: اگر همهٔ کالاها تک‌برند باشند در ۱۲ ردیف جا شوند؛
+    # ردیف محصول چندبرند به تعداد برندهایش بلندتر است ──
+    sign_area_top = page_height * 0.12 + 0.4 * cm  # جدول بالای نوار ۸۸٪ پایانی
+    avail_height = y - sign_area_top
+    base_row = avail_height / 13  # ۱۲ ردیف کالا + ۱ ردیف هدر
+    row_heights = [base_row]
+    for r in rows:
+        row_heights.append(base_row * (len(r['brands']) or 1))
+
+    table_style = TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), font_name),
+        ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eef0ff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#cccccc')),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),   # راست به چپ
+        ('ALIGN', (1, 0), (2, -1), 'CENTER'),
+        ('ALIGN', (6, 0), (6, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ])
+    table = Table(data, colWidths=col_widths, rowHeights=row_heights, repeatRows=1)
+    table.setStyle(table_style)
+    table_h = sum(row_heights)
+    if table_h > avail_height:
+        # محدودیت بیرون نزدن: ارتفاع ردیف‌ها به تناسب کم می‌شود (با حداقل)
+        factor = avail_height / table_h
+        row_heights = [max(h * factor, 0.55 * cm) for h in row_heights]
+        table = Table(data, colWidths=col_widths, rowHeights=row_heights, repeatRows=1)
+        table.setStyle(table_style)
+        table_h = sum(row_heights)
+    pieces = [table]
+    if table_h > avail_height:
+        # با حداقل ارتفاع هم جا نشد → جدول به صفحهٔ دوم می‌رود
+        pieces = table.split(content_width, avail_height) or [table]
+
+    for pi, piece in enumerate(pieces):
+        if pi > 0:
+            c.showPage()
+        pw, ph = piece.wrap(0, 0)
+        piece.drawOn(c, margin, max(sign_area_top, y - ph))
+
+    # ── امضاها (آخرین صفحه): پایین‌تر از ۸۸٪ ارتفاع برگه، بدون باکس، جدا از هم ──
+    c.setFont(font_name, 9)
+    sig_y = page_height * 0.09  # داخل نوار پایینی (پایین‌تر از خط ۸۸٪)
+    sig_labels = ['امضای درخواست‌کننده', 'امضای تحویل‌گیرنده', 'امضای مسئول انبار']
+    third = content_width / 3
+    for idx, label in enumerate(sig_labels):
+        # راست به چپ: امضای اول سمت راست
+        x_right = margin + content_width - idx * third - 0.4 * cm
+        c.drawRightString(x_right, sig_y, persian(label))
+
+    c.showPage()
+    c.save()
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="warehouse_request_{selected_date.isoformat()}.pdf"'
+    return response
 
 
 # ---------------------------------------------------------------------------

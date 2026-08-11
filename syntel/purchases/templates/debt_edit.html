@@ -13,6 +13,24 @@
     }
     .debt-form-grid .full { grid-column: 1 / -1; }
     .page-note { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; }
+
+    /* picker انتخاب تأمین‌کننده */
+    .sup-picker { position: relative; }
+    .sup-dropdown {
+        position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 60;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        max-height: 240px; overflow-y: auto; display: none;
+    }
+    .sup-dropdown.show { display: block; }
+    .sup-item {
+        padding: 0.55rem 0.8rem; cursor: pointer;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .sup-item:last-child { border-bottom: none; }
+    .sup-item:hover { background: var(--bg-subtle); }
+    .sup-item-name { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
+    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
 </style>
 {% endblock %}
 
@@ -43,10 +61,13 @@
         <form method="post" action="{% url 'debt_edit' cafe_code=cafe_code debt_id=debt.id %}">
             {% csrf_token %}
             <div class="debt-form-grid">
-                <div class="form-group">
-                    <label for="company">نام شرکت <span style="color:var(--danger);">*</span></label>
-                    <input type="text" id="company" name="company" class="form-control" required
-                           value="{{ debt.company }}">
+                <div class="form-group sup-picker">
+                    <label for="company">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                    <input type="text" id="company" name="company" class="form-control sup-input" required
+                           autocomplete="off" value="{{ debt.company }}"
+                           placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
+                    <input type="hidden" name="supplier_id" class="sup-hidden" value="{{ debt.supplier_id|default:'' }}">
+                    <div class="sup-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label for="edit_amount">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
@@ -89,6 +110,8 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ suppliers_data|json_script:"suppliers-data" }}
+<script src="{% static 'js/supplier_picker.js' %}"></script>
 <script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
 <script>
     // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ — سرور کاماها را حذف می‌کند

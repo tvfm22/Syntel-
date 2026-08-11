@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from purchases.models import (
-    Category, Unit, Product, Supplier, PurchaseRequest,
+    Cafe, Category, Unit, Product, Supplier, PurchaseRequest,
     PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation,
     ActivityLog, Notification
 )
@@ -65,6 +65,14 @@ class IntegrationTests(TransactionTestCase):
             email='supplier@example.com',
             phone='1234567890'
         )
+
+        # Multi-cafe: the cafe middleware needs an existing cafe + a selected
+        # cafe in the session for cafe-scoped URLs (e.g. backup_management)
+        self.cafe = Cafe.objects.create(name='Main', code='main', is_active=True)
+        session = self.client.session
+        session['selected_cafe_id'] = self.cafe.id
+        session['selected_cafe_code'] = self.cafe.code
+        session.save()
 
     def test_complete_purchase_workflow(self):
         """Test complete purchase request to payment workflow"""
@@ -383,15 +391,15 @@ class IntegrationTests(TransactionTestCase):
         """Test backup and monitoring functionality"""
         # Test backup management access
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 200)
 
         # Test system monitoring access
-        response = self.client.get(reverse('system_monitoring'))
+        response = self.client.get(reverse('system_monitoring', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 200)
 
         # Test monitoring API
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -499,7 +507,7 @@ class IntegrationTests(TransactionTestCase):
 
         # Test unauthorized access
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 302)  # Redirect to unauthorized
 
     def test_concurrent_workflow_handling(self):

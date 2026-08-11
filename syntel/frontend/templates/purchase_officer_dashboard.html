@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد مسئول خرید - کوکر</title>
+    <title>{% if is_self_buy %}لیست خرید من - کوکر{% else %}داشبورد مسئول خرید - کوکر{% endif %}</title>
     <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
@@ -91,7 +91,7 @@
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <h1>🛒 داشبورد مسئول خرید</h1>
+            <h1>🛒 {% if is_self_buy %}لیست خرید من{% else %}داشبورد مسئول خرید{% endif %}</h1>
             <p>{{ user.first_name }} {{ user.last_name }}</p>
         </div>
     </div>
@@ -108,8 +108,13 @@
     </div>
 
     <div style="font-size:12.5px;color:#6b7280;margin-bottom:14px;line-height:1.9;">
+        {% if is_self_buy %}
+        اقلامی که با «خرید توسط خودم» برای خودتان نگه داشته‌اید نمایش داده می‌شود.
+        اگر کالا را خریداری می‌کنید «خریداری شد» و اگر نمی‌خواهید آن را بخرید «بازگشت به درخواست‌ها» را بزنید.
+        {% else %}
         فقط اقلامی که مدیرعامل برای شما ارسال کرده است نمایش داده می‌شود.
         اگر کالا را خریداری می‌کنید «خریداری شد» و اگر نمی‌توانید آن را تهیه کنید «بازگشت به مدیرعامل» را بزنید.
+        {% endif %}
     </div>
 
     {% if rows %}
@@ -147,7 +152,7 @@
                         {% csrf_token %}
                         <input type="hidden" name="item_id" value="{{ a.id }}">
                         <button type="submit" name="action" value="return" class="btn btn-amber"
-                                onclick="return confirm('این قلم به لیست مدیرعامل برگردانده شود؟');">↩️ بازگشت به مدیرعامل</button>
+                                onclick="return confirm('این قلم {% if is_self_buy %}به درخواست‌ها برگردانده شود؟{% else %}به لیست مدیرعامل برگردانده شود؟{% endif %}');">↩️ {% if is_self_buy %}بازگشت به درخواست‌ها{% else %}بازگشت به مدیرعامل{% endif %}</button>
                     </form>
                 </div>
             </div>
@@ -166,7 +171,7 @@
         <div class="empty-state">
             <div class="empty-icon">📭</div>
             <h3>لیست خرید شما خالی است</h3>
-            <p>هنوز قلمی توسط مدیرعامل برای شما ارسال نشده است.</p>
+            <p>{% if is_self_buy %}هنوز قلمی با «خرید توسط خودم» برای خودتان نگه نداشته‌اید.{% else %}هنوز قلمی توسط مدیرعامل برای شما ارسال نشده است.{% endif %}</p>
         </div>
     {% endif %}
 

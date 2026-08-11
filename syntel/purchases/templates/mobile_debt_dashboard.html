@@ -120,7 +120,7 @@
     .m-priority input:checked + label[for^="pr-medium"] { border-color: var(--accent-orange); color: var(--accent-orange); background: rgba(249,115,22,0.06); }
     .m-priority input:checked + label[for^="pr-low"] { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(59,130,246,0.06); }
 
-    /* کارت بدهی — خلاصه: فقط شرکت + مبلغ + تاریخ ریز */
+    /* کارت بدهی — خلاصه: فقط تأمین‌کننده + مبلغ + تاریخ ریز */
     .m-debt {
         background: var(--bg-card); border: 1px solid var(--border-light);
         border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
@@ -254,6 +254,43 @@
 
     body.sheet-open { overflow: hidden; }
 
+    /* picker انتخاب تأمین‌کننده (موبایل) */
+    .sup-picker { position: relative; }
+    .sup-dropdown {
+        position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 60;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        max-height: 240px; overflow-y: auto; display: none;
+    }
+    .sup-dropdown.show { display: block; }
+    .sup-item {
+        padding: 0.65rem 0.85rem; cursor: pointer;
+        border-bottom: 1px solid var(--border-light);
+        -webkit-tap-highlight-color: transparent;
+    }
+    .sup-item:last-child { border-bottom: none; }
+    .sup-item:active { background: var(--bg-subtle); }
+    .sup-item-name { font-weight: 700; color: var(--text-primary); font-size: 0.88rem; }
+    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    /* اطلاعات بانکی تأمین‌کننده داخل شیت بدهی */
+    .m-sheet-bank-title {
+        display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.85rem; font-weight: 700; color: var(--text-primary);
+        margin: 0.8rem 0 0.1rem;
+    }
+    .m-sheet-bank-title i { color: var(--accent-purple); }
+    /* دکمه کپی شماره‌های بانکی (لمسی) */
+    .m-copy-btn {
+        min-width: 40px; height: 36px; border-radius: var(--radius-md); flex-shrink: 0;
+        border: 1px solid var(--border-default); background: white; color: var(--text-secondary);
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 0.8rem; margin-right: 0.4rem;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .m-copy-btn:active { background: var(--bg-subtle); transform: scale(0.96); }
+    .m-copy-btn.copied { border-color: var(--accent-green); color: var(--accent-green); }
+
     @media (min-width: 768px) {
         .m-header { margin: -1.5rem -1.5rem 1.5rem; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
     }
@@ -266,7 +303,7 @@
     <!-- هدر چسبان -->
     <div class="m-header">
         <div class="m-header-top">
-            <div class="m-title"><i class="fas fa-money-bill-wave"></i>بدهی شرکت‌ها</div>
+            <div class="m-title"><i class="fas fa-money-bill-wave"></i>بدهی تأمین‌کنندگان</div>
             {% if user.role == 'admin' %}
             <button type="button" class="m-acc-btn" id="openAccSheet">
                 <i class="fas fa-wallet"></i> حساب‌ها
@@ -287,9 +324,12 @@
         <div class="m-card-title"><i class="fas fa-plus-circle"></i>تعریف بدهی جدید</div>
         <form method="post" action="{% url 'debt_list' cafe_code=cafe_code %}?from=mobile">
             {% csrf_token %}
-            <div class="m-form-group">
-                <label>نام شرکت <span style="color:var(--danger);">*</span></label>
-                <input type="text" name="company" class="m-input" required placeholder="مثلاً: شرکت لبنیات آریا">
+            <div class="m-form-group sup-picker">
+                <label>نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                <input type="text" name="company" class="m-input sup-input" required autocomplete="off"
+                       placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
+                <input type="hidden" name="supplier_id" class="sup-hidden" value="">
+                <div class="sup-dropdown"></div>
             </div>
             <div class="m-form-group">
                 <label>مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
@@ -331,9 +371,12 @@
         <form method="post" action="{% url 'debt_pay_offlist' cafe_code=cafe_code %}?from=mobile"
               enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="m-form-group">
-                <label>نام شرکت <span style="color:var(--danger);">*</span></label>
-                <input type="text" name="company" class="m-input" required placeholder="نام شرکت یا گیرنده">
+            <div class="m-form-group sup-picker">
+                <label>نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                <input type="text" name="company" class="m-input sup-input" required autocomplete="off"
+                       placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
+                <input type="hidden" name="supplier_id" class="sup-hidden" value="">
+                <div class="sup-dropdown"></div>
             </div>
             <div class="m-form-group">
                 <label>مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
@@ -450,6 +493,18 @@
             <div class="m-sheet-row"><span>ثبت توسط</span><b>{{ debt.created_by.get_full_name|default:debt.created_by.username }}</b></div>
             {% endif %}
         </div>
+        {% if debt.supplier %}
+        <div class="m-sheet-bank-title"><i class="fas fa-university"></i>اطلاعات بانکی تأمین‌کننده</div>
+        <div class="m-sheet-rows">
+            {% if debt.supplier.bank_name %}<div class="m-sheet-row"><span>نام بانک</span><b>{{ debt.supplier.bank_name }}</b></div>{% endif %}
+            {% if debt.supplier.card_number %}
+            <div class="m-sheet-row"><span>شماره کارت</span><div style="display:flex;align-items:center;"><b>{{ debt.supplier.card_number }}</b><button type="button" class="m-copy-btn" data-copy="{{ debt.supplier.card_number }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+            {% if debt.supplier.sheba_number %}
+            <div class="m-sheet-row"><span>شماره شبا</span><div style="display:flex;align-items:center;"><b>{{ debt.supplier.sheba_number }}</b><button type="button" class="m-copy-btn" data-copy="{{ debt.supplier.sheba_number }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+            {% if debt.supplier.bank_account %}
+            <div class="m-sheet-row"><span>شماره حساب</span><div style="display:flex;align-items:center;"><b>{{ debt.supplier.bank_account }}</b><button type="button" class="m-copy-btn" data-copy="{{ debt.supplier.bank_account }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+        </div>
+        {% endif %}
         {% if debt.description %}
         <div class="m-sheet-desc">
             <span>توضیحات</span>
@@ -464,7 +519,7 @@
                 <i class="fas fa-edit"></i> ویرایش بدهی
             </a>
             <form method="post" action="{% url 'debt_delete' cafe_code=cafe_code debt_id=debt.id %}"
-                  onsubmit="return confirm('بدهی شرکت {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
+                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
                 {% csrf_token %}
                 <button type="submit" class="m-btn-danger">
                     <i class="fas fa-trash"></i> حذف بدهی
@@ -517,6 +572,18 @@
             <div class="m-sheet-row"><span>پرداخت توسط</span><b>{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}</b></div>
             {% endif %}
         </div>
+        {% if payment.debt and payment.debt.supplier %}
+        <div class="m-sheet-bank-title"><i class="fas fa-university"></i>اطلاعات بانکی تأمین‌کننده</div>
+        <div class="m-sheet-rows">
+            {% if payment.debt.supplier.bank_name %}<div class="m-sheet-row"><span>نام بانک</span><b>{{ payment.debt.supplier.bank_name }}</b></div>{% endif %}
+            {% if payment.debt.supplier.card_number %}
+            <div class="m-sheet-row"><span>شماره کارت</span><div style="display:flex;align-items:center;"><b>{{ payment.debt.supplier.card_number }}</b><button type="button" class="m-copy-btn" data-copy="{{ payment.debt.supplier.card_number }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+            {% if payment.debt.supplier.sheba_number %}
+            <div class="m-sheet-row"><span>شماره شبا</span><div style="display:flex;align-items:center;"><b>{{ payment.debt.supplier.sheba_number }}</b><button type="button" class="m-copy-btn" data-copy="{{ payment.debt.supplier.sheba_number }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+            {% if payment.debt.supplier.bank_account %}
+            <div class="m-sheet-row"><span>شماره حساب</span><div style="display:flex;align-items:center;"><b>{{ payment.debt.supplier.bank_account }}</b><button type="button" class="m-copy-btn" data-copy="{{ payment.debt.supplier.bank_account }}" title="کپی"><i class="fas fa-copy"></i></button></div></div>{% endif %}
+        </div>
+        {% endif %}
         {% if payment.description %}
         <div class="m-sheet-desc">
             <span>توضیحات</span>
@@ -530,10 +597,13 @@
         </a>
         {% endif %}
         {% if user.role != 'admin' %}
-        <!-- ویرایش پرداخت — فقط مدیرعامل/مدیر -->
+        <!-- ویرایش/حذف پرداخت — فقط مدیرعامل/مدیر -->
         <div class="m-sheet-actions">
             <a class="m-btn-edit" href="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}">
                 <i class="fas fa-edit"></i> ویرایش پرداخت
+            </a>
+            <a class="m-btn-danger" href="{% url 'debt_payment_delete' cafe_code=cafe_code payment_id=payment.id %}">
+                <i class="fas fa-trash"></i> حذف پرداخت
             </a>
         </div>
         {% endif %}
@@ -558,6 +628,8 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ suppliers_data|json_script:"suppliers-data" }}
+<script src="{% static 'js/supplier_picker.js' %}"></script>
 <script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
 <script>
     // شیت حساب‌های پرداخت (ادمین) — مستقل از بقیه اسکریپت‌ها:
@@ -695,6 +767,32 @@
         document.getElementById('sheetClose').addEventListener('click', closeSheet);
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeSheet();
+        });
+
+        // کپی شماره‌های بانکی تأمین‌کننده — لمس دکمه کپی در شیت
+        document.querySelectorAll('.m-copy-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();  // لمس دکمه کپی نباید شیت دیگری باز کند
+                var value = btn.dataset.copy;
+                var done = function() {
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    btn.classList.add('copied');
+                    setTimeout(function() {
+                        btn.innerHTML = '<i class="fas fa-copy"></i>';
+                        btn.classList.remove('copied');
+                    }, 1500);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(value).then(done);
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = value;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch (err) {}
+                    document.body.removeChild(ta);
+                }
+            });
         });
     });
 </script>

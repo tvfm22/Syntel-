@@ -48,6 +48,12 @@ TMP_DIR = DATA_SUBDIRS['tmp']
 SESSIONS_DIR = DATA_SUBDIRS['sessions']
 BACKUPS_DIR = DATA_SUBDIRS['backups']
 
+# Google Drive backup (پشتیبان‌گیری گوگل‌درایو) — configured via env vars
+GOOGLE_DRIVE_CLIENT_ID = os.environ.get('GOOGLE_DRIVE_CLIENT_ID', '')
+GOOGLE_DRIVE_CLIENT_SECRET = os.environ.get('GOOGLE_DRIVE_CLIENT_SECRET', '')
+# Optional: upload backups into a specific Drive folder instead of root
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
+
 
 def ensure_data_dirs():
     """Create every writable data directory at startup (idempotent)."""

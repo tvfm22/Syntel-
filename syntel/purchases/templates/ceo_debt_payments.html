@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}پرداخت بدهی شرکت‌ها{% endblock %}
+{% block title %}پرداخت بدهی تأمین‌کنندگان{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -108,11 +108,89 @@
         transition: all var(--transition-fast); font-size: 0.8rem;
     }
     .row-action:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .row-action-danger:hover { border-color: var(--danger); color: var(--danger); }
 
     .offlist-form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
     .offlist-form .form-group { margin-bottom: 0; flex: 1; min-width: 180px; }
     .offlist-form .form-group.wide { flex: 2; }
     .offlist-form .form-control { height: 42px; }
+
+    /* picker انتخاب تأمین‌کننده */
+    .sup-picker { position: relative; }
+    .sup-dropdown {
+        position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 60;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        max-height: 240px; overflow-y: auto; display: none;
+    }
+    .sup-dropdown.show { display: block; }
+    .sup-item {
+        padding: 0.55rem 0.8rem; cursor: pointer;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .sup-item:last-child { border-bottom: none; }
+    .sup-item:hover { background: var(--bg-subtle); }
+    .sup-item-name { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
+    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    /* نام تأمین‌کننده قابل کلیک — باز کردن الرت اطلاعات بانکی */
+    .sup-name-btn {
+        background: none; border: none; padding: 0; margin: 0;
+        font-family: 'Vazir', sans-serif; font-weight: 700; font-size: inherit;
+        color: var(--accent-indigo); cursor: pointer; text-align: right;
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .sup-name-btn:hover { text-decoration: underline; }
+    .sup-name-btn i { font-size: 0.7rem; color: var(--text-muted); }
+    .sup-name-btn:hover i { color: var(--accent-indigo); }
+
+    /* الرت اطلاعات بانکی تأمین‌کننده */
+    .supinfo-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100;
+        opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    }
+    .supinfo-modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .supinfo-modal {
+        position: fixed; top: 50%; left: 50%;
+        transform: translate(-50%, -50%) scale(0.96);
+        width: min(440px, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto;
+        background: var(--bg-card); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
+        z-index: 101; opacity: 0; pointer-events: none;
+        transition: all 0.2s ease; padding: 1.1rem 1.25rem;
+    }
+    .supinfo-modal.show {
+        opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1);
+    }
+    .supinfo-modal-header {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem;
+    }
+    .supinfo-modal-title { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
+    .supinfo-modal-title i { color: var(--accent-purple); margin-left: 0.4rem; }
+    .supinfo-modal-close {
+        width: 32px; height: 32px; border-radius: 50%; border: none;
+        background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
+    }
+    .supinfo-modal-close:hover { background: var(--border-default); }
+    .supinfo-rows { margin: 0; }
+    .supinfo-row {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+        padding: 0.5rem 0; border-bottom: 1px solid var(--border-light);
+        font-size: 0.85rem;
+    }
+    .supinfo-row:last-child { border-bottom: none; }
+    .supinfo-row span { color: var(--text-secondary); flex-shrink: 0; }
+    .supinfo-row b { color: var(--text-primary); text-align: left; font-weight: 700; word-break: break-word; flex: 1; }
+    /* دکمه کپی شماره‌های بانکی */
+    .supinfo-copy {
+        width: 30px; height: 30px; border-radius: var(--radius-md); flex-shrink: 0;
+        border: 1px solid var(--border-default); background: white; color: var(--text-secondary);
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 0.75rem;
+        transition: all var(--transition-fast); -webkit-tap-highlight-color: transparent;
+    }
+    .supinfo-copy:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .supinfo-copy.copied { border-color: var(--accent-green); color: var(--accent-green); }
 
     /* کشویی پرداخت خارج از لیست */
     .offlist-summary {
@@ -184,7 +262,7 @@
 <div class="page-header{% if user.role == 'ceo' %} ceo-header{% endif %}">
     <h1 class="page-title">
         <i class="fas fa-hand-holding-usd"></i>
-        پرداخت بدهی شرکت‌ها
+        پرداخت بدهی تأمین‌کنندگان
     </h1>
     <div class="header-actions">
         <div class="current-date">
@@ -217,10 +295,12 @@
         <form method="post" action="{% url 'debt_pay_offlist' cafe_code=cafe_code %}"
               enctype="multipart/form-data" class="offlist-form">
             {% csrf_token %}
-            <div class="form-group">
-                <label for="off_company">نام شرکت <span style="color:var(--danger);">*</span></label>
-                <input type="text" id="off_company" name="company" class="form-control" required
-                       placeholder="نام شرکت یا گیرنده">
+            <div class="form-group sup-picker">
+                <label for="off_company">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                <input type="text" id="off_company" name="company" class="form-control sup-input" required
+                       autocomplete="off" placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
+                <input type="hidden" name="supplier_id" class="sup-hidden" value="">
+                <div class="sup-dropdown"></div>
             </div>
             <div class="form-group">
                 <label for="off_amount">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
@@ -273,7 +353,7 @@
         <table class="debt-table">
             <thead>
                 <tr>
-                    <th>شرکت</th>
+                    <th>تأمین‌کننده</th>
                     <th>مبلغ بدهی</th>
                     <th>تاریخ بدهی</th>
                     <th>توضیحات</th>
@@ -284,7 +364,23 @@
             <tbody>
                 {% for debt in pending_debts %}
                 <tr>
-                    <td><strong>{{ debt.company }}</strong></td>
+                    <td>
+                        {% if debt.supplier %}
+                        <button type="button" class="sup-name-btn supinfo-open"
+                                data-name="{{ debt.supplier.name }}"
+                                data-bank="{{ debt.supplier.bank_name|default:'' }}"
+                                data-card="{{ debt.supplier.card_number|default:'' }}"
+                                data-sheba="{{ debt.supplier.sheba_number|default:'' }}"
+                                data-account="{{ debt.supplier.bank_account|default:'' }}"
+                                data-contact="{{ debt.supplier.contact_person|default:'' }}"
+                                data-mobile="{{ debt.supplier.mobile|default:'' }}"
+                                title="مشاهده اطلاعات بانکی تأمین‌کننده">
+                            {{ debt.company }} <i class="fas fa-info-circle"></i>
+                        </button>
+                        {% else %}
+                        <strong>{{ debt.company }}</strong>
+                        {% endif %}
+                    </td>
                     <td>
                         <div class="debt-remaining">
                             <span class="amount" data-fa>{{ debt.remaining|floatformat:"0" }}</span>
@@ -354,7 +450,7 @@
                        style="padding-top:0.35rem;">
             </div>
         </div>
-        <div class="help-note">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود — اگر مجموع پرداخت بیش از ۹۰٪ مبلغ بدهی شود، بدهی بسته می‌شود</div>
+        <div class="help-note">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود — اگر باقی‌مانده بدهی ۱٬۰۰۰٬۰۰۰ تومان یا کمتر شود، بدهی بسته می‌شود</div>
         <div class="pay-modal-footer">
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-check"></i>
@@ -363,6 +459,19 @@
             <button type="button" class="btn btn-secondary" id="payModalCancel">انصراف</button>
         </div>
     </form>
+</div>
+
+<!-- الرت اطلاعات بانکی تأمین‌کننده — با کلیک روی نام تأمین‌کننده باز می‌شود -->
+<div class="supinfo-modal-backdrop" id="supinfoBackdrop"></div>
+<div class="supinfo-modal" id="supinfoModal" role="dialog" aria-modal="true" aria-label="اطلاعات بانکی تأمین‌کننده">
+    <div class="supinfo-modal-header">
+        <div class="supinfo-modal-title"><i class="fas fa-university"></i> اطلاعات بانکی — <span id="supinfoName"></span></div>
+        <button type="button" class="supinfo-modal-close" id="supinfoClose" aria-label="بستن">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="supinfo-rows" id="supinfoRows"></div>
+    <div class="help-note" style="margin-top:0.7rem;">برای ویرایش این اطلاعات به صفحه مدیریت تأمین‌کنندگان بروید</div>
 </div>
 
 <!-- لیست پرداخت‌های ثبت شده -->
@@ -386,7 +495,7 @@
         <table class="debt-table">
             <thead>
                 <tr>
-                    <th>شرکت</th>
+                    <th>تأمین‌کننده</th>
                     <th>مبلغ بدهی</th>
                     <th>مبلغ پرداخت شده</th>
                     <th>تاریخ و زمان پرداخت</th>
@@ -399,7 +508,22 @@
             <tbody>
                 {% for payment in payments %}
                 <tr>
-                    <td><strong>{{ payment.company }}</strong>
+                    <td>
+                        {% if payment.debt and payment.debt.supplier %}
+                        <button type="button" class="sup-name-btn supinfo-open"
+                                data-name="{{ payment.debt.supplier.name }}"
+                                data-bank="{{ payment.debt.supplier.bank_name|default:'' }}"
+                                data-card="{{ payment.debt.supplier.card_number|default:'' }}"
+                                data-sheba="{{ payment.debt.supplier.sheba_number|default:'' }}"
+                                data-account="{{ payment.debt.supplier.bank_account|default:'' }}"
+                                data-contact="{{ payment.debt.supplier.contact_person|default:'' }}"
+                                data-mobile="{{ payment.debt.supplier.mobile|default:'' }}"
+                                title="مشاهده اطلاعات بانکی تأمین‌کننده">
+                            {{ payment.company }} <i class="fas fa-info-circle"></i>
+                        </button>
+                        {% else %}
+                        <strong>{{ payment.company }}</strong>
+                        {% endif %}
                         {% if payment.is_off_list %}<span class="badge badge-info">خارج از لیست</span>{% endif %}
                     </td>
                     <td><span class="amount" data-fa>{{ payment.debt_amount|floatformat:"0" }}</span></td>
@@ -422,6 +546,9 @@
                             <a href="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}" class="row-action" title="ویرایش پرداخت">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            <a href="{% url 'debt_payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="row-action row-action-danger" title="حذف پرداخت">
+                                <i class="fas fa-trash"></i>
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -440,6 +567,99 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ suppliers_data|json_script:"suppliers-data" }}
+<script src="{% static 'js/supplier_picker.js' %}"></script>
+<script>
+    // الرت اطلاعات بانکی تأمین‌کننده — مستقل از بقیه اسکریپت‌ها
+    (function() {
+        var backdrop = document.getElementById('supinfoBackdrop');
+        var modal = document.getElementById('supinfoModal');
+        var nameEl = document.getElementById('supinfoName');
+        var rowsEl = document.getElementById('supinfoRows');
+        if (!modal || !backdrop || !nameEl || !rowsEl) return;
+
+        // شماره‌هایی که دکمه کپی دارند
+        var COPYABLE = ['شماره حساب', 'شماره کارت', 'شماره شبا'];
+
+        function makeRow(label, value) {
+            var el = document.createElement('div');
+            el.className = 'supinfo-row';
+            var s = document.createElement('span');
+            s.textContent = label;
+            var b = document.createElement('b');
+            b.textContent = value;
+            el.appendChild(s);
+            el.appendChild(b);
+            if (COPYABLE.indexOf(label) !== -1) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'supinfo-copy';
+                btn.title = 'کپی';
+                btn.innerHTML = '<i class="fas fa-copy"></i>';
+                btn.addEventListener('click', function() {
+                    var done = function() {
+                        btn.innerHTML = '<i class="fas fa-check"></i>';
+                        btn.classList.add('copied');
+                        setTimeout(function() {
+                            btn.innerHTML = '<i class="fas fa-copy"></i>';
+                            btn.classList.remove('copied');
+                        }, 1500);
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(value).then(done);
+                    } else {
+                        // مرورگرهای قدیمی — textarea موقت
+                        var ta = document.createElement('textarea');
+                        ta.value = value;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); done(); } catch (e) {}
+                        document.body.removeChild(ta);
+                    }
+                });
+                el.appendChild(btn);
+            }
+            return el;
+        }
+
+        function openModal(btn) {
+            nameEl.textContent = btn.dataset.name || '';
+            rowsEl.innerHTML = '';
+            var data = [
+                ['نام بانک', btn.dataset.bank],
+                ['شماره کارت', btn.dataset.card],
+                ['شماره شبا', btn.dataset.sheba],
+                ['شماره حساب', btn.dataset.account],
+                ['شخص تماس', btn.dataset.contact],
+                ['موبایل', btn.dataset.mobile],
+            ];
+            data.forEach(function(pair) {
+                if (pair[1]) rowsEl.appendChild(makeRow(pair[0], pair[1]));
+            });
+            if (!rowsEl.children.length) {
+                rowsEl.appendChild(makeRow('اطلاعات بانکی', 'ثبت نشده است'));
+            }
+            modal.classList.add('show');
+            backdrop.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() {
+            modal.classList.remove('show');
+            backdrop.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('click', function(e) {
+            if (!e.target || !e.target.closest) return;
+            var btn = e.target.closest('.supinfo-open');
+            if (btn) { openModal(btn); return; }
+            if (e.target.closest('#supinfoClose')) closeModal();
+            else if (e.target === backdrop) closeModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    })();
+</script>
 <script>
     // مودال ثبت پرداخت — مستقل از بقیه اسکریپت‌ها: خطای سایر بخش‌ها روی آن اثر ندارد
     (function() {

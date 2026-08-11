@@ -49,6 +49,14 @@
             border-right: 4px solid #10b981;
         }
         .item-card.assigned { border-right-color: #6366f1; }
+        .item-card.done-card {
+            opacity: .6; border-right-color: #9ca3af; cursor: pointer;
+            transition: opacity .15s, box-shadow .15s;
+        }
+        .item-card.done-card:hover { opacity: .9; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .status-fulfilled  { background: #d1fae5; color: #065f46; }
+        .status-not_in_stock { background: #fee2e2; color: #b91c1c; }
+        .status-returned   { background: #dbeafe; color: #1e40af; }
 
         .item-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
         .item-name { font-size: 17px; font-weight: 700; color: #1f2937; }
@@ -86,6 +94,27 @@
         .fulfill-form select:focus, .fulfill-form input:focus { outline: none; border-color: #10b981; }
         .fulfill-form .stock-select { min-width: 280px; flex: 1; }
         .fulfill-form .qty-input { width: 110px; }
+        /* محصول بدون برند که فقط در یک انبار موجودی دارد: به‌جای سلکت، برچسب اطلاعات */
+        .fulfill-form .stock-label {
+            padding: 9px 12px; border: 1.5px dashed #10b981; border-radius: 8px;
+            background: #ecfdf5; font-size: 13px; font-weight: 600; color: #065f46;
+            display: inline-flex; align-items: center; gap: 6px; min-width: 280px; flex: 1;
+        }
+        .fulfill-rows { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+        .fulfill-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .add-row-btn {
+            border: 1.5px dashed #6366f1; background: #eef2ff; color: #4338ca;
+            border-radius: 8px; padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+            cursor: pointer; font-family: Vazir, sans-serif; transition: background .15s;
+        }
+        .add-row-btn:hover { background: #e0e7ff; }
+        .remove-row {
+            width: 30px; height: 30px; border-radius: 50%; border: none;
+            background: #fef2f2; color: #dc2626; font-size: 14px; font-weight: 700;
+            cursor: pointer; font-family: Vazir, sans-serif; line-height: 1;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .remove-row:hover { background: #fee2e2; }
 
         .empty-state { text-align: center; padding: 50px 20px; color: #6b7280; background: white; border-radius: 12px; }
         .empty-state .empty-icon { font-size: 44px; margin-bottom: 12px; }
@@ -163,18 +192,37 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="item_id" value="{{ v.item.id }}">
+                    <input type="hidden" name="date" value="{{ date_str }}">
                     <div class="actions">
-                        {% if stock_options|get_item:v.item.product_id %}
+                        {% with opts=stock_options|get_item:v.item.product_id meta=stock_meta|get_item:v.item.product_id %}
+                        {% if opts %}
                         <div class="fulfill-form" style="width:100%;">
-                            <select name="stock_item_id" class="stock-select" required>
-                                <option value="">— انبار / برند دارای موجودی را انتخاب کنید —</option>
-                                {% for opt in stock_options|get_item:v.item.product_id %}
-                                <option value="{{ opt.id }}">
-                                    🏬 {{ opt.warehouse_name }} — {{ opt.brand_name }} (موجودی: {{ opt.available|trim_decimal }} {{ opt.unit_label }}{% if opt.rate %}، نرخ تبدیل: هر {{ opt.unit_label }} = {{ opt.rate }}{% endif %})
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <input type="number" name="qty" class="qty-input" min="0.01" step="any" placeholder="مقدار" required>
+                            <div class="fulfill-rows" id="rows-{{ v.item.id }}">
+                                <div class="fulfill-row">
+                                    {% if meta and meta.hide_select %}
+                                    {% with opt=opts|first %}
+                                    <input type="hidden" name="stock_item_id" value="{{ opt.id }}">
+                                    <span class="stock-label">
+                                        📦 {% if opt.warehouse_name %}انبار «{{ opt.warehouse_name }}» — {% endif %}بدون برند — موجودی: {{ opt.available|trim_decimal }} {{ opt.unit_label }}
+                                    </span>
+                                    {% endwith %}
+                                    {% else %}
+                                    <select name="stock_item_id" class="stock-select" required>
+                                        <option value="">— برند دارای موجودی را انتخاب کنید —</option>
+                                        {% for opt in opts %}
+                                        <option value="{{ opt.id }}"{% if opt.default_selected %} selected{% endif %}>
+                                            {{ opt.brand_name }}{% if opt.multi_warehouse %} ({{ opt.warehouse_name }}){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% endif %}
+                                    <input type="number" name="qty" class="qty-input" min="0.01" step="any" placeholder="مقدار" required>
+                                    <button type="button" class="remove-row" title="حذف ردیف" style="display:none;">✕</button>
+                                </div>
+                            </div>
+                            {% if not meta or not meta.hide_select %}
+                            <button type="button" class="add-row-btn" data-target="rows-{{ v.item.id }}">＋ افزودن برند دیگر</button>
+                            {% endif %}
                             <button type="submit" name="action" value="fulfill" class="btn btn-green">✅ تامین از انبار</button>
                         </div>
                         {% else %}
@@ -182,6 +230,7 @@
                             ⚠️ برای این کالا در انبارهای این کافه موجودی ثبت نشده است.
                         </div>
                         {% endif %}
+                        {% endwith %}
                         <button type="submit" name="action" value="to_purchase" class="btn btn-blue"
                                 onclick="return confirm('این کالا به درخواست خرید ارجاع شود؟ به لیست مدیرعامل برمی‌گردد.');">🛒 ارسال به درخواست خرید</button>
                         <button type="submit" name="action" value="not_in_stock" class="btn btn-red"
@@ -196,6 +245,43 @@
                 <p>در این روز درخواستی برای تامین از انبار وجود ندارد.</p>
             </div>
         {% endif %}
+
+        {% if done_items %}
+        <div class="section-title">✅ کالاهای ثبت‌شده این روز</div>
+        <div class="hint" style="font-size:12.5px;color:#6b7280;margin-bottom:14px;line-height:1.9;">
+            کالاهایی که تامین یا ثبت وضعیت شده‌اند. برای اصلاح و ثبت مجدد، روی کالا کلیک کنید —
+            موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.
+        </div>
+        {% for v in done_items %}
+        <div class="item-card done-card" onclick="reopenItem({{ v.item.id }})" title="کلیک برای ثبت مجدد">
+            <div class="item-head">
+                <div>
+                    <div class="item-name">{{ v.item.product.name|default:v.item.name }}</div>
+                    <div class="item-meta">
+                        بخش: {{ v.item.request.user.department.name|default:v.item.request.user.get_role_display }}
+                        &nbsp;•&nbsp; {{ v.item.request.created_at|jalali_datetime }}
+                        &nbsp;•&nbsp; درخواست #{{ v.item.request_id }}
+                    </div>
+                </div>
+                <div style="text-align:left;">
+                    <div class="item-qty">{{ v.item.quantity }} {{ v.item.unit }}</div>
+                    <span class="status-tag status-{{ v.assignment.status }}" style="margin-top:4px;display:inline-block;">
+                        {% if v.assignment.status == 'fulfilled' %}✅ تأمین شده
+                        {% elif v.assignment.status == 'not_in_stock' %}❌ عدم موجودی — برگشت به مدیرعامل
+                        {% else %}🛒 ارجاع به درخواست خرید — برگشت به مدیرعامل{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:6px;">برای ثبت مجدد کلیک کنید ↺</div>
+            <form method="post" id="reopen-form-{{ v.item.id }}" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" value="{{ v.item.id }}">
+                <input type="hidden" name="date" value="{{ date_str }}">
+                <input type="hidden" name="action" value="reopen">
+            </form>
+        </div>
+        {% endfor %}
+        {% endif %}
     </div>
 
 </div>
@@ -203,6 +289,49 @@
 <div style="text-align:center;padding:12px 0 24px;">
     <a href="{% url 'logout' %}" style="color:#9ca3af;font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px;transition:all.15s;display:inline-block;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">🚪 خروج</a>
 </div>
+
+<script>
+// بازگشایی کالای ثبت‌شده برای ثبت مجدد (موجودی قبلی برگردانده می‌شود)
+function reopenItem(id) {
+    if (confirm('این کالا بازگشایی شود؟ موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.')) {
+        document.getElementById('reopen-form-' + id).submit();
+    }
+}
+
+// ردیف‌های پویا: افزودن برند دیگر / حذف ردیف
+document.querySelectorAll('.add-row-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var rows = document.getElementById(btn.getAttribute('data-target'));
+        if (!rows) return;
+        var first = rows.querySelector('.fulfill-row');
+        if (!first) return;
+        var count = rows.querySelectorAll('.fulfill-row').length;
+        var clone = first.cloneNode(true);
+        // نام‌های پویا برای ارسال در فرم: stock_item_id_1 / qty_1 و ...
+        var sel = clone.querySelector('.stock-select');
+        var qty = clone.querySelector('.qty-input');
+        sel.name = 'stock_item_id_' + count;
+        qty.name = 'qty_' + count;
+        sel.selectedIndex = 0;
+        sel.required = false;
+        qty.value = '';
+        qty.required = false;
+        var rm = clone.querySelector('.remove-row');
+        rm.style.display = 'flex';
+        rows.appendChild(clone);
+    });
+});
+document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
+    rows.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row')) {
+            var row = e.target.closest('.fulfill-row');
+            if (row && rows.querySelectorAll('.fulfill-row').length > 1) {
+                row.remove();
+            }
+        }
+    });
+});
+</script>
 
 </body>
 </html>

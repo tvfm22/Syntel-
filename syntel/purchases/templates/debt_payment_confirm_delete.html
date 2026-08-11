@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}تأیید حذف پرداخت بدهی{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-exclamation-triangle"></i> تأیید حذف پرداخت بدهی
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="icon fas fa-exclamation-triangle"></i> هشدار!</h5>
+                        آیا مطمئن هستید که می‌خواهید این پرداخت را حذف کنید؟
+                        تصویر رسید آپلود شده نیز حذف می‌شود و این عملیات قابل برگرداندن نیست.
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">جزئیات پرداخت</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">تأمین‌کننده:</dt>
+                                <dd class="col-sm-8">{{ payment.company }}</dd>
+
+                                <dt class="col-sm-4">مبلغ پرداخت:</dt>
+                                <dd class="col-sm-8">{{ payment.amount|floatformat:0 }} تومان</dd>
+
+                                <dt class="col-sm-4">تاریخ پرداخت:</dt>
+                                <dd class="col-sm-8">{{ payment.paid_at|jalali_datetime }}</dd>
+
+                                <dt class="col-sm-4">پرداخت توسط:</dt>
+                                <dd class="col-sm-8">{% if payment.paid_by %}{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}{% else %}—{% endif %}</dd>
+
+                                {% if payment.description %}
+                                <dt class="col-sm-4">توضیحات:</dt>
+                                <dd class="col-sm-8">{{ payment.description }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> بله، حذف شود
+                            </button>
+                            <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> انصراف
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

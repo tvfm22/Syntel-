@@ -275,6 +275,54 @@
     margin-bottom: 20px;
 }
 
+/* تب‌های فیلتر: همه کاربران / مسئولان خرید و انبار */
+.user-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.user-tab {
+    padding: 8px 18px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #4b5563;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.user-tab:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+.user-tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* نشان کاربر مشترک (دسترسی به همه کافه‌ها) */
+.shared-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.cafe-cell {
+    font-size: 0.9rem;
+    color: #374151;
+}
+
 @media (max-width: 768px) {
     .user-list-container {
         padding: 15px;
@@ -321,8 +369,19 @@
         </a>
     </div>
 
+    <div class="user-tabs">
+        <a href="{% url 'user_list' cafe_code=cafe_code %}" class="user-tab{% if not officer_filter %} active{% endif %}">
+            <i class="fas fa-users"></i> همه کاربران
+        </a>
+        <a href="{% url 'user_list' cafe_code=cafe_code %}?officer=1" class="user-tab{% if officer_filter %} active{% endif %}"
+           title="مسئول خرید، مسئول انبار یا مسئول خرید و انبار (نقش دوم)">
+            <i class="fas fa-user-cog"></i> مسئولان خرید و انبار
+        </a>
+    </div>
+
     <div class="filters-section">
         <form method="GET" class="search-form">
+            {% if officer_filter %}<input type="hidden" name="officer" value="1">{% endif %}
             <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در کاربران..." class="search-input">
             <select name="role" class="role-filter">
                 <option value="">همه نقش‌ها</option>
@@ -350,6 +409,7 @@
                         <th>کاربر</th>
                         <th>نقش</th>
                         <th>بخش</th>
+                        <th>کافه</th>
                         <th>وضعیت</th>
                         <th>تاریخ عضویت</th>
                         <th>عملیات</th>
@@ -366,6 +426,9 @@
                                 <div class="user-details">
                                     <h4>{{ user.get_full_name|default:user.username }}</h4>
                                     <p>@{{ user.username }}</p>
+                                    {% if user.cafe is None %}
+                                    <span class="shared-badge"><i class="fas fa-globe"></i> مشترک بین کافه‌ها</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -386,6 +449,13 @@
                             </span>
                             {% else %}
                             <span style="color:#9ca3af;font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="cafe-cell">
+                            {% if user.cafe %}
+                            {{ user.cafe.name }}
+                            {% else %}
+                            <span class="shared-badge"><i class="fas fa-globe"></i> همه کافه‌ها</span>
                             {% endif %}
                         </td>
                         <td>

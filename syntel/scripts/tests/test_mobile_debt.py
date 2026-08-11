@@ -64,7 +64,7 @@ ok(r.status_code == 302 and r['Location'] == '/local/debts/ceo/',
 r = c_admin_m.get(MOBILE)
 ok(r.status_code == 200, f'admin GET mobile → {r.status_code}')
 body = r.content.decode('utf-8')
-ok('بدهی شرکت‌ها' in body, 'هدر موبایل نمایش داده می‌شود')
+ok('بدهی تأمین‌کنندگان' in body, 'هدر موبایل نمایش داده می‌شود')
 ok('تعریف بدهی جدید' in body, 'ادمین فرم تعریف بدهی را می‌بیند')
 ok('persian-datepicker.min.js' in body, 'اسکریپت تقویم شمسی لود می‌شود')
 ok('m-period-chip' not in body and '?period=' not in body,
@@ -97,7 +97,8 @@ ok('color: var(--accent-indigo); margin-top: 0.25rem' not in body,
    'عدد کارت بدهی دیگر بنفش نیست (مشکی شد)')
 ok('i.fa-check-circle { color: var(--accent-green); }' in body,
    'تیک پرداخت (چک‌دایره) سبز — هم‌رنگ دکمه «ثبت پرداخت»')
-ok('position: absolute' not in body,
+_close_rule = body.split('.m-sheet-close {')[1].split('}')[0]
+ok('position: absolute' not in _close_rule,
    'دکمه ضربدر شیت مطلق نیست — روی اولویت پرداخت نمی‌افتد')
 
 # ---------- ۱.۳) خلاصه مینیمال دسکتاپ: مجموع بدهی (جایگزین آمار) ----------
@@ -127,8 +128,8 @@ ok(i_row != -1 and body_d.find('class="debt-total"', i_row) > i_row
    'مدیرعامل دسکتاپ: باکس پرداخت خارج از لیست کنار باکس مجموع بدهی است')
 ok('align-self: start' in body_d,
    'مدیرعامل دسکتاپ: با باز شدن کشویی خارج از لیست، باکس مجموع بدهی تغییر ارتفاع نمی‌دهد')
-ok('تایید درخواست‌های خرید' in body_d and 'پرداخت بدهی‌ها' in body_d,
-   'منوی مدیرعامل: گزینه‌های «تایید درخواست‌ها» و «پرداخت بدهی‌ها» هستند')
+ok('درخواست کالا' in body_d and 'پرداخت بدهی‌ها' in body_d,
+   'منوی مدیرعامل: گزینه‌های «درخواست کالا» (تایید درخواست‌ها) و «پرداخت بدهی‌ها» هستند')
 ok('داشبورد مدیریت' in body_d and 'درخواست کالا' in body_d,
    'منوی مدیرعامل: منوی کامل برگشته (داشبورد مدیریت، درخواست کالا و…)')
 
@@ -292,21 +293,62 @@ ok(f'data-sheet="debt-{d3.id}"' in body3, 'بدهی جزئی با باقی‌م�
 ok('پرداخت شده' in body3, 'نشان پرداخت جزئی روی کارت بدهی نمایش داده می‌شود')
 ok(f'data-sheet="paid-{p1.id}"' in body3, 'پرداخت جزئی در لیست پرداخت‌ها آمده است')
 
-# پرداخت دوم: ۴۰٪ → مجموع دقیقاً ۹۰٪ → نه بیشتر از ۹۰٪ → باز در لیست بدهی می‌ماند
-r = c_ceo_m.post(f'/local/debts/{d3.id}/pay/?from=mobile', {'paid_amount': '4000000'})
+# پرداخت دوم: ۳٬۹۹۹٬۹۹۹ → باقی‌مانده دقیقاً ۱٬۰۰۰٬۰۰۱ → نه کمتر یا مساوی ۱٬۰۰۰٬۰۰۰ → باز در لیست بدهی می‌ماند
+r = c_ceo_m.post(f'/local/debts/{d3.id}/pay/?from=mobile', {'paid_amount': '3999999'})
 d3.refresh_from_db()
-ok(d3.status == 'pending' and d3.remaining == 1000000,
-   'مجموع دقیقاً ۹۰٪ → هنوز در لیست بدهی می‌ماند (قانون: بیشتر از ۹۰٪)')
+ok(d3.status == 'pending' and d3.remaining == 1000001,
+   'باقی‌مانده ۱٬۰۰۰٬۰۰۱ → هنوز در لیست بدهی می‌ماند (قانون: بستن فقط با باقی‌مانده ≤ ۱٬۰۰۰٬۰۰۰)')
 
-# پرداخت سوم: بقیه → مجموع بیش از ۹۰٪ → بدهی بسته می‌شود؛ هردو پرداخت قبلی در لیست پرداخت‌ها می‌مانند
-r = c_ceo_m.post(f'/local/debts/{d3.id}/pay/?from=mobile', {'paid_amount': '1000001'})
+# پرداخت سوم: بقیه + رسید → باقی‌مانده دقیقاً ۱٬۰۰۰٬۰۰۰ → بدهی بسته می‌شود؛ هر سه پرداخت در لیست پرداخت‌ها می‌مانند
+photo_path = os.path.join(os.path.dirname(__file__), 'test_receipt.jpg')
+p3_data = {'paid_amount': '1'}
+if os.path.exists(photo_path):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    with open(photo_path, 'rb') as f:
+        p3_data['payment_photo'] = SimpleUploadedFile('receipt_del_test.jpg', f.read(), content_type='image/jpeg')
+r = c_ceo_m.post(f'/local/debts/{d3.id}/pay/?from=mobile', p3_data)
 d3.refresh_from_db()
-ok(d3.status == 'paid' and d3.remaining == 0, 'مجموع بیش از ۹۰٪ → بدهی بسته و از لیست بدهی‌ها حذف شد')
+ok(d3.status == 'paid' and d3.remaining == 1000000,
+   'باقی‌مانده ۱٬۰۰۰٬۰۰۰ → بدهی بسته و از لیست بدهی‌ها حذف شد (باقی‌مانده ۱٬۰۰۰٬۰۰۰)')
 ok(d3.payments.count() == 3, 'هر سه پرداخت ردیف‌های جداگانه در لیست پرداخت‌ها هستند')
+p3 = d3.payments.order_by('-paid_at', '-id').first()
+if os.path.exists(photo_path):
+    ok(bool(p3.payment_photo), 'رسید تصویر روی پرداخت ذخیره شد')
 
 body3 = c_ceo_m.get(MOBILE + '?period=week').content.decode('utf-8')
 ok(f'data-sheet="paid-{p1.id}"' in body3, 'پرداخت اول به عنوان ردیف جداگانه در لیست پرداخت‌ها هست')
 ok(f'data-sheet="debt-{d3.id}"' not in body3, 'بدهی بسته‌شده دیگر در لیست بدهی‌ها نیست')
+
+# ---------- ۶.۴.۱) حذف پرداخت توسط مدیرعامل: حذف ردیف + باز شدن مجدد بدهی + حذف فایل رسید ----------
+if os.path.exists(photo_path):
+    photo_file = p3.payment_photo.path
+
+    # صفحه تأیید حذف (GET) — مدیرعامل/مدیر
+    r = c_ceo_m.get(f'/local/debts/payments/{p3.id}/delete/')
+    ok(r.status_code == 200 and 'تأیید حذف پرداخت بدهی' in r.content.decode('utf-8'),
+       f'صفحه تأیید حذف پرداخت باز می‌شود → {r.status_code}')
+
+    # POST حذف → پرداخت و فایل رسیدش حذف می‌شوند؛ باقی‌مانده ۱٬۰۰۰٬۰۰۱ → بدهی دوباره باز می‌شود
+    r = c_ceo_m.post(f'/local/debts/payments/{p3.id}/delete/')
+    ok(r.status_code == 302, f'حذف پرداخت → {r.status_code}')
+    ok(not DebtPayment.objects.filter(id=p3.id).exists(), 'ردیف پرداخت از دیتابیس حذف شد')
+    ok(not os.path.exists(photo_file), 'فایل تصویر رسید از دیسک حذف شد')
+    d3.refresh_from_db()
+    ok(d3.status == 'pending' and d3.remaining == 1000001,
+       'حذف پرداخت بستن → بدهی دوباره باز شد (باقی‌مانده ۱٬۰۰۰٬۰۰۱)')
+else:
+    print('SKIP - فایل test_receipt.jpg وجود ندارد؛ بخش حذف پرداخت بدون رسید تست می‌شود')
+
+# پرداخت اول (۵٬۰۰۰٬۰۰۰) حذف می‌شود → بدهی در لیست بدهی‌ها می‌ماند
+r = c_ceo_m.post(f'/local/debts/payments/{p1.id}/delete/')
+ok(r.status_code == 302, f'حذف پرداخت اول → {r.status_code}')
+ok(not DebtPayment.objects.filter(id=p1.id).exists(), 'ردیف پرداخت اول حذف شد')
+d3.refresh_from_db()
+rem_after = 6000001 if os.path.exists(photo_path) else 6000000
+ok(d3.status == 'pending' and d3.remaining == rem_after,
+   f'حذف پرداخت → بدهی باز مانده (باقی‌مانده {rem_after:,})')
+body3 = c_ceo_m.get(MOBILE + '?period=week').content.decode('utf-8')
+ok(f'data-sheet="debt-{d3.id}"' in body3, 'بدهی بازشده دوباره در لیست بدهی‌ها آمده است')
 
 # ---------- ۶.۵) حساب‌های پرداخت (R8): تعریف توسط ادمین + انتخاب بانک در ثبت پرداخت ----------
 # ادمین (دسکتاپ) حساب پرداخت تعریف می‌کند → بازگشت به لیست بدهی
@@ -402,15 +444,17 @@ body2 = r.content.decode('utf-8')
 ok('js-comma' in body2, 'فرم‌های پرداخت موبایل (شیت + خارج از لیست) جداکننده سه‌رقمی دارند')
 
 # ---------- ۶.۱۰) ویرایش پرداخت توسط مدیرعامل (R10) ----------
-# دکمه ویرایش پرداخت: دسکتاپ (ستون عملیات) و موبایل (داخل شیت پرداخت)
+# دکمه‌های ویرایش/حذف پرداخت: دسکتاپ (ستون عملیات) و موبایل (داخل شیت پرداخت)
 r = c_ceo_d.get('/local/debts/ceo/')
 body_d = r.content.decode('utf-8')
-ok('عملیات' in body_d and f'/local/debts/payments/{p2.id}/edit/' in body_d,
-   'ستون عملیات + لینک ویرایش پرداخت در جدول دسکتاپ مدیرعامل هست')
+ok('عملیات' in body_d and f'/local/debts/payments/{p2.id}/edit/' in body_d
+   and f'/local/debts/payments/{p2.id}/delete/' in body_d,
+   'ستون عملیات + لینک ویرایش/حذف پرداخت در جدول دسکتاپ مدیرعامل هست')
 
 r = c_ceo_m.get(MOBILE)
 body2 = r.content.decode('utf-8')
-ok('ویرایش پرداخت' in body2, 'دکمه «ویرایش پرداخت» در شیت پرداخت موبایل هست')
+ok('ویرایش پرداخت' in body2 and 'حذف پرداخت' in body2,
+   'دکمه‌های «ویرایش/حذف پرداخت» در شیت پرداخت موبایل هست')
 ok('حذف بدهی' not in body2, 'مدیرعامل دکمه حذف بدهی را نمی‌بیند (فقط ادمین)')
 
 # صفحه ویرایش پرداخت (GET) — فرم با فیلدها
@@ -418,19 +462,19 @@ r = c_ceo_d.get(f'/local/debts/payments/{p2.id}/edit/')
 ok(r.status_code == 200 and 'ویرایش پرداخت' in r.content.decode('utf-8'),
    f'صفحه ویرایش پرداخت برای مدیرعامل می‌آید → {r.status_code}')
 
-# ویرایش: مبلغ با کاما + حذف حساب → بدهی دوباره باز می‌شود (مجموع ۴٬۰۰۰٬۰۰۰ از ۵٬۰۰۰٬۰۰۰ < ۹۰٪)
+# ویرایش: مبلغ با کاما + حذف حساب → بدهی دوباره باز می‌شود (باقی‌مانده ۲٬۰۰۰٬۰۰۰ > ۱٬۰۰۰٬۰۰۰)
 r = c_ceo_d.post(f'/local/debts/payments/{p2.id}/edit/', {
-    'amount': '4,000,000',
+    'amount': '3,000,000',
     'description': 'پرداخت ویرایش‌شده',
     'account_id': '',
 })
 ok(r.status_code == 302 and r['Location'] == '/local/debts/ceo/',
    f'مدیرعامل پرداخت را ویرایش می‌کند → {r["Location"]}')
 p2.refresh_from_db()
-ok(p2.amount == 4000000 and p2.description == 'پرداخت ویرایش‌شده', 'مبلغ و توضیحات پرداخت ویرایش شد')
+ok(p2.amount == 3000000 and p2.description == 'پرداخت ویرایش‌شده', 'مبلغ و توضیحات پرداخت ویرایش شد')
 d2.refresh_from_db()
-ok(d2.status == 'pending' and d2.remaining == 1000000,
-   'کاهش مبلغ پرداخت → بدهی دوباره باز شد (باقی‌مانده ۱٬۰۰۰٬۰۰۰)')
+ok(d2.status == 'pending' and d2.remaining == 2000000,
+   'کاهش مبلغ پرداخت → بدهی دوباره باز شد (باقی‌مانده ۲٬۰۰۰٬۰۰۰)')
 ok(d2.account == acc, 'حساب قبلی بدهی بعد از ویرایش پرداخت حفظ شد')
 
 # ---------- ۶.۱۱) ویرایش و حذف بدهی توسط ادمین (R10) ----------
@@ -512,8 +556,87 @@ c3 = Client(HTTP_USER_AGENT=MOBILE_UA); c3.force_login(u3)
 r = c3.get(MOBILE)
 ok(r.status_code in (302, 404), f'نقش kitchen به موبایل دسترسی ندارد → {r.status_code}')
 
-# ---------- پاک‌سازی ----------
+# ---------- ۹) تأمین‌کننده: شماره کارت/شبا + سرچ و انتخاب در ثبت بدهی ----------
+from purchases.models import Supplier
+TEST_SUPPLIER = 'تأمین‌کننده تست بانکی'
+Supplier.objects.filter(name=TEST_SUPPLIER).delete()
+
+# ایجاد تأمین‌کننده با اطلاعات بانکی (کارت + شبا)
+r = c_admin_d.post('/local/suppliers/create/', {
+    'name': TEST_SUPPLIER,
+    'supplier_type': 'company',
+    'bank_name': 'بانک صادرات',
+    'card_number': '6037697512345678',
+    'sheba_number': 'IR060160000000100000000001',
+    'bank_account': '0101234567001',
+})
+ok(r.status_code == 302, f'ایجاد تأمین‌کننده با کارت/شبا → {r.status_code}')
+sup = Supplier.objects.get(name=TEST_SUPPLIER)
+ok(sup.card_number == '6037697512345678' and sup.sheba_number == 'IR060160000000100000000001',
+   'شماره کارت و شبا تأمین‌کننده ذخیره شد')
+ok(sup.bank_name == 'بانک صادرات', 'نام بانک تأمین‌کننده ذخیره شد')
+
+# ویرایش تأمین‌کننده: تغییر شماره کارت
+r = c_admin_d.post(f'/local/suppliers/{sup.id}/update/', {
+    'name': TEST_SUPPLIER, 'supplier_type': 'company',
+    'bank_name': 'بانک صادرات', 'card_number': '6037697512345679',
+    'sheba_number': 'IR060160000000100000000001', 'bank_account': '0101234567001',
+})
+ok(r.status_code == 302, f'ویرایش تأمین‌کننده → {r.status_code}')
+sup.refresh_from_db()
+ok(sup.card_number == '6037697512345679', 'شماره کارت ویرایش شد')
+
+# فرم ثبت بدهی: انتخاب تأمین‌کننده از لیست (supplier_id) → بدهی متصل می‌شود
+r = c_admin_d.post('/local/debts/', {
+    'supplier_id': str(sup.id),
+    'company': '',  # از نام تأمین‌کننده پر می‌شود
+    'amount': '8000000',
+    'priority': 'high',
+})
+ok(r.status_code == 302, f'ثبت بدهی با انتخاب تأمین‌کننده → {r.status_code}')
+d_sup = Debt.objects.get(company=TEST_SUPPLIER)
+ok(d_sup.supplier == sup and d_sup.status == 'pending', 'بدهی به تأمین‌کننده متصل شد')
+
+# داده تأمین‌کنندگان (json_script) و picker در صفحات بدهی
+body = c_admin_d.get('/local/debts/').content.decode('utf-8')
+ok('id="suppliers-data"' in body and 'sup-picker' in body, 'ادمین: داده و picker سرچ تأمین‌کننده در فرم ثبت بدهی هست')
+ok('6037697512345679' in body, 'داده کارت تأمین‌کننده برای سرچ سمت کلاینت ارسال شده است')
+
+body = c_ceo_d.get('/local/debts/ceo/').content.decode('utf-8')
+ok('id="suppliers-data"' in body and 'sup-picker' in body, 'مدیرعامل: picker سرچ در فرم پرداخت خارج از لیست هست')
+
+# مدیرعامل: کلیک روی نام تأمین‌کننده → الرت اطلاعات بانکی (با دکمه کپی)
+ok(f'data-name="{TEST_SUPPLIER}"' in body, 'نام تأمین‌کننده در جدول بدهی‌ها قابل کلیک است (data-name)')
+ok('data-card="6037697512345679"' in body, 'شماره کارت در دکمه اطلاعات بانکی هست')
+ok('data-sheba="IR060160000000100000000001"' in body, 'شماره شبا در دکمه اطلاعات بانکی هست')
+ok('supinfo-modal' in body and 'supinfo-copy' in body, 'الرت اطلاعات بانکی و دکمه کپی رندر می‌شود')
+
+# موبایل: اطلاعات بانکی تأمین‌کننده داخل شیت بدهی + picker
+body_m = c_ceo_m.get(MOBILE).content.decode('utf-8')
+ok('اطلاعات بانکی تأمین‌کننده' in body_m, 'موبایل: بخش اطلاعات بانکی در شیت بدهی هست')
+ok('6037697512345679' in body_m and 'IR060160000000100000000001' in body_m, 'موبایل: کارت و شبا در شیت نمایش داده می‌شود')
+ok('m-copy-btn' in body_m, 'موبایل: دکمه کپی شماره‌های بانکی هست')
+ok('sup-picker' in body_m, 'موبایل: picker سرچ تأمین‌کننده در فرم‌ها هست')
+
+# پرداخت خارج از لیست با انتخاب تأمین‌کننده → نام از تأمین‌کننده پر می‌شود
+r = c_ceo_m.post('/local/debts/pay-offlist/?from=mobile', {
+    'supplier_id': str(sup.id),
+    'company': '',
+    'amount': '2000000',
+})
+ok(r.status_code == 302, f'پرداخت خارج از لیست با تأمین‌کننده → {r.status_code}')
+off_sup = Debt.objects.filter(company=TEST_SUPPLIER, is_off_list=True).first()
+ok(off_sup is not None and off_sup.supplier == sup, 'پرداخت خارج از لیست به تأمین‌کننده متصل شد')
+
+# ویرایش بدهی: تأمین‌کننده از قبل انتخاب شده است (hidden supplier_id)
+body_edit = c_admin_d.get(f'/local/debts/{d_sup.id}/edit/').content.decode('utf-8')
+ok(f'name="supplier_id" class="sup-hidden" value="{sup.id}"' in body_edit,
+   'ویرایش بدهی: تأمین‌کننده فعلی از قبل انتخاب شده است')
+
+# پاک‌سازی
 DebtPayment.objects.filter(company__in=TEST_COMPANIES).delete()
 Debt.objects.filter(company__in=TEST_COMPANIES).delete()
+Debt.objects.filter(company=TEST_SUPPLIER).delete()
+Supplier.objects.filter(name=TEST_SUPPLIER).delete()
 PaymentAccount.objects.filter(bank_name='بانک تست ملت').delete()
 print('\nتمام تست‌ها انجام شد.')

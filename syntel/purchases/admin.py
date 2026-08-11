@@ -69,8 +69,15 @@ class ProductAdmin(admin.ModelAdmin):
 class SupplierAdmin(admin.ModelAdmin):
     list_display = ('name', 'phone', 'email', 'city', 'status')
     list_filter = ('status', 'city')
-    search_fields = ('name', 'phone', 'email')
+    search_fields = ('name', 'phone', 'email', 'card_number', 'sheba_number')
     ordering = ('name',)
+    fieldsets = (
+        (None, {'fields': ('name', 'supplier_code', 'supplier_type', 'status', 'cafe')}),
+        ('اطلاعات تماس', {'fields': ('contact_person', 'phone', 'mobile', 'email', 'website')}),
+        ('اطلاعات آدرس', {'fields': ('address', 'city', 'state', 'postal_code', 'country')}),
+        ('اطلاعات بانکی', {'fields': ('bank_name', 'bank_account', 'bank_routing', 'card_number', 'sheba_number')}),
+        ('سایر', {'fields': ('tax_id', 'registration_number', 'business_license', 'payment_terms', 'credit_limit', 'notes', 'categories')}),
+    )
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):

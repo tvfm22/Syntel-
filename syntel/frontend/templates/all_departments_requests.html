@@ -117,6 +117,10 @@
     .ml-edit:hover { background: #fde68a; }
     .ml-delete { background: #fee2e2; color: #dc2626; }
     .ml-delete:hover { background: #fecaca; }
+    .inline-edit { margin-top: 0.5rem; padding: 0.5rem 0.65rem; border-radius: var(--radius-md); background: var(--bg-card); border: 1px dashed var(--border-default); }
+    .inline-edit-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .inline-edit-label { font-size: 0.75rem; color: var(--text-secondary); }
+    .inline-edit-row input[name="new_qty"] { max-width: 110px; }
 
     .item-chk, .chk-all { width: 17px; height: 17px; accent-color: var(--accent-indigo); cursor: pointer; }
     .sent-badge-row { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.45rem; }
@@ -239,6 +243,9 @@
         <div class="send-bar">
             <select name="officer_user_id" required>
                 <option value="">— مسئول خرید / انبار را انتخاب کنید —</option>
+                {% if user.role == 'manager' or user.role == 'ceo' %}
+                <option value="{{ user.id }}">🛒 خرید توسط خودم ({{ user.get_full_name|default:user.username }})</option>
+                {% endif %}
                 {% for o in officer_users %}
                 <option value="{{ o.user.id }}">{{ o.user.get_full_name|default:o.user.username }} ({{ o.label }})</option>
                 {% endfor %}
@@ -264,11 +271,10 @@
                 {% for row in rows %}
                 <tr class="{% if row.all_sent %}row-faded{% endif %}">
                     <td>
-                        {% for s in row.sections %}
-                        <input type="checkbox" class="item-chk" value="{{ s.item_ids }}"
-                               data-ids="{{ s.item_ids }}" data-count="{{ s.entries|length }}"
-                               {% if s.all_sent %}checked disabled title="قبلاً ارسال شده"{% endif %}>
-                        {% endfor %}
+                        <!-- یک باکس انتخاب برای کل کالا (همه بخش‌ها با هم) -->
+                        <input type="checkbox" class="item-chk" value="{{ row.all_item_ids }}"
+                               data-ids="{{ row.all_item_ids }}" data-count="{{ row.total_items }}"
+                               {% if row.all_sent %}checked disabled title="قبلاً ارسال شده"{% endif %}>
                     </td>
                     <td class="product-name-cell">{{ row.name }}</td>
                     <td class="qty-cell">{{ row.total_qty|trim_decimal }} {{ row.unit }}</td>
@@ -283,19 +289,29 @@
                             </div>
                             {% if not s.all_sent %}
                             <div class="section-actions">
-                                {% for e in s.entries %}
+                                <button type="button" class="mini-link ml-edit" title="تغییر مقدار این بخش">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </button>
                                 <form method="post" style="display:inline;">
                                     {% csrf_token %}
-                                    <input type="hidden" name="item_id" value="{{ e.item_id }}">
-                                    <button type="submit" name="action" value="edit_item" class="mini-link ml-edit"><i class="fas fa-pen"></i> ویرایش</button>
+                                    <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
+                                    <button type="submit" name="action" value="delete_section" class="mini-link ml-delete"
+                                            onclick="return confirm('«{{ row.name }}» در بخش {{ s.dept }} حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
                                 </form>
-                                <form method="post" style="display:inline;">
+                            </div>
+                            <div class="inline-edit" hidden>
+                                <form method="post" class="inline-edit-form">
                                     {% csrf_token %}
-                                    <input type="hidden" name="item_id" value="{{ e.item_id }}">
-                                    <button type="submit" name="action" value="delete_item" class="mini-link ml-delete"
-                                            onclick="return confirm('«{{ e.name }}» حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
+                                    <input type="hidden" name="action" value="edit_section">
+                                    <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
+                                    <div class="inline-edit-row">
+                                        <span class="inline-edit-label">مقدار جدید:</span>
+                                        <input type="number" name="new_qty" min="1" step="1" required
+                                               class="form-control form-control-sm" value="{{ s.qty|trim_decimal }}">
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-check"></i> تأیید</button>
+                                        <button type="button" class="btn btn-sm btn-secondary inline-cancel"><i class="fas fa-times"></i></button>
+                                    </div>
                                 </form>
-                                {% endfor %}
                             </div>
                             {% endif %}
                         </div>
@@ -563,5 +579,19 @@
         document.getElementById('sendItemIds').value = ids.join(',');
         return true;
     }
+
+    /* ── ویرایش درجا: باز شدن پنل مقدار در همین صفحه ── */
+    document.querySelectorAll('.section-box').forEach(box => {
+        const editBtn = box.querySelector('.ml-edit');
+        const panel = box.querySelector('.inline-edit');
+        if (!editBtn || !panel) return;
+        editBtn.addEventListener('click', () => {
+            document.querySelectorAll('.inline-edit').forEach(p => { if (p !== panel) p.hidden = true; });
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) panel.querySelector('input[name="new_qty"]').focus();
+        });
+        const cancel = panel.querySelector('.inline-cancel');
+        if (cancel) cancel.addEventListener('click', () => { panel.hidden = true; });
+    });
 </script>
 {% endblock %}

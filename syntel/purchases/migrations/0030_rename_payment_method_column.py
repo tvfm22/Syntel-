@@ -9,9 +9,15 @@ class Migration(migrations.Migration):
         ('purchases', '0029_rename_paymentmethod_table'),
     ]
 
+    # NOTE: This migration originally renamed the `payment_method_id` column to
+    # `payment_location_id` with raw SQL. Migration 0031 (which depends on this
+    # one) removes the `payment_method` field and adds `payment_location`
+    # properly, so the rename broke fresh databases. Neutralized to a no-op:
+    # databases that already applied the rename keep it; fresh databases get
+    # the correct column layout from 0031.
     operations = [
         migrations.RunSQL(
-            'ALTER TABLE purchases_payment RENAME COLUMN payment_method_id TO payment_location_id;',
-            reverse_sql='ALTER TABLE purchases_payment RENAME COLUMN payment_location_id TO payment_method_id;'
+            migrations.RunSQL.noop,
+            migrations.RunSQL.noop,
         ),
     ]

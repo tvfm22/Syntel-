@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}لیست بدهی شرکت‌ها{% endblock %}
+{% block title %}لیست بدهی تأمین‌کنندگان{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
@@ -30,6 +30,24 @@
         gap: 1rem;
     }
     .debt-form-grid .full { grid-column: 1 / -1; }
+
+    /* picker انتخاب تأمین‌کننده */
+    .sup-picker { position: relative; }
+    .sup-dropdown {
+        position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 60;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        max-height: 240px; overflow-y: auto; display: none;
+    }
+    .sup-dropdown.show { display: block; }
+    .sup-item {
+        padding: 0.55rem 0.8rem; cursor: pointer;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .sup-item:last-child { border-bottom: none; }
+    .sup-item:hover { background: var(--bg-subtle); }
+    .sup-item-name { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
+    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
 
     .debt-table-wrap { overflow-x: auto; }
     .debt-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 640px; }
@@ -127,7 +145,7 @@
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-money-bill-wave"></i>
-        لیست بدهی شرکت‌ها
+        لیست بدهی تأمین‌کنندگان
     </h1>
     <div class="header-actions">
         <button type="button" class="acc-header-btn" id="openAccountsModal">
@@ -165,10 +183,13 @@
         <form method="post" action="{% url 'debt_list' cafe_code=cafe_code %}">
             {% csrf_token %}
             <div class="debt-form-grid">
-                <div class="form-group">
-                    <label for="company">نام شرکت <span style="color:var(--danger);">*</span></label>
-                    <input type="text" id="company" name="company" class="form-control" required
-                           placeholder="مثلاً: شرکت لبنیات آریا">
+                <div class="form-group sup-picker">
+                    <label for="company">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                    <input type="text" id="company" name="company" class="form-control sup-input" required
+                           autocomplete="off" placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
+                    <input type="hidden" name="supplier_id" class="sup-hidden" value="">
+                    <div class="sup-dropdown"></div>
+                    <div class="help-note">با تایپ، از بین تأمین‌کنندگان تعریف‌شده جستجو می‌شود — نام آزاد هم مجاز است</div>
                 </div>
                 <div class="form-group">
                     <label for="amount">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
@@ -221,7 +242,7 @@
         <table class="debt-table">
             <thead>
                 <tr>
-                    <th>شرکت</th>
+                    <th>تأمین‌کننده</th>
                     <th>مبلغ بدهی</th>
                     <th>تاریخ بدهی</th>
                     <th>توضیحات</th>
@@ -254,7 +275,7 @@
                                 <i class="fas fa-edit"></i>
                             </a>
                             <form method="post" action="{% url 'debt_delete' cafe_code=cafe_code debt_id=debt.id %}"
-                                  onsubmit="return confirm('بدهی شرکت {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
+                                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
                                 {% csrf_token %}
                                 <button type="submit" class="row-action danger" title="حذف بدهی">
                                     <i class="fas fa-trash"></i>
@@ -297,7 +318,7 @@
         <table class="debt-table">
             <thead>
                 <tr>
-                    <th>شرکت</th>
+                    <th>تأمین‌کننده</th>
                     <th>مبلغ بدهی</th>
                     <th>مبلغ پرداخت شده</th>
                     <th>تاریخ و زمان پرداخت</th>
@@ -343,6 +364,8 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ suppliers_data|json_script:"suppliers-data" }}
+<script src="{% static 'js/supplier_picker.js' %}"></script>
 <script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
 <script>
     // مودال تعریف حساب‌های پرداخت — مستقل از بقیه اسکریپت‌ها:

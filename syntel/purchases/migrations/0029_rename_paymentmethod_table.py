@@ -9,7 +9,15 @@ class Migration(migrations.Migration):
         ('purchases', '0028_alter_supplier_status_pricehistory'),
     ]
 
-    operations = [        migrations.RunSQL(
-            'ALTER TABLE purchases_paymentmethod RENAME TO purchases_paymentlocation;',
-            reverse_sql='ALTER TABLE purchases_paymentlocation RENAME TO purchases_paymentmethod;'
-        ),    ]
+    # NOTE: This migration originally renamed `purchases_paymentmethod` to
+    # `purchases_paymentlocation` with raw SQL. Migration 0031 (which depends on
+    # this one) creates the PaymentLocation table itself, so the rename made
+    # fresh databases fail with "table purchases_paymentlocation already exists".
+    # Neutralized to a no-op: databases that already applied the rename keep it;
+    # fresh databases get the table from 0031.
+    operations = [
+        migrations.RunSQL(
+            migrations.RunSQL.noop,
+            migrations.RunSQL.noop,
+        ),
+    ]

@@ -35,13 +35,13 @@ class Migration(migrations.Migration):
                 'ordering': ['display_order', 'name'],
             },
         ),
-        migrations.RemoveField(
-            model_name='payment',
-            name='payment_method',
-        ),
         migrations.RemoveIndex(
             model_name='payment',
             name='purchases_p_payment_32632e_idx',
+        ),
+        migrations.RemoveField(
+            model_name='payment',
+            name='payment_method',
         ),
         migrations.AddField(
             model_name='category',

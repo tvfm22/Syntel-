@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from purchases.models import (
-    Category, Unit, Product, Supplier, PurchaseRequest,
+    Cafe, Category, Unit, Product, Supplier, PurchaseRequest,
     PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation
 )
 
@@ -115,12 +115,21 @@ class ViewTests(TestCase):
     def test_unauthorized_access(self):
         """Test that unauthorized users cannot access restricted views"""
         # Test purchasing view without login
-        response = self.client.get(reverse('purchase_requests_list'))
+        response = self.client.get(reverse('purchase_requests_list', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 302)  # Redirect to login
+
+        # The cafe middleware needs an existing cafe + selected cafe in session
+        cafe = Cafe.objects.create(name='Main', code='main', is_active=True)
+        self.kitchen_user.cafe = cafe
+        self.kitchen_user.save()
+        session = self.client.session
+        session['selected_cafe_id'] = cafe.id
+        session['selected_cafe_code'] = cafe.code
+        session.save()
 
         # Test manager view with kitchen user
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 302)  # Access denied
 
     def test_purchase_request_form(self):
@@ -320,14 +329,23 @@ class ViewTests(TestCase):
 
     def test_backup_management_access(self):
         """Test backup management access control"""
+        # The cafe middleware requires an existing cafe for cafe-scoped URLs
+        cafe = Cafe.objects.create(name='Main', code='main', is_active=True)
+        self.kitchen_user.cafe = cafe  # kitchen user belongs to this cafe
+        self.kitchen_user.save()
+        session = self.client.session
+        session['selected_cafe_id'] = cafe.id
+        session['selected_cafe_code'] = cafe.code
+        session.save()
+
         # Test unauthorized access
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 302)  # Access denied
 
         # Test authorized access
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'backup_management.html')
 

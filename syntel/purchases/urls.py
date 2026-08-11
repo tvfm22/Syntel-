@@ -30,6 +30,8 @@ auth_urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('select-cafe/', views.select_cafe, name='select_cafe'),
     path('health/', views.system_health_check, name='system_health_check'),
+    # Google Drive OAuth callback — must be an exact, stable redirect URI (no cafe prefix)
+    path('backup/drive/callback/', views.drive_callback, name='drive_callback'),
 ]
 
 # مسیرهای داخل کافه (با prefix cafe_code)
@@ -66,7 +68,16 @@ cafe_urlpatterns = [
     path('backup/database/', cv(views.backup_database), name='backup_database'),
     path('backup/export/json/', cv(views.export_data_json), name='export_data_json'),
     path('backup/export/csv/', cv(views.export_data_csv), name='export_data_csv'),
+    path('backup/export/folder/', cv(views.export_data_folder), name='export_data_folder'),
+    path('backup/drive/connect/', cv(views.drive_connect), name='drive_connect'),
+    path('backup/drive/disconnect/', cv(views.drive_disconnect), name='drive_disconnect'),
+    path('backup/drive/upload/', cv(views.drive_backup_now), name='drive_backup_now'),
+    path('backup/drive/save-config/', cv(views.drive_save_config), name='drive_save_config'),
     path('backup/import/json/', cv(views.import_data_json), name='import_data_json'),
+    path('backup/download/db/', cv(views.download_database_file), name='download_database_file'),
+    path('backup/restore/db/', cv(views.restore_database_file), name='restore_database_file'),
+    path('backup/download/<str:filename>/', cv(views.download_backup_file), name='download_backup_file'),
+    path('backup/delete/<str:filename>/', cv(views.delete_backup_file), name='delete_backup_file'),
     path('backup/migration/create/', cv(views.create_migration_script), name='create_migration_script'),
     path('backup/migration/run/', cv(views.run_migration_script), name='run_migration_script'),
     path('system/health/', cv(views.system_health_check), name='system_health_check_cafe'),
@@ -132,6 +143,9 @@ cafe_urlpatterns = [
     path('api/departments/quick-add/', cv(views.quick_add_department), name='quick_add_department'),
     path('api/categories/autocomplete/', cv(views.search_categories_autocomplete), name='categories_autocomplete'),
     path('all-departments-requests/', cv(views.all_departments_requests), name='all_departments_requests'),
+    path('request-management/', cv(views.request_management_dashboard), name='request_management_dashboard'),
+    path('request-management/export-csv/', cv(views.request_management_csv), name='request_management_csv'),
+    path('request-management/warehouse-pdf/', cv(views.request_management_warehouse_pdf), name='request_management_warehouse_pdf'),
     path('purchase-officer/dashboard/', cv(views.purchase_officer_dashboard), name='purchase_officer_dashboard'),
     path('warehouse-officer/dashboard/', cv(views.warehouse_officer_dashboard), name='warehouse_officer_dashboard'),
     path('purchase-orders/status/', cv(views.purchase_orders_status), name='purchase_orders_status'),
@@ -162,6 +176,7 @@ cafe_urlpatterns = [
     path('debts/<int:debt_id>/edit/', cv(views.debt_edit), name='debt_edit'),
     path('debts/<int:debt_id>/delete/', cv(views.debt_delete), name='debt_delete'),
     path('debts/payments/<int:payment_id>/edit/', cv(views.debt_payment_edit), name='debt_payment_edit'),
+    path('debts/payments/<int:payment_id>/delete/', cv(views.debt_payment_delete), name='debt_payment_delete'),
     path('payment-accounts/', cv(views.payment_accounts), name='payment_accounts'),
     # Supplier Management URLs
     path('suppliers/', cv(views.supplier_list), name='supplier_list'),
@@ -202,7 +217,6 @@ cafe_urlpatterns = [
     path('management/pending-requests/', cv(views.manager_pending_requests), name='manager_pending_requests'),
     path('management/approve-request/<int:request_id>/', cv(views.manager_approve_request), name='manager_approve_request'),
     path('management/reject-request/<int:request_id>/', cv(views.manager_reject_request), name='manager_reject_request'),
-    path('management/approve-purchase-requests/', cv(views.approve_purchase_requests), name='approve_purchase_requests'),
 
     # Analytics API URLs (Original)
     path('api/analytics/expenses/departments/', cv(views_analytics.department_expenses_api), name='api_department_expenses_old'),

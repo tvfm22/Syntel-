@@ -1029,7 +1029,9 @@ class Debt(models.Model):
         ('paid', 'پرداخت شده'),
     ]
 
-    company = models.CharField(max_length=200, verbose_name='نام شرکت')
+    company = models.CharField(max_length=200, verbose_name='نام تأمین‌کننده')
+    # تأمین‌کننده متصل (اختیاری — بدهی‌های قدیمی فقط نام متنی دارند)
+    supplier = models.ForeignKey('Supplier', null=True, blank=True, on_delete=models.SET_NULL, related_name='debts', verbose_name='تأمین‌کننده')
     amount = models.DecimalField(
         max_digits=14, decimal_places=2, verbose_name='مبلغ بدهی',
         validators=[MinValueValidator(0)],
@@ -1069,7 +1071,7 @@ class Debt(models.Model):
 
     @property
     def remaining(self):
-        """باقی‌مانده بدهی — اگر پرداخت بیش از ۹۰٪ شد بدهی بسته می‌شود"""
+        """باقی‌مانده بدهی — اگر باقی‌مانده ۱٬۰۰۰٬۰۰۰ تومان یا کمتر شد بدهی بسته می‌شود"""
         return max(self.amount - self.paid_total, Decimal("0"))
 
     class Meta:
@@ -1089,7 +1091,7 @@ class DebtPayment(models.Model):
         Debt, on_delete=models.CASCADE, related_name='payments',
         null=True, blank=True, verbose_name='بدهی',
     )
-    company = models.CharField(max_length=200, verbose_name='نام شرکت')
+    company = models.CharField(max_length=200, verbose_name='نام تأمین‌کننده')
     amount = models.DecimalField(
         max_digits=14, decimal_places=2, verbose_name='مبلغ پرداخت',
         validators=[MinValueValidator(0)],
@@ -1211,6 +1213,8 @@ class Supplier(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, verbose_name='نام بانک')
     bank_account = models.CharField(max_length=50, blank=True, verbose_name='شماره حساب')
     bank_routing = models.CharField(max_length=50, blank=True, verbose_name='کد شعبه/شبا')
+    card_number = models.CharField(max_length=20, blank=True, verbose_name='شماره کارت')
+    sheba_number = models.CharField(max_length=30, blank=True, verbose_name='شماره شبا')
 
     # Performance Tracking
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name='امتیاز عملکرد کلی')

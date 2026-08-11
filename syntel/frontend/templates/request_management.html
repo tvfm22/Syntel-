@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}مدیریت درخواست‌ها - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ صفحه «مدیریت درخواست‌ها» — داشبورد ادمین (استایل هماهنگ با صفحه «درخواست کالا») ═══ */
+    .req-mgmt-wrap { max-width: 1200px; margin: 0 auto; }
+
+    /* هدر صفحه: بلندتر از حالت عادی تا ناوبری تاریخ جا شود */
+    .page-header { height: auto; min-height: var(--header-height); flex-wrap: wrap; gap: var(--space-3); padding-block: var(--space-4); }
+
+    /* ── ناوبری تاریخ ── */
+    .date-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .date-arrow {
+        width: 38px; height: 38px; border-radius: var(--radius-md);
+        border: 1px solid var(--border-default); background: var(--bg-card);
+        color: var(--text-secondary); font-size: 1.1rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: all var(--transition-fast); cursor: pointer; line-height: 1;
+    }
+    .date-arrow:hover { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
+    .date-display {
+        cursor: pointer; padding: 0.45rem 1rem; border-radius: var(--radius-lg);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        text-align: center; min-width: 150px; user-select: none; transition: all var(--transition-fast);
+    }
+    .date-display:hover { border-color: var(--accent-indigo); }
+    .date-jalali { display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+    .date-gregorian { display: block; font-size: 0.7rem; color: var(--text-muted); }
+
+    /* ── دکمه دانلود CSV ── */
+    .csv-btn {
+        display: inline-flex; align-items: center; gap: 0.45rem;
+        background: var(--accent-green); color: white; border: none; text-decoration: none;
+        padding: 0.55rem 1.2rem; border-radius: var(--radius-lg); font-size: 0.82rem; font-weight: 700;
+        font-family: 'Vazir', sans-serif; cursor: pointer; transition: all var(--transition-fast);
+    }
+    .csv-btn:hover { background: #16A34A; color: white; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+    /* ── جابه‌جایی نوع لیست (خرید / انبار) ── */
+    .type-toggle {
+        display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        background: var(--bg-card); overflow: hidden; margin-bottom: var(--space-6); box-shadow: var(--shadow-sm);
+    }
+    .type-btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.65rem 1.6rem; font-size: 0.85rem; font-weight: 700;
+        text-decoration: none; color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .type-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+    .type-btn.active-purchase { background: var(--accent-indigo); color: white; }
+    .type-btn.active-warehouse { background: var(--accent-green); color: white; }
+
+    /* ── جدول لیست خرید ── */
+    .rm-table-wrap {
+        background: var(--bg-card); border-radius: var(--radius-3xl); box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-light); overflow-x: auto; margin-bottom: var(--space-6);
+    }
+    .rm-table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    .rm-table th {
+        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
+        color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
+    }
+    .rm-table td { padding: 0.85rem 1rem; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .rm-table tbody tr:hover td { background: var(--bg-subtle); }
+
+    .rm-product { font-weight: 600; color: var(--text-primary); }
+    .rm-qty { font-weight: 700; color: var(--accent-green); white-space: nowrap; }
+    .dept-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
+    }
+    .rm-user { font-size: 0.83rem; font-weight: 600; color: var(--text-primary); }
+    .rm-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .status-badge { display: inline-flex; padding: 0.25rem 0.8rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-purchased { background: #d1fae5; color: #065f46; }
+    .status-fulfilled { background: #d1fae5; color: #065f46; }
+
+    .empty-state {
+        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px dashed var(--border-strong);
+        box-shadow: var(--shadow-sm);
+    }
+    .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
+
+    @media (width < 768px) {
+        .page-header { padding-block: var(--space-3); }
+        .type-toggle { display: flex; width: 100%; }
+        .type-btn { flex: 1; justify-content: center; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="req-mgmt-wrap">
+
+    <!-- هدر صفحه: عنوان + دکمه CSV + ناوبری تاریخ -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-clipboard-list"></i>
+            مدیریت درخواست‌ها
+        </h1>
+        <div class="header-actions">
+            <a href="{% url 'request_management_csv' cafe_code=cafe_code %}?date={{ date_str }}"
+               class="csv-btn" title="دانلود درخواست‌های خرید این روز">
+                <i class="fas fa-file-csv"></i> دانلود CSV این روز
+            </a>
+            <div class="date-nav">
+                <a href="?tab={{ tab }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow" title="روز قبل">‹</a>
+                <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
+                    <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+                </div>
+                <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
+                       onchange="if(this.value) window.location.href='?tab={{ tab }}&date=' + this.value;">
+                <a href="?tab={{ tab }}&date={{ next_date|date:'Y-m-d' }}" class="date-arrow" title="روز بعد">›</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- جابه‌جایی نوع لیست: خرید / انبار -->
+    <div class="type-toggle">
+        <a href="?tab=purchase{% if date_str %}&date={{ date_str }}{% endif %}"
+           class="type-btn {% if tab == 'purchase' %}active-purchase{% endif %}">
+            <i class="fas fa-shopping-cart"></i> لیست خرید
+        </a>
+        <a href="?tab=warehouse{% if date_str %}&date={{ date_str }}{% endif %}"
+           class="type-btn {% if tab == 'warehouse' %}active-warehouse{% endif %}">
+            <i class="fas fa-boxes-stacked"></i> لیست انبار
+        </a>
+    </div>
+
+    {% if tab == 'warehouse' %}
+    <!-- ── لیست انبار: کالاهای تحویل‌شده از انبار در روز انتخاب‌شده ── -->
+    <div style="margin-bottom: var(--space-5);">
+        <a href="{% url 'request_management_warehouse_pdf' cafe_code=cafe_code %}?date={{ date_str }}"
+           class="csv-btn" title="دانلود PDF درخواست کالا از انبار (A5 افقی)">
+            <i class="fas fa-file-pdf"></i> دانلود PDF این روز
+        </a>
+    </div>
+
+    {% if wh_rows %}
+    <div class="rm-table-wrap">
+        <table class="rm-table">
+            <thead>
+                <tr>
+                    <th>ردیف</th>
+                    <th>مرکز هزینه (بخش درخواست‌دهنده)</th>
+                    <th>کالا (نام عمومی)</th>
+                    <th>شرح کالا (نام تجاری)</th>
+                    <th>مقدار و واحد درخواستی</th>
+                    <th>مقدار و واحد تحویلی</th>
+                    <th>توضیحات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in wh_rows %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><span class="dept-badge"><i class="fas fa-building"></i> {{ r.section }}</span></td>
+                    <td class="rm-product">{{ r.name }}</td>
+                    <td class="rm-user">{{ r.brands_text }}</td>
+                    <td class="rm-qty">{{ r.requested_qty|trim_decimal }} {{ r.unit }}</td>
+                    <td class="rm-qty">{{ r.supplied_qty|trim_decimal }} {{ r.unit }}</td>
+                    <td class="rm-meta" style="font-size:0.8rem;">{{ r.description|default:'—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <p>در این روز کالایی از انبار تحویل نشده است.</p>
+    </div>
+    {% endif %}
+
+    {% else %}
+
+    {% if rows %}
+    <div class="rm-table-wrap">
+        <table class="rm-table">
+            <thead>
+                <tr>
+                    <th>کالای درخواست‌شده</th>
+                    <th>مقدار</th>
+                    <th>بخش درخواست‌دهنده</th>
+                    <th>درخواست‌دهنده</th>
+                    <th>مسئول خرید</th>
+                    <th>وضعیت</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td class="rm-product">{{ r.name }}</td>
+                    <td class="rm-qty">{{ r.quantity|trim_decimal }} {{ r.unit }}</td>
+                    <td><span class="dept-badge"><i class="fas fa-building"></i> {{ r.section }}</span></td>
+                    <td>
+                        <div class="rm-user">{{ r.requester }}</div>
+                        <div class="rm-meta">درخواست #{{ r.item_id }}</div>
+                    </td>
+                    <td class="rm-user">{{ r.officer }}</td>
+                    <td><span class="status-badge status-{{ r.status }}">{{ r.status_display }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <p>در این روز قلمی برای مسئول خرید ارسال نشده است.</p>
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}
