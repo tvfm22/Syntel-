@@ -164,6 +164,9 @@ class PurchaseRequest(models.Model):
     manager_confirmed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تایید مدیر')
     manager_confirmed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='confirmed_requests', verbose_name='تایید کننده')
     rejection_reason: models.TextField = models.TextField(blank=True, null=True, verbose_name='دلیل رد')
+    # زمان تحویل درخواست‌شده: تاریخ مشخص یا تحویل فوری
+    delivery_date = models.DateField(null=True, blank=True, verbose_name='زمان تحویل (تاریخ)')
+    delivery_immediate = models.BooleanField(default=False, verbose_name='تحویل فوری')
 
     def __str__(self) -> str:
         return f"Request by {self.user.username} - {self.status}"
@@ -189,6 +192,8 @@ class PurchaseItem(models.Model):
     
     request = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
+    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='purchase_items', verbose_name='برند')
     name = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField()
     unit = models.CharField(max_length=20)
@@ -253,6 +258,8 @@ class WarehouseRequestItem(models.Model):
 
     warehouse_request = models.ForeignKey(WarehouseRequest, on_delete=models.CASCADE, related_name='items', verbose_name='درخواست انبار')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
+    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='warehouse_request_items', verbose_name='برند')
     name = models.CharField(max_length=100, verbose_name='نام کالا')
     quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار درخواستی')
     unit = models.CharField(max_length=20, verbose_name='واحد')
@@ -361,6 +368,8 @@ class Product(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد اصلی')
     min_stock = models.PositiveIntegerField(default=0, verbose_name='حداقل موجودی')
     current_stock = models.PositiveIntegerField(default=0, verbose_name="موجودی فعلی")
+    shelf_life_days = models.PositiveIntegerField(null=True, blank=True, verbose_name='عمر مفید (روز)',
+                                                  help_text='مدت زمان ماندگاری محصول به روز؛ مثال: 180')
     usage_location = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default='general', verbose_name='محل استفاده')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')

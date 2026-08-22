@@ -509,6 +509,8 @@ def warehouse_request_form(request: HttpRequest) -> HttpResponse:
         quantities = request.POST.getlist('item_quantity')
         units = request.POST.getlist('item_unit')
         descriptions = request.POST.getlist('item_description')
+        product_ids = request.POST.getlist('item_product_id')
+        brand_ids = request.POST.getlist('item_brand_id')
 
         items_data = []
         for idx, name in enumerate(product_names):
@@ -521,7 +523,19 @@ def warehouse_request_form(request: HttpRequest) -> HttpResponse:
                 continue
             unit_val = units[idx].strip() if idx < len(units) and units[idx] else 'عدد'
             desc_val = descriptions[idx] if idx < len(descriptions) else ''
-            items_data.append((name, qty_val, unit_val, desc_val))
+            product_id_raw = product_ids[idx] if idx < len(product_ids) else ''
+            brand_id_raw = brand_ids[idx] if idx < len(brand_ids) else ''
+            # محصول انتخاب‌شده از لیست پیشنهادها (اگر انتخاب نشده باشد با نام جستجو می‌شود)
+            item_product = None
+            if product_id_raw.isdigit():
+                item_product = Product.objects.filter(id=int(product_id_raw)).first()
+            if item_product is None:
+                item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
+            # برند انتخاب‌شده فقط در صورتی ثبت می‌شود که متعلق به همان محصول باشد
+            item_brand = None
+            if brand_id_raw.isdigit() and item_product is not None:
+                item_brand = ProductBrand.objects.filter(id=int(brand_id_raw), product=item_product).first()
+            items_data.append((name, qty_val, unit_val, desc_val, item_product, item_brand))
 
         if not items_data:
             messages.error(request, 'حداقل یک قلم کالا وارد کنید')
@@ -532,11 +546,11 @@ def warehouse_request_form(request: HttpRequest) -> HttpResponse:
             cafe=cafe,
             status='pending',
         )
-        for name, qty, unit, desc in items_data:
-            product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
+        for name, qty, unit, desc, item_product, item_brand in items_data:
             WarehouseRequestItem.objects.create(
                 warehouse_request=wh_request,
-                product=product,
+                product=item_product,
+                product_brand=item_brand,
                 name=name,
                 quantity=qty,
                 unit=unit,
@@ -650,6 +664,7 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                 PurchaseItem.objects.create(
                     request=new_purchase,
                     product=item.product,
+                    product_brand=item.product_brand,
                     name=item.name,
                     quantity=int(item.quantity),
                     unit=item.unit,
@@ -1073,6 +1088,7 @@ def _process_available_products_post(request, cafe):
             wh_item = WarehouseRequestItem.objects.create(
                 warehouse_request=wh_request,
                 product=product,
+                product_brand=brand,
                 name=product.name,
                 quantity=qty,
                 unit=unit_label or 'عدد',
@@ -1119,6 +1135,7 @@ def _process_available_products_post(request, cafe):
                 PurchaseItem.objects.create(
                     request=new_purchase,
                     product=wh_item.product,
+                    product_brand=wh_item.product_brand,
                     name=wh_item.name,
                     quantity=int(q) if q == int(q) else int(q) + 1,
                     unit=wh_item.unit,
@@ -1694,7 +1711,9 @@ def purchase_request_form(request):
         quantities = request.POST.getlist("item_quantity")
         units = request.POST.getlist("item_unit")
         descriptions = request.POST.getlist("item_description")
-        
+        product_ids = request.POST.getlist("item_product_id")
+        brand_ids = request.POST.getlist("item_brand_id")
+
         # Get department from POST if provided
         selected_department = request.POST.get('department', department)
 
@@ -1712,7 +1731,19 @@ def purchase_request_form(request):
                 continue
             unit_val = units[idx].strip() if idx < len(units) and units[idx] else "عدد"
             desc_val = descriptions[idx] if idx < len(descriptions) else ""
-            items_data.append((name, qty_val, unit_val, desc_val))
+            product_id_raw = product_ids[idx] if idx < len(product_ids) else ""
+            brand_id_raw = brand_ids[idx] if idx < len(brand_ids) else ""
+            # محصول انتخاب‌شده از لیست پیشنهادها (اگر انتخاب نشده باشد با نام جستجو می‌شود)
+            item_product = None
+            if product_id_raw.isdigit():
+                item_product = Product.objects.filter(id=int(product_id_raw)).first()
+            if item_product is None:
+                item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
+            # برند انتخاب‌شده فقط در صورتی ثبت می‌شود که متعلق به همان محصول باشد
+            item_brand = None
+            if brand_id_raw.isdigit() and item_product is not None:
+                item_brand = ProductBrand.objects.filter(id=int(brand_id_raw), product=item_product).first()
+            items_data.append((name, qty_val, unit_val, desc_val, item_product, item_brand))
 
         if errors:
             return render(
@@ -1722,20 +1753,31 @@ def purchase_request_form(request):
                     "errors": errors,
                     "error_message": "quantity" if "quantity" in errors else "product_name",
                     "department": selected_department,
+                    "delivery_days": _next_seven_days(),
                 },
                 status=200,
             )
 
         cafe = get_cafe_from_request(request)
+        # زمان تحویل: تاریخ انتخاب‌شده (۷ روز آینده) یا تحویل فوری
+        delivery_date = None
+        delivery_immediate = request.POST.get('delivery_immediate') == '1'
+        delivery_raw = request.POST.get('delivery_date', '').strip()
+        if delivery_raw:
+            try:
+                delivery_date = datetime.strptime(delivery_raw, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                delivery_date = None
         purchase_request = PurchaseRequest.objects.create(
-            user=request.user, status="pending_manager_approval", cafe=cafe
+            user=request.user, status="pending_manager_approval", cafe=cafe,
+            delivery_date=delivery_date,
+            delivery_immediate=delivery_immediate,
         )
-        for index, (name, qty, unit, desc) in enumerate(items_data, start=1):
-            # Try to find matching product by name (optional)
-            product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
+        for index, (name, qty, unit, desc, item_product, item_brand) in enumerate(items_data, start=1):
             PurchaseItem.objects.create(
                 request=purchase_request,
-                product=product,
+                product=item_product,
+                product_brand=item_brand,
                 name=name,
                 quantity=int(qty),
                 unit=unit,
@@ -1775,7 +1817,8 @@ def purchase_request_form(request):
         return redirect("purchase_request_success", cafe_code=cafe_code)
 
     return render(request, "purchase_request_form.html", {
-        "department": department
+        "department": department,
+        "delivery_days": _next_seven_days(),
     })
 
 
@@ -2754,6 +2797,24 @@ def _parse_conversion_rate(value):
         return None
 
 
+def _next_seven_days():
+    """لیست ۷ روز آینده (از امروز) به‌صورت (تاریخ، نام روز هفته) برای انتخاب زمان تحویل"""
+    from datetime import timedelta
+    weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
+    today = datetime.now().date()
+    return [(today + timedelta(days=i), weekday_names[(today.weekday() + i) % 7]) for i in range(7)]
+
+
+def _parse_int_or_none(value):
+    """تبدیل مقدار ورودی عدد صحیح (مثل عمر مفید) - خالی یا نامعتبر به None تبدیل می‌شود"""
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return int(str(value).strip())
+    except (ValueError, TypeError):
+        return None
+
+
 def _render_product_form(request, product=None, brand=None, mode='create', error='', form_data=None):
     """رندر مشترک فرم محصول/واریانت تجاری
 
@@ -2836,6 +2897,7 @@ def product_create(request):
                 category=category,
                 unit=unit,
                 min_stock=int(request.POST.get("min_stock") or 0),
+                shelf_life_days=_parse_int_or_none(request.POST.get("shelf_life_days")),
                 usage_location=request.POST.get("usage_location", "general"),
                 cafe=cafe,
             )
@@ -2879,6 +2941,8 @@ def product_update(request, product_id):
         product.category = Category.objects.filter(id=request.POST.get("category") or None).first() or product.category
         product.unit = Unit.objects.filter(id=request.POST.get("unit") or None).first() or product.unit
         product.min_stock = int(request.POST.get("min_stock") or product.min_stock)
+        # خالی بودن فیلد عمر مفید یعنی پاک شدن آن
+        product.shelf_life_days = _parse_int_or_none(request.POST.get("shelf_life_days"))
         product.usage_location = request.POST.get("usage_location", product.usage_location)
         product.description = request.POST.get("description", product.description)
         product.save()
@@ -5973,13 +6037,42 @@ def search_products_autocomplete(request):
             else:
                 category_display = product.category.name
 
-        results.append({
-            'id': product.id,
-            'name': product.name,
-            'category': category_display,
-            'label': f"{product.name} ({category_display})" if category_display else product.name,
-            'unit': product.unit.name if product.unit else '',
-        })
+        # برندهای فعال محصول - هر برند یک گزینه مجزا در لیست پیشنهادها است
+        active_brands = list(product.brands.filter(is_active=True).order_by('brand_name'))
+        brands_meta = [{
+            'id': b.id,
+            'brand_name': b.brand_name,
+            'trade_unit': b.trade_unit or '',
+        } for b in active_brands]
+
+        if active_brands:
+            # محصول دارای برند: برای هر برند یک ردیف «نام محصول - نام برند» نمایش داده می‌شود
+            for brand in active_brands:
+                brand_unit = brand.trade_unit or (product.unit.name if product.unit else '')
+                results.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'brand': brand.brand_name,
+                    'product_brand_id': brand.id,
+                    'category': category_display,
+                    'label': f"{product.name} - {brand.brand_name}",
+                    'unit': brand_unit,
+                    'has_brands': True,
+                    'brands': brands_meta,
+                })
+        else:
+            # محصول بدون برند: نام محصول به صورت عادی نمایش داده می‌شود
+            results.append({
+                'id': product.id,
+                'name': product.name,
+                'brand': None,
+                'product_brand_id': None,
+                'category': category_display,
+                'label': product.name,
+                'unit': product.unit.name if product.unit else '',
+                'has_brands': False,
+                'brands': [],
+            })
 
     return JsonResponse({'results': results})
 
@@ -5996,6 +6089,79 @@ def product_brands_api(request: HttpRequest, product_id: int) -> JsonResponse:
         'conversion_rate': str(b.conversion_rate) if b.conversion_rate else '',
     } for b in brands]
     return JsonResponse({'brands': data})
+
+
+@custom_login_required
+def check_product_availability(request: HttpRequest) -> JsonResponse:
+    """بررسی موجودی انبار برای محصول/برند انتخاب‌شده هنگام ثبت درخواست کالا.
+
+    اگر برند انتخاب‌شده موجود نباشد، برندهای جایگزین همان محصول که موجودی دارند
+    به همراه مقدار موجود پیشنهاد داده می‌شوند (بدون ساخت محصول جدید).
+    """
+    product_id = request.GET.get('product_id')
+    brand_id = request.GET.get('brand_id') or None
+    qty = _parse_decimal(request.GET.get('qty', '') or 0)
+
+    product = Product.objects.filter(id=product_id).first()
+    if not product:
+        return JsonResponse({'error': 'محصول یافت نشد'}, status=404)
+
+    brand = None
+    if brand_id:
+        brand = ProductBrand.objects.filter(id=brand_id, product=product).first()
+        if not brand:
+            return JsonResponse({'error': 'برند انتخاب‌شده برای این محصول معتبر نیست'}, status=404)
+
+    cafe = get_cafe_from_request(request)
+    stock_qs = StockItem.objects.filter(product=product, quantity__gt=0).select_related(
+        'product_brand', 'warehouse', 'unit')
+    if cafe:
+        stock_qs = stock_qs.filter(warehouse__cafe=cafe)
+    stock_rows = list(stock_qs)
+
+    def brand_availability(b):
+        """مجموع موجودی (واحد پایه و تجاری) + واحد نمایشی + انبارهای دارای موجودی"""
+        rows = [s for s in stock_rows if s.product_brand_id == (b.id if b else None)]
+        base = sum((s.quantity for s in rows), Decimal('0'))
+        if b and b.conversion_rate:
+            trade = base / b.conversion_rate
+            unit_label = b.trade_unit or (rows[0].unit.name if rows and rows[0].unit else (product.unit.name if product.unit else ''))
+        else:
+            trade = base
+            unit_label = (rows[0].unit.name if rows and rows[0].unit else product.unit.name if product.unit else '')
+        warehouses = sorted({s.warehouse.name for s in rows if s.warehouse})
+        return trade, unit_label, warehouses
+
+    trade, unit_label, warehouses = brand_availability(brand)
+    available = qty > 0 and trade >= qty
+
+    # پیشنهاد برند جایگزین: برندهای فعال دیگر همان محصول که موجودی دارند
+    alternatives = []
+    if not available:
+        alt_qs = product.brands.filter(is_active=True)
+        if brand:
+            alt_qs = alt_qs.exclude(id=brand.id)
+        for alt in alt_qs:
+            alt_trade, alt_unit, alt_whs = brand_availability(alt)
+            if alt_trade > 0:
+                alternatives.append({
+                    'brand_id': alt.id,
+                    'brand_name': alt.brand_name,
+                    'available': str(alt_trade),
+                    'unit': alt_unit,
+                    'warehouses': alt_whs,
+                })
+
+    return JsonResponse({
+        'product_id': product.id,
+        'brand_id': brand.id if brand else None,
+        'qty': str(qty),
+        'available': available,
+        'stock_trade': str(trade),
+        'unit_label': unit_label,
+        'warehouses': warehouses,
+        'alternatives': alternatives,
+    }, json_dumps_params={'ensure_ascii': False})
 
 
 @custom_login_required
@@ -7600,25 +7766,19 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if not (request.user.role == 'admin' or request.user.is_superuser or request.user.has_warehouse_role):
         return redirect('purchase_officer_dashboard', cafe_code=cafe_code)
 
-    # ── تاریخ انتخابی (پیش‌فرض: امروز) — قبل از پردازش فرم محاسبه می‌شود تا
-    # بعد از هر ثبت/ریدایرکت همان تاریخ باقی بماند و به امروز برنگردد ──
-    date_str = request.GET.get('date', '') or request.POST.get('date', '')
-    if date_str:
-        try:
-            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        except (ValueError, TypeError):
-            selected_date = datetime.now().date()
-            date_str = selected_date.isoformat()
-    else:
-        selected_date = datetime.now().date()
-        date_str = selected_date.isoformat()
-    # ── بخش انتخابی (پیش‌فرض: همه بخش‌ها) — همراه تاریخ در ریدایرکت‌ها حفظ می‌شود ──
+    # ── فیلترها: زمان تحویل (تاریخ انتخاب‌شده یا تحویل فوری) + بخش درخواست‌دهنده ──
+    # در ریدایرکت‌ها حفظ می‌شوند تا بعد از هر ثبت همان فیلتر باقی بماند
     from urllib.parse import urlencode
+    delivery_filter = request.GET.get('delivery', '')
     dept = request.GET.get('department', '')
-    dash_params = {'date': date_str}
+    dash_params = {}
+    if delivery_filter:
+        dash_params['delivery'] = delivery_filter
     if dept:
         dash_params['department'] = dept
-    dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code]) + '?' + urlencode(dash_params)
+    dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code])
+    if dash_params:
+        dash_url += '?' + urlencode(dash_params)
 
     # ── پردازش فرم ──
     if request.method == 'POST':
@@ -7779,52 +7939,119 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             messages.info(request, f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.')
             return redirect(dash_url)
 
-    prev_date = selected_date - timedelta(days=1)
-    next_date = selected_date + timedelta(days=1)
+    # ── همه درخواست‌های ۴۵ روز اخیر این کافه ──
+    cutoff_dt = datetime.now() - timedelta(days=45)
+    requests_qs = (
+        PurchaseRequest.objects
+        .select_related('user', 'user__department')
+        .prefetch_related(
+            'items', 'items__product', 'items__product__unit',
+            'items__product_brand', 'items__officer_assignments')
+        .filter(created_at__gte=cutoff_dt)
+        .order_by('-created_at')
+    )
+    if cafe:
+        requests_qs = requests_qs.filter(cafe=cafe)
 
-    # محصولات دارای موجودی برای تشخیص ارسال خودکار
+    # فیلتر زمان تحویل: تاریخ مشخص یا تحویل فوری
+    if delivery_filter == 'immediate':
+        requests_qs = requests_qs.filter(delivery_immediate=True)
+    elif delivery_filter:
+        try:
+            ddate = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            ddate = None
+        if ddate:
+            requests_qs = requests_qs.filter(delivery_immediate=False, delivery_date=ddate)
+        else:
+            requests_qs = requests_qs.none()
+
+    # فیلتر بخش درخواست‌دهنده
+    if dept:
+        requests_qs = requests_qs.filter(
+            Q(user__department__name=dept) | Q(user__role=dept))
+
+    requests_list = list(requests_qs)
+
+    # محصولات دارای موجودی برای ارسال خودکار (بدون تخصیص مدیرعامل)
     stocked_qs = StockItem.objects.filter(quantity__gt=0).values_list('product_id', flat=True)
     if cafe:
         stocked_qs = StockItem.objects.filter(quantity__gt=0, warehouse__cafe=cafe).values_list('product_id', flat=True)
     stocked_product_ids = set(stocked_qs)
 
-    # اقلام این روز:
-    #  ۱) تخصیص‌های در انتظار مسئول انبار (از مدیرعامل یا مشترک)
-    #  ۲) اقلام بدون تخصیص که در انبار موجودی دارند (ارسال خودکار، بدون تایید مدیر)
-    date_items = (
-        PurchaseItem.objects
-        .filter(request__created_at__date=selected_date)
-        .select_related('request', 'request__user', 'product')
-        .prefetch_related('officer_assignments')
-        .order_by('request__created_at')
-    )
-    if cafe:
-        date_items = date_items.filter(request__cafe=cafe)
-    if dept:
-        # فیلتر بخش: نام بخش کاربر، یا نقش قدیمی کاربرانی که بخش ندارند
-        date_items = date_items.filter(
-            Q(request__user__department__name=dept) | Q(request__user__role=dept))
+    # ── موجودی فعلی هر محصول/برند (برای ستون «موجودی فعلی») ──
+    scope_pids = sorted({item.product_id for req in requests_list for item in req.items.all() if item.product_id})
+    stock_map = {}  # (product_id, brand_id|None) -> {'trade': Decimal, 'unit': str}
+    if scope_pids:
+        sis = StockItem.objects.filter(product_id__in=scope_pids, quantity__gt=0).select_related('product_brand', 'unit')
+        if cafe:
+            sis = sis.filter(warehouse__cafe=cafe)
+        for si in sis:
+            brand = si.product_brand
+            rate = brand.conversion_rate if brand and brand.conversion_rate else None
+            trade = si.quantity / rate if rate else si.quantity
+            unit = brand.trade_unit if brand and brand.trade_unit else (
+                (si.unit.symbol or si.unit.name) if si.unit else '')
+            key = (si.product_id, brand.id if brand else None)
+            entry = stock_map.get(key)
+            if entry is None:
+                stock_map[key] = {'trade': trade, 'unit': unit}
+            else:
+                entry['trade'] += trade
 
-    visible_items = []
-    done_items = []
-    for item in date_items:
-        assigns = list(item.officer_assignments.all())
-        my_pending = [a for a in assigns if a.target_role == 'warehouse' and a.status == 'pending'
-                      and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
-        if my_pending:
-            visible_items.append({'item': item, 'assignment': my_pending[0]})
-        elif not assigns and _item_in_stock(item, cafe, stocked_product_ids):
-            visible_items.append({'item': item, 'assignment': None})
-        else:
-            # کالاهای ثبت‌شده (تامین/عدم موجودی/ارجاع) — کمرنگ پایین صفحه با قابلیت بازگشایی
-            my_done = [a for a in assigns if a.target_role == 'warehouse'
-                       and a.status in ('fulfilled', 'not_in_stock', 'returned')
-                       and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
-            if my_done:
-                done_items.append({'item': item, 'assignment': my_done[0]})
+    def item_stock_info(item):
+        """موجودی فعلی (واحد تجاری) یک قلم برای نمایش کنار مقدار درخواستی"""
+        if not item.product_id:
+            return None
+        if item.product_brand_id:
+            entry = stock_map.get((item.product_id, item.product_brand_id))
+            if not entry:
+                unit = item.product_brand.trade_unit or (
+                    item.product.unit.name if item.product and item.product.unit else item.unit)
+                return {'trade': '0', 'unit': unit, 'has': False}
+            return {'trade': str(entry['trade']), 'unit': entry['unit'] or item.unit, 'has': True}
+        # بدون برند: مجموع موجودی همه برندهای محصول
+        total = Decimal('0')
+        unit = ''
+        for (pid, _bid), entry in stock_map.items():
+            if pid == item.product_id:
+                total += entry['trade']
+                if not unit:
+                    unit = entry['unit']
+        if total <= 0:
+            unit = unit or (item.product.unit.name if item.product and item.product.unit else item.unit)
+        return {'trade': str(total), 'unit': unit, 'has': total > 0}
 
-    # ── گزینه‌های تامین از انبار برای هر محصول (بر اساس ردیف‌های موجودی) ──
-    product_ids = sorted({v['item'].product_id for v in visible_items if v['item'].product_id})
+    # ── دسته‌بندی اقلام هر درخواست ──
+    #  ۱) قابل تامین: تخصیص در انتظار مسئول انبار یا ارسال خودکار (موجودی دارد)
+    #  ۲) ثبت‌شده: تامین شده / عدم موجودی — کمرنگ با قابلیت بازگشایی
+    #  ۳) ارجاع به خرید: بخش «کالاهای درخواست‌شده برای خرید» پایین صفحه
+    request_cards = []
+    purchase_items = []
+    for req in requests_list:
+        visible, done = [], []
+        for item in req.items.all():
+            assigns = list(item.officer_assignments.all())
+            my_pending = [a for a in assigns if a.target_role == 'warehouse' and a.status == 'pending'
+                          and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
+            if my_pending:
+                visible.append({'item': item, 'assignment': my_pending[0], 'stock': item_stock_info(item)})
+            elif not assigns and _item_in_stock(item, cafe, stocked_product_ids):
+                visible.append({'item': item, 'assignment': None, 'stock': item_stock_info(item)})
+            else:
+                my_done = [a for a in assigns if a.target_role == 'warehouse'
+                           and a.status in ('fulfilled', 'not_in_stock', 'returned')
+                           and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
+                if my_done:
+                    if my_done[0].status == 'returned':
+                        purchase_items.append({'request': req, 'item': item, 'assignment': my_done[0]})
+                    else:
+                        done.append({'item': item, 'assignment': my_done[0]})
+        if visible or done:
+            request_cards.append({'request': req, 'visible': visible, 'done': done})
+
+    # ── گزینه‌های تامین از انبار برای اقلام قابل تامین (بر اساس ردیف‌های موجودی) ──
+    product_ids = sorted({v['item'].product_id for card in request_cards for v in card['visible'] if v['item'].product_id})
     stock_options = {}
     stock_meta = {}
     if product_ids:
@@ -7861,8 +8088,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             for opt in opts:
                 opt['multi_warehouse'] = wh_count[opt['brand_name']] > 1
 
-        # محصول بدون برند که فقط در یک انبار موجودی دارد → انتخاب برند و افزودن
-        # برند معنایی ندارد، نمایش داده نشود (همان ردیف تنها، نامرئی ارسال می‌شود)
+        # محصول بدون برند که فقط در یک انبار موجودی دارد → همان ردیف تنها نامرئی ارسال می‌شود
         # محصول با دقیقاً یک برند که فقط در یک انبار موجودی دارد → همان انتخاب شود
         for pid, opts in stock_options.items():
             n_brands = brand_counts.get(pid, 0)
@@ -7871,8 +8097,12 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             if not hide_select and n_brands == 1 and len(opts) == 1:
                 opts[0]['default_selected'] = True
 
-    # ── فهرست بخش‌ها برای فیلتر بالای صفحه: بخش‌های فعال این کافه + بخش‌های
-    # قدیمیِ نقش‌محور (کاربر بدون بخش) که در این روز درخواست دارند ──
+    # ── تگ‌های زمان تحویل: تاریخ‌های انتخاب‌شده در محدوده + تحویل فوری ──
+    delivery_dates = sorted({r.delivery_date for r in requests_list
+                             if r.delivery_date and not r.delivery_immediate})
+    has_immediate = any(r.delivery_immediate for r in requests_list)
+
+    # ── فهرست بخش‌ها برای فیلتر بالا: بخش‌های فعال کافه + نقش‌های قدیمی بدون بخش ──
     departments_list = []  # [(کلید فیلتر، برچسب نمایش)]
     seen = set()
     for d in Department.objects.filter(is_active=True):
@@ -7881,8 +8111,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         if d.name not in seen:
             seen.add(d.name)
             departments_list.append((d.name, d.name))
-    for it in date_items:
-        u = it.request.user
+    for req in requests_list:
+        u = req.user
         if not u:
             continue
         if u.department_id:
@@ -7897,14 +8127,13 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     departments_list.sort(key=lambda x: x[1])
 
     return render(request, 'warehouse_officer_dashboard.html', {
-        'visible_items': visible_items,
-        'done_items': done_items,
+        'request_cards': request_cards,
+        'purchase_items': purchase_items,
         'stock_options': stock_options,
         'stock_meta': stock_meta,
-        'selected_date': selected_date,
-        'prev_date': prev_date,
-        'next_date': next_date,
-        'date_str': date_str,
+        'delivery_dates': delivery_dates,
+        'has_immediate': has_immediate,
+        'selected_delivery': delivery_filter,
         'departments': departments_list,
         'selected_department': dept,
         'cafe_code': cafe_code,
