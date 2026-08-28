@@ -316,16 +316,38 @@
     }
     .row-stock-line .alt-btn:hover { background: #fde68a; }
 
-    /* ── زمان تحویل ── */
+    /* ── زمان تحویل (باکس کشویی) ── */
     .delivery-section {
         background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-        padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+        padding: 0.4rem 0.5rem; margin-bottom: 1.25rem; overflow: hidden;
     }
-    .delivery-label {
-        font-size: 0.875rem; color: #6b7280; font-weight: 500;
-        margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;
+    .delivery-toggle {
+        width: 100%; display: flex; align-items: center; gap: 0.6rem;
+        background: none; border: none; cursor: pointer; padding: 0.7rem 0.75rem;
+        font-family: 'Vazir', sans-serif; text-align: right; border-radius: 8px;
+        transition: background .15s;
     }
-    .delivery-label .delivery-required { color: #ef4444; }
+    .delivery-toggle:hover { background: #f9fafb; }
+    .delivery-toggle-title {
+        font-size: 0.875rem; color: #374151; font-weight: 600; white-space: nowrap;
+    }
+    .delivery-toggle-title .delivery-required { color: #ef4444; }
+    .delivery-summary {
+        flex: 1; font-size: 0.8rem; color: #6366f1; font-weight: 600;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .delivery-summary.immediate-summary { color: #b45309; }
+    .delivery-arrow { color: #9ca3af; font-size: 0.8rem; transition: transform .2s; }
+    .delivery-section.open .delivery-arrow { transform: rotate(180deg); }
+    .delivery-box {
+        max-height: 0; overflow: hidden; opacity: 0;
+        transition: max-height .25s ease, opacity .2s ease;
+    }
+    .delivery-section.open .delivery-box { max-height: 260px; opacity: 1; }
+    .delivery-box-inner {
+        padding: 0.3rem 0.75rem 0.9rem;
+        border-top: 1px dashed #e5e7eb; margin: 0 0.25rem;
+    }
     .delivery-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .delivery-chip {
         padding: 0.45rem 1.1rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
@@ -360,19 +382,24 @@
     <form method="post" id="purchaseForm">
         {% csrf_token %}
 
-        <!-- 0. زمان تحویل: انتخاب روز (از امروز تا هفته آینده) یا تحویل فوری -->
-        <div class="delivery-section">
-            <div class="delivery-label">
-                📅 زمان تحویل <span class="delivery-required">*</span>
-                <span style="font-weight:400;font-size:0.75rem;color:#9ca3af;">— یکی از روزهای هفته آینده را انتخاب کنید یا تحویل فوری بزنید</span>
-            </div>
-            <div class="delivery-chips">
-                {% for day, weekday in delivery_days %}
-                <button type="button" class="delivery-chip" data-date="{{ day|date:'Y-m-d' }}" onclick="selectDeliveryChip(this)">
-                    {{ weekday }} {{ day|jalali_date:"%d %B" }}
-                </button>
-                {% endfor %}
-                <button type="button" class="delivery-chip immediate" data-immediate="1" onclick="selectDeliveryChip(this)">⚡ تحویل فوری</button>
+        <!-- 0. زمان تحویل: باکس کشویی — ۶ روز آینده (به‌جز شنبه‌ها) یا تحویل فوری -->
+        <div class="delivery-section" id="deliverySection">
+            <button type="button" class="delivery-toggle" id="deliveryToggle" onclick="toggleDeliveryBox()">
+                <span class="delivery-toggle-title">📅 زمان تحویل <span class="delivery-required">*</span></span>
+                <span class="delivery-summary" id="deliverySummary">…</span>
+                <span class="delivery-arrow">▾</span>
+            </button>
+            <div class="delivery-box" id="deliveryBox">
+                <div class="delivery-box-inner">
+                    <div class="delivery-chips">
+                        {% for day, weekday in delivery_days %}
+                        <button type="button" class="delivery-chip" data-date="{{ day|date:'Y-m-d' }}" onclick="selectDeliveryChip(this)">
+                            {{ weekday }} {{ day|jalali_date:"%d %B" }}
+                        </button>
+                        {% endfor %}
+                        <button type="button" class="delivery-chip immediate" data-immediate="1" onclick="selectDeliveryChip(this)">⚡ تحویل فوری</button>
+                    </div>
+                </div>
             </div>
             <input type="hidden" name="delivery_date" id="deliveryDate" value="">
             <input type="hidden" name="delivery_immediate" id="deliveryImmediate" value="">
@@ -506,11 +533,17 @@
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
     const AVAILABILITY_URL = "{% url 'check_product_availability' cafe_code=cafe_code %}";
     const CSRF_TOKEN       = "{{ csrf_token }}";
+    // کاربران درخواست‌دهنده نباید هنگام ثبت درخواست، خطا یا پیامی درباره موجودی کالا ببینند
+    const IS_REQUESTER = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
     let entryBrandName = '';  // نام برند انتخاب‌شده در فرم ورود
 
-    // ── زمان تحویل: روز انتخابی (۷ روز آینده) یا تحویل فوری ──
+    // ── زمان تحویل: باکس کشویی — ۶ روز آینده (به‌جز شنبه‌ها) یا تحویل فوری ──
     let selectedDeliveryDate = '';
     let selectedDeliveryImmediate = false;
+
+    function toggleDeliveryBox() {
+        document.getElementById('deliverySection').classList.toggle('open');
+    }
 
     function selectDeliveryChip(el) {
         document.querySelectorAll('.delivery-chip').forEach(c => c.classList.remove('active'));
@@ -519,6 +552,13 @@
         selectedDeliveryImmediate = el.getAttribute('data-immediate') === '1';
         document.getElementById('deliveryDate').value = selectedDeliveryDate;
         document.getElementById('deliveryImmediate').value = selectedDeliveryImmediate ? '1' : '';
+        // نمایش خلاصه انتخاب‌شده در هدر باکس و بستن باکس بعد از انتخاب
+        const summary = document.getElementById('deliverySummary');
+        if (summary) {
+            summary.textContent = el.textContent.trim();
+            summary.classList.toggle('immediate-summary', selectedDeliveryImmediate);
+        }
+        document.getElementById('deliverySection').classList.remove('open');
     }
 
     function buildUnitOptions(selected) {
@@ -589,9 +629,9 @@
         qtyInput.style.borderColor = '';
 
         // بررسی موجودی انبار برای محصول/برند انتخاب‌شده
-        // (فقط وقتی محصول از لیست پیشنهادها انتخاب شده باشد)
+        // (فقط وقتی محصول از لیست پیشنهادها انتخاب شده باشد — برای درخواست‌دهندگان انجام نمی‌شود)
         let stockInfo = null;
-        if (productId) {
+        if (productId && !IS_REQUESTER) {
             const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(productId) +
                              '&brand_id=' + encodeURIComponent(brandId) +
                              '&qty=' + encodeURIComponent(quantity);
@@ -1083,6 +1123,9 @@
     });
 
     // ── Init ──────────────────────────────────────────────────────────
+    // انتخاب پیش‌فرض: فردا (اولین روز لیست تحویل — اگر فردا شنبه باشد روز بعدی)
+    const firstDeliveryChip = document.querySelector('.delivery-chip[data-date]');
+    if (firstDeliveryChip) selectDeliveryChip(firstDeliveryChip);
     renderItemsTable();
 </script>
 {% endblock %}

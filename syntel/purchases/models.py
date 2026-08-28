@@ -371,6 +371,12 @@ class Product(models.Model):
     shelf_life_days = models.PositiveIntegerField(null=True, blank=True, verbose_name='عمر مفید (روز)',
                                                   help_text='مدت زمان ماندگاری محصول به روز؛ مثال: 180')
     usage_location = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default='general', verbose_name='محل استفاده')
+    # نمایش زیر محصولات: اگر فعال باشد، هنگام نمایش کالا به درخواست‌دهندگان، نام‌های تجاری آن
+    # به‌صورت جداگانه نمایش داده می‌شود؛ اگر فعال نباشد کالا با نام اصلی خودش نمایش داده می‌شود.
+    show_sub_products = models.BooleanField(
+        default=False, verbose_name='نمایش زیر محصولات',
+        help_text='اگر فعال باشد، هنگام نمایش کالا به درخواست‌دهندگان، نام‌های تجاری آن به‌صورت جداگانه نمایش داده می‌شود.',
+    )
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
@@ -423,7 +429,8 @@ class ProductBrand(models.Model):
 # Department model for user departments
 class Department(models.Model):
     name = models.CharField(max_length=100, verbose_name='نام بخش')
-    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='departments', verbose_name='کافه', null=True, blank=True)
+    # هر بخش منحصراً به یک کافه تعلق دارد؛ بخش سراسری (cafe=None) دیگر وجود ندارد
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='departments', verbose_name='کافه')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
 

@@ -197,6 +197,37 @@
         font-family: 'Vazir', sans-serif;
     }
 
+    /* Day grouping (mobile users) */
+    .day-section {
+        margin-bottom: 1.25rem;
+    }
+
+    .day-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.6rem;
+    }
+
+    .day-header::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e5e7eb;
+    }
+
+    .day-header .day-date {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.8rem;
+    }
+
+    .day-header.today .day-title { color: #6366f1; }
+    .day-header.today .day-date { color: #6366f1; }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
         .page-container {
@@ -250,68 +281,164 @@
     {% endif %}
 
     <div class="requests-list" id="requests-container">
-        {% if requests %}
-            {% for req in requests %}
-            <div class="request-card">
-                <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
-                    <div class="request-header">
-                        <span class="request-id">درخواست #{{ req.id }}</span>
-                        <span class="status-badge status-{{ req.status }}">
-                            {% if req.status == 'pending_manager_approval' %}
-                                در انتظار تایید مدیر
-                            {% elif req.status == 'pending' %}
-                                در انتظار خرید
-                            {% elif req.status == 'purchased' %}
-                                خریداری شده
-                            {% elif req.status == 'partial' %}
-                                خرید جزئی
-                            {% elif req.status == 'rejected' %}
-                                رد شده
-                            {% else %}
-                                {{ req.get_status_display }}
-                            {% endif %}
+        {% if is_mobile_user %}
+            {% if day_groups %}
+                {% for day, weekday_label, reqs in day_groups %}
+                <div class="day-section">
+                    <div class="day-header{% if day == today %} today{% endif %}">
+                        <span class="day-title">
+                            {% if day == today %}امروز{% elif day == yesterday %}دیروز{% else %}{{ weekday_label }}{% endif %}
                         </span>
+                        <span class="day-date">{{ day|jalali_date:"%d %B" }}</span>
                     </div>
-                    <div class="request-info">
-                        {% if not is_mobile_user %}
-                        <div class="info-row">
-                            <span class="info-label">بخش:</span>
-                            <span>{{ req.user.department_display }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">کاربر:</span>
-                            <span>{{ req.user.first_name }} {{ req.user.last_name }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="info-row">
-                            <span class="info-label">تاریخ:</span>
-                            <span>{{ req.created_at|jalali_date }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">ساعت:</span>
-                            <span>{{ req.created_at|jalali_time }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">تعداد اقلام:</span>
-                            <span>{{ req.items.count }} قلم</span>
-                        </div>
+                    {% for req in reqs %}
+                    <div class="request-card">
+                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
+                            <div class="request-header">
+                                <span class="request-id">درخواست #{{ req.id }}</span>
+                                <span class="status-badge status-{{ req.status }}">
+                                    {% if req.status == 'pending_manager_approval' %}
+                                        در انتظار تایید مدیر
+                                    {% elif req.status == 'pending' %}
+                                        در انتظار خرید
+                                    {% elif req.status == 'purchased' %}
+                                        خریداری شده
+                                    {% elif req.status == 'partial' %}
+                                        خرید جزئی
+                                    {% elif req.status == 'rejected' %}
+                                        رد شده
+                                    {% else %}
+                                        {{ req.get_status_display }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="request-info">
+                                <div class="info-row">
+                                    <span class="info-label">ساعت:</span>
+                                    <span>{{ req.created_at|jalali_time }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">تعداد اقلام:</span>
+                                    <span>{{ req.items.count }} قلم</span>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                </a>
-                {% if user.role == 'purchasing' %}
-                <div class="request-actions">
-                    <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="btn-edit">✏️ ویرایش</a>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                {% if older_requests %}
+                <div class="day-section">
+                    <div class="day-header">
+                        <span class="day-title">درخواست‌های قبلی</span>
+                    </div>
+                    {% for req in older_requests %}
+                    <div class="request-card">
+                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
+                            <div class="request-header">
+                                <span class="request-id">درخواست #{{ req.id }}</span>
+                                <span class="status-badge status-{{ req.status }}">
+                                    {% if req.status == 'pending_manager_approval' %}
+                                        در انتظار تایید مدیر
+                                    {% elif req.status == 'pending' %}
+                                        در انتظار خرید
+                                    {% elif req.status == 'purchased' %}
+                                        خریداری شده
+                                    {% elif req.status == 'partial' %}
+                                        خرید جزئی
+                                    {% elif req.status == 'rejected' %}
+                                        رد شده
+                                    {% else %}
+                                        {{ req.get_status_display }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="request-info">
+                                <div class="info-row">
+                                    <span class="info-label">تاریخ:</span>
+                                    <span>{{ req.created_at|jalali_date }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">ساعت:</span>
+                                    <span>{{ req.created_at|jalali_time }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">تعداد اقلام:</span>
+                                    <span>{{ req.items.count }} قلم</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
-            </div>
-            {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
+                    <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn-primary">ثبت درخواست جدید</a>
+                </div>
+            {% endif %}
         {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">📋</div>
-                <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
-                {% if is_mobile_user %}
-                <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn-primary">ثبت درخواست جدید</a>
-                {% endif %}
-            </div>
+            {% if requests %}
+                {% for req in requests %}
+                <div class="request-card">
+                    <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
+                        <div class="request-header">
+                            <span class="request-id">درخواست #{{ req.id }}</span>
+                            <span class="status-badge status-{{ req.status }}">
+                                {% if req.status == 'pending_manager_approval' %}
+                                    در انتظار تایید مدیر
+                                {% elif req.status == 'pending' %}
+                                    در انتظار خرید
+                                {% elif req.status == 'purchased' %}
+                                    خریداری شده
+                                {% elif req.status == 'partial' %}
+                                    خرید جزئی
+                                {% elif req.status == 'rejected' %}
+                                    رد شده
+                                {% else %}
+                                    {{ req.get_status_display }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="request-info">
+                            <div class="info-row">
+                                <span class="info-label">بخش:</span>
+                                <span>{{ req.user.department_display }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">کاربر:</span>
+                                <span>{{ req.user.first_name }} {{ req.user.last_name }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">تاریخ:</span>
+                                <span>{{ req.created_at|jalali_date }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">ساعت:</span>
+                                <span>{{ req.created_at|jalali_time }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">تعداد اقلام:</span>
+                                <span>{{ req.items.count }} قلم</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% if user.role == 'purchasing' %}
+                    <div class="request-actions">
+                        <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="btn-edit">✏️ ویرایش</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>

@@ -117,6 +117,11 @@ cafe_urlpatterns = [
     path('users/<int:user_id>/update/', cv(views.user_update), name='user_update'),
     path('users/<int:user_id>/delete/', cv(views.user_delete), name='user_delete'),
     path('users/<int:user_id>/reset-password/', cv(views.user_reset_password), name='user_reset_password'),
+    # Department (بخش) Management URLs — از صفحه مدیریت کاربران
+    path('departments/', cv(views.department_list), name='department_list'),
+    path('departments/create/', cv(views.department_create), name='department_create'),
+    path('departments/<int:department_id>/update/', cv(views.department_update), name='department_update'),
+    path('departments/<int:department_id>/delete/', cv(views.department_delete), name='department_delete'),
     # Purchase Order Management URLs
     path('purchase-orders/', cv(views.purchase_orders_list), name='purchase_orders_list'),
     path('purchase-orders/create/<int:request_id>/', cv(views.purchase_order_create), name='purchase_order_create'),
@@ -204,6 +209,7 @@ cafe_urlpatterns = [
     path('purchase-reports/', cv(views.purchase_reports), name='purchase_reports'),
     path('payment-analytics/', cv(views.payment_analytics), name='payment_analytics'),
     path('inventory-reports/', cv(views.inventory_reports), name='inventory_reports'),
+    path('reports/consumption/', cv(views.consumption_report), name='consumption_report'),
     # Advanced Analytics URLs
     path('analytics/', cv(views.analytics_dashboard), name='analytics_dashboard'),
     path('analytics/purchase/', cv(views.purchase_analytics), name='purchase_analytics'),

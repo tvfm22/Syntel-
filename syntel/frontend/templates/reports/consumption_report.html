@@ -1,0 +1,474 @@
+{% extends 'dashboard_layout.html' %}
+{% load static %}
+
+{% block title %}گزارش مصرف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white; border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm); padding: 1.5rem 2rem; margin-bottom: 1.5rem;
+    }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .filter-row .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .filter-row label { font-size: 0.8rem; font-weight: 600; color: var(--dark); }
+    .date-input-group { display: flex; align-items: center; gap: 4px; }
+    .date-input-group input[type="number"] {
+        width: 70px; padding: 0.5rem; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md); text-align: center; font-family: 'Vazir', sans-serif;
+    }
+    .date-sep { color: var(--gray-400); font-weight: 600; }
+
+    .preset-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .preset-chip {
+        padding: 0.4rem 0.9rem; border-radius: var(--radius-lg);
+        background: var(--gray-100); color: var(--dark);
+        font-size: 0.8rem; font-weight: 600; text-decoration: none; transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+    .preset-chip:hover { background: var(--primary); color: white; }
+
+    .date-display {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.5rem 0.875rem; background: var(--gray-50);
+        border-radius: var(--radius-md); font-size: 0.85rem; color: var(--dark); font-weight: 500;
+    }
+    .date-display i { color: var(--primary); }
+
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: white; border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm); padding: 1.5rem;
+        border-right: 4px solid var(--primary);
+        display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .stat-card.success { border-right-color: #10b981; }
+    .stat-card.warning { border-right-color: #f59e0b; }
+    .stat-card.info { border-right-color: #6366f1; }
+    .stat-icon-circle {
+        width: 2.75rem; height: 2.75rem; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    }
+    .stat-icon-circle.primary { background: rgba(99,102,241,0.12); color: var(--primary-dark); }
+    .stat-icon-circle.success { background: rgba(16,185,129,0.12); color: #065f46; }
+    .stat-icon-circle.warning { background: rgba(245,158,11,0.12); color: #92400e; }
+    .stat-icon-circle.info { background: rgba(99,102,241,0.12); color: var(--primary-dark); }
+    .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--dark); }
+    .stat-label { font-size: 0.82rem; color: var(--gray-500); font-weight: 600; }
+    .stat-note { font-size: 0.72rem; color: var(--gray-400); }
+
+    .chart-card {
+        background: white; border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl); overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .chart-header { padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
+    .chart-title { font-size: 1.05rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.5rem; }
+    .chart-body { padding: 1.5rem 1.75rem; }
+    .chart-wrapper { position: relative; height: 380px; }
+    .chart-wrapper.small { height: auto; overflow-x: auto; }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table thead { background: var(--gray-50); }
+    .data-table th { padding: 0.85rem 1rem; text-align: right; font-size: 0.8rem; font-weight: 700; color: var(--dark); border-bottom: 2px solid var(--gray-200); white-space: nowrap; }
+    .data-table td { padding: 0.7rem 1rem; font-size: 0.85rem; color: var(--gray-500); border-bottom: 1px solid var(--gray-200); }
+    .data-table tbody tr:hover { background: var(--gray-50); }
+    .data-table .amount { font-weight: 700; color: var(--dark); }
+
+    .badge { padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 700; }
+    .badge-primary { background: rgba(99,102,241,0.1); color: var(--primary-dark); }
+    .badge-success { background: rgba(16,185,129,0.1); color: #065f46; }
+    .badge-warning { background: rgba(245,158,11,0.1); color: #92400e; }
+    .badge-gray { background: var(--gray-100); color: var(--gray-500); }
+
+    .share-bar { height: 6px; border-radius: 3px; background: var(--gray-100); overflow: hidden; min-width: 120px; }
+    .share-bar span { display: block; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+
+    .empty-state { text-align: center; padding: 2.5rem; color: var(--gray-500); }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--gray-400); display: block; }
+
+    @media (max-width: 768px) {
+        .filter-row { flex-direction: column; align-items: stretch; }
+        .chart-wrapper { height: 300px; }
+        .chart-body { padding: 1rem; }
+        .data-table td, .data-table th { padding: 0.5rem; font-size: 0.75rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-chart-pie"></i>
+        گزارش مصرف
+    </h1>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="date-display">
+            <i class="fas fa-calendar-alt"></i>
+            <span id="persianDate"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" id="reportForm">
+        <div class="filter-row">
+            <div class="field">
+                <label><i class="fas fa-calendar"></i> از تاریخ:</label>
+                <div class="date-input-group">
+                    <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
+                    <input type="number" name="start_year" id="start_year" value="{{ start_year }}" min="1400" max="1420" style="width:75px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="start_month" id="start_month" value="{{ start_month }}" min="1" max="12" style="width:55px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="start_day" id="start_day" value="{{ start_day }}" min="1" max="31" style="width:55px;">
+                </div>
+            </div>
+            <div class="field">
+                <label><i class="fas fa-calendar"></i> تا تاریخ:</label>
+                <div class="date-input-group">
+                    <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
+                    <input type="number" name="end_year" id="end_year" value="{{ end_year }}" min="1400" max="1420" style="width:75px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="end_month" id="end_month" value="{{ end_month }}" min="1" max="12" style="width:55px;">
+                    <span class="date-sep">/</span>
+                    <input type="number" name="end_day" id="end_day" value="{{ end_day }}" min="1" max="31" style="width:55px;">
+                </div>
+            </div>
+            <div class="field">
+                <label><i class="fas fa-building"></i> بخش تحویل‌گیرنده</label>
+                <select name="department" id="departmentSelect" style="padding:0.55rem 0.75rem; border:1px solid var(--gray-200); border-radius: var(--radius-md); min-width:180px; font-family:'Vazir',sans-serif;">
+                    <option value="">همه بخش‌ها</option>
+                    {% for dep in departments %}
+                    <option value="{{ dep.id }}" {% if selected_department|stringformat:"s" == dep.id|stringformat:"s" %}selected{% endif %}>{{ dep.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <button type="submit" class="btn btn-primary" style="padding:0.55rem 1.25rem;">
+                    <i class="fas fa-search"></i> نمایش گزارش
+                </button>
+            </div>
+            <div class="field">
+                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="btn btn-secondary" style="padding:0.55rem 1.25rem;">
+                    <i class="fas fa-redo"></i> بازنشانی
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="preset-chips">
+        {% for p in presets %}
+        <a class="preset-chip" href="{% url 'consumption_report' cafe_code=cafe_code %}?start_date={{ p.start }}&end_date={{ p.end }}{% if selected_department %}&department={{ selected_department }}{% endif %}">
+            <i class="fas fa-clock"></i> {{ p.label }}
+        </a>
+        {% endfor %}
+        <span class="preset-chip" style="background:transparent; border-color: var(--gray-200); cursor: default;">
+            بازه انتخابی: {{ span_days }} روز
+        </span>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon-circle primary"><i class="fas fa-box-open"></i></div>
+        <div class="stat-value">{{ total_qty|floatformat:"0" }}</div>
+        <div class="stat-label">جمع کل مصرف (واحد پایه)</div>
+        <div class="stat-note">مجموع خروجی‌های انبار در بازه انتخابی</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-icon-circle success"><i class="fas fa-sign-out-alt"></i></div>
+        <div class="stat-value">{{ txn_count|floatformat:"0" }}</div>
+        <div class="stat-label">تعداد خروج از انبار</div>
+        <div class="stat-note">تراکنش‌های خروج ثبت‌شده</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-icon-circle warning"><i class="fas fa-boxes"></i></div>
+        <div class="stat-value">{{ product_count|floatformat:"0" }}</div>
+        <div class="stat-label">کالاهای مصرف‌شده</div>
+        <div class="stat-note">تعداد کالاهای متفاوت خروج‌یافته</div>
+    </div>
+    <div class="stat-card info">
+        <div class="stat-icon-circle info"><i class="fas fa-building"></i></div>
+        <div class="stat-value">{{ section_count|floatformat:"0" }}</div>
+        <div class="stat-label">بخش‌های مصرف‌کننده</div>
+        <div class="stat-note">بخش‌هایی که کالا به آن‌ها تحویل شده</div>
+    </div>
+</div>
+
+{% if txn_count == 0 %}
+<div class="chart-card">
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>در این بازه زمانی هیچ خروجی از انبار ثبت نشده است.</p>
+    </div>
+</div>
+{% else %}
+
+<!-- Trend Chart -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-chart-line"></i> روند مصرف در طول بازه</h3>
+        <span class="badge badge-primary">{% if span_days > 60 %}هفتگی{% else %}روزانه{% endif %}</span>
+    </div>
+    <div class="chart-body">
+        <div class="chart-wrapper">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Section Breakdown -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-building"></i> مصرف به تفکیک بخش</h3>
+        <span class="badge badge-primary">{{ section_count }} بخش</span>
+    </div>
+    <div class="chart-body" style="overflow-x:auto;">
+        {% if section_rows %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>بخش</th>
+                    <th>تعداد خروج</th>
+                    <th>مقدار مصرف</th>
+                    <th>سهم از مصرف بخش‌ها</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in section_rows %}
+                <tr>
+                    <td style="font-weight:700; color:var(--dark);">
+                        <i class="fas fa-tag" style="color:var(--primary); margin-left:0.3rem;"></i>{{ s.name }}
+                    </td>
+                    <td>{{ s.cnt }}</td>
+                    <td class="amount">{{ s.qty|floatformat:"2" }}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                            <div class="share-bar" style="width:140px;">
+                                <span style="width:{% widthratio s.qty section_total 100 %}%"></span>
+                            </div>
+                            <span style="font-size:0.8rem; color:var(--gray-500);">{% widthratio s.qty section_total 100 %}٪</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-building"></i>
+            <p>هیچ تحویلی به بخش‌ها در این بازه ثبت نشده است.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Type Breakdown -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-random"></i> تفکیک نوع خروج</h3>
+    </div>
+    <div class="chart-body" style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>مسیر خروج</th>
+                    <th>تعداد تراکنش</th>
+                    <th>مقدار (واحد پایه)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in type_rows %}
+                <tr>
+                    <td style="font-weight:600; color:var(--dark);">{{ t.label }}</td>
+                    <td>{{ t.cnt }}</td>
+                    <td class="amount">{{ t.qty|floatformat:"2" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Product Breakdown -->
+<div class="chart-card">
+    <div class="chart-header">
+        <h3 class="chart-title"><i class="fas fa-boxes"></i> مصرف به تفکیک کالا</h3>
+        <span class="badge badge-primary">{{ product_count }} کالا</span>
+    </div>
+    <div class="chart-body" style="overflow-x:auto;">
+        {% if product_rows %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>کالا</th>
+                    <th>برند</th>
+                    <th>واحد</th>
+                    <th>مقدار مصرف</th>
+                    <th>تعداد خروج</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in product_rows %}
+                <tr>
+                    <td style="font-weight:600; color:var(--dark);">{{ p.stock_item__product__name }}</td>
+                    <td>{{ p.stock_item__product_brand__brand_name|default:"—" }}</td>
+                    <td>{{ p.stock_item__product__unit__name|default:"—" }}</td>
+                    <td class="amount">{{ p.qty|floatformat:"2" }}</td>
+                    <td>{{ p.cnt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-boxes"></i>
+            <p>هیچ کالایی در این بازه مصرف نشده است.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{{ trend_labels|json_script:"trend-labels" }}
+{{ trend_qty|json_script:"trend-qty" }}
+{{ trend_cnt|json_script:"trend-cnt" }}
+<script>
+    // ---------- تبدیل تاریخ شمسی به میلادی (الگوریتم jalaali) ----------
+    function jalCal(jy) {
+        var breaks = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178],
+            bl = breaks.length, gy = jy + 621, leapJ = -14, jp = breaks[0], jm, jump, leap, leapG, march, n, i;
+        for (i = 1; i < bl; i += 1) {
+            jm = breaks[i]; jump = jm - jp;
+            if (jy < jm) break;
+            leapJ = leapJ + div(jump, 33) * 8 + div(mod(jump, 33), 4);
+            jp = jm;
+        }
+        n = jy - jp;
+        leapJ = leapJ + div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+        if (mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+        leapG = div(gy, 4) - div((div(gy, 100) + 1) * 3, 4) - 150;
+        march = 20 + leapJ - leapG;
+        if (jump - n < 6) n = n - jump + div(jump + 4, 33) * 33;
+        leap = mod(mod(n + 1, 33) - 1, 4);
+        if (leap === -1) leap = 4;
+        return { leap: leap, gy: gy, march: march };
+    }
+    function j2d(jy, jm, jd) {
+        var r = jalCal(jy);
+        return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
+    }
+    function g2d(gy, gm, gd) {
+        var d = div((gy + div(gm - 8, 6) + 100100) * 1461, 4)
+            + div(153 * mod(gm + 9, 12) + 2, 5)
+            + gd - 34840408;
+        d = d - div(div(gy + 100100 + div(gm - 8, 6), 100) * 3, 4) + 752;
+        return d;
+    }
+    function d2g(jdn) {
+        var j, i, gd, gm, gy;
+        j = 4 * jdn + 139361631;
+        j = j + div(div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+        i = div(mod(j, 1461), 4) * 5 + 308;
+        gd = div(mod(i, 153), 5) + 1;
+        gm = mod(div(i, 153), 12) + 1;
+        gy = div(j, 1461) - 100100 + div(8 - gm, 6);
+        return { gy: gy, gm: gm, gd: gd };
+    }
+    function j2g(jy, jm, jd) { return d2g(j2d(jy, jm, jd)); }
+    function div(a, b) { return ~~(a / b); }
+    function mod(a, b) { return a - ~~(a / b) * b; }
+    function toGregorianISO(jy, jm, jd) {
+        var g = j2g(jy, jm, jd);
+        return g.gy + '-' + String(g.gm).padStart(2, '0') + '-' + String(g.gd).padStart(2, '0');
+    }
+    // --------------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var dateEl = document.getElementById('persianDate');
+        if (dateEl) {
+            dateEl.textContent = new Intl.DateTimeFormat('fa-IR', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            }).format(new Date());
+        }
+
+        var form = document.getElementById('reportForm');
+        form.addEventListener('submit', function(e) {
+            var sy = parseInt(document.getElementById('start_year').value, 10);
+            var sm = parseInt(document.getElementById('start_month').value, 10);
+            var sd = parseInt(document.getElementById('start_day').value, 10);
+            var ey = parseInt(document.getElementById('end_year').value, 10);
+            var em = parseInt(document.getElementById('end_month').value, 10);
+            var ed = parseInt(document.getElementById('end_day').value, 10);
+
+            if (sy && sm && sd) {
+                document.getElementById('start_date').value = toGregorianISO(sy, sm, sd);
+            }
+            if (ey && em && ed) {
+                document.getElementById('end_date').value = toGregorianISO(ey, em, ed);
+            }
+        });
+
+        // ---------- نمودار روند مصرف ----------
+        var ctx = document.getElementById('trendChart');
+        if (ctx) {
+            var labels = JSON.parse(document.getElementById('trend-labels').textContent);
+            var qtyData = JSON.parse(document.getElementById('trend-qty').textContent);
+            var cntData = JSON.parse(document.getElementById('trend-cnt').textContent);
+
+            new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'مقدار مصرف (واحد پایه)',
+                            data: qtyData,
+                            backgroundColor: 'rgba(99, 102, 241, 0.65)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            label: 'تعداد خروج',
+                            data: cntData,
+                            type: 'line',
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            tension: 0.3,
+                            pointRadius: 3,
+                            yAxisID: 'y1',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', rtl: true, labels: { font: { family: 'Vazir', size: 12 }, usePointStyle: true } },
+                        tooltip: { rtl: true, font: { family: 'Vazir' } }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: 'Vazir', size: 11 }, maxRotation: 45, minRotation: 0 } },
+                        y: { beginAtZero: true, position: 'right', grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y1: { beginAtZero: true, position: 'left', grid: { display: false }, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

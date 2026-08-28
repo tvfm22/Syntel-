@@ -1,409 +1,273 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}مدیریت کاربران{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.user-list-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}
-
-.btn-add {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-add:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.filters-section {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
-}
-
-.search-form {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.search-input {
-    flex: 1;
-    min-width: 200px;
-    padding: 10px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.role-filter {
-    padding: 10px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    min-width: 150px;
-}
-
-.btn-search {
-    background: #28a745;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background 0.3s ease;
-}
-
-.btn-search:hover {
-    background: #218838;
-}
-
-.users-table {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.table-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 15px 20px;
-    font-weight: 600;
-    font-size: 1.1rem;
-}
-
-.table-container {
-    overflow-x: auto;
-}
-
-.users-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.users-table th, .users-table td {
-    padding: 15px 20px;
-    text-align: right;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.users-table th {
-    background: #f8fafc;
-    font-weight: 600;
-    color: #374151;
-}
-
-.users-table tr:hover {
-    background: #f8fafc;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-.user-details h4 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1f2937;
-}
-
-.user-details p {
-    margin: 5px 0 0 0;
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-.role-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    text-align: center;
-}
-
-.role-manager {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.role-purchasing {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.role-kitchen {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.role-bar {
-    background: #fce7f3;
-    color: #be185d;
-}
-
-.role-counter {
-    background: #f3e8ff;
-    color: #6b21a8;
-}
-
-.status-active {
-    color: #059669;
-    font-weight: 500;
-}
-
-.status-inactive {
-    color: #dc2626;
-    font-weight: 500;
-}
-
-.user-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-}
-
-.btn-edit, .btn-reset, .btn-delete {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-edit {
-    background: #ffc107;
-    color: #212529;
-}
-
-.btn-edit:hover {
-    background: #e0a800;
-    transform: translateY(-1px);
-}
-
-.btn-reset {
-    background: #17a2b8;
-    color: white;
-}
-
-.btn-reset:hover {
-    background: #138496;
-    transform: translateY(-1px);
-}
-
-.btn-delete {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-delete:hover {
-    background: #c82333;
-    transform: translateY(-1px);
-}
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
-}
-
-.empty-state h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    color: #333;
-}
-
-.empty-state p {
-    font-size: 1rem;
-    margin-bottom: 20px;
-}
-
-/* تب‌های فیلتر: همه کاربران / مسئولان خرید و انبار */
-.user-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.user-tab {
-    padding: 8px 18px;
-    border-radius: 8px;
-    background: #f3f4f6;
-    color: #4b5563;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.9rem;
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.user-tab:hover {
-    background: #e5e7eb;
-    color: #1f2937;
-}
-
-.user-tab.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-/* نشان کاربر مشترک (دسترسی به همه کافه‌ها) */
-.shared-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: #eef2ff;
-    color: #4338ca;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-
-.cafe-cell {
-    font-size: 0.9rem;
-    color: #374151;
-}
-
-@media (max-width: 768px) {
-    .user-list-container {
-        padding: 15px;
+    /* ===== مدیریت کاربران — هماهنگ با دیزاین سیستم داشبورد ===== */
+    .users-page {
+        max-width: 1200px;
+        margin: 0 auto;
     }
 
-    .page-header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
+    /* ---------- تولبار: تب‌ها + جستجو ---------- */
+    .u-toolbar-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--space-3);
     }
 
-    .search-form {
-        flex-direction: column;
-        align-items: stretch;
+    .u-spacer { flex: 1; }
+
+    /* تب‌های سگمنتی */
+    .user-tabs {
+        display: inline-flex;
+        padding: 4px;
+        gap: 2px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
     }
 
-    .users-table th, .users-table td {
-        padding: 10px 15px;
+    .user-tab {
+        padding: 0.42rem 1rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all var(--transition-fast);
+        white-space: nowrap;
     }
 
-    .user-info {
-        flex-direction: column;
-        text-align: center;
-        gap: 5px;
+    .user-tab:hover { color: var(--text-primary); background: rgba(139, 92, 246, 0.06); }
+
+    .user-tab.active {
+        background: var(--bg-card);
+        color: var(--accent-indigo);
+        font-weight: 700;
+        box-shadow: var(--shadow-sm);
     }
 
-    .user-actions {
-        flex-direction: column;
-        gap: 5px;
+    /* جستجو */
+    .search-box { position: relative; flex: 1; min-width: 220px; max-width: 320px; }
+    .search-box i {
+        position: absolute; right: 0.9rem; top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
     }
 
-    .btn-edit, .btn-reset, .btn-delete {
-        width: 100%;
-        text-align: center;
+    .search-input {
+        width: 100%; height: 40px;
+        padding: 0 2.4rem 0 0.9rem;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; color: var(--text-primary);
+        transition: all var(--transition-fast);
     }
-}
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .u-select {
+        height: 40px; padding: 0 0.75rem;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
+        cursor: pointer; transition: all var(--transition-fast);
+    }
+
+    .u-select:focus {
+        outline: none;
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    /* دکمه outline برای اکشن ثانویه */
+    .btn-outline {
+        background: var(--bg-card); color: var(--text-primary);
+        border: 1px solid var(--border-default);
+    }
+    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+
+    /* ---------- جدول ---------- */
+    .table-scroll { overflow-x: auto; }
+
+    .u-table th, .u-table td { white-space: nowrap; }
+
+    .table-meta {
+        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        padding: 0.25rem 0.75rem; border-radius: 999px;
+    }
+
+    /* سلول کاربر */
+    .user-cell { display: flex; align-items: center; gap: 0.75rem; }
+
+    .u-avatar {
+        width: 38px; height: 38px; flex-shrink: 0;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(139,92,246,0.14), rgba(236,72,153,0.14));
+        color: var(--primary-dark);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.95rem;
+    }
+
+    .user-name { font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
+    .user-handle { font-size: 0.76rem; color: var(--text-muted); direction: ltr; text-align: right; }
+
+    /* نشان کاربر مشترک بین کافه‌ها */
+    .shared-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: rgba(139, 92, 246, 0.08); color: var(--primary-dark);
+        padding: 0.15rem 0.55rem; border-radius: var(--radius-xs);
+        font-size: 0.72rem; font-weight: 600;
+    }
+
+    /* نشان نقش دوم */
+    .role-extra {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        background: rgba(16, 185, 129, 0.08); color: #047857;
+        padding: 0.18rem 0.55rem; border-radius: var(--radius-xs);
+        font-size: 0.72rem; font-weight: 600; margin-top: 0.3rem;
+    }
+
+    /* نشان نقش اصلی — پالت ملایم هماهنگ با badge-* سیستم */
+    .role-badge {
+        display: inline-block;
+        padding: 0.3rem 0.7rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem; font-weight: 700;
+    }
+
+    .role-requester      { background: var(--bg-subtle);         color: var(--gray-500); }
+    .role-purchasing     { background: rgba(249, 115, 22, 0.09); color: #EA580C; }
+    .role-warehouse      { background: rgba(34, 197, 94, 0.09);  color: #15803D; }
+    .role-admin          { background: rgba(217, 70, 239, 0.09); color: #A21CAF; }
+    .role-manager        { background: rgba(59, 130, 246, 0.09); color: #2563EB; }
+    .role-accounting     { background: rgba(6, 182, 212, 0.10);  color: #0E7490; }
+    .role-finance_manager{ background: rgba(16, 185, 129, 0.09); color: #047857; }
+    .role-ceo            { background: rgba(168, 85, 247, 0.10); color: #7E22CE; }
+
+    /* بخش */
+    .dept-chip {
+        display: inline-block;
+        background: var(--bg-subtle); color: var(--text-secondary);
+        border: 1px solid var(--border-light);
+        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
+        font-size: 0.78rem; font-weight: 500;
+    }
+    .muted-dash { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* وضعیت با نقطه رنگی */
+    .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-active { color: #15803D; }
+    .status-active .status-dot { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
+    .status-inactive { color: var(--gray-400); }
+    .status-inactive .status-dot { background: var(--border-strong); }
+
+    /* اکشن‌ها — چیپ‌های محدود، فقط هاور رنگی */
+    .user-actions { display: inline-flex; gap: 0.4rem; }
+
+    .act-chip {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        height: 32px; padding: 0 0.7rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-default);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        font-size: 0.78rem; font-weight: 500;
+        transition: all var(--transition-fast);
+    }
+
+    .act-chip i { font-size: 0.78rem; }
+    .act-edit:hover { color: var(--primary-dark);       border-color: rgba(139,92,246,0.4);  background: rgba(139,92,246,0.07); }
+    .act-key:hover  { color: #2563EB;                   border-color: rgba(59,130,246,0.4);  background: rgba(59,130,246,0.07); }
+    .act-del:hover  { color: #DC2626;                   border-color: rgba(239,68,68,0.4);   background: rgba(239,68,68,0.07); }
+
+    /* ---------- ریسپانسیو ---------- */
+    @media (max-width: 992px) {
+        .search-box { max-width: none; flex-basis: 100%; order: 10; }
+        .u-spacer { display: none; }
+    }
+
+    @media (max-width: 480px) {
+        .user-tab { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+        .user-actions { gap: 0.3rem; }
+        .act-chip { padding: 0 0.55rem; }
+    }
 </style>
+{% endblock %}
 
-<div class="user-list-container">
+{% block content %}
+<div class="users-page">
+
+    <!-- هدر صفحه -->
     <div class="page-header">
-        <h1 class="page-title">مدیریت کاربران</h1>
-        <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn-add">
-            <i class="fas fa-user-plus"></i> کاربر جدید
-        </a>
+        <h1 class="page-title"><i class="fas fa-users-cog"></i> مدیریت کاربران</h1>
+        <div class="header-actions">
+            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="btn btn-outline"
+               title="تعریف، ویرایش یا حذف بخش‌های کاربران درخواست‌دهنده">
+                <i class="fas fa-building"></i> بخش‌ها
+            </a>
+            <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> کاربر جدید
+            </a>
+        </div>
     </div>
 
-    <div class="user-tabs">
-        <a href="{% url 'user_list' cafe_code=cafe_code %}" class="user-tab{% if not officer_filter %} active{% endif %}">
-            <i class="fas fa-users"></i> همه کاربران
-        </a>
-        <a href="{% url 'user_list' cafe_code=cafe_code %}?officer=1" class="user-tab{% if officer_filter %} active{% endif %}"
-           title="مسئول خرید، مسئول انبار یا مسئول خرید و انبار (نقش دوم)">
-            <i class="fas fa-user-cog"></i> مسئولان خرید و انبار
-        </a>
-    </div>
-
-    <div class="filters-section">
-        <form method="GET" class="search-form">
-            {% if officer_filter %}<input type="hidden" name="officer" value="1">{% endif %}
-            <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در کاربران..." class="search-input">
-            <select name="role" class="role-filter">
-                <option value="">همه نقش‌ها</option>
-                {% for role_value, role_name in role_choices %}
-                <option value="{{ role_value }}" {% if role_value == selected_role %}selected{% endif %}>
-                    {{ role_name }}
-                </option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-search">
-                <i class="fas fa-search"></i> جستجو
-            </button>
-        </form>
+    <!-- تولبار: تب + جستجو -->
+    <div class="filters-container">
+        <div class="u-toolbar-row">
+            <nav class="user-tabs" aria-label="نوع نمایش کاربران">
+                <a href="{% url 'user_list' cafe_code=cafe_code %}" class="user-tab{% if not officer_filter %} active{% endif %}">
+                    <i class="fas fa-users"></i> همه کاربران
+                </a>
+                <a href="{% url 'user_list' cafe_code=cafe_code %}?officer=1"
+                   class="user-tab{% if officer_filter %} active{% endif %}"
+                   title="مسئول خرید، مسئول انبار یا مسئول خرید و انبار (نقش دوم)">
+                    <i class="fas fa-user-cog"></i> مسئولان خرید و انبار
+                </a>
+            </nav>
+            <span class="u-spacer"></span>
+            <form method="GET" class="u-toolbar-row" style="gap: 0.6rem;">
+                {% if officer_filter %}<input type="hidden" name="officer" value="1">{% endif %}
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" value="{{ search_query }}"
+                           placeholder="جستجو در کاربران..." class="search-input" aria-label="جستجو">
+                </div>
+                <select name="role" class="u-select" aria-label="فیلتر نقش">
+                    <option value="">همه نقش‌ها</option>
+                    {% for role_value, role_name in role_choices %}
+                    <option value="{{ role_value }}" {% if role_value == selected_role %}selected{% endif %}>
+                        {{ role_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary" style="height: 40px;">
+                    <i class="fas fa-search"></i> جستجو
+                </button>
+            </form>
+        </div>
     </div>
 
     {% if users %}
-    <div class="users-table">
+    <!-- جدول کاربران -->
+    <div class="table-card">
         <div class="table-header">
-            <i class="fas fa-users"></i> لیست کاربران سیستم
+            <div class="table-title"><i class="fas fa-user-friends"></i> لیست کاربران سیستم</div>
+            <span class="table-meta">{{ users|length }} کاربر</span>
         </div>
-        <div class="table-container">
-            <table>
+        <div class="table-scroll">
+            <table class="data-table u-table">
                 <thead>
                     <tr>
                         <th>کاربر</th>
@@ -412,69 +276,70 @@
                         <th>کافه</th>
                         <th>وضعیت</th>
                         <th>تاریخ عضویت</th>
-                        <th>عملیات</th>
+                        <th style="text-align:left;">عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
                     <tr>
                         <td>
-                            <div class="user-info">
-                                <div class="user-avatar">
+                            <div class="user-cell">
+                                <div class="u-avatar">
                                     {{ user.first_name|first|default:user.username|first|upper }}
                                 </div>
-                                <div class="user-details">
-                                    <h4>{{ user.get_full_name|default:user.username }}</h4>
-                                    <p>@{{ user.username }}</p>
+                                <div>
+                                    <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                                    <div class="user-handle">@{{ user.username }}</div>
                                     {% if user.cafe is None %}
-                                    <span class="shared-badge"><i class="fas fa-globe"></i> مشترک بین کافه‌ها</span>
+                                    <span class="shared-badge" style="margin-top:0.3rem;">
+                                        <i class="fas fa-globe"></i> مشترک بین کافه‌ها
+                                    </span>
                                     {% endif %}
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span class="role-badge role-{{ user.role }}">
-                                {{ user.get_role_display }}
-                            </span>
+                            <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
                             {% if user.secondary_role %}
-                            <span style="display:inline-block;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;margin-top:4px;">
-                                + {{ user.get_secondary_role_display }}
-                            </span>
+                            <br>
+                            <span class="role-extra"><i class="fas fa-plus" style="font-size:0.62rem;"></i> {{ user.get_secondary_role_display }}</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if user.department %}
-                            <span style="display:inline-block;background:#e0e7ff;color:#4338ca;padding:4px 10px;border-radius:6px;font-size:0.8rem;font-weight:500;">
-                                {{ user.department.name }}
-                            </span>
+                            <span class="dept-chip">{{ user.department.name }}</span>
                             {% else %}
-                            <span style="color:#9ca3af;font-size:0.8rem;">—</span>
+                            <span class="muted-dash">—</span>
                             {% endif %}
                         </td>
-                        <td class="cafe-cell">
+                        <td>
                             {% if user.cafe %}
-                            {{ user.cafe.name }}
+                            <span style="color: var(--text-primary); font-size: 0.85rem;">{{ user.cafe.name }}</span>
                             {% else %}
                             <span class="shared-badge"><i class="fas fa-globe"></i> همه کافه‌ها</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="status-{% if user.is_active %}active{% else %}inactive{% endif %}">
+                            <span class="status-pill status-{% if user.is_active %}active{% else %}inactive{% endif %}">
+                                <span class="status-dot"></span>
                                 {% if user.is_active %}فعال{% else %}غیرفعال{% endif %}
                             </span>
                         </td>
                         <td>{{ user.date_joined|date:"Y/m/d" }}</td>
-                        <td>
+                        <td style="text-align:left;">
                             <div class="user-actions">
-                                <a href="{% url 'user_update' cafe_code=cafe_code user_id=user.id %}" class="btn-edit">
-                                    <i class="fas fa-edit"></i> ویرایش
+                                <a href="{% url 'user_update' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-edit"
+                                   title="ویرایش کاربر">
+                                    <i class="fas fa-pen"></i> ویرایش
                                 </a>
-                                <a href="{% url 'user_reset_password' cafe_code=cafe_code user_id=user.id %}" class="btn-reset">
+                                <a href="{% url 'user_reset_password' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-key"
+                                   title="تنظیم مجدد رمز عبور">
                                     <i class="fas fa-key"></i> رمز
                                 </a>
                                 {% if user != request.user %}
-                                <a href="{% url 'user_delete' cafe_code=cafe_code user_id=user.id %}" class="btn-delete">
-                                    <i class="fas fa-trash"></i> حذف
+                                <a href="{% url 'user_delete' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-del"
+                                   title="حذف کاربر">
+                                    <i class="fas fa-trash-can"></i> حذف
                                 </a>
                                 {% endif %}
                             </div>
@@ -486,12 +351,18 @@
         </div>
     </div>
     {% else %}
-    <div class="empty-state">
-        <h3>هیچ کاربری یافت نشد</h3>
-        <p>هیچ کاربری با معیارهای جستجوی شما یافت نشد.</p>
-        <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn-add">اولین کاربر را اضافه کنید</a>
+    <div class="table-card">
+        <div class="card-body">
+            <div class="empty-state">
+                <i class="fas fa-user-slash"></i>
+                <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:0.4rem;">هیچ کاربری یافت نشد</h3>
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.25rem;">هیچ کاربری با معیارهای جستجوی شما یافت نشد.</p>
+                <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> افزودن اولین کاربر
+                </a>
+            </div>
+        </div>
     </div>
     {% endif %}
 </div>
 {% endblock %}
-

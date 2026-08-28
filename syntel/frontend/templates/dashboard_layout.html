@@ -635,6 +635,8 @@
 
             <!-- تغییر کافه — در منوی همبرگری؛ از هدر موبایل به اینجا منتقل شده -->
             <!-- سوپرادمین‌ها: لینک مستقیم به کافه «دیگر» (بدون صفحه انتخاب) — فقط اگر فقط یک کافه فعال باشد به select_cafe برمی‌گردد -->
+            <!-- برای کاربران درخواست‌دهنده این بخش نمایش داده نمی‌شود -->
+            {% if user.role not in 'kitchen,bar,counter,cashier,facilities,requester' %}
             <div class="sidebar-switch-cafe">
                 {% if can_switch_cafe %}
                     {% if other_cafe %}
@@ -653,6 +655,7 @@
                 </a>
                 {% endif %}
             </div>
+            {% endif %}
 
             <!-- Navigation Items -->
             <nav class="sidebar-nav">
@@ -696,6 +699,9 @@
                 </a>
                 <a href="{% url 'request_management_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'request_management_dashboard' %} active{% endif %}">
                     <i class="fas fa-clipboard-list"></i><span>مدیریت درخواست‌ها</span>
+                </a>
+                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
+                    <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
                 </a>
 
                 <div class="nav-section-title">سیستم</div>
@@ -858,6 +864,9 @@
                 </a>
                 <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_list' %} active{% endif %}">
                     <i class="fas fa-boxes"></i><span>موجودی انبار</span>
+                </a>
+                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
+                    <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
                 </a>
                 {% endif %}
 

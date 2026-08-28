@@ -23,7 +23,7 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum, F
+from django.db.models import Q, Sum, F, Count
 from django.db import connections, models, transaction
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse, HttpRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -183,6 +183,54 @@ def _parse_decimal(value):
         return Decimal(str(value).replace(",", ""))
     except Exception:
         return None
+
+
+def _parse_iso_date(value):
+    """پارس تاریخ ISO (YYYY-MM-DD یا YYYY/MM/DD)؛ در صورت نامعتبر None"""
+    if not value:
+        return None
+    for fmt in ('%Y-%m-%d', '%Y/%m/%d'):
+        try:
+            return datetime.strptime(str(value), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+class _InsufficientStock(Exception):
+    """موجودی انبار برای کسر درخواستی کافی نیست"""
+
+
+def _change_stock_quantity(stock_item_id, delta):
+    """اعمال اتمیک دلتا روی موجودی انبار (واحد پایه).
+
+    باید داخل transaction.atomic() اجرا شود. با یک دستور UPDATE و گارد کفایت
+    انجام می‌شود تا آپدیت همزمان دو کاربر (read-modify-write بدون قلم) گم نشود
+    و موجودی منفی نشود — روی SQLite و PostgreSQL هر دو امن است.
+
+    بازگشت: (موفق, موجودی قبلی, موجودی جدید) — در عدم کفایت (False, None, None)
+    """
+    qs = StockItem.objects.filter(id=stock_item_id)
+    if delta >= 0:
+        updated = qs.update(quantity=models.F('quantity') + delta)
+    else:
+        updated = qs.filter(quantity__gte=-delta).update(
+            quantity=models.F('quantity') + delta)
+    if not updated:
+        return False, None, None
+    fresh = StockItem.objects.select_related('product', 'product_brand').get(id=stock_item_id)
+    return True, fresh.quantity - delta, fresh.quantity
+
+
+def _set_stock_quantity(stock_item_id, absolute):
+    """تنظیم مطلق موجودی انبار (انبارگردانی / ثبت اولیه) — داخل atomic اجرا شود.
+
+    بازگشت: (موجودی قبل, موجودی جدید)
+    """
+    row = StockItem.objects.filter(id=stock_item_id).first()
+    prev_qty = row.quantity if row else Decimal('0')
+    StockItem.objects.filter(id=stock_item_id).update(quantity=absolute)
+    return prev_qty, absolute
 
 
 # ---------------------------------------------------------------------------
@@ -631,26 +679,37 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                 'cafe_code': cafe_code,
             })
 
-        # کاهش از موجودی انبار برای اقلام تامین‌شده
-        for item in wh_request.items.all():
-            if item.supply_status == 'from_stock' and item.stock_item and item.supplied_quantity:
-                s_item = item.stock_item
-                prev_qty = s_item.quantity
-                s_item.quantity -= item.supplied_quantity
-                s_item.save()
-                StockTransaction.objects.create(
-                    stock_item=s_item,
-                    transaction_type='out',
-                    quantity=item.supplied_quantity,
-                    conversion_rate=s_item.product_brand.conversion_rate if s_item.product_brand else None,
-                    unit=s_item.unit,
-                    reference_type='warehouse_request',
-                    reference_id=wh_request.id,
-                    description=f'تامین درخواست انبار #{wh_request.id} - {item.name}',
-                    created_by=request.user,
-                    previous_quantity=prev_qty,
-                    new_quantity=s_item.quantity,
-                )
+        # کاهش اتمیک از موجودی انبار برای اقلام تامین‌شده — کل عملیات یک واحد است
+        try:
+            with transaction.atomic():
+                for item in wh_request.items.all():
+                    if not (item.supply_status == 'from_stock' and item.stock_item and item.supplied_quantity):
+                        continue
+                    ok, prev_qty, new_qty = _change_stock_quantity(
+                        item.stock_item_id, -item.supplied_quantity)
+                    if not ok:
+                        raise _InsufficientStock(
+                            f'موجودی «{item.stock_item.product.name}» کافی نیست')
+                    StockTransaction.objects.create(
+                        stock_item=item.stock_item,
+                        transaction_type='out',
+                        quantity=item.supplied_quantity,
+                        conversion_rate=item.stock_item.product_brand.conversion_rate if item.stock_item.product_brand else None,
+                        unit=item.stock_item.unit,
+                        reference_type='warehouse_request',
+                        reference_id=wh_request.id,
+                        description=f'تامین درخواست انبار #{wh_request.id} - {item.name}',
+                        created_by=request.user,
+                        previous_quantity=prev_qty,
+                        new_quantity=new_qty,
+                    )
+        except _InsufficientStock as exc:
+            messages.error(request, f'خطا در تامین: {exc}')
+            return render(request, 'process_warehouse_request.html', {
+                'wh_request': wh_request,
+                'stock_items': stock_items,
+                'cafe_code': cafe_code,
+            })
 
         # اگر اقلامی به خرید ارجاع شدند یک درخواست خرید جدید ایجاد می‌شود
         if items_to_purchase:
@@ -852,33 +911,40 @@ def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
                 has_error = True
                 continue
 
-            # کسر از موجودی هر ردیف انتخابی
+            # کسر اتمیک از موجودی هر ردیف انتخابی
             total_base_supplied = Decimal('0')
-            for s_item, base_deduction, trade_qty in supply_rows:
-                prev_qty = s_item.quantity
-                s_item.quantity -= base_deduction
-                s_item.save()
+            try:
+                with transaction.atomic():
+                    for s_item, base_deduction, trade_qty in supply_rows:
+                        ok, prev_qty, new_qty = _change_stock_quantity(
+                            s_item.id, -base_deduction)
+                        if not ok:
+                            raise _InsufficientStock(s_item.product.name)
 
-                brand = s_item.product_brand
-                desc = f'تامین لیست خرید - {item.name}'
-                if brand and brand.brand_name:
-                    desc += f' - {brand.brand_name}: {trade_qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
-                desc += f' - درخواست #{item.request.id}'
+                        brand = s_item.product_brand
+                        desc = f'تامین لیست خرید - {item.name}'
+                        if brand and brand.brand_name:
+                            desc += f' - {brand.brand_name}: {trade_qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
+                        desc += f' - درخواست #{item.request.id}'
 
-                StockTransaction.objects.create(
-                    stock_item=s_item,
-                    transaction_type='out',
-                    quantity=base_deduction,
-                    conversion_rate=brand.conversion_rate if brand else None,
-                    unit=s_item.unit,
-                    reference_type='purchase_item',
-                    reference_id=item.id,
-                    description=desc,
-                    created_by=request.user,
-                    previous_quantity=prev_qty,
-                    new_quantity=s_item.quantity,
-                )
-                total_base_supplied += base_deduction
+                        StockTransaction.objects.create(
+                            stock_item=s_item,
+                            transaction_type='out',
+                            quantity=base_deduction,
+                            conversion_rate=brand.conversion_rate if brand else None,
+                            unit=s_item.unit,
+                            reference_type='purchase_item',
+                            reference_id=item.id,
+                            description=desc,
+                            created_by=request.user,
+                            previous_quantity=prev_qty,
+                            new_quantity=new_qty,
+                        )
+                        total_base_supplied += base_deduction
+            except _InsufficientStock as exc:
+                messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست')
+                has_error = True
+                continue
 
             item.supply_status = 'from_stock'
             item.purchased_quantity = int(total_base_supplied)
@@ -1075,90 +1141,96 @@ def _process_available_products_post(request, cafe):
         })
 
     if not has_error and rows:
-        # ایجاد درخواست انبار
-        wh_request = WarehouseRequest.objects.create(
-            user=request.user,
-            cafe=cafe,
-            status='pending',
-        )
-        items_to_purchase = []
-        for product, warehouse, brand, qty, status, stock_item, base_deduction in rows:
-            brand_label = f'{brand.brand_name} - ' if brand and brand.brand_name else ''
-            unit_label = brand.trade_unit if brand and brand.trade_unit else (product.unit.name if product.unit else '')
-            wh_item = WarehouseRequestItem.objects.create(
-                warehouse_request=wh_request,
-                product=product,
-                product_brand=brand,
-                name=product.name,
-                quantity=qty,
-                unit=unit_label or 'عدد',
-                description=f'{brand_label}{warehouse.name}',
-                supply_status=status,
-                stock_item=stock_item if status == 'from_stock' else None,
-                supplied_quantity=base_deduction if status == 'from_stock' else None,
-            )
-            if status == 'from_stock':
-                # کسر از موجودی انبار با رعایت نرخ تبدیل
-                prev_qty = stock_item.quantity
-                stock_item.quantity -= base_deduction
-                stock_item.save()
-                desc = f'تامین کالای موجود در انبار - {product.name}'
-                if brand and brand.brand_name:
-                    desc += f' - {brand.brand_name}: {qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
-                desc += f' - انبار {warehouse.name} - درخواست #{wh_request.id}'
-                StockTransaction.objects.create(
-                    stock_item=stock_item,
-                    transaction_type='out',
-                    quantity=base_deduction,
-                    conversion_rate=brand.conversion_rate if brand else None,
-                    unit=stock_item.unit,
-                    reference_type='warehouse_request',
-                    reference_id=wh_request.id,
-                    description=desc,
-                    created_by=request.user,
-                    previous_quantity=prev_qty,
-                    new_quantity=stock_item.quantity,
-                )
-            elif status == 'to_purchase':
-                items_to_purchase.append(wh_item)
-
-        # ارجاع اقلام «ارسال به لیست خرید» به درخواست خرید جدید
-        if items_to_purchase:
-            new_purchase = PurchaseRequest.objects.create(
+      try:
+        # ایجاد درخواست انبار — کل ثبت (درخواست + کسر موجودی + ارجاع به خرید) اتمیک است
+        with transaction.atomic():
+            wh_request = WarehouseRequest.objects.create(
                 user=request.user,
                 cafe=cafe,
                 status='pending',
             )
-            wh_request.converted_to_purchase = new_purchase
-            for wh_item in items_to_purchase:
-                q = wh_item.quantity
-                PurchaseItem.objects.create(
-                    request=new_purchase,
-                    product=wh_item.product,
-                    product_brand=wh_item.product_brand,
-                    name=wh_item.name,
-                    quantity=int(q) if q == int(q) else int(q) + 1,
-                    unit=wh_item.unit,
-                    description=wh_item.description or '',
+            items_to_purchase = []
+            for product, warehouse, brand, qty, status, stock_item, base_deduction in rows:
+                brand_label = f'{brand.brand_name} - ' if brand and brand.brand_name else ''
+                unit_label = brand.trade_unit if brand and brand.trade_unit else (product.unit.name if product.unit else '')
+                wh_item = WarehouseRequestItem.objects.create(
+                    warehouse_request=wh_request,
+                    product=product,
+                    product_brand=brand,
+                    name=product.name,
+                    quantity=qty,
+                    unit=unit_label or 'عدد',
+                    description=f'{brand_label}{warehouse.name}',
+                    supply_status=status,
+                    stock_item=stock_item if status == 'from_stock' else None,
+                    supplied_quantity=base_deduction if status == 'from_stock' else None,
                 )
-            messages.info(request, f'{len(items_to_purchase)} قلم به لیست خرید ارجاع شد')
+                if status == 'from_stock':
+                    # کسر اتمیک از موجودی انبار با رعایت نرخ تبدیل
+                    ok, prev_qty, new_qty = _change_stock_quantity(
+                        stock_item.id, -base_deduction)
+                    if not ok:
+                        raise _InsufficientStock(product.name)
+                    desc = f'تامین کالای موجود در انبار - {product.name}'
+                    if brand and brand.brand_name:
+                        desc += f' - {brand.brand_name}: {qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
+                    desc += f' - انبار {warehouse.name} - درخواست #{wh_request.id}'
+                    StockTransaction.objects.create(
+                        stock_item=stock_item,
+                        transaction_type='out',
+                        quantity=base_deduction,
+                        conversion_rate=brand.conversion_rate if brand else None,
+                        unit=stock_item.unit,
+                        reference_type='warehouse_request',
+                        reference_id=wh_request.id,
+                        description=desc,
+                        created_by=request.user,
+                        previous_quantity=prev_qty,
+                        new_quantity=new_qty,
+                    )
+                elif status == 'to_purchase':
+                    items_to_purchase.append(wh_item)
 
-        # تعیین وضعیت نهایی درخواست انبار
-        all_statuses = [r[4] for r in rows]
-        if all(s == 'from_stock' for s in all_statuses):
-            wh_request.status = 'approved_from_stock'
-        elif all(s == 'to_purchase' for s in all_statuses):
-            wh_request.status = 'approved_purchase'
-        elif all(s == 'not_supplied' for s in all_statuses):
-            wh_request.status = 'declined'
-        else:
-            wh_request.status = 'fulfilled'
-        wh_request.processed_by = request.user
-        wh_request.processed_at = timezone.now()
-        wh_request.save()
+            # ارجاع اقلام «ارسال به لیست خرید» به درخواست خرید جدید
+            if items_to_purchase:
+                new_purchase = PurchaseRequest.objects.create(
+                    user=request.user,
+                    cafe=cafe,
+                    status='pending',
+                )
+                wh_request.converted_to_purchase = new_purchase
+                for wh_item in items_to_purchase:
+                    q = wh_item.quantity
+                    PurchaseItem.objects.create(
+                        request=new_purchase,
+                        product=wh_item.product,
+                        product_brand=wh_item.product_brand,
+                        name=wh_item.name,
+                        quantity=int(q) if q == int(q) else int(q) + 1,
+                        unit=wh_item.unit,
+                        description=wh_item.description or '',
+                    )
+                messages.info(request, f'{len(items_to_purchase)} قلم به لیست خرید ارجاع شد')
 
-        messages.success(request, f'{len(rows)} قلم ثبت شد؛ اقلام تامین از انبار از موجودی کسر گردید')
-        return False, []
+            # تعیین وضعیت نهایی درخواست انبار
+            all_statuses = [r[4] for r in rows]
+            if all(s == 'from_stock' for s in all_statuses):
+                wh_request.status = 'approved_from_stock'
+            elif all(s == 'to_purchase' for s in all_statuses):
+                wh_request.status = 'approved_purchase'
+            elif all(s == 'not_supplied' for s in all_statuses):
+                wh_request.status = 'declined'
+            else:
+                wh_request.status = 'fulfilled'
+            wh_request.processed_by = request.user
+            wh_request.processed_at = timezone.now()
+            wh_request.save()
+      except _InsufficientStock as exc:
+        messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت انجام نشد')
+        return True, submitted_rows
+
+      messages.success(request, f'{len(rows)} قلم ثبت شد؛ اقلام تامین از انبار از موجودی کسر گردید')
+      return False, []
     elif not rows:
         messages.error(request, 'هیچ قلمی برای ثبت انتخاب نشده است')
         return True, submitted_rows
@@ -1753,7 +1825,7 @@ def purchase_request_form(request):
                     "errors": errors,
                     "error_message": "quantity" if "quantity" in errors else "product_name",
                     "department": selected_department,
-                    "delivery_days": _next_seven_days(),
+                    "delivery_days": _next_delivery_days(),
                 },
                 status=200,
             )
@@ -1818,7 +1890,7 @@ def purchase_request_form(request):
 
     return render(request, "purchase_request_form.html", {
         "department": department,
-        "delivery_days": _next_seven_days(),
+        "delivery_days": _next_delivery_days(),
     })
 
 
@@ -1836,8 +1908,32 @@ def purchase_requests_list(request):
         if cafe:
             requests_qs = requests_qs.filter(cafe=cafe)
         requests_qs = requests_qs.prefetch_related("items").order_by("-created_at")
+
+        # گروه‌بندی درخواست‌ها بر اساس روز: ۷ روز گذشته هر روز یک لیست جداگانه،
+        # درخواست‌های قدیمی‌تر زیر یک بخش «قبلی» نمایش داده می‌شوند
+        from datetime import timedelta
+        weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
+        today = datetime.now().date()
+        week_start = today - timedelta(days=6)
+        grouped_by_day = {}
+        older_requests = []
+        for req in requests_qs:
+            day = req.created_at.date()
+            if day >= week_start:
+                grouped_by_day.setdefault(day, []).append(req)
+            else:
+                older_requests.append(req)
+        day_groups = [
+            (day, weekday_names[day.weekday()], grouped_by_day[day])
+            for day in sorted(grouped_by_day, reverse=True)
+        ]
+
         context = {
             "requests": list(requests_qs),
+            "day_groups": day_groups,
+            "older_requests": older_requests,
+            "today": today,
+            "yesterday": today - timedelta(days=1),
             "is_mobile_user": True,
         }
         return render(request, "purchase_requests_list.html", context)
@@ -1856,7 +1952,7 @@ def purchase_requests_list(request):
         )
 
     # Build department list from Department model + any old roles with pending requests
-    department_list = Department.objects.filter(is_active=True).values_list('name', 'name')
+    department_list = Department.objects.filter(is_active=True, cafe=cafe).values_list('name', 'name')
 
     context = {
         "requests": list(requests_qs),
@@ -2797,12 +2893,18 @@ def _parse_conversion_rate(value):
         return None
 
 
-def _next_seven_days():
-    """لیست ۷ روز آینده (از امروز) به‌صورت (تاریخ، نام روز هفته) برای انتخاب زمان تحویل"""
+def _next_delivery_days():
+    """لیست ۶ روز آینده (از فردا) به‌جز روزهای شنبه به‌صورت (تاریخ، نام روز هفته) برای انتخاب زمان تحویل"""
     from datetime import timedelta
     weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
     today = datetime.now().date()
-    return [(today + timedelta(days=i), weekday_names[(today.weekday() + i) % 7]) for i in range(7)]
+    days = []
+    d = today + timedelta(days=1)
+    while len(days) < 6:
+        if d.weekday() != 5:  # شنبه
+            days.append((d, weekday_names[d.weekday()]))
+        d += timedelta(days=1)
+    return days
 
 
 def _parse_int_or_none(value):
@@ -2828,7 +2930,7 @@ def _render_product_form(request, product=None, brand=None, mode='create', error
     categories = Category.objects.all()
     if cafe:
         categories = categories.filter(cafe=cafe)
-    departments_qs = Department.objects.filter(is_active=True)
+    departments_qs = Department.objects.filter(is_active=True, cafe=cafe)
     return render(request, "product_form.html", {
         "product": product,
         "brand": brand,
@@ -2899,6 +3001,7 @@ def product_create(request):
                 min_stock=int(request.POST.get("min_stock") or 0),
                 shelf_life_days=_parse_int_or_none(request.POST.get("shelf_life_days")),
                 usage_location=request.POST.get("usage_location", "general"),
+                show_sub_products=request.POST.get("show_sub_products") == "on",
                 cafe=cafe,
             )
             messages.success(request, f'محصول «{name}» ایجاد شد.')
@@ -2944,6 +3047,7 @@ def product_update(request, product_id):
         # خالی بودن فیلد عمر مفید یعنی پاک شدن آن
         product.shelf_life_days = _parse_int_or_none(request.POST.get("shelf_life_days"))
         product.usage_location = request.POST.get("usage_location", product.usage_location)
+        product.show_sub_products = request.POST.get("show_sub_products") == "on"
         product.description = request.POST.get("description", product.description)
         product.save()
         messages.success(request, 'محصول با موفقیت ویرایش شد.')
@@ -3122,6 +3226,82 @@ def category_delete(request, category_id):
     return render(request, "category_confirm_delete.html", {"category": category})
 
 
+# ---------------------------------------------------------------------------
+# Department (بخش) Management — از صفحه مدیریت کاربران
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(["manager", "admin"])
+def department_list(request):
+    """لیست بخشهای تعریفشده — فقط بخشهای کافه جاری؛ هیچ بخش سراسری وجود ندارد"""
+    cafe = get_cafe_from_request(request)
+    departments = Department.objects.filter(cafe=cafe).annotate(user_count=Count('users'))
+    departments = departments.order_by('name')
+    return render(request, "department_list.html", {"departments": departments, "cafe": cafe})
+
+
+@custom_login_required
+@role_required(["manager", "admin"])
+def department_create(request):
+    cafe = get_cafe_from_request(request)
+    error = None
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        is_active = request.POST.get("is_active") == "on"
+        if not name:
+            error = "نام بخش الزامی است"
+        elif not cafe:
+            error = "ابتدا کافه را انتخاب کنید"
+        else:
+            existing = Department.objects.filter(name__iexact=name, cafe=cafe)
+            if existing.exists():
+                error = f"بخشی با نام «{name}» قبلاً در این کافه ثبت شده است"
+            else:
+                Department.objects.create(name=name, cafe=cafe, is_active=is_active)
+                return get_cafe_redirect_url('department_list', request)
+    return render(request, "department_form.html", {"error": error, "cafe": cafe})
+
+
+@custom_login_required
+@role_required(["manager", "admin"])
+def department_update(request, department_id):
+    cafe = get_cafe_from_request(request)
+    # فقط بخش کافه جاری قابل ویرایش است؛ بخش کافه دیگر برای مدیر این کافه ۴۰۴ است
+    department = get_object_or_404(Department, cafe=cafe, id=department_id)
+    error = None
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        is_active = request.POST.get("is_active") == "on"
+        if not name:
+            error = "نام بخش الزامی است"
+        else:
+            existing = Department.objects.filter(name__iexact=name, cafe=cafe).exclude(id=department.id)
+            if existing.exists():
+                error = f"بخشی با نام «{name}» قبلاً در این کافه ثبت شده است"
+            else:
+                department.name = name
+                department.is_active = is_active
+                department.save()
+                return get_cafe_redirect_url('department_list', request)
+    return render(request, "department_form.html", {"department": department, "error": error, "cafe": cafe})
+
+
+@custom_login_required
+@role_required(["manager", "admin"])
+def department_delete(request, department_id):
+    cafe = get_cafe_from_request(request)
+    department = get_object_or_404(Department, cafe=cafe, id=department_id)
+    user_count = department.users.count()
+    if request.method == "POST":
+        # کاربران متصل به این بخش با SET_NULL بدون بخش میشوند (دادههای تاریخی حفظ میشوند)
+        department.delete()
+        return get_cafe_redirect_url('department_list', request)
+    return render(request, "department_confirm_delete.html", {
+        "department": department,
+        "user_count": user_count,
+    })
+
+
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def payment_type_list(request):
@@ -3204,8 +3384,9 @@ def user_list(request, cafe_code=None):
 @role_required(["manager"])
 def user_create(request, cafe_code=None):
     from .models import Cafe as CafeModel
+    cafe = get_cafe_from_request(request)
     cafes = CafeModel.objects.filter(is_active=True)
-    departments = Department.objects.filter(is_active=True)
+    departments = Department.objects.filter(is_active=True, cafe=cafe)
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email", "")
@@ -3239,10 +3420,16 @@ def user_create(request, cafe_code=None):
         if cafe_id and cafe_id != "all":
             cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
 
-        # تعیین بخش
+        # تعیین بخش — فقط بخشی که به کافه همین کاربر تعلق دارد پذیرفته میشود
         department_obj = None
         if department_id:
-            department_obj = Department.objects.filter(id=department_id, is_active=True).first()
+            dep = Department.objects.filter(id=department_id, is_active=True).first()
+            if dep and cafe_obj and dep.cafe_id == cafe_obj.id:
+                department_obj = dep
+            else:
+                return render(request, "user_form.html", {
+                    "error": "بخش انتخاب‌شده متعلق به کافه این کاربر نیست",
+                    "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
 
         secondary_role = request.POST.get("secondary_role", "").strip() or None
         User.objects.create_user(
@@ -3265,9 +3452,10 @@ def user_create(request, cafe_code=None):
 @role_required(["manager"])
 def user_update(request, cafe_code=None, user_id=None):
     from .models import Cafe as CafeModel
+    cafe = get_cafe_from_request(request)
     user_obj = get_object_or_404(User, id=user_id)
     cafes = CafeModel.objects.filter(is_active=True)
-    departments = Department.objects.filter(is_active=True)
+    departments = Department.objects.filter(is_active=True, cafe=cafe)
     if request.method == "POST":
         # تغییر نام کاربری (اختیاری)
         new_username = request.POST.get("username", "").strip()
@@ -3294,10 +3482,20 @@ def user_update(request, cafe_code=None, user_id=None):
             cafe_obj = CafeModel.objects.filter(id=cafe_id, is_active=True).first()
             if cafe_obj:
                 user_obj.cafe = cafe_obj
-        # بخش
+        # بخش — فقط بخشی که به کافه همین کاربر تعلق دارد پذیرفته میشود
         department_id = request.POST.get("department_id", "").strip()
         if department_id:
-            user_obj.department = Department.objects.filter(id=department_id, is_active=True).first()
+            dep = Department.objects.filter(id=department_id, is_active=True).first()
+            if dep and user_obj.cafe and dep.cafe_id == user_obj.cafe_id:
+                user_obj.department = dep
+            else:
+                return render(request, "user_form.html", {
+                    "edit_user": user_obj,
+                    "roles": _get_departments(),
+                    "cafes": cafes,
+                    "departments": departments,
+                    "error": "بخش انتخاب‌شده متعلق به کافه این کاربر نیست",
+                })
         else:
             user_obj.department = None
         # تغییر رمز عبور (اختیاری)
@@ -5597,6 +5795,185 @@ def inventory_reports(request):
     return render(request, "inventory_reports.html")
 
 
+# ---------------------------------------------------------------------------
+# Consumption Report (گزارش مصرف) — بخش انبار
+# ---------------------------------------------------------------------------
+
+@custom_login_required
+@role_required(['warehouse', 'manager', 'admin', 'ceo', 'store', 'purchasing'])
+def consumption_report(request):
+    """گزارش مصرف کالاها — مصرف کل و تفکیک بخش‌های تحویل‌گیرنده در بازه زمانی انتخابی.
+
+    منبع داده: تراکنش‌های خروج از انبار (StockTransaction با transaction_type='out')؛
+    بخشِ تحویل‌گیرنده از reference_id (PurchaseItem یا StockRequest) و کاربر درخواست‌دهنده به دست می‌آید.
+    """
+    import jdatetime
+    from django.db.models.functions import TruncDate, TruncWeek
+
+    cafe = get_cafe_from_request(request)
+    today = timezone.localdate()
+
+    # بازه زمانی (پیش‌فرض: ۳۰ روز اخیر)
+    start_date = _parse_iso_date(request.GET.get('start_date', ''))
+    end_date = _parse_iso_date(request.GET.get('end_date', ''))
+    if start_date is None:
+        start_date = today - timedelta(days=30)
+    if end_date is None:
+        end_date = today
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    start_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+    end_dt = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
+
+    # تراکنش‌های خروج از انبار در بازه
+    out_qs = StockTransaction.objects.filter(
+        transaction_type='out',
+        created_at__gte=start_dt,
+        created_at__lte=end_dt,
+    ).select_related('stock_item__product', 'stock_item__product_brand', 'stock_item__warehouse', 'unit')
+    if cafe:
+        out_qs = out_qs.filter(stock_item__warehouse__cafe=cafe)
+
+    # فیلتر بخش (درخواست‌دهنده)
+    department_id = request.GET.get('department', '')
+    try:
+        department_id = int(department_id) if department_id else None
+    except (TypeError, ValueError):
+        department_id = None
+    if department_id:
+        item_ids = list(PurchaseItem.objects.filter(
+            request__user__department_id=department_id).values_list('id', flat=True))
+        sreq_ids = list(StockRequest.objects.filter(
+            purchase_item__request__user__department_id=department_id).values_list('id', flat=True))
+        out_qs = out_qs.filter(
+            Q(reference_type='officer_assignment', reference_id__in=item_ids) |
+            Q(reference_type='stock_request', reference_id__in=sreq_ids)
+        )
+
+    # شاخص‌های کل
+    agg = out_qs.aggregate(total_qty=Sum('quantity'), txn_count=Count('id'))
+    total_qty = agg['total_qty'] or Decimal('0')
+    txn_count = agg['txn_count'] or 0
+    product_count = out_qs.values('stock_item__product_id').distinct().count()
+
+    # مصرف به تفکیک بخش (تحویل به بخش‌ها از طریق تخصیص مسئول انبار + درخواست‌های تامین قدیمی)
+    section_data = {}
+
+    def _add_section(name, qty, cnt):
+        acc = section_data.setdefault(name, {'qty': Decimal('0'), 'cnt': 0})
+        acc['qty'] += qty
+        acc['cnt'] += cnt
+
+    oa_agg = (out_qs.filter(reference_type='officer_assignment')
+                .values('reference_id')
+                .annotate(qty=Sum('quantity'), cnt=Count('id')))
+    oa_ids = [r['reference_id'] for r in oa_agg if r['reference_id']]
+    item_map = {}
+    if oa_ids:
+        item_map = {p.id: p for p in PurchaseItem.objects.filter(
+            id__in=oa_ids).select_related('request__user__department')}
+    for r in oa_agg:
+        pi = item_map.get(r['reference_id'])
+        sec = _item_section_name(pi.request.user) if pi and pi.request else 'نامشخص'
+        _add_section(sec, r['qty'] or Decimal('0'), r['cnt'])
+
+    sr_agg = (out_qs.filter(reference_type='stock_request')
+                .values('reference_id')
+                .annotate(qty=Sum('quantity'), cnt=Count('id')))
+    sr_ids = [r['reference_id'] for r in sr_agg if r['reference_id']]
+    sreq_map = {}
+    if sr_ids:
+        sreq_map = {s.id: s for s in StockRequest.objects.filter(
+            id__in=sr_ids).select_related('purchase_item__request__user__department')}
+    for r in sr_agg:
+        sreq = sreq_map.get(r['reference_id'])
+        pi = sreq.purchase_item if sreq else None
+        sec = _item_section_name(pi.request.user) if pi and pi.request else 'نامشخص'
+        _add_section(sec, r['qty'] or Decimal('0'), r['cnt'])
+
+    section_rows = sorted(
+        [{'name': n, 'qty': v['qty'], 'cnt': v['cnt']} for n, v in section_data.items()],
+        key=lambda x: x['qty'], reverse=True)
+    section_total = sum((r['qty'] for r in section_rows), Decimal('0'))
+
+    # روند مصرف در طول بازه (روزانه؛ برای بازه‌های بلندتر از ۶۰ روز هفتگی)
+    span_days = (end_date - start_date).days
+    if span_days > 60:
+        trend_qs = out_qs.annotate(d=TruncWeek('created_at')).values('d').annotate(
+            qty=Sum('quantity'), cnt=Count('id')).order_by('d')
+    else:
+        trend_qs = out_qs.annotate(d=TruncDate('created_at')).values('d').annotate(
+            qty=Sum('quantity'), cnt=Count('id')).order_by('d')
+
+    trend_labels, trend_qty, trend_cnt = [], [], []
+    for r in trend_qs:
+        day = r['d']
+        if hasattr(day, 'date'):
+            day = day.date()
+        trend_labels.append(jdatetime.date.fromgregorian(date=day).strftime('%Y/%m/%d'))
+        trend_qty.append(str(r['qty']))
+        trend_cnt.append(r['cnt'])
+
+    # مصرف به تفکیک کالا
+    product_rows = (out_qs.values(
+            'stock_item__product_id',
+            'stock_item__product__name',
+            'stock_item__product_brand__brand_name',
+            'stock_item__product__unit__name',
+        )
+        .annotate(qty=Sum('quantity'), cnt=Count('id'))
+        .order_by('-qty'))
+
+    # تفکیک نوع خروج (برای دیدن سهم هر مسیر در مصرف کل)
+    REF_TYPE_LABELS = {
+        'officer_assignment': 'تامین بخش‌ها',
+        'stock_request': 'درخواست تامین انبار (قدیمی)',
+        'voucher': 'حواله خروج',
+    }
+    type_rows = (out_qs.values('reference_type')
+                 .annotate(qty=Sum('quantity'), cnt=Count('id'))
+                 .order_by('-qty'))
+    for r in type_rows:
+        r['label'] = REF_TYPE_LABELS.get(r['reference_type'], r['reference_type'] or '—')
+
+    departments = Department.objects.filter(is_active=True, cafe=cafe).order_by('name')
+
+    # بازه‌های آماده (چیپ‌ها)
+    presets = [
+        {'label': '۷ روز اخیر', 'start': (today - timedelta(days=7)).isoformat(), 'end': today.isoformat()},
+        {'label': '۳۰ روز اخیر', 'start': (today - timedelta(days=30)).isoformat(), 'end': today.isoformat()},
+        {'label': '۹۰ روز اخیر', 'start': (today - timedelta(days=90)).isoformat(), 'end': today.isoformat()},
+        {'label': '۶ ماه اخیر', 'start': (today - timedelta(days=180)).isoformat(), 'end': today.isoformat()},
+    ]
+
+    # پیش‌پر کردن فیلدهای شمسی فرم
+    sj = jdatetime.date.fromgregorian(date=start_date)
+    ej = jdatetime.date.fromgregorian(date=end_date)
+
+    return render(request, 'reports/consumption_report.html', {
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+        'start_year': sj.year, 'start_month': sj.month, 'start_day': sj.day,
+        'end_year': ej.year, 'end_month': ej.month, 'end_day': ej.day,
+        'selected_department': department_id or '',
+        'total_qty': total_qty,
+        'txn_count': txn_count,
+        'product_count': product_count,
+        'section_count': len(section_rows),
+        'section_total': section_total,
+        'section_rows': section_rows,
+        'product_rows': product_rows,
+        'type_rows': type_rows,
+        'trend_labels': trend_labels,
+        'trend_qty': trend_qty,
+        'trend_cnt': trend_cnt,
+        'departments': departments,
+        'presets': presets,
+        'span_days': span_days,
+    })
+
+
 @custom_login_required
 @role_required(["purchasing", "manager", "finance_manager", "ceo"])
 def analytics_dashboard(request):
@@ -6045,7 +6422,13 @@ def search_products_autocomplete(request):
             'trade_unit': b.trade_unit or '',
         } for b in active_brands]
 
-        if active_brands:
+        # نمایش برندها به‌صورت جداگانه:
+        # - برای درخواست‌دهندگان فقط وقتی تیک «نمایش زیر محصولات» خورده باشد، هر نام تجاری یک گزینه است؛
+        #   در غیر این صورت محصول با نام اصلی خودش نمایش داده می‌شود.
+        # - سایر نقش‌ها (خرید/انبار/مدیر و...) همیشه برندها را می‌بینند.
+        show_brand_rows = user_role in unrestricted_roles or product.show_sub_products
+
+        if active_brands and show_brand_rows:
             # محصول دارای برند: برای هر برند یک ردیف «نام محصول - نام برند» نمایش داده می‌شود
             for brand in active_brands:
                 brand_unit = brand.trade_unit or (product.unit.name if product.unit else '')
@@ -6234,46 +6617,45 @@ def initial_stock_register(request: HttpRequest) -> HttpResponse:
             quantity_base = quantity_trade * conversion_rate
             unit_obj = product.unit
 
-            stock_item, created = StockItem.objects.get_or_create(
-                product=product,
-                product_brand=product_brand_obj,
-                warehouse=warehouse,
-                defaults={
-                    'quantity': Decimal('0'),
-                    'unit': unit_obj,
-                    'min_quantity': Decimal('0'),
-                }
-            )
+            with transaction.atomic():
+                stock_item, created = StockItem.objects.get_or_create(
+                    product=product,
+                    product_brand=product_brand_obj,
+                    warehouse=warehouse,
+                    defaults={
+                        'quantity': Decimal('0'),
+                        'unit': unit_obj,
+                        'min_quantity': Decimal('0'),
+                    }
+                )
 
-            if not created:
-                msg = f'موجودی برای {product.name}'
+                if not created:
+                    msg = f'موجودی برای {product.name}'
+                    if product_brand_obj:
+                        msg += f' (برند {product_brand_obj.brand_name})'
+                    msg += f' در انبار {warehouse.name} قبلاً ثبت شده است.'
+                    messages.warning(request, msg)
+                    return redirect('initial_stock_register', cafe_code=cafe.code if cafe else 'default')
+
+                # ثبت اتمیک تراکنش موجودی اولیه
+                previous_qty, new_qty = _set_stock_quantity(stock_item.id, quantity_base)
+
+                desc = f'ثبت موجودی اولیه - انبار {warehouse.name}'
                 if product_brand_obj:
-                    msg += f' (برند {product_brand_obj.brand_name})'
-                msg += f' در انبار {warehouse.name} قبلاً ثبت شده است.'
-                messages.warning(request, msg)
-                return redirect('initial_stock_register', cafe_code=cafe.code if cafe else 'default')
+                    desc += f' (برند {product_brand_obj.brand_name})'
 
-            # ثبت تراکنش موجودی اولیه
-            previous_qty = stock_item.quantity
-            stock_item.quantity = quantity_base
-            stock_item.save()
-
-            desc = f'ثبت موجودی اولیه - انبار {warehouse.name}'
-            if product_brand_obj:
-                desc += f' (برند {product_brand_obj.brand_name})'
-
-            StockTransaction.objects.create(
-                stock_item=stock_item,
-                transaction_type='initial',
-                quantity=quantity_base,
-                conversion_rate=product_brand_obj.conversion_rate if product_brand_obj else None,
-                unit=unit_obj,
-                reference_type='initial',
-                description=desc,
-                created_by=request.user,
-                previous_quantity=previous_qty,
-                new_quantity=quantity_base
-            )
+                StockTransaction.objects.create(
+                    stock_item=stock_item,
+                    transaction_type='initial',
+                    quantity=quantity_base,
+                    conversion_rate=product_brand_obj.conversion_rate if product_brand_obj else None,
+                    unit=unit_obj,
+                    reference_type='initial',
+                    description=desc,
+                    created_by=request.user,
+                    previous_quantity=previous_qty,
+                    new_quantity=new_qty
+                )
 
             success_msg = f'موجودی اولیه {product.name}'
             if product_brand_obj:
@@ -6485,64 +6867,74 @@ def fulfill_stock_request(request: HttpRequest, request_id: int) -> HttpResponse
             messages.error(request, 'لطفاً حداقل یک محصول را انتخاب کنید.')
             return redirect('fulfill_stock_request', request_id=request_id)
         
-        # تایید تامین
-        stock_request.status = 'fulfilled'
-        stock_request.fulfilled_by = request.user
-        stock_request.fulfilled_at = timezone.now()
-        stock_request.save()
-        
-        # ثبت اقلام و کاهش از موجودی
-        for product_id, quantity in zip(product_ids, quantities):
-            if not product_id or not quantity:
-                continue
+        # تایید تامین + کسر اتمیک از موجودی — کل عملیات یک واحد است؛
+        # اگر هر ردیف موجودی کافی نداشته باشد هیچ چیزی ثبت نمی‌شود
+        try:
+            with transaction.atomic():
+                stock_request.status = 'fulfilled'
+                stock_request.fulfilled_by = request.user
+                stock_request.fulfilled_at = timezone.now()
+                stock_request.save()
 
-            try:
-                from decimal import Decimal
-                quantity = Decimal(quantity)
-                stock_item = get_object_or_404(StockItem, id=int(product_id))
-                product = stock_item.product
+                supplied_items = []
+                for product_id, quantity in zip(product_ids, quantities):
+                    if not product_id or not quantity:
+                        continue
 
-                # بررسی موجودی کافی
-                if stock_item.quantity < quantity:
-                    messages.warning(request, f'موجودی {product.name} در انبار {stock_item.warehouse.name if stock_item.warehouse else ""} کافی نیست!')
-                    continue
-                
-                # کاهش از موجودی
-                previous_qty = stock_item.quantity
-                stock_item.quantity -= quantity
-                stock_item.save()
-                
-                # ثبت تراکنش خروج
-                StockTransaction.objects.create(
-                    stock_item=stock_item,
-                    transaction_type='out',
-                    quantity=quantity,
-                    conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
-                    unit=stock_item.unit,
-                    reference_type='stock_request',
-                    reference_id=stock_request.id,
-                    description=f'تامین درخواست #{stock_request.purchase_item.request.id} - {stock_request.purchase_item.name}',
-                    created_by=request.user,
-                    previous_quantity=previous_qty,
-                    new_quantity=stock_item.quantity
-                )
-                
-                # ثبت قلم تامین شده
-                StockRequestItem.objects.create(
-                    stock_request=stock_request,
-                    stock_item=stock_item,
-                    quantity=quantity,
-                    unit=stock_item.unit
-                )
-                
-            except Exception as e:
-                messages.error(request, f'خطا در پردازش محصول: {str(e)}')
-                continue
-        
-        # بروزرسانی وضعیت قلم درخواست
-        stock_request.purchase_item.supply_status = 'from_stock'
-        stock_request.purchase_item.save()
-        
+                    try:
+                        quantity_dec = Decimal(quantity)
+                        stock_item = get_object_or_404(StockItem, id=int(product_id))
+                        product = stock_item.product
+
+                        if quantity_dec <= 0:
+                            continue
+
+                        # کسر اتمیک با گارد کفایت (موجودی منفی نمی‌شود)
+                        ok, previous_qty, new_qty = _change_stock_quantity(
+                            stock_item.id, -quantity_dec)
+                        if not ok:
+                            raise _InsufficientStock(
+                                f'{product.name} در انبار '
+                                f'{stock_item.warehouse.name if stock_item.warehouse else ""}'
+                            )
+
+                        # ثبت تراکنش خروج
+                        StockTransaction.objects.create(
+                            stock_item=stock_item,
+                            transaction_type='out',
+                            quantity=quantity_dec,
+                            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
+                            unit=stock_item.unit,
+                            reference_type='stock_request',
+                            reference_id=stock_request.id,
+                            description=f'تامین درخواست #{stock_request.purchase_item.request.id} - {stock_request.purchase_item.name}',
+                            created_by=request.user,
+                            previous_quantity=previous_qty,
+                            new_quantity=new_qty
+                        )
+
+                        # ثبت قلم تامین شده
+                        StockRequestItem.objects.create(
+                            stock_request=stock_request,
+                            stock_item=stock_item,
+                            quantity=quantity_dec,
+                            unit=stock_item.unit
+                        )
+                        supplied_items.append(stock_item.product.name)
+
+                    except _InsufficientStock:
+                        raise
+                    except Exception as e:
+                        messages.error(request, f'خطا در پردازش محصول: {str(e)}')
+                        raise
+
+                # بروزرسانی وضعیت قلم درخواست
+                stock_request.purchase_item.supply_status = 'from_stock'
+                stock_request.purchase_item.save()
+        except (_InsufficientStock, Exception) as e:
+            messages.error(request, f'تامین انجام نشد: {e}')
+            return redirect('fulfill_stock_request', request_id=request_id)
+
         messages.success(request, 'درخواست با موفقیت تامین شد.')
         return redirect('stock_supply_list')
     
@@ -7005,13 +7397,22 @@ def voucher_create(request: HttpRequest, voucher_type: str, warehouse_id: int) -
     if voucher_type not in ('in', 'out'):
         return redirect('warehouse_management', cafe_code=cafe.code if cafe else '')
 
-    # ساخت شماره حواله خودکار
-    import random
+    # ساخت شماره حواله خودکار (فقط برای پیش‌فرض فرم)
     prefix      = 'VI' if voucher_type == 'in' else 'VO'
     last_number = WarehouseVoucher.objects.filter(
         cafe=cafe, voucher_type=voucher_type
     ).count() + 1
     auto_number = f"{prefix}-{last_number:05d}"
+
+    def _next_voucher_number():
+        """شماره یکتا در لحظه ثبت — با retry روی برخورد unique"""
+        for attempt in range(10):
+            candidate = f"{prefix}-{WarehouseVoucher.objects.filter(cafe=cafe, voucher_type=voucher_type).count() + 1 + attempt:05d}"
+            if not WarehouseVoucher.objects.filter(
+                    cafe=cafe, voucher_type=voucher_type,
+                    voucher_number=candidate).exists():
+                return candidate
+        return f"{prefix}-{timezone.now().strftime('%H%M%S')}"
 
     # محصولات موجود در این انبار (یا همه محصولات کافه)
     products = Product.objects.filter(is_active=True)
@@ -7037,74 +7438,91 @@ def voucher_create(request: HttpRequest, voucher_type: str, warehouse_id: int) -
             from django.contrib import messages as dj_messages
             dj_messages.error(request, 'حداقل یک قلم کالا باید وارد شود.')
         else:
-            # ایجاد حواله
-            vdate = timezone.now()
-            if date_str:
-                try:
-                    vdate = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%dT%H:%M'))
-                except Exception:
-                    pass
+            try:
+                # ایجاد حواله + اقلام + کسر/افزودن اتمیک موجودی — همه یا هیچ
+                with transaction.atomic():
+                    vdate = timezone.now()
+                    if date_str:
+                        try:
+                            vdate = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%dT%H:%M'))
+                        except Exception:
+                            pass
 
-            voucher = WarehouseVoucher.objects.create(
-                cafe=cafe,
-                warehouse=warehouse,
-                voucher_type=voucher_type,
-                voucher_number=voucher_number,
-                date=vdate,
-                description=description,
-                created_by=request.user,
-            )
+                    # شماره دستی تکراری → تولید خودکار یکتا (race-safe)
+                    if voucher_number and WarehouseVoucher.objects.filter(
+                            cafe=cafe, voucher_number=voucher_number).exists():
+                        voucher_number = _next_voucher_number()
+                        dj_messages.warning(
+                            request,
+                            f'شماره حواله تکراری بود؛ شماره {voucher_number} اختصاص یافت'
+                        )
+                    elif not voucher_number:
+                        voucher_number = _next_voucher_number()
 
-            for idx, pid in enumerate(product_ids):
-                try:
-                    qty        = Decimal(quantities[idx].replace(',', '')) if idx < len(quantities) else Decimal('0')
-                    uid        = int(unit_ids[idx]) if idx < len(unit_ids) and unit_ids[idx] else None
-                    uprice_str = unit_prices[idx].replace(',', '') if idx < len(unit_prices) else '0'
-                    uprice     = Decimal(uprice_str) if uprice_str else Decimal('0')
-                    idesc      = item_descs[idx] if idx < len(item_descs) else ''
-                    product    = Product.objects.get(id=pid, cafe=cafe)
-                    unit_obj   = Unit.objects.get(id=uid) if uid else None
-
-                    WarehouseVoucherItem.objects.create(
-                        voucher=voucher,
-                        product=product,
-                        quantity=qty,
-                        unit=unit_obj,
-                        unit_price=uprice,
-                        description=idesc,
-                    )
-
-                    # بروزرسانی موجودی StockItem
-                    stock_item, _ = StockItem.objects.get_or_create(
-                        product=product,
+                    voucher = WarehouseVoucher.objects.create(
+                        cafe=cafe,
                         warehouse=warehouse,
-                        defaults={'unit': unit_obj or product.unit, 'quantity': 0}
-                    )
-                    prev_qty = stock_item.quantity
-                    if voucher_type == 'in':
-                        stock_item.quantity += qty
-                    else:
-                        stock_item.quantity = max(Decimal('0'), stock_item.quantity - qty)
-                    stock_item.save()
-
-                    # تراکنش
-                    StockTransaction.objects.create(
-                        stock_item=stock_item,
-                        transaction_type='in' if voucher_type == 'in' else 'out',
-                        quantity=qty,
-                        conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
-                        unit=unit_obj or product.unit,
-                        reference_type='voucher',
-                        reference_id=voucher.id,
-                        description=f"حواله {voucher.get_voucher_type_display()} شماره {voucher.voucher_number}",
+                        voucher_type=voucher_type,
+                        voucher_number=voucher_number,
+                        date=vdate,
+                        description=description,
                         created_by=request.user,
-                        previous_quantity=prev_qty,
-                        new_quantity=stock_item.quantity,
                     )
-                except Exception:
-                    continue
 
-            return redirect('voucher_detail', cafe_code=cafe.code if cafe else '', voucher_id=voucher.id)
+                    for idx, pid in enumerate(product_ids):
+                        qty        = Decimal(quantities[idx].replace(',', '')) if idx < len(quantities) else Decimal('0')
+                        uid        = int(unit_ids[idx]) if idx < len(unit_ids) and unit_ids[idx] else None
+                        uprice_str = unit_prices[idx].replace(',', '') if idx < len(unit_prices) else '0'
+                        uprice     = Decimal(uprice_str) if uprice_str else Decimal('0')
+                        idesc      = item_descs[idx] if idx < len(item_descs) else ''
+                        product    = Product.objects.get(id=pid, cafe=cafe)
+                        unit_obj   = Unit.objects.get(id=uid) if uid else None
+
+                        WarehouseVoucherItem.objects.create(
+                            voucher=voucher,
+                            product=product,
+                            quantity=qty,
+                            unit=unit_obj,
+                            unit_price=uprice,
+                            description=idesc,
+                        )
+
+                        # بروزرسانی اتمیک موجودی StockItem
+                        delta = qty if voucher_type == 'in' else -qty
+                        ok, prev_qty, new_qty = _change_stock_quantity(stock_item.id, delta)
+                        if not ok:
+                            # موجودی منفی نمی‌شود؛ خطای کفایت کل حواله را برمی‌گرداند
+                            raise _InsufficientStock(product.name)
+
+                        # تراکنش
+                        StockTransaction.objects.create(
+                            stock_item=stock_item,
+                            transaction_type='in' if voucher_type == 'in' else 'out',
+                            quantity=qty,
+                            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
+                            unit=unit_obj or product.unit,
+                            reference_type='voucher',
+                            reference_id=voucher.id,
+                            description=f"حواله {voucher.get_voucher_type_display()} شماره {voucher.voucher_number}",
+                            created_by=request.user,
+                            previous_quantity=prev_qty,
+                            new_quantity=new_qty,
+                        )
+
+                return redirect('voucher_detail', cafe_code=cafe.code if cafe else '', voucher_id=voucher.id)
+            except (_InsufficientStock, Exception) as e:
+                dj_messages.error(request, f'حواله ثبت نشد: {e}')
+                # fallback به صفحه فرم با همان داده‌ها
+                type_label = 'حواله ورود' if voucher_type == 'in' else 'حواله خروج'
+                return render(request, 'stock/voucher_create.html', {
+                    'warehouse':     warehouse,
+                    'voucher_type':  voucher_type,
+                    'type_label':    type_label,
+                    'auto_number':   _next_voucher_number(),
+                    'products':      products,
+                    'units':         units,
+                    'cafe_code':     cafe.code if cafe else '',
+                })
 
     type_label = 'حواله ورود' if voucher_type == 'in' else 'حواله خروج'
     return render(request, 'stock/voucher_create.html', {
@@ -7417,8 +7835,11 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
 
     items = data.get('items', [])
     updated = 0
+    errors = []
 
-    for item in items:
+    # کل انبارگردانی یک تراکنش اتمیک — همه‌ی تعدیل‌ها با هم اعمال می‌شوند یا هیچ‌کدام
+    with transaction.atomic():
+      for item in items:
         stock_item_id = item.get('stock_item_id')
         physical_qty_str = str(item.get('physical_qty', '')).strip()
 
@@ -7427,28 +7848,37 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
 
         try:
             physical_qty = Decimal(physical_qty_str)
-            stock_item = StockItem.objects.get(id=stock_item_id, warehouse=warehouse)
-        except Exception:
-            continue
+            if physical_qty < 0:
+                errors.append(f'مقدار منفی برای شناسه {stock_item_id} مجاز نیست')
+                raise _InsufficientStock('__abort__')
 
-        prev_qty = stock_item.quantity
-        stock_item.quantity = physical_qty
-        stock_item.save()
+            prev_qty, new_qty = _set_stock_quantity(stock_item_id, physical_qty)
+            # stock_item برای متادیتای تراکنش (باید در همین تراکنش باشد)
+            si = StockItem.objects.select_related('product_brand', 'unit').get(id=int(stock_item_id), warehouse=warehouse)
 
-        StockTransaction.objects.create(
-            stock_item=stock_item,
-            transaction_type='adjustment',
-            quantity=abs(physical_qty - prev_qty),
-            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
-            unit=stock_item.unit,
-            reference_type='inventory_check',
-            reference_id=warehouse.id,
-            description=f'انبارگردانی - تعدیل موجودی از {prev_qty} به {physical_qty}',
-            created_by=request.user,
-            previous_quantity=prev_qty,
-            new_quantity=physical_qty,
-        )
-        updated += 1
+            StockTransaction.objects.create(
+                stock_item=si,
+                transaction_type='adjustment',
+                quantity=abs(physical_qty - prev_qty),
+                conversion_rate=si.product_brand.conversion_rate if si.product_brand else None,
+                unit=si.unit,
+                reference_type='inventory_check',
+                reference_id=warehouse.id,
+                description=f'انبارگردانی - تعدیل موجودی از {prev_qty} به {physical_qty}',
+                created_by=request.user,
+                previous_quantity=prev_qty,
+                new_quantity=new_qty,
+            )
+            updated += 1
+        except _InsufficientStock as e:
+            if str(e) != '__abort__':
+                errors.append(str(e))
+        except Exception as e:
+            errors.append(str(e))
+
+    if errors:
+        # atomic کل بلوک را rollback کرده — هیچ تعدیلی اعمال نشده است
+        return JsonResponse({'success': False, 'error': '؛ '.join(errors[:3])}, status=400)
 
     return JsonResponse({'success': True, 'updated': updated, 'message': f'{updated} مورد موجودی به‌روزرسانی شد'})
 
@@ -7860,41 +8290,47 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
                 return redirect(dash_url)
 
-            for idx, (stock_item, base_deduction, qty) in enumerate(validated):
-                # کسر از موجودی انبار
-                prev_qty = stock_item.quantity
-                stock_item.quantity -= base_deduction
-                stock_item.save()
-                StockTransaction.objects.create(
-                    stock_item=stock_item,
-                    transaction_type='out',
-                    quantity=base_deduction,
-                    conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
-                    unit=stock_item.unit,
-                    reference_type='officer_assignment',
-                    reference_id=item.id,
-                    description=f'تامین کالا توسط مسئول انبار - {item.name} - درخواست #{item.request_id}',
-                    created_by=request.user,
-                    previous_quantity=prev_qty,
-                    new_quantity=stock_item.quantity,
-                )
-                if idx == 0:
-                    # ردیف اول: تخصیص در انتظار قبلی (یا تخصیص جدید) تکمیل می‌شود
-                    if assignment is None:
-                        assignment = _assign_item(item, 'warehouse', request.user, request.user)
-                    assignment.status = 'fulfilled'
-                    assignment.stock_item = stock_item
-                    assignment.supplied_quantity = base_deduction
-                    assignment.notes = (assignment.notes or '') + f' تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
-                    assignment.save()
-                else:
-                    # هر برند اضافه، تخصیص جداگانه می‌گیرد (مدل فقط یک StockItem در هر تخصیص دارد)
-                    extra_assignment = _assign_item(
-                        item, 'warehouse', request.user, request.user, status='fulfilled')
-                    extra_assignment.stock_item = stock_item
-                    extra_assignment.supplied_quantity = base_deduction
-                    extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
-                    extra_assignment.save()
+            try:
+                with transaction.atomic():
+                    for idx, (stock_item, base_deduction, qty) in enumerate(validated):
+                        # کسر اتمیک از موجودی انبار
+                        ok, prev_qty, new_qty = _change_stock_quantity(
+                            stock_item.id, -base_deduction)
+                        if not ok:
+                            raise _InsufficientStock(stock_item.product.name)
+                        StockTransaction.objects.create(
+                            stock_item=stock_item,
+                            transaction_type='out',
+                            quantity=base_deduction,
+                            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
+                            unit=stock_item.unit,
+                            reference_type='officer_assignment',
+                            reference_id=item.id,
+                            description=f'تامین کالا توسط مسئول انبار - {item.name} - درخواست #{item.request_id}',
+                            created_by=request.user,
+                            previous_quantity=prev_qty,
+                            new_quantity=new_qty,
+                        )
+                        if idx == 0:
+                            # ردیف اول: تخصیص در انتظار قبلی (یا تخصیص جدید) تکمیل می‌شود
+                            if assignment is None:
+                                assignment = _assign_item(item, 'warehouse', request.user, request.user)
+                            assignment.status = 'fulfilled'
+                            assignment.stock_item = stock_item
+                            assignment.supplied_quantity = base_deduction
+                            assignment.notes = (assignment.notes or '') + f' تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
+                            assignment.save()
+                        else:
+                            # هر برند اضافه، تخصیص جداگانه می‌گیرد (مدل فقط یک StockItem در هر تخصیص دارد)
+                            extra_assignment = _assign_item(
+                                item, 'warehouse', request.user, request.user, status='fulfilled')
+                            extra_assignment.stock_item = stock_item
+                            extra_assignment.supplied_quantity = base_deduction
+                            extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
+                            extra_assignment.save()
+            except _InsufficientStock as exc:
+                messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت نشد')
+                return redirect(dash_url)
             _sync_request_status(item.request)
             messages.success(request, f'«{item.name}» از انبار تامین شد.')
             return redirect(dash_url)
@@ -7925,16 +8361,18 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             if not done_assigns.exists():
                 messages.error(request, 'این کالا برای بازگشایی آماده نیست')
                 return redirect(dash_url)
-            # معکوس‌سازی تراکنش‌های تامین قبلی این قلم (برگشت موجودی به انبار)
-            for tx in StockTransaction.objects.filter(
-                    reference_type='officer_assignment', reference_id=item.id, transaction_type='out'):
-                si = tx.stock_item
-                if si:
-                    si.quantity = si.quantity + tx.quantity
-                    si.save()
-            StockTransaction.objects.filter(
-                reference_type='officer_assignment', reference_id=item.id).delete()
-            done_assigns.delete()
+            # معکوس‌سازی اتمیک تراکنش‌های تامین قبلی این قلم (برگشت موجودی به انبار)
+            with transaction.atomic():
+                for tx in StockTransaction.objects.select_for_update().filter(
+                        reference_type='officer_assignment', reference_id=item.id, transaction_type='out'):
+                    si = tx.stock_item
+                    if si:
+                        ok, _prev, _new = _change_stock_quantity(si.id, +tx.quantity)
+                        if not ok:
+                            raise _InsufficientStock(si.product.name)
+                StockTransaction.objects.filter(
+                    reference_type='officer_assignment', reference_id=item.id).delete()
+                done_assigns.delete()
             _sync_request_status(item.request)
             messages.info(request, f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.')
             return redirect(dash_url)
@@ -8102,12 +8540,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                              if r.delivery_date and not r.delivery_immediate})
     has_immediate = any(r.delivery_immediate for r in requests_list)
 
-    # ── فهرست بخش‌ها برای فیلتر بالا: بخش‌های فعال کافه + نقش‌های قدیمی بدون بخش ──
+    # ── فهرست بخش‌ها برای فیلتر بالا: بخش‌های فعال کافه جاری + نقش‌های قدیمی بدون بخش ──
     departments_list = []  # [(کلید فیلتر، برچسب نمایش)]
     seen = set()
-    for d in Department.objects.filter(is_active=True):
-        if d.cafe_id is not None and cafe and d.cafe_id != cafe.id:
-            continue
+    for d in Department.objects.filter(is_active=True, cafe=cafe):
         if d.name not in seen:
             seen.add(d.name)
             departments_list.append((d.name, d.name))
@@ -8618,7 +9054,7 @@ def all_departments_requests(request):
         'prev_date': prev_date,
         'next_date': next_date,
         'date_str': date_str,
-        'all_departments': Department.objects.filter(is_active=True).order_by('name'),
+        'all_departments': Department.objects.filter(is_active=True, cafe=cafe).order_by('name'),
         # جریان جدید (نوع purchase)
         'rows': rows,
         'row_sections': row_sections_names,
@@ -9141,10 +9577,12 @@ def quick_add_department(request):
 
     cafe = get_cafe_from_request(request)
 
+    # بدون کافه جاری امکان ساخت بخش نیست (بخش سراسری وجود ندارد)
+    if not cafe:
+        return JsonResponse({'success': False, 'error': 'ابتدا کافه را انتخاب کنید'})
+
     # Return existing department if same name already exists
-    existing_qs = Department.objects.filter(name__iexact=name)
-    if cafe:
-        existing_qs = existing_qs.filter(cafe=cafe)
+    existing_qs = Department.objects.filter(name__iexact=name, cafe=cafe)
     if existing_qs.exists():
         d = existing_qs.first()
         return JsonResponse({'success': True, 'department': {
