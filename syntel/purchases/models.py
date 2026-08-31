@@ -154,6 +154,12 @@ class PurchaseRequest(models.Model):
         ('partial', 'تکمیل جزئی'),
         ('rejected', 'رد شده'),
     ]
+    # منبع ایجاد درخواست: معمول (درخواست‌دهنده) یا صفحه «درخواست خرید» مسئول انبار
+    SOURCE_CHOICES = [
+        ('requester', 'درخواست‌دهنده'),
+        ('warehouse_purchase', 'درخواست خرید مسئول انبار'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='requester', verbose_name='منبع درخواست')
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='purchase_requests', verbose_name='کافه', null=True, blank=True)
     user: models.ForeignKey = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     created_at: models.DateTimeField = models.DateTimeField(auto_now_add=True)
@@ -433,6 +439,24 @@ class Department(models.Model):
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='departments', verbose_name='کافه')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    # انبار/محل انبارداری مرتبط با بخش — اختیاری؛ باید متعلق به همان کافه باشد
+    warehouse = models.ForeignKey(
+        'Warehouse', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='departments', verbose_name='انبار مرتبط',
+        help_text='انبار یا محل انبارداری این بخش؛ فقط انبارهای همان کافه قابل انتخاب هستند.',
+    )
+    # انبارِ بخش (مثلاً یخچال آشپزخانه) در مقابل انبار مرکزی کافه
+    is_department_warehouse = models.BooleanField(
+        default=False, verbose_name='انبار بخش',
+        help_text='اگر فعال باشد، انبار مرتبط انبارِ بخش است؛ اگر غیرفعال باشد انبار مرکزی کافه است.',
+    )
+
+    def clean(self):
+        """انبار مرتبط باید متعلق به همان کافهٔ بخش باشد"""
+        super().clean()
+        if self.warehouse_id and self.cafe_id and self.warehouse.cafe_id != self.cafe_id:
+            raise ValidationError({'warehouse': 'انبار مرتبط باید متعلق به همان کافهٔ بخش باشد.'})
 
     def __str__(self):
         return self.name
@@ -1793,16 +1817,23 @@ class StockTransaction(models.Model):
     
     stock_item = models.ForeignKey(StockItem, on_delete=models.CASCADE, related_name='transactions', verbose_name='موجودی')
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES, verbose_name='نوع تراکنش')
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار')
+    quantity = models.DecimalField(max_digits=10, decimal_places=4, verbose_name='مقدار')
     conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='نرخ تبدیل برند')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
-    reference_type = models.CharField(max_length=50, blank=True, verbose_name='نوع مرجع')  # 'invoice', 'stock_request', 'initial'
+    reference_type = models.CharField(max_length=50, blank=True, verbose_name='نوع مرجع')  # 'invoice', 'stock_request', 'initial', 'warehouse_voucher'
     reference_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='شناسه مرجع')
+    # حوالهٔ انبارِ مبدأ — برای تراکنش‌های سرویس انبار؛ تغییرناپذیرند و با PROTECT
+    # حوالهٔ نهایی‌شده‌ای که تراکنش دارد قابل حذف نیست (ردیف ممیزی محفوظ می‌ماند)
+    voucher = models.ForeignKey(
+        'WarehouseVoucher', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='stock_transactions', verbose_name='حوالهٔ انبار',
+        help_text='حوالهٔ انبارِ مبدأ این تراکنش (برای ردیف‌های سرویس انبار).',
+    )
     description = models.TextField(blank=True, verbose_name='توضیحات')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='ایجاد شده توسط')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ تراکنش')
-    previous_quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='موجودی قبل')
-    new_quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='موجودی جدید')
+    previous_quantity = models.DecimalField(max_digits=10, decimal_places=4, verbose_name='موجودی قبل')
+    new_quantity = models.DecimalField(max_digits=10, decimal_places=4, verbose_name='موجودی جدید')
 
     def __str__(self):
         return f"{self.get_transaction_type_display()} - {self.stock_item.product.name} - {self.quantity}"
@@ -1866,6 +1897,58 @@ class StockRequestItem(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Purchase Draft model - پیش‌نویس درخواست خرید مسئول انبار
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PurchaseDraft(models.Model):
+    """پیش‌نویس درخواست خرید مسئول انبار.
+
+    وقتی مسئول انبار کالایی را «ارجاع به خرید» می‌کند، آن کالا به‌جای برگشت
+    مستقیم به مدیرعامل، در پیش‌نویس این صفحه جمع می‌شود؛ مسئول انبار می‌تواند
+    اقلام را ویرایش/حذف کند یا کالای جدید اضافه کند و در پایان با «ارسال»،
+    درخواست خرید برای تایید مدیرعامل ثبت شود.
+    """
+
+    cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='purchase_drafts', verbose_name='کافه', null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_drafts', verbose_name='سازنده')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='آخرین بروزرسانی')
+
+    def __str__(self):
+        return f"پیش‌نویس خرید #{self.id} - {self.cafe.code if self.cafe else '-'}"
+
+    class Meta:
+        verbose_name = 'پیش‌نویس درخواست خرید'
+        verbose_name_plural = 'پیش‌نویس‌های درخواست خرید'
+        ordering = ['-created_at']
+
+
+class PurchaseDraftItem(models.Model):
+    """قلم پیش‌نویس درخواست خرید — از ارجاع به خرید یا افزودن دستی"""
+
+    draft = models.ForeignKey(PurchaseDraft, on_delete=models.CASCADE, related_name='items', verbose_name='پیش‌نویس')
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_draft_items', verbose_name='محصول')
+    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='purchase_draft_items', verbose_name='برند')
+    name = models.CharField(max_length=100, verbose_name='نام کالا')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='مقدار')
+    unit = models.CharField(max_length=20, default='عدد', verbose_name='واحد')
+    description = models.TextField(blank=True, verbose_name='توضیحات')
+    # قلم درخواست اصلی که با «ارجاع به خرید» به اینجا آمد (برای ردیابی)
+    source_item = models.ForeignKey('PurchaseItem', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='purchase_draft_items', verbose_name='قلم منبع')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    def __str__(self):
+        return f"{self.name} - {self.quantity} {self.unit}"
+
+    class Meta:
+        verbose_name = 'قلم پیش‌نویس خرید'
+        verbose_name_plural = 'اقلام پیش‌نویس خرید'
+        ordering = ['created_at']
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Officer Assignment model - تخصیص قلم درخواست کالا به مسئول خرید / انبار
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1921,28 +2004,86 @@ class OfficerAssignment(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Warehouse Voucher models - حواله‌های انبار (ورود / خروج)
+# Warehouse Voucher models - حواله‌های انبار (ورود، خروج، انتقال، تعدیل و...)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class WarehouseVoucher(models.Model):
-    """حواله انبار - ثبت ورود یا خروج کالا"""
+    """حواله انبار - سند ثبت جابجایی کالا (ورود، خروج، برگشت، فروش، ضایعات، انتقال، تعدیل)"""
 
     VOUCHER_TYPE_CHOICES = [
-        ('in',  'حواله ورود'),
-        ('out', 'حواله خروج'),
+        ('receipt',     'حواله ورود'),
+        ('issue',       'حواله خروج'),
+        ('return',      'حواله برگشتی'),
+        ('sale',        'حواله فروش'),
+        ('waste',       'حواله ضایعات'),
+        ('transfer',    'حواله انتقال'),
+        ('adjustment',  'حواله تعدیل'),
     ]
 
-    cafe           = models.ForeignKey('Cafe',      on_delete=models.CASCADE,  related_name='warehouse_vouchers', verbose_name='کافه')
-    warehouse      = models.ForeignKey('Warehouse', on_delete=models.CASCADE,  related_name='vouchers',           verbose_name='انبار')
-    voucher_type   = models.CharField(max_length=10, choices=VOUCHER_TYPE_CHOICES, verbose_name='نوع حواله')
-    voucher_number = models.CharField(max_length=50, verbose_name='شماره حواله')
-    date           = models.DateTimeField(default=timezone.now, verbose_name='تاریخ')
-    description    = models.TextField(blank=True, verbose_name='توضیحات')
-    created_by     = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, verbose_name='ایجادکننده')
-    created_at     = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    STATUS_CHOICES = [
+        ('draft',      'پیش‌نویس'),
+        ('submitted',  'ثبت‌شده'),
+        ('approved',   'تأییدشده'),
+        ('finalized',  'نهایی‌شده'),
+        ('cancelled',  'لغوشده'),
+        ('reversed',   'برگشت‌خورده'),
+    ]
+
+    # فقط این نوع‌ها مسیر تأیید (approved) را طی می‌کنند؛ بقیه از ثبت مستقیم به
+    # نهایی‌سازی می‌روند. حواله ضایعات در صورت عبور از آستانهٔ مشخص هم می‌تواند
+    # نیازمند تأیید شود — تشخیص آستانه در لایه منطق انجام می‌شود.
+    APPROVAL_REQUIRED_TYPES = {'adjustment'}
+
+    cafe                 = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='warehouse_vouchers', verbose_name='کافه')
+    source_warehouse     = models.ForeignKey('Warehouse', null=True, blank=True, on_delete=models.SET_NULL, related_name='source_vouchers', verbose_name='انبار مبدأ')
+    destination_warehouse = models.ForeignKey('Warehouse', null=True, blank=True, on_delete=models.SET_NULL, related_name='destination_vouchers', verbose_name='انبار مقصد')
+    voucher_type         = models.CharField(max_length=20, choices=VOUCHER_TYPE_CHOICES, verbose_name='نوع حواله')
+    status               = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='وضعیت')
+    # برای حواله‌هایی که طبق آستانه نیازمند تأییدند (مثلاً ضایعات بالای آستانه)؛
+    # اگر فعال باشد، نهایی‌سازی فقط از وضعیت «تأییدشده» مجاز است.
+    requires_approval    = models.BooleanField(
+        default=False, verbose_name='نیازمند تأیید',
+        help_text='اگر فعال باشد، این حواله پیش از نهایی‌سازی باید «تأییدشده» شود (مثلاً ضایعات بالای آستانه).',
+    )
+    voucher_number       = models.CharField(max_length=50, verbose_name='شماره حواله')
+    date                 = models.DateTimeField(default=timezone.now, verbose_name='تاریخ')
+    description          = models.TextField(blank=True, verbose_name='توضیحات')
+
+    # سند منبع (فاکتور، فروش، ضایعات، انبارگردانی و...) — اختیاری
+    source_content_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, verbose_name='نوع سند منبع')
+    source_object_id    = models.PositiveIntegerField(null=True, blank=True, verbose_name='شناسه سند منبع')
+    source_object       = GenericForeignKey('source_content_type', 'source_object_id')
+
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_warehouse_vouchers', verbose_name='ایجادکننده')
+    # تأییدکننده/نهایی‌کننده — فقط وقتی گام تأیید واقعاً انجام شده باشد پر می‌شود
+    approver   = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_warehouse_vouchers', verbose_name='تأییدکننده/نهایی‌کننده')
+    approved_at  = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تأیید')
+    finalized_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ نهایی‌سازی')
+    cancelled_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ لغو')
+    reversed_at  = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ برگشت')
+    # حوالهٔ اصلی که این حواله آن را برگشت زده است (برگشتِ برگشت مجاز است)
+    reverses   = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='reversed_by', verbose_name='حوالهٔ اصلی')
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='آخرین بروزرسانی')
 
     def __str__(self):
         return f"{self.get_voucher_type_display()} - {self.voucher_number}"
+
+    def clean(self):
+        """قواعد انبار مبدأ/مقصد بر اساس نوع حواله"""
+        super().clean()
+        if self.voucher_type == 'transfer':
+            if not (self.source_warehouse_id and self.destination_warehouse_id):
+                raise ValidationError({'source_warehouse': 'حواله انتقال به هر دو انبار مبدأ و مقصد نیاز دارد.'})
+            if self.source_warehouse_id == self.destination_warehouse_id:
+                raise ValidationError({'destination_warehouse': 'انبار مبدأ و مقصد نمی‌توانند یکی باشند.'})
+        elif self.voucher_type == 'receipt':
+            if not self.destination_warehouse_id:
+                raise ValidationError({'destination_warehouse': 'حواله ورود باید انبار مقصد داشته باشد.'})
+        elif self.voucher_type in ('issue', 'return', 'sale', 'waste'):
+            if not self.source_warehouse_id:
+                raise ValidationError({'source_warehouse': 'این نوع حواله باید انبار مبدأ داشته باشد.'})
 
     class Meta:
         verbose_name        = 'حواله انبار'
@@ -1951,27 +2092,57 @@ class WarehouseVoucher(models.Model):
         unique_together     = [['cafe', 'voucher_number']]
         indexes             = [
             models.Index(fields=['cafe', 'voucher_type', '-created_at']),
-            models.Index(fields=['warehouse', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['source_warehouse', '-created_at']),
+            models.Index(fields=['destination_warehouse', '-created_at']),
+            models.Index(fields=['source_content_type', 'source_object_id']),
         ]
 
 
 class WarehouseVoucherItem(models.Model):
-    """قلم (ردیف) حواله انبار"""
+    """قلم (ردیف) حواله انبار — محصول/برند یا موجودی انبار + مقادیر پایه و تجاری"""
 
-    voucher     = models.ForeignKey(WarehouseVoucher, on_delete=models.CASCADE,                          related_name='items',  verbose_name='حواله')
-    product     = models.ForeignKey('Product',        on_delete=models.PROTECT,                                                verbose_name='محصول')
-    quantity    = models.DecimalField(max_digits=10, decimal_places=2,                                                         verbose_name='مقدار')
-    unit        = models.ForeignKey('Unit',           on_delete=models.SET_NULL, null=True, blank=True,                        verbose_name='واحد')
-    unit_price  = models.DecimalField(max_digits=14, decimal_places=0, default=0,                                              verbose_name='قیمت واحد (ریال)')
-    description = models.TextField(blank=True, verbose_name='توضیحات')
+    voucher = models.ForeignKey(WarehouseVoucher, on_delete=models.CASCADE, related_name='items', verbose_name='حواله')
+    # هر قلم باید به محصول (با برند احتمالی) یا موجودی انبار متصل باشد (در clean بررسی می‌شود)
+    product         = models.ForeignKey('Product', null=True, blank=True, on_delete=models.SET_NULL, verbose_name='محصول')
+    product_brand   = models.ForeignKey('ProductBrand', null=True, blank=True, on_delete=models.SET_NULL, related_name='warehouse_voucher_items', verbose_name='برند')
+    stock_item      = models.ForeignKey('StockItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='warehouse_voucher_items', verbose_name='موجودی انبار')
+    unit            = models.ForeignKey('Unit', null=True, blank=True, on_delete=models.SET_NULL, verbose_name='واحد')
+    # همه مقادیر اعشاری هستند؛ هیچ truncation صحیحی انجام نمی‌شود
+    base_quantity   = models.DecimalField(max_digits=10, decimal_places=4, default=0, verbose_name='مقدار (واحد پایه)')
+    trade_quantity  = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='مقدار (واحد تجاری)')
+    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='نرخ تبدیل برند')
+    unit_price      = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='قیمت واحد (ریال)')
+    description     = models.TextField(blank=True, verbose_name='توضیحات')
 
     @property
     def total_price(self):
-        return self.quantity * self.unit_price
+        qty = self.trade_quantity if self.trade_quantity is not None else self.base_quantity
+        return qty * self.unit_price
 
     def __str__(self):
-        return f"{self.product.name} - {self.quantity}"
+        if self.product:
+            name = self.product.name
+        elif self.stock_item:
+            name = self.stock_item.product.name
+        else:
+            name = '—'
+        qty = self.trade_quantity if self.trade_quantity is not None else self.base_quantity
+        return f"{name} - {qty}"
+
+    def clean(self):
+        """هر قلم باید به محصول/برند یا موجودی انبار متصل باشد"""
+        super().clean()
+        if not (self.stock_item_id or self.product_id):
+            raise ValidationError('هر قلم حواله باید به محصول یا موجودی انبار متصل باشد.')
+        if self.stock_item_id and self.product_id:
+            stock_item = self.stock_item
+            if stock_item and stock_item.product_id != self.product_id:
+                raise ValidationError({'product': 'محصول قلم با موجودی انبار انتخاب‌شده مطابقت ندارد.'})
 
     class Meta:
         verbose_name        = 'قلم حواله انبار'
         verbose_name_plural = 'اقلام حواله انبار'
+        indexes             = [
+            models.Index(fields=['voucher']),
+        ]

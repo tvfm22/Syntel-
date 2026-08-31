@@ -1,212 +1,290 @@
-﻿<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لیست حواله‌های انبار</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{
-            --primary:#6366f1;--primary-dark:#4f46e5;
-            --success:#10b981;--warning:#f59e0b;--danger:#ef4444;
-            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
-            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
-            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
-        }
-        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
-        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
-        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .topbar-title{flex:1;font-size:1.2rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
-        .topbar-title i{color:var(--primary)}
+{% block title %}لیست حواله‌های انبار - Kuker{% endblock %}
 
-        .main{padding:2rem;max-width:1300px;margin:0 auto}
+{% block extra_css %}
+<style>
+    /* ═══ لیست حواله‌ها — هماهنگ با توکن‌های سیستم ═══ */
+    .voucher-wrap { max-width: 1250px; margin: 0 auto; }
+    .voucher-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
 
-        /* PAGE HEADER */
-        .page-header{background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:var(--r-xl);padding:2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
-        .page-header p{margin-top:.25rem;opacity:.85;font-size:.9rem}
+    /* ── نوار فیلترها ── */
+    .filter-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: var(--space-3); align-items: end;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4); margin-bottom: var(--space-4);
+    }
+    .filter-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .filter-field label {
+        font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+    }
+    .filter-field input, .filter-field select {
+        padding: 0.5rem 0.75rem; border: 1.5px solid var(--border-default);
+        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
+        font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
+    }
+    .filter-field input:focus, .filter-field select:focus {
+        outline: none; border-color: var(--accent-indigo);
+    }
+    .filter-actions { display: flex; gap: 0.5rem; align-items: center; }
 
-        /* FILTER CARD */
-        .filter-card{background:#fff;border-radius:var(--r-lg);padding:1.25rem 1.5rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
-        .filter-group{display:flex;flex-direction:column;gap:.35rem;min-width:160px;flex:1}
-        .filter-label{font-size:.8rem;font-weight:600;color:var(--dark)}
-        .filter-input,.filter-select{padding:.6rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;background:#fff}
-        .filter-input:focus,.filter-select:focus{outline:none;border-color:var(--primary)}
+    /* ── کارت جدول ── */
+    .table-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card thead th {
+        padding: 0.7rem 1rem; text-align: right; font-size: 0.74rem; font-weight: 700;
+        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
+        border-bottom: 1px solid var(--border-light); white-space: nowrap;
+    }
+    .table-card tbody td {
+        padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-light);
+        font-size: 0.84rem; vertical-align: middle;
+    }
+    .table-card tbody tr:hover td { background: var(--bg-subtle, #f8fafc); }
+    .table-card tbody tr:last-child td { border-bottom: none; }
 
-        /* BUTTONS */
-        .btn{padding:.6rem 1.2rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
-        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
-        .btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
-        .btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
-        .btn-secondary{background:#6b7280;color:#fff}.btn-secondary:hover{background:#4b5563}
-        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
-        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
+    .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
+    .v-type-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.22rem 0.65rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .v-type-badge i { font-size: 0.68rem; }
+    .t-receipt    { background: #d1fae5; color: #065f46; }
+    .t-issue      { background: #fee2e2; color: #991b1b; }
+    .t-return     { background: #dbeafe; color: #1e40af; }
+    .t-sale       { background: #fef3c7; color: #92400e; }
+    .t-waste      { background: #ede9fe; color: #5b21b6; }
+    .t-transfer   { background: #cffafe; color: #155e75; }
+    .t-adjustment { background: #fce7f3; color: #9d174d; }
 
-        /* STATS */
-        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:1.5rem}
-        .stat{background:#fff;border-radius:var(--r-lg);padding:1.25rem;text-align:center;box-shadow:var(--shadow-sm);border-top:3px solid var(--primary)}
-        .stat.s{border-top-color:var(--success)}.stat.d{border-top-color:var(--danger)}
-        .stat-val{font-size:1.6rem;font-weight:700;color:var(--primary)}
-        .stat.s .stat-val{color:var(--success)}.stat.d .stat-val{color:var(--danger)}
-        .stat-lbl{font-size:.8rem;color:#6b7280;margin-top:.25rem}
+    .v-status-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.2rem 0.6rem; border-radius: 999px;
+        font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+    }
+    .s-draft     { background: #f1f5f9; color: #475569; }
+    .s-submitted { background: #fef9c3; color: #854d0e; }
+    .s-approved  { background: #dcfce7; color: #166534; }
+    .s-finalized { background: #e0e7ff; color: #3730a3; }
+    .s-cancelled { background: #f1f5f9; color: #94a3b8; text-decoration: line-through; }
+    .s-reversed  { background: #fee2e2; color: #b91c1c; }
 
-        /* TABLE */
-        .table-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden}
-        .table-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-        .table-title{font-weight:700;display:flex;align-items:center;gap:.5rem}
-        table{width:100%;border-collapse:collapse}
-        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;background:var(--light);color:#6b7280;border-bottom:1px solid var(--border)}
-        td{padding:.875rem 1rem;border-bottom:1px solid var(--border);font-size:.9rem}
-        tr:last-child td{border-bottom:none}
-        tr:hover td{background:#fafafa}
+    .wh-cell { display: flex; align-items: center; gap: 0.3rem; color: var(--text-secondary); }
+    .wh-cell i { color: var(--accent-indigo); font-size: 0.75rem; }
+    .wh-cell .arrow { color: var(--text-muted); font-size: 0.68rem; }
 
-        /* BADGES */
-        .badge{padding:.25rem .75rem;border-radius:9999px;font-size:.75rem;font-weight:700;display:inline-flex;align-items:center;gap:.3rem}
-        .badge-in{background:#d1fae5;color:#065f46}
-        .badge-out{background:#fee2e2;color:#991b1b}
+    /* ── صفحه‌بندی ── */
+    .pagination { display: flex; justify-content: center; gap: 0.45rem; padding: 1.1rem; flex-wrap: wrap; }
+    .page-link {
+        padding: 0.4rem 0.8rem; border: 1.5px solid var(--border-default);
+        border-radius: var(--radius-md); text-decoration: none;
+        color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
+        background: var(--bg-card); transition: all var(--transition-fast);
+    }
+    .page-link:hover, .page-link.active {
+        background: var(--accent-indigo); border-color: var(--accent-indigo); color: white;
+    }
 
-        /* PAGINATION */
-        .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap}
-        .page-link{padding:.5rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:500;background:#fff;transition:all .2s}
-        .page-link:hover,.page-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;
+        transition: all var(--transition-fast); }
+    .btn-primary { background: var(--accent-indigo); color: white; }
+    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
+    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
+    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .btn-sm { padding: 0.32rem 0.7rem; font-size: 0.74rem; }
+</style>
+{% endblock %}
 
-        /* EMPTY */
-        .empty{text-align:center;padding:4rem 2rem}
-        .empty i{font-size:3.5rem;color:#d1d5db;display:block;margin-bottom:1rem}
-        .empty h3{color:#6b7280;font-size:1.1rem;margin-bottom:.5rem}
-        .empty p{color:#9ca3af;font-size:.85rem;margin-bottom:1.5rem}
+{% block content %}
+<div class="voucher-wrap">
 
-        @media(max-width:768px){.main{padding:1rem};table{font-size:.8rem};td,th{padding:.6rem .5rem}}
-    </style>
-</head>
-<body>
-{% load static %}
-
-<!-- Topbar -->
-<div class="topbar">
-    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="back-btn">
-        <i class="fas fa-arrow-right"></i> مدیریت انبار
-    </a>
-    <div class="topbar-title">
-        <i class="fas fa-file-invoice"></i>
-        لیست حواله‌های انبار
-    </div>
-</div>
-
-<!-- Main -->
-<div class="main">
-
-    <!-- Page Header -->
+    <!-- سربرگ صفحه -->
     <div class="page-header">
         <div>
             <h1><i class="fas fa-file-invoice"></i> حواله‌های انبار</h1>
-            <p>لیست کامل حواله‌های ورود و خروج</p>
+            <p>لیست کامل حواله‌ها — ورود، خروج، برگشتی، فروش، ضایعات، انتقال و تعدیل</p>
         </div>
-        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <span style="font-size:.82rem;color:rgba(255,255,255,.7)">برای ثبت حواله جدید از صفحه مدیریت انبار اقدام کنید</span>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-sm" style="background:var(--accent-indigo);color:#fff">
+                <i class="fas fa-plus"></i> ثبت حوالهٔ جدید
+            </a>
+            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="btn btn-outline btn-sm" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff">
+                <i class="fas fa-chart-line"></i> سوابق حرکت موجودی
+            </a>
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline btn-sm" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff">
+                <i class="fas fa-warehouse"></i> مدیریت انبارها
+            </a>
         </div>
     </div>
 
-    <!-- Filters -->
-    <form method="get" class="filter-card">
-        <div class="filter-group">
-            <label class="filter-label">نوع حواله</label>
-            <select name="type" class="filter-select">
+    <!-- فیلترها -->
+    <form method="get" class="filter-grid">
+        <div class="filter-field">
+            <label>نوع حواله</label>
+            <select name="type">
                 <option value="">همه</option>
-                <option value="in" {% if vtype == 'in' %}selected{% endif %}>📥 ورود</option>
-                <option value="out" {% if vtype == 'out' %}selected{% endif %}>📤 خروج</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">انبار</label>
-            <select name="warehouse" class="filter-select">
-                <option value="">همه انبارها</option>
-                {% for wh in warehouses %}
-                <option value="{{ wh.id }}" {% if wh_id == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>
+                {% for key, label in voucher_types.items %}
+                <option value="{{ key }}"{% if f.type == key %} selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="filter-group">
-            <label class="filter-label">جستجو</label>
-            <input type="text" name="search" value="{{ search|default:'' }}" placeholder="شماره یا توضیحات..." class="filter-input">
+        <div class="filter-field">
+            <label>وضعیت</label>
+            <select name="status">
+                <option value="">همه</option>
+                {% for key, label in statuses.items %}
+                <option value="{{ key }}"{% if f.status == key %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
-        {% if vtype or wh_id or search %}
-        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-times"></i> پاک</a>
-        {% endif %}
+        <div class="filter-field">
+            <label>انبار مبدأ</label>
+            <select name="source_warehouse">
+                <option value="">همه</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.id }}"{% if f.source_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>انبار مقصد</label>
+            <select name="dest_warehouse">
+                <option value="">همه</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.id }}"{% if f.dest_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>بخش</label>
+            <select name="department">
+                <option value="">همه</option>
+                {% for dept in departments %}
+                <option value="{{ dept.id }}"{% if f.department == dept.id|stringformat:'s' %} selected{% endif %}>{{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>محصول</label>
+            <select name="product">
+                <option value="">همه</option>
+                {% for p in products %}
+                <option value="{{ p.id }}"{% if f.product == p.id|stringformat:'s' %} selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>ایجادکننده</label>
+            <select name="creator">
+                <option value="">همه</option>
+                {% for u in creators %}
+                <option value="{{ u.id }}"{% if f.creator == u.id|stringformat:'s' %} selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>از تاریخ</label>
+            <input type="date" name="date_from" value="{{ f.date_from }}">
+        </div>
+        <div class="filter-field">
+            <label>تا تاریخ</label>
+            <input type="date" name="date_to" value="{{ f.date_to }}">
+        </div>
+        <div class="filter-field">
+            <label>جستجوی شماره</label>
+            <input type="text" name="search" value="{{ f.search }}" placeholder="مثلاً RCV-0001...">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline"><i class="fas fa-rotate-right"></i> پاک</a>
+        </div>
     </form>
 
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-val">{{ page_obj.paginator.count }}</div>
-            <div class="stat-lbl">کل حواله‌ها</div>
-        </div>
-        <div class="stat s">
-            <div class="stat-val">
-                {% for v in page_obj.object_list %}{% if v.voucher_type == 'in' %}+{% endif %}{% endfor %}
-            </div>
-            <div class="stat-lbl">حواله ورود</div>
-        </div>
-        <div class="stat d">
-            <div class="stat-val">
-                {% for v in page_obj.object_list %}{% if v.voucher_type == 'out' %}+{% endif %}{% endfor %}
-            </div>
-            <div class="stat-lbl">حواله خروج</div>
-        </div>
-    </div>
-
-    <!-- Table -->
+    <!-- جدول -->
     <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-list" style="color:var(--primary)"></i> لیست حواله‌ها</div>
-            <span style="font-size:.82rem;color:#6b7280">{{ page_obj.paginator.count }} حواله</span>
-        </div>
-
-        {% if page_obj %}
         <div style="overflow-x:auto">
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
                         <th>شماره حواله</th>
                         <th>نوع</th>
-                        <th>انبار</th>
+                        <th>وضعیت</th>
+                        <th>انبارها</th>
                         <th>تاریخ</th>
-                        <th>توضیحات</th>
-                        <th>ثبت‌کننده</th>
+                        <th>اقلام</th>
+                        <th>ایجادکننده</th>
                         <th>عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for voucher in page_obj %}
+                    {% for v in page_obj %}
                     <tr>
-                        <td style="color:#9ca3af;font-size:.82rem">{{ forloop.counter }}</td>
-                        <td style="font-weight:700;font-family:monospace;letter-spacing:.05em">{{ voucher.voucher_number }}</td>
+                        <td><span class="mono">{{ v.voucher_number }}</span></td>
                         <td>
-                            {% if voucher.voucher_type == 'in' %}
-                            <span class="badge badge-in"><i class="fas fa-sign-in-alt"></i> ورود</span>
-                            {% else %}
-                            <span class="badge badge-out"><i class="fas fa-sign-out-alt"></i> خروج</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span style="display:flex;align-items:center;gap:.3rem">
-                                <i class="fas fa-warehouse" style="color:#6366f1;font-size:.8rem"></i>
-                                {{ voucher.warehouse.name }}
+                            <span class="v-type-badge t-{{ v.voucher_type }}">
+                                {% if v.voucher_type == 'receipt' %}<i class="fas fa-arrow-down"></i>
+                                {% elif v.voucher_type == 'issue' %}<i class="fas fa-arrow-up"></i>
+                                {% elif v.voucher_type == 'return' %}<i class="fas fa-rotate-left"></i>
+                                {% elif v.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
+                                {% elif v.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
+                                {% elif v.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
+                                {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
+                                {{ v.get_voucher_type_display }}
                             </span>
                         </td>
-                        <td style="color:#6b7280;font-size:.85rem">{{ voucher.date|date:"Y/m/d H:i" }}</td>
-                        <td style="color:#6b7280;font-size:.85rem;max-width:200px">{{ voucher.description|default:"—"|truncatechars:50 }}</td>
-                        <td style="font-size:.82rem;color:#6b7280">{{ voucher.created_by.get_full_name|default:voucher.created_by.username|default:"—" }}</td>
                         <td>
-                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
+                            <span class="v-status-badge s-{{ v.status }}">{{ v.get_status_display }}</span>
+                        </td>
+                        <td>
+                            {% if v.source_warehouse %}
+                            <span class="wh-cell"><i class="fas fa-warehouse"></i> {{ v.source_warehouse.name }}</span>
+                            {% endif %}
+                            {% if v.source_warehouse and v.destination_warehouse %}
+                            <span class="wh-cell arrow"><i class="fas fa-arrow-left"></i></span>
+                            {% endif %}
+                            {% if v.destination_warehouse %}
+                            <span class="wh-cell"><i class="fas fa-warehouse"></i> {{ v.destination_warehouse.name }}</span>
+                            {% endif %}
+                            {% if not v.source_warehouse and not v.destination_warehouse %}
+                            <span style="color:var(--text-muted);font-size:0.78rem">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--text-secondary);font-size:0.8rem">{{ v.date|jalali_datetime }}</td>
+                        <td style="color:var(--text-secondary);font-size:0.8rem">{{ v.items.count }} قلم</td>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">
+                            {{ v.created_by.get_full_name|default:v.created_by.username|default:'—' }}
+                        </td>
+                        <td>
+                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=v.id %}" class="btn btn-outline btn-sm">
                                 <i class="fas fa-eye"></i> مشاهده
                             </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div style="text-align:center;padding:3.5rem 1rem">
+                                <i class="fas fa-file-invoice" style="font-size:2.6rem;color:var(--text-muted);display:block;margin-bottom:0.8rem"></i>
+                                <h3 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.4rem">هیچ حواله‌ای یافت نشد</h3>
+                                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:1.2rem">
+                                    {% if f.type or f.status or f.search %}فیلترها را تغییر دهید{% else %}از داشبورد مسئول انبار، حوالهٔ جدید ثبت کنید{% endif %}
+                                </p>
+                                <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="btn btn-primary">
+                                    <i class="fas fa-gauge-high"></i> داشبورد مسئول انبار
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -214,38 +292,47 @@
             </table>
         </div>
 
-        <!-- Pagination -->
         {% if page_obj.has_other_pages %}
         <div class="pagination">
             {% if page_obj.has_previous %}
-            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link"><i class="fas fa-chevron-right"></i></a>
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}
+                {% if f.type %}&type={{ f.type }}{% endif %}{% if f.status %}&status={{ f.status }}{% endif %}
+                {% if f.source_warehouse %}&source_warehouse={{ f.source_warehouse }}{% endif %}
+                {% if f.dest_warehouse %}&dest_warehouse={{ f.dest_warehouse }}{% endif %}
+                {% if f.department %}&department={{ f.department }}{% endif %}
+                {% if f.product %}&product={{ f.product }}{% endif %}{% if f.creator %}&creator={{ f.creator }}{% endif %}
+                {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                {% if f.search %}&search={{ f.search|urlencode }}{% endif %}">
+                <i class="fas fa-chevron-right"></i></a>
             {% endif %}
             {% for num in page_obj.paginator.page_range %}
-            {% if page_obj.number == num %}
-            <span class="page-link active">{{ num }}</span>
-            {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
-            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ num }}" class="page-link">{{ num }}</a>
-            {% endif %}
+                {% if page_obj.number == num %}
+                <span class="page-link active">{{ num }}</span>
+                {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+                <a class="page-link" href="?page={{ num }}
+                    {% if f.type %}&type={{ f.type }}{% endif %}{% if f.status %}&status={{ f.status }}{% endif %}
+                    {% if f.source_warehouse %}&source_warehouse={{ f.source_warehouse }}{% endif %}
+                    {% if f.dest_warehouse %}&dest_warehouse={{ f.dest_warehouse }}{% endif %}
+                    {% if f.department %}&department={{ f.department }}{% endif %}
+                    {% if f.product %}&product={{ f.product }}{% endif %}{% if f.creator %}&creator={{ f.creator }}{% endif %}
+                    {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                    {% if f.search %}&search={{ f.search|urlencode }}{% endif %}">{{ num }}</a>
+                {% endif %}
             {% endfor %}
             {% if page_obj.has_next %}
-            <a href="?{% if vtype %}type={{ vtype }}&{% endif %}{% if wh_id %}warehouse={{ wh_id }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link"><i class="fas fa-chevron-left"></i></a>
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}
+                {% if f.type %}&type={{ f.type }}{% endif %}{% if f.status %}&status={{ f.status }}{% endif %}
+                {% if f.source_warehouse %}&source_warehouse={{ f.source_warehouse }}{% endif %}
+                {% if f.dest_warehouse %}&dest_warehouse={{ f.dest_warehouse }}{% endif %}
+                {% if f.department %}&department={{ f.department }}{% endif %}
+                {% if f.product %}&product={{ f.product }}{% endif %}{% if f.creator %}&creator={{ f.creator }}{% endif %}
+                {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                {% if f.search %}&search={{ f.search|urlencode }}{% endif %}">
+                <i class="fas fa-chevron-left"></i></a>
             {% endif %}
-        </div>
-        {% endif %}
-
-        {% else %}
-        <div class="empty">
-            <i class="fas fa-file-invoice"></i>
-            <h3>هیچ حواله‌ای یافت نشد</h3>
-            <p>{% if vtype or wh_id or search %}فیلترها را تغییر دهید{% else %}از صفحه مدیریت انبار، حواله ورود یا خروج ثبت کنید{% endif %}</p>
-            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-warehouse"></i> مدیریت انبار
-            </a>
         </div>
         {% endif %}
     </div>
 
 </div>
-</body>
-</html>
-
+{% endblock %}

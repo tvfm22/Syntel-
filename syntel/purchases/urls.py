@@ -103,7 +103,6 @@ cafe_urlpatterns = [
     path('units/<int:unit_id>/delete/', cv(views.unit_delete), name='unit_delete'),
     # Category Management URLs
     path('categories/', cv(views.category_list), name='category_list'),
-    path('categories/create/', cv(views.category_create), name='category_create'),
     path('categories/<int:category_id>/update/', cv(views.category_update), name='category_update'),
     path('categories/<int:category_id>/delete/', cv(views.category_delete), name='category_delete'),
     # Payment Type Management URLs
@@ -154,6 +153,7 @@ cafe_urlpatterns = [
     path('request-management/warehouse-pdf/', cv(views.request_management_warehouse_pdf), name='request_management_warehouse_pdf'),
     path('purchase-officer/dashboard/', cv(views.purchase_officer_dashboard), name='purchase_officer_dashboard'),
     path('warehouse-officer/dashboard/', cv(views.warehouse_officer_dashboard), name='warehouse_officer_dashboard'),
+    path('warehouse-officer/purchase-request/', cv(views.warehouse_purchase_draft), name='warehouse_purchase_draft'),
     path('purchase-orders/status/', cv(views.purchase_orders_status), name='purchase_orders_status'),
     path('invoices/create/<int:order_id>/', cv(views.invoice_create), name='invoice_create'),
     path('invoices/<int:invoice_id>/', cv(views.invoice_detail), name='invoice_detail'),
@@ -292,12 +292,8 @@ cafe_urlpatterns = [
     path('api/dashboard/export/', cv(views_dashboard.DashboardExportAPIView.as_view()), name='api_dashboard_export'),
     
     # Stock Management URLs (مدیریت انبار)
-    path('stock/initial-register/', cv(views.initial_stock_register), name='initial_stock_register'),
     path('stock/list/', cv(views.stock_list), name='stock_list'),
     path('stock/<int:stock_id>/transactions/', cv(views.stock_transactions), name='stock_transactions'),
-    path('stock/item/<int:item_id>/mark-for-supply/', cv(views.mark_item_for_stock_supply), name='mark_item_for_stock_supply'),
-    path('stock/supply-list/', cv(views.stock_supply_list), name='stock_supply_list'),
-    path('stock/request/<int:request_id>/fulfill/', cv(views.fulfill_stock_request), name='fulfill_stock_request'),
 
     # Warehouse Management URLs (مدیریت انبارها)
     path('warehouses/', cv(views.warehouse_management), name='warehouse_management'),
@@ -306,10 +302,6 @@ cafe_urlpatterns = [
     path('warehouses/<int:warehouse_id>/toggle-status/', cv(views.warehouse_toggle_status), name='warehouse_toggle_status'),
 
     # Warehouse Product Definition URLs (تعریف کالا برای انبار)
-    path('warehouses/<int:warehouse_id>/products/', cv(views.warehouse_products), name='warehouse_products'),
-    path('warehouses/<int:warehouse_id>/products/create/', cv(views.warehouse_product_create), name='warehouse_product_create'),
-    path('warehouses/<int:warehouse_id>/products/<int:stock_item_id>/update/', cv(views.warehouse_product_update), name='warehouse_product_update'),
-    path('warehouses/<int:warehouse_id>/products/<int:stock_item_id>/delete/', cv(views.warehouse_product_delete), name='warehouse_product_delete'),
 
     # Warehouse Inventory Check URLs (انبارگردانی)
     path('warehouses/<int:warehouse_id>/inventory-check/', cv(views.warehouse_inventory_check), name='warehouse_inventory_check'),
@@ -317,9 +309,15 @@ cafe_urlpatterns = [
 
     # Warehouse Voucher URLs (حواله‌های انبار)
     path('vouchers/', cv(views.voucher_list), name='voucher_list'),
-    path('vouchers/<int:warehouse_id>/in/', cv(views.voucher_create), {'voucher_type': 'in'}, name='voucher_create_in'),
-    path('vouchers/<int:warehouse_id>/out/', cv(views.voucher_create), {'voucher_type': 'out'}, name='voucher_create_out'),
+    path('vouchers/create/<str:voucher_type>/', cv(views.voucher_create), name='voucher_create'),
     path('vouchers/detail/<int:voucher_id>/', cv(views.voucher_detail), name='voucher_detail'),
+    path('vouchers/<int:voucher_id>/edit/', cv(views.voucher_edit), name='voucher_edit'),
+    path('vouchers/<int:voucher_id>/cancel/', cv(views.voucher_cancel), name='voucher_cancel'),
+    path('vouchers/<int:voucher_id>/approve/', cv(views.voucher_approve), name='voucher_approve'),
+    path('vouchers/<int:voucher_id>/reverse/', cv(views.voucher_reverse), name='voucher_reverse'),
+
+    # Stock Movements URLs (سوابق حرکت موجودی)
+    path('stock/movements/', cv(views.stock_movements), name='stock_movements'),
 
     # Stock Category URLs (موجودی انبار بر اساس دسته‌بندی)
     path('stock/categories/', cv(views.stock_by_category), name='stock_by_category'),

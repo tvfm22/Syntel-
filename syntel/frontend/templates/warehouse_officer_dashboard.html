@@ -1,127 +1,191 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static custom_filters %}
 
 {% block title %}داشبورد مسئول انبار - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ═══ داشبورد مسئول انبار — همه درخواست‌ها + تامین از انبار (سبک مدیرعامل) ═══ */
-    .officer-wrap { max-width: 1200px; margin: 0 auto; }
-    .page-header { flex-wrap: wrap; gap: var(--space-3); }
+    /* ═══ داشبورد مسئول انبار — مینیمال، هماهنگ با توکن‌های سیستم ═══ */
+    .officer-wrap { max-width: 1100px; margin: 0 auto; }
+    .officer-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
 
-    /* ── دو ردیف فیلتر: زمان تحویل + بخش ── */
-    .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-4); }
+    /* ── کارت‌های آماری ── */
+    .stats-row {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--space-3); margin-bottom: var(--space-5);
+    }
+    .stat-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5);
+        display: flex; align-items: center; gap: var(--space-3);
+        transition: all var(--transition-fast);
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stat-icon {
+        width: 38px; height: 38px; border-radius: var(--radius-md); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
+    }
+    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+    .stat-icon.pending  { background: rgba(139,92,246,0.12); color: #6d28d9; }
+    .stat-icon.ok       { background: #d1fae5; color: #065f46; }
+    .stat-icon.short    { background: rgba(245,158,11,0.14); color: #92400e; }
+    .stat-icon.none     { background: #fee2e2; color: #b91c1c; }
+    .stat-icon.done     { background: #dbeafe; color: #1e40af; }
+    .stat-icon.purchase { background: rgba(59,130,246,0.1); color: #1e40af; }
+
+    /* ── نوار فیلتر فشرده ── */
+    .filter-bar {
+        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 0.55rem 0.9rem; margin-bottom: var(--space-4);
+    }
+    .filter-bar + .filter-bar { margin-top: calc(-1 * var(--space-3)); }
     .filter-bar .bar-label {
-        font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
-        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.25rem;
+        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.15rem;
+        white-space: nowrap;
     }
     .filter-pill {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        padding: 0.45rem 1.15rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.3rem 0.85rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
         text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); transition: all var(--transition-fast);
+        color: var(--text-secondary); transition: all var(--transition-fast); white-space: nowrap;
     }
     .filter-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
     .filter-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
     .filter-pill.active-immediate { background: var(--accent-amber, #f59e0b); border-color: var(--accent-amber, #f59e0b); color: white; }
+    .dept-filter {
+        height: 34px; padding: 0 0.75rem; min-width: 170px;
+        border: 1.5px solid var(--border-default); border-radius: 999px;
+        font-family: 'Vazir', sans-serif; font-size: 0.78rem; font-weight: 600;
+        background: var(--bg-card); color: var(--text-secondary); cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+    .dept-filter:hover, .dept-filter:focus { border-color: var(--accent-indigo); outline: none; color: var(--accent-indigo); }
 
     /* ── کارت درخواست ── */
     .req-card {
         background: var(--bg-card); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);
-        border: 1px solid var(--border-light); padding: var(--space-5) var(--space-6);
-        margin-bottom: var(--space-5);
+        border: 1px solid var(--border-light); padding: var(--space-4) var(--space-5);
+        margin-bottom: var(--space-4);
     }
     .req-card-head {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        flex-wrap: wrap; gap: var(--space-3); padding-bottom: var(--space-4);
-        border-bottom: 1px dashed var(--border-default); margin-bottom: var(--space-4);
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: var(--space-2) var(--space-3); padding-bottom: var(--space-3);
+        border-bottom: 1px solid var(--border-light); margin-bottom: var(--space-2);
     }
-    .req-card-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; }
-    .req-card-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.9; }
+    .req-card-title { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .req-card-title .req-no { color: var(--accent-indigo); }
+    .req-card-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .req-card-meta b { color: var(--text-secondary); font-weight: 600; }
     .dept-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem; border-radius: 999px;
+        font-size: 0.7rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
     }
     .delivery-chip {
-        display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.8rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
         background: rgba(139,92,246,0.12); color: #6d28d9; border: 1px solid rgba(139,92,246,0.25);
     }
     .delivery-chip.immediate { background: rgba(245,158,11,0.14); color: #92400e; border-color: rgba(245,158,11,0.35); }
+    .delivery-chip.no-date { background: rgba(245,158,11,0.14); color: #92400e; border-color: rgba(245,158,11,0.35); }
 
-    /* ── ردیف قلم کالا ── */
-    .item-row { padding: var(--space-4) 0; border-bottom: 1px solid var(--border-light); }
-    .item-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .item-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.6rem 1rem; }
-    .item-name { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
-    .item-brand { font-size: 0.72rem; font-weight: 600; color: #6d28d9; background: rgba(139,92,246,0.08); padding: 0.1rem 0.5rem; border-radius: 999px; margin-inline-start: 0.35rem; }
-    .item-stats { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
-    .stat-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.8rem; border-radius: var(--radius-md);
-        background: var(--bg-subtle); border: 1px solid var(--border-light); font-size: 0.75rem; color: var(--text-secondary);
+    /* ── ردیف قلم کالا — فشرده و تک‌بلوکی ── */
+    .item-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--border-light); }
+    .item-row:last-of-type { border-bottom: none; padding-bottom: var(--space-1); }
+    .item-name { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+    .item-brand {
+        font-size: 0.68rem; font-weight: 600; color: #6d28d9; background: rgba(139,92,246,0.08);
+        padding: 0.08rem 0.5rem; border-radius: 999px; margin-inline-start: 0.3rem; white-space: nowrap;
     }
-    .stat-chip b { color: var(--text-primary); font-weight: 700; }
-    .stat-chip.qty b { color: var(--accent-green); }
-    .stat-chip.stock-short b { color: #dc2626; }
-    .stat-chip.stock-ok b { color: var(--accent-green); }
-    .item-desc { font-size: 0.78rem; color: var(--text-secondary); background: var(--bg-subtle); border-radius: var(--radius-md); padding: 0.5rem 0.8rem; margin-top: 0.5rem; border-right: 3px solid var(--border-default); }
-    .item-desc:empty, .item-desc:has(>) { display: none; }
+    /* خط اطلاعات: درخواست ← موجودی ← نتیجه — همه در یک ردیف */
+    .item-info {
+        display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+        margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-secondary);
+    }
+    .item-info .lbl { color: var(--text-muted); }
+    .item-info b { color: var(--text-primary); font-weight: 700; }
+    .item-info .sep { color: var(--border-strong); }
+    .stock-verdict { font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+    .stock-verdict::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .stock-verdict.ok    { color: #059669; }
+    .stock-verdict.short { color: #b45309; }
+    .stock-verdict.none  { color: #dc2626; }
+    .item-desc {
+        font-size: 0.74rem; color: var(--text-muted); margin-top: 0.25rem;
+        padding-inline-start: 0.6rem; border-inline-start: 2px solid var(--border-default);
+    }
 
-    /* ── فرم تامین از انبار ── */
+    /* ── نوار تامین: انتخاب برند + مقدار + دکمه، همه در یک ردیف ── */
     .fulfill-form {
-        display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-subtle); border: 1px dashed var(--border-strong); border-radius: var(--radius-xl);
-        padding: var(--space-4); margin-top: var(--space-4);
+        background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+        padding: var(--space-2) var(--space-3); margin-top: var(--space-2);
     }
+    .fulfill-row { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
     .fulfill-form select, .fulfill-form input {
-        padding: 0.55rem 0.75rem; border: 1.5px solid var(--border-default); border-radius: var(--radius-lg);
-        font-size: 0.82rem; font-family: 'Vazir', sans-serif; background: var(--bg-card); color: var(--text-primary);
+        padding: 0 0.7rem; border: 1.5px solid var(--border-default); border-radius: var(--radius-md);
+        font-size: 0.8rem; font-family: 'Vazir', sans-serif; background: var(--bg-card); color: var(--text-primary);
+        height: 36px;
     }
     .fulfill-form select:focus, .fulfill-form input:focus { outline: none; border-color: var(--accent-indigo); }
-    .fulfill-form .stock-select { min-width: 280px; flex: 1; cursor: pointer; }
-    .fulfill-form .qty-input { width: 110px; }
+    .fulfill-form .stock-select { min-width: 210px; flex: 1; cursor: pointer; }
+    .fulfill-form .qty-input { width: 86px; text-align: center; }
     .fulfill-form .stock-label {
-        padding: 0.55rem 0.75rem; border: 1.5px dashed var(--accent-green); border-radius: var(--radius-lg);
-        background: rgba(16,185,129,0.08); font-size: 0.8rem; font-weight: 600; color: #065f46;
-        display: inline-flex; align-items: center; gap: 0.4rem; min-width: 280px; flex: 1;
+        flex: 1; min-width: 210px; height: 36px; padding: 0 0.7rem;
+        font-size: 0.76rem; font-weight: 600; color: #059669;
+        display: inline-flex; align-items: center; gap: 0.4rem;
     }
-    .fulfill-rows { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; }
-    .fulfill-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .fulfill-rows { display: flex; flex-direction: column; gap: 0.4rem; }
     .add-row-btn {
-        border: 1.5px dashed var(--accent-indigo); background: rgba(139,92,246,0.08); color: #4338ca;
-        border-radius: var(--radius-md); padding: 0.5rem 0.9rem; font-size: 0.75rem; font-weight: 600;
-        cursor: pointer; font-family: 'Vazir', sans-serif; transition: all var(--transition-fast);
+        border: none; background: none; color: #4338ca; cursor: pointer;
+        padding: 0.25rem 0.4rem; font-size: 0.72rem; font-weight: 600; font-family: 'Vazir', sans-serif;
+        transition: all var(--transition-fast); border-radius: var(--radius-sm);
     }
-    .add-row-btn:hover { background: rgba(139,92,246,0.16); }
+    .add-row-btn:hover { background: rgba(139,92,246,0.1); }
+    .btn {
+        border: none; border-radius: var(--radius-md); padding: 0 0.9rem; font-size: 0.78rem;
+        font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif;
+        display: inline-flex; align-items: center; gap: 0.35rem; height: 36px;
+        transition: all var(--transition-fast); text-decoration: none; white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-green { background: var(--accent-green); color: white; }
     .remove-row {
-        width: 30px; height: 30px; border-radius: 50%; border: none;
-        background: rgba(239,68,68,0.1); color: #dc2626; font-size: 0.85rem; font-weight: 700;
+        width: 26px; height: 26px; border-radius: 50%; border: none; flex-shrink: 0;
+        background: rgba(239,68,68,0.1); color: #dc2626; font-size: 0.75rem; font-weight: 700;
         cursor: pointer; font-family: 'Vazir', sans-serif; line-height: 1;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
     }
     .remove-row:hover { background: rgba(239,68,68,0.2); }
-    .btn {
-        border: none; border-radius: var(--radius-lg); padding: 0.6rem 1.1rem; font-size: 0.8rem;
-        font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif;
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        transition: all var(--transition-fast); text-decoration: none;
+    /* اکشن‌های ثانویه — لینک‌مانند و کم‌حجم، هم‌راستا با نوار تامین */
+    .secondary-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; margin-top: 0.4rem; }
+    .link-action {
+        border: none; background: none; cursor: pointer; font-family: 'Vazir', sans-serif;
+        font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm);
+        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
     }
-    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-green { background: var(--accent-green); color: white; }
-    .btn-blue  { background: var(--accent-blue); color: white; }
-    .btn-red   { background: var(--accent-red, #ef4444); color: white; }
+    .link-blue  { color: #1d4ed8; }
+    .link-blue:hover  { background: #eff6ff; }
+    .link-red   { color: #b91c1c; }
+    .link-red:hover   { background: #fef2f2; }
 
-    /* ── قلم ثبت‌شده (تامین/عدم موجودی) — کمرنگ با بازگشایی ── */
+    /* ── قلم ثبت‌شده — کمرنگ با بازگشایی ── */
     .item-row.done-row {
-        opacity: 0.6; cursor: pointer; border-radius: var(--radius-lg);
-        padding: var(--space-4); transition: opacity var(--transition-fast), box-shadow var(--transition-fast);
+        opacity: 0.55; cursor: pointer; border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-3); margin: 0 calc(-1 * var(--space-3));
+        transition: opacity var(--transition-fast), background var(--transition-fast);
     }
-    .item-row.done-row:hover { opacity: 0.95; box-shadow: var(--shadow-sm); }
+    .item-row.done-row:hover { opacity: 0.95; background: var(--bg-subtle); }
     .status-tag { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
     .status-fulfilled    { background: #d1fae5; color: #065f46; }
     .status-not_in_stock { background: #fee2e2; color: #b91c1c; }
     .status-returned     { background: #dbeafe; color: #1e40af; }
-    .status-auto { background: #d1fae5; color: #065f46; }
     .status-sent { background: #dbeafe; color: #1e40af; }
 
     /* ── بخش «کالاهای درخواست‌شده برای خرید» ── */
@@ -132,22 +196,98 @@
     }
     .purchase-table { width: 100%; border-collapse: collapse; min-width: 640px; }
     .purchase-table th {
-        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
+        background: var(--bg-subtle); padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 700;
         color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
     }
-    .purchase-table td { padding: 0.85rem 1rem; font-size: 0.82rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .purchase-table td { padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle; }
     .purchase-table tbody tr:hover td { background: var(--bg-subtle); }
 
     .empty-state {
-        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
+        text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
         background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px dashed var(--border-strong);
         box-shadow: var(--shadow-sm);
     }
     .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
 
     @media (max-width: 700px) {
-        .fulfill-form .stock-select { min-width: 100%; }
+        .fulfill-form .stock-select, .fulfill-form .stock-label { min-width: 100%; flex: auto; }
+        .fulfill-form .qty-input { width: 100%; }
+        .fulfill-row .btn { flex: 1; justify-content: center; }
+        .req-card { padding: var(--space-4); }
+        .delivery-chip { margin-top: 0.3rem; }
     }
+
+    /* ── بخش حواله‌های انبار ── */
+    .voucher-dash-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-4); margin-bottom: var(--space-5);
+    }
+    .v-dash-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5);
+    }
+    .v-dash-card-title {
+        font-size: 0.82rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.45rem; margin-bottom: var(--space-3);
+    }
+    .v-dash-card-title i { color: var(--accent-indigo); }
+    .v-dash-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .v-dash-row {
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+        padding: 0.45rem 0.6rem; border-radius: var(--radius-md);
+        text-decoration: none; border: 1px solid var(--border-light);
+        transition: all var(--transition-fast);
+    }
+    .v-dash-row:hover { border-color: var(--accent-indigo); }
+    .v-no { font-family: 'Courier New', monospace; font-weight: 700; font-size: 0.76rem; color: var(--text-primary); }
+    .v-type, .v-status {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        padding: 0.16rem 0.55rem; border-radius: 999px;
+        font-size: 0.68rem; font-weight: 700; white-space: nowrap;
+    }
+    .v-type.t-receipt    { background: #d1fae5; color: #065f46; }
+    .v-type.t-issue      { background: #fee2e2; color: #991b1b; }
+    .v-type.t-return     { background: #dbeafe; color: #1e40af; }
+    .v-type.t-sale       { background: #fef3c7; color: #92400e; }
+    .v-type.t-waste      { background: #ede9fe; color: #5b21b6; }
+    .v-type.t-transfer   { background: #cffafe; color: #155e75; }
+    .v-type.t-adjustment { background: #fce7f3; color: #9d174d; }
+    .v-status.s-draft     { background: #f1f5f9; color: #475569; }
+    .v-status.s-submitted { background: #fef9c3; color: #854d0e; }
+    .v-status.s-finalized { background: #e0e7ff; color: #3730a3; }
+    .v-status.s-reversed  { background: #fee2e2; color: #b91c1c; }
+    .v-date { margin-inline-start: auto; font-size: 0.7rem; color: var(--text-muted); }
+    .v-dash-empty {
+        font-size: 0.78rem; color: var(--text-muted);
+        padding: 0.8rem; background: var(--bg-subtle, #f8fafc);
+        border-radius: var(--radius-md); text-align: center;
+    }
+
+    /* ── بخش موجودی انبارها ── */
+    .stock-overview-scroll {
+        max-height: 420px; overflow-y: auto;
+        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+        background: var(--bg-card); box-shadow: var(--shadow-sm);
+    }
+    .stock-overview-table { width: 100%; border-collapse: collapse; }
+    .stock-overview-table th {
+        position: sticky; top: 0; z-index: 1; background: var(--bg-subtle, #f8fafc);
+        font-size: 0.74rem; font-weight: 800; color: var(--text-secondary);
+        padding: 0.6rem 0.9rem; text-align: right;
+        border-bottom: 2px solid var(--border-default); white-space: nowrap;
+    }
+    .stock-overview-table td {
+        padding: 0.55rem 0.9rem; font-size: 0.8rem; color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-light); vertical-align: middle; white-space: nowrap;
+    }
+    .stock-overview-table tbody tr:hover td { background: var(--bg-subtle); }
+    .stock-badge {
+        display: inline-flex; padding: 0.14rem 0.55rem;
+        border-radius: 999px; font-size: 0.68rem; font-weight: 700;
+    }
+    .stock-badge.ok  { background: #d1fae5; color: #065f46; }
+    .stock-badge.low { background: #fee2e2; color: #b91c1c; }
 </style>
 {% endblock %}
 
@@ -167,100 +307,147 @@
         </div>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
-                {{ message }}
+    <!-- پیام‌ها در layout اصلی (block messages) نمایش داده می‌شوند -->
+
+    <!-- ── کارت‌های آماری خلاصه ── -->
+    {% if request_cards or purchase_items %}
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-icon pending"><i class="fas fa-hourglass-half"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.pending }}</div>
+                <div class="stat-label">در انتظار اقدام</div>
             </div>
-        {% endfor %}
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon ok"><i class="fas fa-circle-check"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.enough }}</div>
+                <div class="stat-label">موجودی کافی در انبار</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon short"><i class="fas fa-triangle-exclamation"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.short }}</div>
+                <div class="stat-label">موجودی ناکافی</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon none"><i class="fas fa-circle-xmark"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.no_stock }}</div>
+                <div class="stat-label">بدون موجودی</div>
+            </div>
+        </div>
+        <a href="{% url 'warehouse_purchase_draft' cafe_code=cafe_code %}" style="text-decoration:none;">
+        <div class="stat-card">
+            <span class="stat-icon purchase"><i class="fas fa-shopping-cart"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.to_purchase }}</div>
+                <div class="stat-label">ارجاع‌شده به خرید →</div>
+            </div>
+        </div>
+        </a>
+        <div class="stat-card">
+            <span class="stat-icon done"><i class="fas fa-list-check"></i></span>
+            <div>
+                <div class="stat-value">{{ stats.done }}</div>
+                <div class="stat-label">ثبت‌شده</div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
-    <!-- ردیف فیلتر ۱: زمان تحویل -->
+    <!-- فیلتر فشرده: زمان تحویل (pill) + بخش (دراپ‌داون) -->
     <div class="filter-bar">
         <span class="bar-label"><i class="fas fa-clock"></i> زمان تحویل:</span>
         <a href="?{% if selected_department %}department={{ selected_department|urlencode }}{% endif %}"
-           class="filter-pill {% if not selected_delivery %}active{% endif %}">
-            <i class="fas fa-border-all"></i> همه زمان‌ها
-        </a>
+           class="filter-pill {% if not selected_delivery %}active{% endif %}">همه</a>
         {% for d in delivery_dates %}
         <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery={{ d|date:'Y-m-d' }}"
            class="filter-pill {% if selected_delivery == d|date:'Y-m-d' %}active{% endif %}">
-            📅 {{ d|jalali_date:"%d %B" }}
+            {{ d|jalali_date:"%d %B" }}
         </a>
         {% endfor %}
         {% if has_immediate %}
         <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery=immediate"
            class="filter-pill {% if selected_delivery == 'immediate' %}active-immediate{% endif %}">
-            ⚡ تحویل فوری
+            <i class="fas fa-bolt"></i> فوری
         </a>
         {% endif %}
-    </div>
 
-    <!-- ردیف فیلتر ۲: بخش درخواست‌دهنده -->
-    <div class="filter-bar" style="margin-top:0;">
-        <span class="bar-label"><i class="fas fa-building"></i> بخش:</span>
-        <a href="?{% if selected_delivery %}delivery={{ selected_delivery|urlencode }}{% endif %}"
-           class="filter-pill {% if not selected_department %}active{% endif %}">
-            <i class="fas fa-border-all"></i> همه بخش‌ها
-        </a>
-        {% for key, label in departments %}
-        <a href="?{% if selected_delivery %}delivery={{ selected_delivery|urlencode }}&{% endif %}department={{ key|urlencode }}"
-           class="filter-pill {% if selected_department == key %}active{% endif %}">{{ label }}</a>
-        {% endfor %}
+        <span style="flex:1;"></span>
+        <form method="get" style="display:flex;align-items:center;gap:0.4rem;margin:0;">
+            {% if selected_delivery %}<input type="hidden" name="delivery" value="{{ selected_delivery }}">{% endif %}
+            <span class="bar-label"><i class="fas fa-building"></i> بخش:</span>
+            <select name="department" class="dept-filter" onchange="this.form.submit()">
+                <option value="">همه بخش‌ها</option>
+                {% for key, label in departments %}
+                <option value="{{ key }}"{% if selected_department == key %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
     </div>
 
     {% if request_cards %}
         {% for card in request_cards %}
         <div class="req-card">
-            <!-- سربرگ درخواست: شماره، درخواست‌دهنده، زمان تحویل، تاریخ و زمان درخواست -->
+            <!-- سربرگ درخواست -->
             <div class="req-card-head">
                 <div>
                     <div class="req-card-title">
-                        🧾 درخواست #{{ card.request.id }}
+                        <i class="fas fa-file-lines" style="color:var(--accent-indigo);"></i>
+                        درخواست <span class="req-no">#{{ card.request.id }}</span>
                         <span class="dept-badge"><i class="fas fa-users"></i> {{ card.request.user.department_display }}</span>
                     </div>
                     <div class="req-card-meta">
-                        {{ card.request.user.get_full_name|default:card.request.user.username }}
-                        &nbsp;•&nbsp; تاریخ و زمان درخواست: {{ card.request.created_at|jalali_datetime }}
+                        <b>{{ card.request.user.get_full_name|default:card.request.user.username }}</b>
+                        &nbsp;•&nbsp; {{ card.request.created_at|jalali_datetime }}
                     </div>
                 </div>
                 <div>
                     {% if card.request.delivery_immediate %}
-                    <span class="delivery-chip immediate">⚡ تحویل فوری</span>
+                    <span class="delivery-chip immediate"><i class="fas fa-bolt"></i> تحویل فوری</span>
                     {% elif card.request.delivery_date %}
-                    <span class="delivery-chip">📅 زمان تحویل: {{ card.request.delivery_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="delivery-chip"><i class="fas fa-calendar"></i> {{ card.request.delivery_date|jalali_date:"%d %B %Y" }}</span>
                     {% else %}
-                    <span class="delivery-chip" style="opacity:.6;">— بدون زمان تحویل</span>
+                    <span class="delivery-chip no-date"><i class="fas fa-triangle-exclamation"></i> تحویل تعیین نشده</span>
                     {% endif %}
                 </div>
             </div>
 
             {% for v in card.visible %}
             <div class="item-row">
-                <div class="item-head">
-                    <div>
-                        <span class="item-name">{{ v.item.product.name|default:v.item.name }}</span>
-                        {% if v.item.product_brand %}
-                        <span class="item-brand">🏷️ {{ v.item.product_brand.brand_name }}</span>
+                <div>
+                    <span class="item-name">{{ v.item.product.name|default:v.item.name }}</span>
+                    {% if v.item.product_brand %}
+                    <span class="item-brand">{{ v.item.product_brand.brand_name }}</span>
+                    {% endif %}
+                    {% if v.assignment %}
+                    <span class="status-tag status-sent">ارجاع از مدیرعامل</span>
+                    {% endif %}
+
+                    <!-- خط اطلاعات: درخواست ← موجودی ← نتیجه -->
+                    <div class="item-info">
+                        <span><span class="lbl">درخواست:</span> <b>{{ v.item.quantity }} {{ v.item.unit }}</b></span>
+                        {% if v.stock %}
+                        <span class="sep">|</span>
+                        <span><span class="lbl">موجودی انبار:</span> <b>{{ v.stock.trade|trim_decimal }} {{ v.stock.unit }}</b></span>
                         {% endif %}
-                        <div class="item-stats">
-                            <span class="stat-chip qty">📦 مقدار درخواستی: <b>{{ v.item.quantity }} {{ v.item.unit }}</b></span>
-                            {% if v.stock %}
-                            <span class="stat-chip {% if v.stock.has %}stock-ok{% else %}stock-short{% endif %}">
-                                📊 موجودی فعلی: <b>{{ v.stock.trade|trim_decimal }} {{ v.stock.unit }}</b>
-                                {% if not v.stock.has %}(کمتر از مقدار درخواستی){% endif %}
-                            </span>
-                            {% endif %}
-                            {% if v.assignment %}
-                            <span class="status-tag status-sent">ارسال شده توسط مدیرعامل</span>
+                        {% if v.stock %}
+                            {% if v.stock.enough %}
+                            <span class="stock-verdict ok">کافی — قابل تامین کامل</span>
+                            {% elif v.stock.has %}
+                            <span class="stock-verdict short">ناکافی — {{ v.stock.short|trim_decimal }} {{ v.stock.unit }} باید خرید شود</span>
                             {% else %}
-                            <span class="status-tag status-auto">ارسال خودکار (موجود در انبار)</span>
+                            <span class="stock-verdict none">انبار خالی — باید خرید شود</span>
                             {% endif %}
-                        </div>
-                        {% if v.item.description %}
-                        <div class="item-desc">📝 {{ v.item.description }}</div>
                         {% endif %}
                     </div>
+                    {% if v.item.description %}
+                    <div class="item-desc">{{ v.item.description }}</div>
+                    {% endif %}
                 </div>
 
                 <form method="post">
@@ -275,41 +462,44 @@
                                 {% with opt=opts|first %}
                                 <input type="hidden" name="stock_item_id" value="{{ opt.id }}">
                                 <span class="stock-label">
-                                    📦 {% if opt.warehouse_name %}انبار «{{ opt.warehouse_name }}» — {% endif %}بدون برند — موجودی: {{ opt.available|trim_decimal }} {{ opt.unit_label }}
+                                    <i class="fas fa-box"></i> {% if opt.warehouse_name %}«{{ opt.warehouse_name }}» — {% endif %}بدون برند — موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
                                 </span>
                                 {% endwith %}
                                 {% else %}
                                 <select name="stock_item_id" class="stock-select" required>
-                                    <option value="">— برند دارای موجودی را انتخاب کنید —</option>
+                                    <option value="">انتخاب برند...</option>
                                     {% for opt in opts %}
                                     <option value="{{ opt.id }}"{% if opt.default_selected %} selected{% endif %}>
                                         {{ opt.brand_name }}{% if opt.multi_warehouse %} ({{ opt.warehouse_name }}){% endif %}
-                                        — موجودی: {{ opt.available|trim_decimal }} {{ opt.unit_label }}
+                                        — موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
                                     </option>
                                     {% endfor %}
                                 </select>
                                 {% endif %}
                                 <input type="number" name="qty" class="qty-input" min="0.01" step="any"
-                                       placeholder="مقدار تامین" required>
+                                       value="{{ v.item.quantity|stringformat:'s' }}" required title="مقدار تأمین">
+                                <button type="submit" name="action" value="fulfill" class="btn btn-green">
+                                    <i class="fas fa-check"></i>
+                                    <span class="btn-fulfill-label" data-unit="{{ v.item.unit }}">تأمین از انبار</span>
+                                </button>
                                 <button type="button" class="remove-row" title="حذف ردیف" style="display:none;">✕</button>
                             </div>
                         </div>
                         {% if not meta or not meta.hide_select %}
-                        <button type="button" class="add-row-btn" data-target="rows-{{ v.item.id }}">＋ افزودن برند دیگر</button>
+                        <button type="button" class="add-row-btn" data-target="rows-{{ v.item.id }}"><i class="fas fa-plus"></i> تأمین از برند دیگر</button>
                         {% endif %}
-                        <button type="submit" name="action" value="fulfill" class="btn btn-green">✅ تامین از انبار</button>
                     </div>
                     {% else %}
-                    <div style="width:100%;font-size:0.78rem;color:#b45309;background:rgba(245,158,11,0.1);border-radius:var(--radius-lg);padding:0.55rem 0.9rem;margin-top:var(--space-3);">
-                        ⚠️ برای این کالا در انبارهای این کافه موجودی ثبت نشده است.
+                    <div style="font-size:0.76rem;color:#b45309;background:rgba(245,158,11,0.1);border-radius:var(--radius-md);padding:0.45rem 0.8rem;margin-top:var(--space-2);">
+                        <i class="fas fa-triangle-exclamation"></i> برای این کالا در انبارهای این کافه موجودی ثبت نشده است.
                     </div>
                     {% endif %}
                     {% endwith %}
-                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.6rem;">
-                        <button type="submit" name="action" value="to_purchase" class="btn btn-blue"
-                                onclick="return confirm('این کالا به درخواست خرید ارجاع شود؟ به لیست مدیرعامل برمی‌گردد.');">🛒 ارجاع به خرید</button>
-                        <button type="submit" name="action" value="not_in_stock" class="btn btn-red"
-                                onclick="return confirm('عدم موجودی ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');">❌ عدم تامین</button>
+                    <div class="secondary-actions">
+                        <button type="submit" name="action" value="to_purchase" class="link-action link-blue"
+                                onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و به تایید مدیرعامل ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
+                        <button type="submit" name="action" value="not_in_stock" class="link-action link-red"
+                                onclick="return confirm('عدم موجودی ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');"><i class="fas fa-xmark"></i> عدم امکان تأمین</button>
                     </div>
                 </form>
             </div>
@@ -317,26 +507,22 @@
 
             {% for d in card.done %}
             <div class="item-row done-row" onclick="reopenItem({{ d.item.id }})" title="کلیک برای ثبت مجدد">
-                <div class="item-head">
-                    <div>
-                        <span class="item-name">{{ d.item.product.name|default:d.item.name }}</span>
-                        {% if d.item.product_brand %}
-                        <span class="item-brand">🏷️ {{ d.item.product_brand.brand_name }}</span>
-                        {% endif %}
-                        <div class="item-stats">
-                            <span class="stat-chip qty">📦 مقدار درخواستی: <b>{{ d.item.quantity }} {{ d.item.unit }}</b></span>
-                            <span class="status-tag status-{{ d.assignment.status }}">
-                                {% if d.assignment.status == 'fulfilled' %}✅ تأمین شده
-                                {% elif d.assignment.status == 'not_in_stock' %}❌ عدم تامین — برگشت به مدیرعامل
-                                {% else %}🛒 ارجاع به درخواست خرید — برگشت به مدیرعامل{% endif %}
-                            </span>
-                        </div>
-                        {% if d.item.description %}
-                        <div class="item-desc">📝 {{ d.item.description }}</div>
-                        {% endif %}
-                    </div>
+                <span class="item-name">{{ d.item.product.name|default:d.item.name }}</span>
+                {% if d.item.product_brand %}
+                <span class="item-brand">{{ d.item.product_brand.brand_name }}</span>
+                {% endif %}
+                <div class="item-info">
+                    <span><span class="lbl">درخواست:</span> <b>{{ d.item.quantity }} {{ d.item.unit }}</b></span>
+                    <span class="status-tag status-{{ d.assignment.status }}">
+                        {% if d.assignment.status == 'fulfilled' %}تأمین شده
+                        {% elif d.assignment.status == 'not_in_stock' %}عدم تامین — برگشت به مدیرعامل
+                        {% else %}ارجاع به خرید — برگشت به مدیرعامل{% endif %}
+                    </span>
                 </div>
-                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem;">↺ برای ثبت مجدد کلیک کنید (موجودی قبلی به انبار برمی‌گردد)</div>
+                {% if d.item.description %}
+                <div class="item-desc">{{ d.item.description }}</div>
+                {% endif %}
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;"><i class="fas fa-rotate-left"></i> کلیک برای ثبت مجدد</div>
             </div>
             <form method="post" id="reopen-form-{{ d.item.id }}" style="display:none;">
                 {% csrf_token %}
@@ -384,9 +570,9 @@
                         <td>#{{ p.request.id }}</td>
                         <td>{{ p.request.created_at|jalali_datetime }}</td>
                         <td>
-                            {% if p.request.delivery_immediate %}⚡ تحویل فوری
-                            {% elif p.request.delivery_date %}📅 {{ p.request.delivery_date|jalali_date:"%d %B %Y" }}
-                            {% else %}—{% endif %}
+                            {% if p.request.delivery_immediate %}<i class="fas fa-bolt"></i> تحویل فوری
+                            {% elif p.request.delivery_date %}{{ p.request.delivery_date|jalali_date:"%d %B %Y" }}
+                            {% else %}<span class="delivery-chip no-date">تعیین نشده</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -399,6 +585,161 @@
             <p>کالایی برای خرید ارجاع نشده است.</p>
         </div>
         {% endif %}
+    </div>
+
+
+    <!-- ── بخش حواله‌های انبار ── -->
+    <div class="voucher-dash-section">
+        <div class="page-title" style="margin-bottom:var(--space-4);">
+            <i class="fas fa-file-invoice"></i>
+            حواله‌های انبار
+        </div>
+
+        <!-- میان‌برهای ثبت حواله بر اساس نوع -->
+        <div class="filter-bar" style="margin-bottom:var(--space-4);">
+            <span class="bar-label"><i class="fas fa-plus"></i> ثبت حواله:</span>
+            {% for key, label in voucher_type_shortcuts.items %}
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type=key %}" class="filter-pill">
+                {% if key == 'receipt' %}<i class="fas fa-arrow-down"></i>
+                {% elif key == 'issue' %}<i class="fas fa-arrow-up"></i>
+                {% elif key == 'return' %}<i class="fas fa-rotate-left"></i>
+                {% elif key == 'sale' %}<i class="fas fa-cart-shopping"></i>
+                {% elif key == 'waste' %}<i class="fas fa-trash-can"></i>
+                {% elif key == 'transfer' %}<i class="fas fa-right-left"></i>
+                {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
+                {{ label }}
+            </a>
+            {% endfor %}
+            <span style="flex:1;"></span>
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="filter-pill">
+                <i class="fas fa-list"></i> همهٔ حواله‌ها
+            </a>
+            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="filter-pill">
+                <i class="fas fa-chart-line"></i> سوابق حرکت
+            </a>
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="filter-pill">
+                <i class="fas fa-boxes-stacked"></i> مدیریت انبارها
+            </a>
+        </div>
+
+        <div class="voucher-dash-grid">
+            <!-- حواله‌های اخیر -->
+            <div class="v-dash-card">
+                <div class="v-dash-card-title"><i class="fas fa-clock-rotate-left"></i> حواله‌های اخیر</div>
+                {% if recent_vouchers %}
+                <div class="v-dash-list">
+                    {% for v in recent_vouchers %}
+                    <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=v.id %}" class="v-dash-row">
+                        <span class="v-no">{{ v.voucher_number }}</span>
+                        <span class="v-type t-{{ v.voucher_type }}">{{ v.get_voucher_type_display }}</span>
+                        <span class="v-status s-{{ v.status }}">{{ v.get_status_display }}</span>
+                        <span class="v-date">{{ v.date|jalali_date:"%d %B" }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="v-dash-empty">حواله‌ای ثبت نشده است.</div>
+                {% endif %}
+            </div>
+
+            <!-- اقدامات در انتظار -->
+            <div class="v-dash-card">
+                <div class="v-dash-card-title"><i class="fas fa-hourglass-half"></i> اقدامات در انتظار</div>
+                {% if pending_vouchers %}
+                <div class="v-dash-list">
+                    {% for v in pending_vouchers %}
+                    <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=v.id %}" class="v-dash-row">
+                        <span class="v-no">{{ v.voucher_number }}</span>
+                        <span class="v-type t-{{ v.voucher_type }}">{{ v.get_voucher_type_display }}</span>
+                        <span class="v-status s-{{ v.status }}">
+                            {% if v.status == 'draft' %}پیش‌نویس{% else %}در انتظار تأیید{% endif %}
+                        </span>
+                        <span class="v-date">{{ v.date|jalali_date:"%d %B" }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="v-dash-empty">اقدام در انتظاری نیست.</div>
+                {% endif %}
+            </div>
+
+            <!-- هشدار موجودی -->
+            <div class="v-dash-card">
+                <div class="v-dash-card-title"><i class="fas fa-triangle-exclamation"></i> هشدار کمبود موجودی</div>
+                {% if stock_alerts %}
+                <div class="v-dash-list">
+                    {% for a in stock_alerts %}
+                    <div class="v-dash-row">
+                        <span style="font-weight:700;color:var(--text-primary);font-size:0.82rem">{{ a.stock_item.product.name }}</span>
+                        <span class="v-type t-waste">{{ a.stock_item.warehouse.name }}</span>
+                        <span class="v-status s-reversed">
+                            موجودی {{ a.stock_item.quantity|trim_decimal }} — کمبود {{ a.shortage|trim_decimal }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="v-dash-empty">همهٔ اقلام بالای حداقلِ تعریف‌شده‌اند.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── بخش موجودی انبارها ── -->
+    <div class="voucher-dash-section">
+        <div class="page-title" style="margin-bottom:var(--space-4);">
+            <i class="fas fa-boxes"></i>
+            موجودی انبارها
+        </div>
+
+        <div class="filter-bar" style="margin-bottom:var(--space-4);">
+            <span class="bar-label"><i class="fas fa-layer-group"></i> وضعیت اقلام:</span>
+            <span class="filter-pill"><i class="fas fa-box"></i> {{ stock_overview|length }} قلم</span>
+            <span style="flex:1;"></span>
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="filter-pill">
+                <i class="fas fa-eye"></i> مشاهدهٔ همهٔ موجودی‌ها
+            </a>
+        </div>
+
+        <div class="stock-overview-scroll">
+            <table class="stock-overview-table">
+                <thead>
+                    <tr>
+                        <th>کالا</th>
+                        <th>برند</th>
+                        <th>انبار</th>
+                        <th>موجودی</th>
+                        <th>واحد</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for si in stock_overview %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ si.warehouse_id }}"
+                               style="color:var(--text-primary);font-weight:700;text-decoration:none;">{{ si.product.name }}</a>
+                        </td>
+                        <td>{% if si.product_brand %}{{ si.product_brand.brand_name }}{% else %}—{% endif %}</td>
+                        <td>{{ si.warehouse.name }}</td>
+                        <td>{{ si.quantity|trim_decimal }}</td>
+                        <td>{% if si.unit %}{{ si.unit.name }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if si.product.min_stock and si.quantity <= si.product.min_stock %}
+                            <span class="stock-badge low">کمبود</span>
+                            {% elif si.product.min_stock %}
+                            <span class="stock-badge ok">مناسب</span>
+                            {% else %}
+                            <span class="stock-badge" style="background:#f1f5f9;color:#475569;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6"><div class="v-dash-empty">اقلامی در انبارها ثبت نشده است.</div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </div><!-- /officer-wrap -->
@@ -422,18 +763,20 @@ document.querySelectorAll('.add-row-btn').forEach(function(btn) {
         if (!first) return;
         var count = rows.querySelectorAll('.fulfill-row').length;
         var clone = first.cloneNode(true);
-        // نام‌های پویا برای ارسال در فرم: stock_item_id_1 / qty_1 و ...
         var sel = clone.querySelector('.stock-select');
         var qty = clone.querySelector('.qty-input');
-        sel.name = 'stock_item_id_' + count;
+        if (sel) {
+            sel.name = 'stock_item_id_' + count;
+            sel.selectedIndex = 0;
+            sel.required = false;
+        }
         qty.name = 'qty_' + count;
-        sel.selectedIndex = 0;
-        sel.required = false;
         qty.value = '';
         qty.required = false;
         var rm = clone.querySelector('.remove-row');
         rm.style.display = 'flex';
         rows.appendChild(clone);
+        updateFulfillLabel(btn.getAttribute('data-target').replace('rows-', ''));
     });
 });
 document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
@@ -445,6 +788,36 @@ document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
             }
         }
     });
+    rows.addEventListener('input', function(e) {
+        if (e.target.classList.contains('qty-input')) {
+            var pid = rows.getAttribute('id').replace('rows-', '');
+            updateFulfillLabel(pid);
+        }
+    });
+});
+
+/* ── برچسب دکمه تامین بر اساس مجموع مقادیر ردیف‌ها ── */
+function updateFulfillLabel(pid) {
+    var rows = document.getElementById('rows-' + pid);
+    var form = rows ? rows.closest('form') : null;
+    var label = form ? form.querySelector('.btn-fulfill-label') : null;
+    if (!rows || !label) return;
+    var total = 0;
+    rows.querySelectorAll('.qty-input').forEach(function(q) {
+        var v = parseFloat(q.value);
+        if (!isNaN(v) && v > 0) total += v;
+    });
+    var unit = label.getAttribute('data-unit') || '';
+    if (total > 0) {
+        label.textContent = 'تأمین ' + (total % 1 === 0 ? total : total.toFixed(2).replace(/\.?0+$/, '')) +
+            (unit ? ' ' + unit : '') + ' از انبار';
+    } else {
+        label.textContent = 'تأمین از انبار';
+    }
+}
+document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
+    var pid = rows.getAttribute('id').replace('rows-', '');
+    updateFulfillLabel(pid);
 });
 </script>
 {% endblock %}

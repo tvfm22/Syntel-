@@ -335,20 +335,11 @@
             <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-warehouse"></i> لیست کامل موجودی انبار
             </a>
-            <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-plus-square"></i> ثبت موجودی جدید
-            </a>
             <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-file-invoice"></i> لیست حواله‌های انبار
             </a>
-            <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-truck"></i> لیست تامین از انبار
-            </a>
             <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="fd-item">
                 <i class="fas fa-building"></i> مدیریت انبارها
-            </a>
-            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="fd-item accent-green">
-                <i class="fas fa-plus"></i> ایجاد دسته‌بندی انبار
             </a>
         </div>
     </div>
@@ -380,95 +371,6 @@
 
 </div>
 
-{% comment %}=== انبارهای تامین‌کننده (Supply Warehouses) ==={% endcomment %}
-{% if supply_warehouses %}
-<div class="table-card">
-    <div class="table-header">
-        <div class="table-title">
-            <i class="fas fa-building" style="color: var(--accent-indigo);"></i>
-            انبارهای تامین‌کننده فعال
-        </div>
-        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size: 0.8rem; height: 40px; padding: 0 1rem; text-decoration: none;">
-            <i class="fas fa-cog"></i> مدیریت انبارها
-        </a>
-    </div>
-    <div style="overflow-x: auto;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>نام انبار</th>
-                    <th>کد</th>
-                    <th>موقعیت</th>
-                    <th>کل درخواست‌ها</th>
-                    <th>در انتظار</th>
-                    <th>تامین شده</th>
-                    <th>رد شده</th>
-                    <th>عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for wh in supply_warehouses %}
-                <tr>
-                    <td style="font-weight: 600; color: var(--text-primary);">
-                        <i class="fas fa-warehouse" style="color: var(--accent-indigo); margin-left: 6px;"></i>
-                        {{ wh.name }}
-                    </td>
-                    <td>
-                        <span style="background: var(--bg-subtle); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; color: var(--text-primary);">
-                            {{ wh.code }}
-                        </span>
-                    </td>
-                    <td style="color: var(--text-secondary);">{{ wh.location|default:"—" }}</td>
-                    <td style="text-align: center;">
-                        {% if wh.total_requests > 0 %}
-                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" style="color: var(--accent-indigo); font-weight: 600; text-decoration: none;">
-                            {{ wh.total_requests }}
-                        </a>
-                        {% else %}
-                        <span style="color: var(--text-muted);">۰</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if wh.pending_requests > 0 %}
-                        <span class="badge badge-warning">{{ wh.pending_requests }}</span>
-                        {% else %}
-                        <span style="color: var(--text-muted);">—</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if wh.fulfilled_requests > 0 %}
-                        <span class="badge badge-success">{{ wh.fulfilled_requests }}</span>
-                        {% else %}
-                        <span style="color: var(--text-muted);">—</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if wh.rejected_requests > 0 %}
-                        <span class="badge badge-danger">{{ wh.rejected_requests }}</span>
-                        {% else %}
-                        <span style="color: var(--text-muted);">—</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'stock_supply_list' cafe_code=cafe_code %}" class="btn btn-info" style="font-size: 0.75rem; height: 34px; padding: 0 0.7rem; text-decoration: none;">
-                            <i class="fas fa-list"></i> درخواست‌ها
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% elif supply_warehouses is not None %}
-<div class="fd-empty" style="background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px solid var(--border-light); box-shadow: var(--shadow-md);">
-    <i class="fas fa-warehouse"></i>
-    <p>هیچ انبار تامین‌کننده‌ای تعریف نشده است.</p>
-    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-primary" style="text-decoration: none;">
-        <i class="fas fa-plus"></i> افزودن انبار
-    </a>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}

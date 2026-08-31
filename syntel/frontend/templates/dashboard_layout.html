@@ -605,6 +605,17 @@
             <i class="fas fa-bars"></i>
         </button>
         <div class="mobile-top-bar-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#k-mobile-gradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <defs>
+                    <linearGradient id="k-mobile-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#ec4899" />
+                        <stop offset="100%" stop-color="#8b5cf6" />
+                    </linearGradient>
+                </defs>
+                <path d="M17 4v16"></path>
+                <path d="M6 4l11 8"></path>
+                <path d="M17 12l-11 8"></path>
+            </svg>
             <span class="mobile-top-bar-title">Kuker</span>
         </div>
     </header>
@@ -618,7 +629,13 @@
         <aside class="sidebar" id="sidebar" role="navigation" aria-label="منوی اصلی">
             <!-- Brand -->
             <a href="{% if cafe_code %}{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=cafe_code %}{% elif user.role == 'manager' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role == 'admin' or user.role == 'accounting' or user.role == 'finance_manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'purchasing' %}{% url 'purchase_officer_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
-                <div class="brand-icon"><i class="fas fa-store"></i></div>
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17 4v16"></path>
+                        <path d="M6 4l11 8"></path>
+                        <path d="M17 12l-11 8"></path>
+                    </svg>
+                </div>
                 <span class="brand-text">Kuker</span>
             </a>
 
@@ -693,6 +710,9 @@
                 </a>
                 <a href="{% url 'category_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'category_list' %} active{% endif %}">
                     <i class="fas fa-tags"></i><span>دسته‌بندی‌ها</span>
+                </a>
+                <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_management' %} active{% endif %}">
+                    <i class="fas fa-warehouse"></i><span>مدیریت انبارها</span>
                 </a>
                 <a href="{% url 'user_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'user_list' %} active{% endif %}" title="مدیریت همه کاربران — از جمله مسئولان خرید و انبار (تب «مسئولان» داخل صفحه)">
                     <i class="fas fa-users"></i><span>مدیریت کاربران</span>
@@ -807,6 +827,9 @@
                 <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_officer_dashboard' %} active{% endif %}">
                     <i class="fas fa-warehouse"></i><span>درخواست‌های تامین انبار</span>
                 </a>
+                <a href="{% url 'warehouse_purchase_draft' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_purchase_draft' %} active{% endif %}">
+                    <i class="fas fa-cart-shopping"></i><span>درخواست خرید</span>
+                </a>
                 {% endif %}
 
                 <div class="nav-section-title">خرید</div>
@@ -859,14 +882,27 @@
                 <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_officer_dashboard' %} active{% endif %}">
                     <i class="fas fa-clipboard-list"></i><span>درخواست‌های تامین انبار</span>
                 </a>
-                <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_dashboard' %} active{% endif %}">
-                    <i class="fas fa-warehouse"></i><span>داشبورد انبار</span>
+                <a href="{% url 'warehouse_purchase_draft' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_purchase_draft' %} active{% endif %}">
+                    <i class="fas fa-cart-shopping"></i><span>درخواست خرید</span>
                 </a>
                 <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_list' %} active{% endif %}">
                     <i class="fas fa-boxes"></i><span>موجودی انبار</span>
                 </a>
                 <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
                     <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
+                </a>
+                <div class="nav-section-title">حواله‌های انبار</div>
+                <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_list' %} active{% endif %}">
+                    <i class="fas fa-file-invoice"></i><span>لیست حواله‌ها</span>
+                </a>
+                <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_create' %} active{% endif %}">
+                    <i class="fas fa-plus"></i><span>ثبت حواله</span>
+                </a>
+                <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_movements' %} active{% endif %}">
+                    <i class="fas fa-chart-line"></i><span>سوابق حرکت</span>
+                </a>
+                <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_management' %} active{% endif %}">
+                    <i class="fas fa-warehouse"></i><span>مدیریت انبارها</span>
                 </a>
                 {% endif %}
 

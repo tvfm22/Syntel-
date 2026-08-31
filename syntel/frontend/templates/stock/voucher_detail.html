@@ -1,251 +1,373 @@
-﻿<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ voucher.get_voucher_type_display }} - {{ voucher.voucher_number }}</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{
-            --accent:{% if voucher.voucher_type == 'in' %}#10b981{% else %}#ef4444{% endif %};
-            --accent-light:{% if voucher.voucher_type == 'in' %}#d1fae5{% else %}#fee2e2{% endif %};
-            --primary:#6366f1;--primary-dark:#4f46e5;
-            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
-            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
-            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
-        }
-        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
-        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
-        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .topbar-title{flex:1;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+{% block title %}{{ voucher.get_voucher_type_display }} - {{ voucher.voucher_number }} - Kuker{% endblock %}
 
-        .main{padding:2rem;max-width:1000px;margin:0 auto}
+{% block extra_css %}
+<style>
+    /* ═══ جزئیات حواله — هماهنگ با توکن‌های سیستم ═══ */
+    .v-detail-wrap { max-width: 1150px; margin: 0 auto; }
+    .v-detail-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
 
-        /* PAGE HEADER */
-        .page-header{background:linear-gradient(135deg,{% if voucher.voucher_type == 'in' %}#10b981,#059669{% else %}#ef4444,#dc2626{% endif %});border-radius:var(--r-xl);padding:2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
-        .page-header p{margin-top:.35rem;opacity:.85;font-size:.9rem}
+    .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
+    .v-type-badge, .v-status-badge, .tx-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.22rem 0.65rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .t-receipt    { background: #d1fae5; color: #065f46; }
+    .t-issue      { background: #fee2e2; color: #991b1b; }
+    .t-return     { background: #dbeafe; color: #1e40af; }
+    .t-sale       { background: #fef3c7; color: #92400e; }
+    .t-waste      { background: #ede9fe; color: #5b21b6; }
+    .t-transfer   { background: #cffafe; color: #155e75; }
+    .t-adjustment { background: #fce7f3; color: #9d174d; }
+    .s-draft     { background: #f1f5f9; color: #475569; }
+    .s-submitted { background: #fef9c3; color: #854d0e; }
+    .s-approved  { background: #dcfce7; color: #166534; }
+    .s-finalized { background: #e0e7ff; color: #3730a3; }
+    .s-cancelled { background: #f1f5f9; color: #94a3b8; text-decoration: line-through; }
+    .s-reversed  { background: #fee2e2; color: #b91c1c; }
+    .tx-in        { background: #d1fae5; color: #065f46; }
+    .tx-out       { background: #fee2e2; color: #991b1b; }
+    .tx-adjustment{ background: #fce7f3; color: #9d174d; }
+    .tx-initial   { background: #f1f5f9; color: #475569; }
 
-        /* INFO CARD */
-        .info-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
-        .info-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);font-weight:700;font-size:1rem;display:flex;align-items:center;gap:.5rem}
-        .info-header i{color:var(--accent)}
-        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0}
-        .info-item{padding:1rem 1.5rem;border-bottom:1px solid var(--border)}
-        .info-item:nth-child(odd){border-left:1px solid var(--border)}
-        .info-item:last-child,.info-item:nth-last-child(2):not(:nth-child(odd)){border-bottom:none}
-        .info-label{font-size:.78rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
-        .info-value{font-size:.95rem;font-weight:600;color:var(--dark)}
-        .info-value.number{font-family:monospace;letter-spacing:.05em}
+    /* ── کارت‌ها ── */
+    .card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-5); margin-bottom: var(--space-4);
+    }
+    .card-title {
+        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; margin-bottom: var(--space-4);
+    }
+    .card-title i { color: var(--accent-indigo); }
 
-        /* BADGE */
-        .badge{padding:.35rem 1rem;border-radius:9999px;font-size:.85rem;font-weight:700;display:inline-flex;align-items:center;gap:.4rem}
-        .badge-in{background:#d1fae5;color:#065f46}
-        .badge-out{background:#fee2e2;color:#991b1b}
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-3); }
+    .meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .meta-item .k { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); }
+    .meta-item .v { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
 
-        /* ITEMS TABLE */
-        .items-card{background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:2rem}
-        .items-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-        .items-header-title{font-weight:700;display:flex;align-items:center;gap:.5rem}
-        .items-header-title i{color:var(--accent)}
-        table{width:100%;border-collapse:collapse}
-        th{padding:.75rem 1rem;text-align:right;font-size:.8rem;font-weight:700;background:var(--light);color:#6b7280;border-bottom:1px solid var(--border)}
-        td{padding:.875rem 1rem;border-bottom:1px solid var(--border);font-size:.9rem}
-        tr:last-child td{border-bottom:none}
-        tr:hover td{background:#fafafa}
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+        padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; font-weight: 700;
+        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
+        border-bottom: 1px solid var(--border-light); white-space: nowrap;
+    }
+    tbody td {
+        padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light);
+        font-size: 0.84rem; vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    .table-scroll { overflow-x: auto; }
 
-        /* TOTAL ROW */
-        .total-row td{background:var(--accent-light);font-weight:700;color:var(--dark)}
+    /* ── خط زمانی ── */
+    .timeline { position: relative; padding-inline-start: 1.6rem; }
+    .timeline::before {
+        content: ''; position: absolute; top: 0.4rem; bottom: 0.4rem;
+        inset-inline-start: 0.45rem; width: 2px;
+        background: var(--border-default, #e2e8f0);
+    }
+    .tl-item { position: relative; padding-bottom: 1.1rem; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-item::before {
+        content: ''; position: absolute; inset-inline-start: -1.56rem; top: 0.25rem;
+        width: 0.8rem; height: 0.8rem; border-radius: 999px;
+        background: var(--bg-card); border: 2.5px solid var(--accent-indigo);
+    }
+    .tl-item.done::before { background: var(--accent-indigo); }
+    .tl-item.pending::before { border-color: var(--border-default, #cbd5e1); }
+    .tl-item.cancel::before { border-color: #ef4444; background: #fecaca; }
+    .tl-title { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+    .tl-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
 
-        /* BUTTONS */
-        .btn{padding:.6rem 1.2rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
-        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
-        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
-        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
+    /* ── دکمه‌ها ── */
+    .btn { padding: 0.5rem 1.1rem; border: none; border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none;
+        transition: all var(--transition-fast); }
+    .btn-primary { background: var(--accent-indigo); color: white; }
+    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
+    .btn-success { background: #10b981; color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
+    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.76rem; }
+    .actions-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+</style>
+{% endblock %}
 
-        /* PRINT */
-        @media print{
-            .topbar,.no-print{display:none!important}
-            body{background:#fff}
-            .page-header{background:#f3f4f6!important;color:#1f2937!important;-webkit-print-color-adjust:exact}
-            .main{padding:0;max-width:100%}
-        }
+{% block content %}
+<div class="v-detail-wrap">
 
-        @media(max-width:768px){.main{padding:1rem}.info-grid{grid-template-columns:1fr}.info-item:nth-child(odd){border-left:none}}
-    </style>
-</head>
-<body>
-{% load static %}
-
-<!-- Topbar -->
-<div class="topbar no-print">
-    <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="back-btn">
-        <i class="fas fa-arrow-right"></i> لیست حواله‌ها
-    </a>
-    <div class="topbar-title">
-        <i class="fas fa-{% if voucher.voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}" style="color:var(--accent)"></i>
-        {{ voucher.get_voucher_type_display }} - {{ voucher.voucher_number }}
-    </div>
-    <button onclick="window.print()" class="btn btn-outline btn-sm">
-        <i class="fas fa-print"></i> چاپ
-    </button>
-    <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline btn-sm">
-        <i class="fas fa-warehouse"></i> انبار
-    </a>
-</div>
-
-<!-- Main -->
-<div class="main">
-
-    <!-- Page Header -->
+    <!-- سربرگ -->
     <div class="page-header">
         <div>
             <h1>
-                <i class="fas fa-{% if voucher.voucher_type == 'in' %}sign-in-alt{% else %}sign-out-alt{% endif %}"></i>
-                {{ voucher.get_voucher_type_display }}
+                <span class="v-type-badge t-{{ voucher.voucher_type }}" style="background:rgba(255,255,255,.18);color:#fff">
+                    {% if voucher.voucher_type == 'receipt' %}<i class="fas fa-arrow-down"></i>
+                    {% elif voucher.voucher_type == 'issue' %}<i class="fas fa-arrow-up"></i>
+                    {% elif voucher.voucher_type == 'return' %}<i class="fas fa-rotate-left"></i>
+                    {% elif voucher.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
+                    {% elif voucher.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
+                    {% elif voucher.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
+                    {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
+                    {{ voucher.get_voucher_type_display }}
+                </span>
+                <span class="mono" style="margin-inline-start:0.6rem">{{ voucher.voucher_number }}</span>
+                <span class="v-status-badge s-{{ voucher.status }}" style="background:rgba(255,255,255,.18);color:#fff">
+                    {{ voucher.get_status_display }}
+                </span>
             </h1>
-            <p>شماره: <strong>{{ voucher.voucher_number }}</strong> &bull; انبار: {{ voucher.warehouse.name }}</p>
+            <p>تاریخ سند: {{ voucher.date|jalali_datetime }} — ثبت: {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</p>
         </div>
-        {% if voucher.voucher_type == 'in' %}
-        <span class="badge badge-in" style="font-size:.95rem;padding:.5rem 1.25rem">📥 حواله ورود</span>
-        {% else %}
-        <span class="badge badge-out" style="font-size:.95rem;padding:.5rem 1.25rem">📤 حواله خروج</span>
-        {% endif %}
+        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff">
+            <i class="fas fa-list"></i> لیست حواله‌ها
+        </a>
     </div>
 
-    <!-- Info Card -->
-    <div class="info-card">
-        <div class="info-header"><i class="fas fa-info-circle"></i> اطلاعات حواله</div>
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">شماره حواله</div>
-                <div class="info-value number">{{ voucher.voucher_number }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">نوع</div>
-                <div class="info-value">
-                    {% if voucher.voucher_type == 'in' %}
-                    <span class="badge badge-in"><i class="fas fa-sign-in-alt"></i> ورود</span>
-                    {% else %}
-                    <span class="badge badge-out"><i class="fas fa-sign-out-alt"></i> خروج</span>
+    <!-- مشخصات سند -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-file-signature"></i> مشخصات سند</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="k">انبار مبدأ</span>
+                <span class="v">
+                    {% if voucher.source_warehouse %}
+                    <i class="fas fa-warehouse" style="color:var(--accent-indigo)"></i> {{ voucher.source_warehouse.name }}
+                    {% if voucher.source_warehouse.departments.first %}
+                    <span style="font-size:0.7rem;color:var(--text-muted)">({{ voucher.source_warehouse.departments.first.name }})</span>
                     {% endif %}
-                </div>
+                    {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                </span>
             </div>
-            <div class="info-item">
-                <div class="info-label">انبار</div>
-                <div class="info-value"><i class="fas fa-warehouse" style="color:#6366f1;margin-left:4px"></i>{{ voucher.warehouse.name }}</div>
+            <div class="meta-item">
+                <span class="k">انبار مقصد</span>
+                <span class="v">
+                    {% if voucher.destination_warehouse %}
+                    <i class="fas fa-warehouse" style="color:var(--accent-indigo)"></i> {{ voucher.destination_warehouse.name }}
+                    {% if voucher.destination_warehouse.departments.first %}
+                    <span style="font-size:0.7rem;color:var(--text-muted)">({{ voucher.destination_warehouse.departments.first.name }})</span>
+                    {% endif %}
+                    {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                </span>
             </div>
-            <div class="info-item">
-                <div class="info-label">تاریخ</div>
-                <div class="info-value">{{ voucher.date|date:"Y/m/d H:i" }}</div>
+            <div class="meta-item">
+                <span class="k">تاریخ سند</span>
+                <span class="v">{{ voucher.date|jalali_datetime }}</span>
             </div>
-            <div class="info-item">
-                <div class="info-label">ثبت‌کننده</div>
-                <div class="info-value">{{ voucher.created_by.get_full_name|default:voucher.created_by.username|default:"—" }}</div>
+            <div class="meta-item">
+                <span class="k">ایجادکننده</span>
+                <span class="v">{% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</span>
             </div>
-            <div class="info-item">
-                <div class="info-label">تاریخ ایجاد</div>
-                <div class="info-value">{{ voucher.created_at|date:"Y/m/d H:i" }}</div>
+            <div class="meta-item">
+                <span class="k">تأییدکننده / نهایی‌کننده</span>
+                <span class="v">{% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="meta-item">
+                <span class="k">تاریخ نهایی‌سازی</span>
+                <span class="v">{% if voucher.finalized_at %}{{ voucher.finalized_at|jalali_datetime }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</span>
             </div>
             {% if voucher.description %}
-            <div class="info-item" style="grid-column:1/-1;border-bottom:none">
-                <div class="info-label">توضیحات</div>
-                <div class="info-value" style="font-weight:400;color:#6b7280">{{ voucher.description }}</div>
+            <div class="meta-item" style="grid-column:1/-1">
+                <span class="k">توضیحات</span>
+                <span class="v" style="font-weight:500;line-height:1.8">{{ voucher.description }}</span>
+            </div>
+            {% endif %}
+            {% if voucher.requires_approval %}
+            <div class="meta-item">
+                <span class="k">نیازمند تأیید (آستانه)</span>
+                <span class="v" style="color:#b45309"><i class="fas fa-triangle-exclamation"></i> این حواله طبق آستانه نیازمند تأیید است</span>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Items Table -->
-    <div class="items-card">
-        <div class="items-header">
-            <div class="items-header-title">
-                <i class="fas fa-list"></i>
-                اقلام حواله
+    <!-- سند منبع -->
+    {% if voucher.source_object %}
+    <div class="card">
+        <div class="card-title"><i class="fas fa-link"></i> سند منبع</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="k">نوع سند</span>
+                <span class="v">{{ voucher.source_content_type.model }}</span>
             </div>
-            <span style="background:var(--accent-light);color:var(--accent);padding:.25rem .75rem;border-radius:9999px;font-size:.8rem;font-weight:700">
-                {{ items|length }} قلم
-            </span>
+            <div class="meta-item">
+                <span class="k">سند</span>
+                <span class="v">{{ voucher.source_object }}</span>
+            </div>
         </div>
+    </div>
+    {% endif %}
 
-        {% if items %}
-        <div style="overflow-x:auto">
+    <!-- اقلام -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-list-ul"></i> اقلام حواله ({{ items|length }})</div>
+        <div class="table-scroll">
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>محصول</th>
-                        <th>دسته‌بندی</th>
-                        <th>مقدار</th>
-                        <th>واحد</th>
-                        <th>قیمت واحد (ریال)</th>
-                        <th>مبلغ کل (ریال)</th>
-                        <th>توضیحات</th>
+                        <th>#</th><th>محصول</th><th>برند</th><th>موجودی انبار</th>
+                        <th>واحد</th><th>مقدار پایه</th><th>مقدار تجاری</th><th>نرخ تبدیل</th>
+                        <th>قیمت واحد</th><th>جمع</th><th>توضیح</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% with grand_total=0 %}
-                    {% for item in items %}
+                    {% for it in items %}
                     <tr>
-                        <td style="color:#9ca3af;font-size:.82rem">{{ forloop.counter }}</td>
-                        <td style="font-weight:600">{{ item.product.name }}</td>
-                        <td>
-                            {% if item.product.category %}
-                            <span style="background:#e0e7ff;color:#3730a3;padding:.2rem .6rem;border-radius:.375rem;font-size:.75rem">{{ item.product.category.name }}</span>
-                            {% else %}—{% endif %}
+                        <td style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
+                        <td style="font-weight:700">{{ it.product.name|default:'—' }}</td>
+                        <td>{{ it.product_brand.brand_name|default:'—' }}</td>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">
+                            {% if it.stock_item %}{{ it.stock_item.warehouse.name }} ({{ it.stock_item.quantity|trim_decimal }}){% else %}—{% endif %}
                         </td>
-                        <td style="font-weight:700;color:var(--accent)">{{ item.quantity|floatformat:2 }}</td>
-                        <td style="color:#6b7280">{{ item.unit.name|default:"—" }}</td>
-                        <td>{{ item.unit_price|floatformat:0 }}</td>
-                        <td style="font-weight:700">{{ item.total_price|floatformat:0 }}</td>
-                        <td style="color:#6b7280;font-size:.85rem">{{ item.description|default:"—" }}</td>
+                        <td>{{ it.unit.name|default:'—' }}</td>
+                        <td>{{ it.base_quantity|trim_decimal }}</td>
+                        <td>{{ it.trade_quantity|trim_decimal|default:'—' }}</td>
+                        <td>{{ it.conversion_rate|trim_decimal|default:'—' }}</td>
+                        <td>{{ it.unit_price|number_format }}</td>
+                        <td style="font-weight:700">{{ it.total_price|number_format }}</td>
+                        <td style="font-size:0.78rem;color:var(--text-secondary);max-width:160px">{{ it.description|default:'—' }}</td>
                     </tr>
+                    {% empty %}
+                    <tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:1.5rem">اقلامی ثبت نشده است</td></tr>
                     {% endfor %}
-                    {% endwith %}
-
-                    <!-- Total row -->
-                    <tr class="total-row">
-                        <td colspan="6" style="text-align:left;font-size:.9rem">جمع کل</td>
-                        <td style="font-size:1.05rem;color:var(--accent)">
-                            {% with total=0 %}
-                            {% for item in items %}
-                            {% with row_total=item.total_price %}
-                            {% endwith %}
-                            {% endfor %}
-                            —
-                            {% endwith %}
-                        </td>
-                        <td></td>
-                    </tr>
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div style="padding:3rem;text-align:center;color:#9ca3af">
-            <i class="fas fa-box-open" style="font-size:2.5rem;display:block;margin-bottom:.75rem"></i>
-            هیچ قلمی در این حواله ثبت نشده
-        </div>
-        {% endif %}
     </div>
 
-    <!-- Actions (no print) -->
-    <div class="no-print" style="display:flex;gap:.75rem;justify-content:center">
-        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
-            <i class="fas fa-list"></i> بازگشت به لیست
-        </a>
-        <button onclick="window.print()" class="btn btn-primary">
-            <i class="fas fa-print"></i> چاپ حواله
-        </button>
-        <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline">
-            <i class="fas fa-warehouse"></i> مدیریت انبار
-        </a>
+    <!-- اثر روی موجودی -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-arrows-up-down"></i> اثر روی موجودی ({{ movements|length }} حرکت)</div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>تاریخ</th><th>کالا</th><th>انبار</th><th>نوع حرکت</th>
+                        <th>مقدار</th><th>قبل</th><th>←</th><th>بعد</th><th>ثبت‌کننده</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movements %}
+                    <tr>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">{{ m.created_at|jalali_datetime }}</td>
+                        <td style="font-weight:700">{{ m.stock_item.product.name }}</td>
+                        <td style="font-size:0.8rem">{{ m.stock_item.warehouse.name }}</td>
+                        <td>
+                            <span class="tx-badge tx-{{ m.transaction_type }}">
+                                {% if m.transaction_type == 'in' %}<i class="fas fa-arrow-down"></i>
+                                {% elif m.transaction_type == 'out' %}<i class="fas fa-arrow-up"></i>
+                                {% elif m.transaction_type == 'adjustment' %}<i class="fas fa-scale-balanced"></i>
+                                {% else %}<i class="fas fa-circle-info"></i>{% endif %}
+                                {{ tx_type_labels|get_item:m.transaction_type }}
+                            </span>
+                        </td>
+                        <td style="font-weight:700">{{ m.quantity|trim_decimal }} {{ m.unit.name|default:'' }}</td>
+                        <td>{{ m.previous_quantity|trim_decimal }}</td>
+                        <td style="color:var(--text-muted)">←</td>
+                        <td style="font-weight:700">{{ m.new_quantity|trim_decimal }}</td>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">{% if m.created_by %}{{ m.created_by.get_full_name|default:m.created_by.username }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1.5rem">
+                        هنوز حرکتی اعمال نشده — حواله نهایی نشده است.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- خط زمانی -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-clock-rotate-left"></i> خط زمانی سند</div>
+        <div class="timeline">
+            <div class="tl-item done">
+                <div class="tl-title">ایجاد سند</div>
+                <div class="tl-meta">{{ voucher.created_at|jalali_datetime }} — {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</div>
+            </div>
+            <div class="tl-item {% if voucher.status != 'draft' %}done{% else %}pending{% endif %}">
+                <div class="tl-title">ثبت سند</div>
+                <div class="tl-meta">{% if voucher.status == 'draft' %}هنوز ثبت نشده{% else %}سند ثبت و در مسیر پردازش قرار گرفت{% endif %}</div>
+            </div>
+            {% if voucher.approved_at %}
+            <div class="tl-item done">
+                <div class="tl-title">تأیید</div>
+                <div class="tl-meta">{{ voucher.approved_at|jalali_datetime }} — {% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</div>
+            </div>
+            {% elif approval_pending %}
+            <div class="tl-item pending">
+                <div class="tl-title">در انتظار تأیید مدیر</div>
+                <div class="tl-meta">این حواله فقط پس از تأیید، نهایی می‌شود</div>
+            </div>
+            {% endif %}
+            {% if voucher.finalized_at %}
+            <div class="tl-item done">
+                <div class="tl-title">نهایی‌سازی — اثر روی موجودی</div>
+                <div class="tl-meta">{{ voucher.finalized_at|jalali_datetime }}</div>
+            </div>
+            {% endif %}
+            {% if voucher.cancelled_at %}
+            <div class="tl-item cancel">
+                <div class="tl-title">لغو سند</div>
+                <div class="tl-meta">{{ voucher.cancelled_at|jalali_datetime }}</div>
+            </div>
+            {% endif %}
+            {% if voucher.reversed_at %}
+            <div class="tl-item cancel">
+                <div class="tl-title">برگشت سند</div>
+                <div class="tl-meta">{{ voucher.reversed_at|jalali_datetime }}
+                    {% with rev=voucher.reversed_by.first %}
+                    {% if rev %}— حوالهٔ برگشتی: <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=rev.id %}" style="color:var(--accent-indigo)">{{ rev.voucher_number }}</a>{% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- اقدامات -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-bolt"></i> اقدامات</div>
+        <div class="actions-row">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-right"></i> بازگشت به لیست</a>
+            {% if can_edit %}
+            <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
+                <i class="fas fa-pen"></i> ویرایش پیش‌نویس
+            </a>
+            {% endif %}
+            {% if can_cancel %}
+            <form method="post" action="{% url 'voucher_cancel' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
+                  onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number }} لغو شود؟ این اقدام قابل بازگشت نیست.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-ban"></i> لغو سند</button>
+            </form>
+            {% endif %}
+            {% if can_approve %}
+            <a href="{% url 'voucher_approve' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-success btn-sm">
+                <i class="fas fa-check"></i> تأیید و نهایی‌سازی
+            </a>
+            {% endif %}
+            {% if can_reverse %}
+            <a href="{% url 'voucher_reverse' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-danger btn-sm">
+                <i class="fas fa-rotate-left"></i> برگشت حواله
+            </a>
+            {% endif %}
+            {% if voucher.reverses_id %}
+            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.reverses_id %}" class="btn btn-outline btn-sm">
+                <i class="fas fa-link"></i> حوالهٔ اصلی: {{ voucher.reverses.voucher_number }}
+            </a>
+            {% endif %}
+        </div>
     </div>
 
 </div>
-</body>
-</html>
-
+{% endblock %}

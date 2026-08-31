@@ -1,136 +1,326 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}لیست موجودی انبار{% endblock %}
+{% block title %}موجودی انبار - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ لیست موجودی انبار — مینیمال، هماهنگ با داشبورد مسئول انبار ═══ */
+    .stk-wrap { max-width: 1100px; margin: 0 auto; }
+    .stk-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
+
+    /* ── نوار فیلتر: انبارها + جستجو ── */
+    .stk-filter-bar {
+        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 0.55rem 0.9rem; margin-bottom: var(--space-3);
+    }
+    .stk-filter-bar .stk-bar-label {
+        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.15rem;
+        white-space: nowrap;
+    }
+    .stk-filter-pill {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.3rem 0.85rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
+        text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
+        color: var(--text-secondary); transition: all var(--transition-fast); white-space: nowrap;
+        cursor: pointer; font-family: 'Vazir', sans-serif;
+    }
+    .stk-filter-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .stk-filter-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
+    .stk-filter-pill.active-amber { background: #f59e0b; border-color: #f59e0b; color: white; }
+
+    /* فرم جستجو */
+    .stk-search-form {
+        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 0.55rem 0.9rem; margin-bottom: var(--space-4);
+    }
+    .stk-search-input {
+        height: 32px; padding: 0 0.75rem; min-width: 190px; flex: 1;
+        border: 1.5px solid var(--border-default); border-radius: 999px;
+        font-family: 'Vazir', sans-serif; font-size: 0.78rem; font-weight: 600;
+        background: var(--bg-card); color: var(--text-primary); transition: all var(--transition-fast);
+    }
+    .stk-search-input:focus { outline: none; border-color: var(--accent-indigo); }
+    .stk-clear-link {
+        border: none; background: none; cursor: pointer; font-family: 'Vazir', sans-serif;
+        font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm);
+        color: #b91c1c; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .stk-clear-link:hover { background: #fef2f2; }
+
+    /* نوار اطلاعات انبار انتخاب‌شده */
+    .stk-wh-strip {
+        display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); padding: 0.6rem 1rem; margin-bottom: var(--space-4);
+        font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;
+    }
+    .stk-wh-strip i { color: var(--accent-indigo); }
+    .stk-wh-strip b { color: var(--text-primary); }
+
+    /* ── گرید کارت‌های کالا ── */
+    .stk-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: var(--space-4);
+    }
+    .stk-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-2xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5);
+        border-inline-start: 4px solid var(--accent-green);
+        cursor: pointer; transition: all var(--transition-fast);
+        display: flex; flex-direction: column;
+    }
+    .stk-card.low-stock { border-inline-start-color: #EF4444; }
+    .stk-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stk-card.expanded { border-inline-start-color: var(--accent-indigo); }
+
+    .stk-card-head {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: var(--space-2); margin-bottom: var(--space-2);
+    }
+    .stk-card-name {
+        font-size: 0.95rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.4rem; min-width: 0;
+    }
+    .stk-card-name .stk-chevron {
+        font-size: 0.8rem; color: var(--text-muted); transition: transform 0.25s;
+    }
+    .stk-card.expanded .stk-chevron { transform: rotate(180deg); }
+
+    /* چیپ‌ها */
+    .stk-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem;
+        border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+    }
+    .stk-chip.category  { background: #e0e7ff; color: #3730a3; }
+    .stk-chip.warehouse { background: #d1fae5; color: #065f46; }
+    .stk-chip.low-warn  { background: #fee2e2; color: #b91c1c; }
+
+    /* کادر موجودی */
+    .stk-total-box {
+        background: var(--bg-subtle); border-radius: var(--radius-lg);
+        padding: 0.65rem 0.9rem; display: flex; justify-content: space-between;
+        align-items: center; margin-top: var(--space-2);
+    }
+    .stk-total-label { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; }
+    .stk-total-value { font-size: 1.25rem; font-weight: 800; color: var(--accent-green); }
+    .stk-card.low-stock .stk-total-value { color: #EF4444; }
+    .stk-min-line {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.35rem 0.9rem 0; font-size: 0.75rem;
+    }
+    .stk-min-line .lbl { color: var(--text-muted); font-weight: 600; }
+    .stk-min-line .val { color: var(--text-secondary); font-weight: 700; }
+
+    /* برندها — بازشونده با کلیک */
+    .stk-details {
+        display: none; margin-top: var(--space-3); padding-top: var(--space-3);
+        border-top: 1px dashed var(--border-default);
+    }
+    .stk-card.expanded .stk-details { display: block; }
+    .stk-brand-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.35rem 0.6rem; background: #faf5ff; border: 1px solid #f3e8ff;
+        border-radius: var(--radius-md); margin-bottom: 0.2rem;
+    }
+    .stk-brand-name { font-size: 0.82rem; font-weight: 700; color: #6b21a8; }
+    .stk-brand-qty { font-size: 0.82rem; font-weight: 800; color: #6b21a8; }
+    .stk-brand-rate {
+        font-size: 0.72rem; color: #a78bfa; margin: 0 0.6rem 0.35rem;
+    }
+    .stk-unbranded-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.35rem 0.6rem; background: var(--bg-subtle); border: 1px solid var(--border-light);
+        border-radius: var(--radius-md); margin-bottom: 0.2rem;
+    }
+    .stk-unbranded-name { font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
+    .stk-unbranded-qty { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+
+    /* پاورقی */
+    .stk-card-foot {
+        display: flex; justify-content: space-between; align-items: center;
+        padding-top: var(--space-3); margin-top: var(--space-3);
+        border-top: 1px solid var(--border-light); font-size: 0.72rem;
+    }
+    .stk-foot-date { color: var(--text-muted); }
+    .stk-history-link {
+        color: #1d4ed8; text-decoration: none; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        padding: 0.2rem 0.5rem; border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+    }
+    .stk-history-link:hover { background: #eff6ff; }
+
+    /* ── صفحه‌بندی ── */
+    .stk-pagination {
+        display: flex; justify-content: center; gap: 0.5rem; margin-top: var(--space-5);
+        padding: 1rem 0;
+    }
+    .stk-page-link {
+        padding: 0.4rem 1rem; border-radius: 999px; text-decoration: none;
+        background: var(--bg-card); border: 1.5px solid var(--border-default);
+        color: var(--text-secondary); font-weight: 700; font-size: 0.8rem;
+        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .stk-page-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .stk-page-info {
+        padding: 0.4rem 1rem; border-radius: 999px; background: var(--accent-indigo);
+        color: white; font-weight: 700; font-size: 0.8rem;
+        display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+
+    /* حالت خالی */
+    .stk-empty {
+        text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-3xl);
+        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
+    }
+    .stk-empty .stk-empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
+    .stk-empty h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem; }
+
+    @media (max-width: 700px) {
+        .stk-grid { grid-template-columns: 1fr; }
+        .stk-search-input { min-width: 100%; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
-    <!-- Header -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937;">
-            📦 موجودی انبارها
+<div class="stk-wrap">
+
+    <!-- هدر صفحه -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-boxes-stacked"></i>
+            موجودی انبارها
         </h1>
-        <div style="display: flex; gap: 1rem;">
-            <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" class="btn-add" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                ➕ ثبت موجودی جدید
+        <div class="header-actions">
+            {% if user.role != 'warehouse' %}
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> ثبت حواله ورود
             </a>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Warehouse Tabs -->
+    <!-- فیلتر انبارها -->
     {% if warehouses %}
-    <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div class="stk-filter-bar">
+        <span class="stk-bar-label"><i class="fas fa-warehouse"></i> انبار:</span>
         <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if search_query %}?search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           style="padding: 0.6rem 1.25rem; border-radius: 2rem; font-weight: 600; text-decoration: none; font-size: 0.95rem;
-                  {% if not selected_warehouse %}background: #6366f1; color: white;{% else %}background: #e5e7eb; color: #374151;{% endif %}">
-            🏭 همه انبارها
+           class="stk-filter-pill {% if not selected_warehouse %}active{% endif %}">
+            <i class="fas fa-layer-group"></i> همه انبارها
         </a>
         {% for wh in warehouses %}
         <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ wh.id }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           style="padding: 0.6rem 1.25rem; border-radius: 2rem; font-weight: 600; text-decoration: none; font-size: 0.95rem;
-                  {% if selected_warehouse.id == wh.id %}background: #6366f1; color: white;{% else %}background: #e5e7eb; color: #374151;{% endif %}">
-            🏬 {{ wh.name }}
+           class="stk-filter-pill {% if selected_warehouse.id == wh.id %}active{% endif %}">
+            <i class="fas fa-warehouse"></i> {{ wh.name }}
         </a>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Filters -->
-    <div class="filter-card" style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-        <form method="get" style="display: flex; gap: 1rem; align-items: end; flex-wrap: wrap;">
-            {% if selected_warehouse %}
-            <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
-            {% endif %}
-            <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">جستجو</label>
-                <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="نام محصول یا دسته‌بندی..." style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; font-family: 'Vazir', sans-serif;">
-            </div>
-            <div>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #fef3c7; border-radius: 0.5rem;">
-                    <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %} style="width: 18px; height: 18px;">
-                    <span style="font-weight: 600; color: #92400e;">⚠️ فقط موجودی کم</span>
-                </label>
-            </div>
-            <button type="submit" class="btn-primary" style="padding: 0.75rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
-                🔍 جستجو
-            </button>
-            {% if search_query or show_low_stock %}
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if selected_warehouse %}?warehouse={{ selected_warehouse.id }}{% endif %}" class="btn-secondary" style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
-                ❌ حذف فیلترها
-            </a>
-            {% endif %}
-        </form>
-    </div>
+    <!-- فرم جستجو -->
+    <form method="get" class="stk-search-form">
+        {% if selected_warehouse %}
+        <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
+        {% endif %}
+        <span class="stk-bar-label"><i class="fas fa-search"></i> جستجو:</span>
+        <input type="text" name="search" value="{{ search_query|default:'' }}"
+               placeholder="نام محصول یا دسته‌بندی..." class="stk-search-input">
+        <label class="stk-filter-pill {% if show_low_stock %}active-amber{% endif %}" style="cursor:pointer">
+            <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %}
+                   style="display:none" onchange="this.form.submit()">
+            <i class="fas fa-triangle-exclamation"></i> فقط موجودی کم
+        </label>
+        <button type="submit" class="stk-filter-pill" style="background:var(--accent-indigo);border-color:var(--accent-indigo);color:white">
+            <i class="fas fa-magnifying-glass"></i> جستجو
+        </button>
+        {% if search_query or show_low_stock %}
+        <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if selected_warehouse %}?warehouse={{ selected_warehouse.id }}{% endif %}"
+           class="stk-clear-link">
+            <i class="fas fa-xmark"></i> حذف فیلترها
+        </a>
+        {% endif %}
+    </form>
 
-    <!-- Selected Warehouse Banner -->
+    <!-- نوار انبار انتخاب‌شده -->
     {% if selected_warehouse %}
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
-        <span style="font-size: 1.5rem;">🏬</span>
-        <div>
-            <strong style="font-size: 1.1rem;">{{ selected_warehouse.name }}</strong>
-            {% if selected_warehouse.location %}<span style="opacity: 0.85; margin-right: 1rem; font-size: 0.9rem;">📍 {{ selected_warehouse.location }}</span>{% endif %}
-            {% if selected_warehouse.manager_name %}<span style="opacity: 0.85; margin-right: 1rem; font-size: 0.9rem;">👤 {{ selected_warehouse.manager_name }}</span>{% endif %}
-        </div>
+    <div class="stk-wh-strip">
+        <span><i class="fas fa-warehouse"></i> <b>{{ selected_warehouse.name }}</b></span>
+        {% if selected_warehouse.location %}
+        <span><i class="fas fa-map-marker-alt"></i> {{ selected_warehouse.location }}</span>
+        {% endif %}
+        {% if selected_warehouse.manager_name %}
+        <span><i class="fas fa-user-tie"></i> {{ selected_warehouse.manager_name }}</span>
+        {% endif %}
     </div>
     {% endif %}
 
-    <!-- Stock Items Grid - کارت جمع‌وجور؛ برندها با کلیک باز می‌شوند -->
+    <!-- کارت‌های کالا — برندها با کلیک باز می‌شوند -->
     {% if page_obj %}
-    <div class="stock-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;">
+    <div class="stk-grid">
         {% for group in page_obj %}
-        <div class="stock-card {% if group.is_low_stock %}low-stock{% endif %}" style="background: white; border-radius: 0.75rem; padding: 1.25rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 4px solid {% if group.is_low_stock %}#ef4444{% else %}#10b981{% endif %}; cursor: pointer;" onclick="this.classList.toggle('expanded')" title="برای مشاهده برندها کلیک کنید">
-            <!-- هدر: نام محصول + فلش باز شدن + هشدار موجودی کم -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
-                <h3 style="font-size: 1.1rem; font-weight: 700; color: #1f2937; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+        <div class="stk-card {% if group.is_low_stock %}low-stock{% endif %}"
+             onclick="this.classList.toggle('expanded')" title="برای مشاهده برندها کلیک کنید">
+
+            <!-- هدر: نام محصول + هشدار کمبود -->
+            <div class="stk-card-head">
+                <span class="stk-card-name">
                     {{ group.product.name }}
-                    <span class="chevron" style="font-size: 0.8rem; color: #9ca3af;">▾</span>
-                </h3>
+                    <span class="stk-chevron"><i class="fas fa-chevron-down"></i></span>
+                </span>
                 {% if group.is_low_stock %}
-                <span style="font-size: 1.25rem;">⚠️</span>
+                <span class="stk-chip low-warn"><i class="fas fa-triangle-exclamation"></i> کمبود</span>
                 {% endif %}
             </div>
 
             <!-- نشان‌های دسته‌بندی و انبار -->
-            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem;">
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
                 {% if group.product.category %}
-                <span style="display: inline-block; padding: 0.15rem 0.5rem; background: #e0e7ff; color: #3730a3; border-radius: 0.375rem; font-size: 0.75rem;">
-                    {{ group.product.category.name }}
-                </span>
+                <span class="stk-chip category">{{ group.product.category.name }}</span>
                 {% endif %}
                 {% if group.warehouse %}
-                <span style="display: inline-block; padding: 0.15rem 0.5rem; background: #d1fae5; color: #065f46; border-radius: 0.375rem; font-size: 0.75rem;">
-                    🏬 {{ group.warehouse.name }}
-                </span>
+                <span class="stk-chip warehouse"><i class="fas fa-warehouse"></i> {{ group.warehouse.name }}</span>
                 {% endif %}
             </div>
 
-            <!-- کادر اصلی: موجودی کل تبدیل‌شده با واحد پایه -->
-            <div style="background: #f9fafb; padding: 0.75rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #6b7280; font-weight: 500; font-size: 0.9rem;">موجودی کل (واحد پایه):</span>
-                <span style="font-size: 1.35rem; font-weight: 700; color: {% if group.is_low_stock %}#ef4444{% else %}#10b981{% endif %};">
+            <!-- موجودی کل (واحد پایه) -->
+            <div class="stk-total-box">
+                <span class="stk-total-label">موجودی کل (واحد پایه)</span>
+                <span class="stk-total-value">
                     {{ group.total_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
                 </span>
             </div>
             {% if group.total_min_quantity > 0 %}
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 1rem 0;">
-                <span style="color: #9ca3af; font-weight: 500; font-size: 0.8rem;">حداقل موجودی:</span>
-                <span style="font-weight: 600; color: #374151; font-size: 0.85rem;">
+            <div class="stk-min-line">
+                <span class="lbl">حداقل موجودی</span>
+                <span class="val">
                     {{ group.total_min_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
                 </span>
             </div>
             {% endif %}
 
-            <!-- بخش بازشونده با کلیک: برندها (نام تجاری + مقدار + واحد + نرخ تبدیل) -->
-            <div class="card-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #e5e7eb;">
+            <!-- بخش بازشونده: برندها -->
+            <div class="stk-details">
                 {% if group.brand_items %}
-                <div style="margin-bottom: 0.4rem;">
+                <div style="margin-bottom:0.4rem">
                     {% for si in group.brand_items %}
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:#faf5ff;border:1px solid #f3e8ff;border-radius:0.375rem;margin-bottom:0.2rem;">
-                        <span style="font-size:0.85rem;font-weight:600;color:#6b21a8;">
-                            🏷️ {{ si.product_brand.brand_name }}
+                    <div class="stk-brand-row">
+                        <span class="stk-brand-name">
+                            <i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}
                         </span>
-                        <span style="font-size:0.85rem;font-weight:700;color:#6b21a8;">
+                        <span class="stk-brand-qty">
                             {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
                                 {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
                             {% else %}
@@ -139,7 +329,7 @@
                         </span>
                     </div>
                     {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
-                    <div style="font-size:0.75rem;color:#a78bfa;margin:0 0.6rem 0.35rem;">
+                    <div class="stk-brand-rate">
                         نرخ تبدیل: هر {{ si.product_brand.trade_unit }} = {{ si.product_brand.conversion_rate|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
                     </div>
                     {% endif %}
@@ -148,9 +338,9 @@
                 {% endif %}
 
                 {% for si in group.unbranded_items %}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.375rem;margin-bottom:0.2rem;">
-                    <span style="font-size:0.85rem;color:#64748b;font-weight:500;">موجودی عمومی:</span>
-                    <span style="font-size:0.85rem;font-weight:600;color:#334155;">
+                <div class="stk-unbranded-row">
+                    <span class="stk-unbranded-name">موجودی عمومی</span>
+                    <span class="stk-unbranded-qty">
                         {{ si.quantity|trim_decimal }}{% if si.unit %} {{ si.unit.name }}{% elif group.product.unit %} {{ group.product.unit.name }}{% endif %}
                     </span>
                 </div>
@@ -158,69 +348,51 @@
             </div>
 
             <!-- پاورقی -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb;">
-                <small style="color: #9ca3af;">
-                    آخرین بروزرسانی: {{ group.first_item.last_updated|date:"Y/m/d H:i" }}
-                </small>
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=group.first_item.id %}" onclick="event.stopPropagation()" style="color: #6366f1; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem;">
-                    📊 تاریخچه
+            <div class="stk-card-foot">
+                <span class="stk-foot-date">
+                    <i class="fas fa-clock"></i> آخرین بروزرسانی: {{ group.first_item.last_updated|date:"Y/m/d H:i" }}
+                </span>
+                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=group.first_item.id %}"
+                   class="stk-history-link" onclick="event.stopPropagation()">
+                    <i class="fas fa-chart-line"></i> تاریخچه
                 </a>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
+    <!-- صفحه‌بندی -->
     {% if page_obj.has_other_pages %}
-    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; padding: 2rem 0;">
+    <div class="stk-pagination">
         {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="stk-page-link">
+            <i class="fas fa-chevron-right"></i> قبلی
+        </a>
         {% endif %}
 
-        <span class="page-info" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; font-weight: 600;">
+        <span class="stk-page-info">
             صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
         </span>
 
         {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
+        <a href="?page={{ page_obj.next_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="stk-page-link">
+            بعدی <i class="fas fa-chevron-left"></i>
+        </a>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
-    <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
-        <div style="font-size: 4rem; margin-bottom: 1rem;">📦</div>
-        <h3 style="color: #6b7280; margin-bottom: 1rem;">
+    <!-- حالت خالی -->
+    <div class="stk-empty">
+        <div class="stk-empty-icon"><i class="fas fa-boxes"></i></div>
+        <h3>
             {% if selected_warehouse %}هیچ موجودی در انبار «{{ selected_warehouse.name }}» ثبت نشده است{% else %}هیچ موجودی ثبت نشده است{% endif %}
         </h3>
-        <a href="{% url 'initial_stock_register' cafe_code=cafe_code %}" style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
-            ➕ ثبت اولین موجودی
+        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> ثبت اولین حواله ورود
         </a>
     </div>
     {% endif %}
 </div>
-
-<style>
-    .btn-add:hover, .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s;
-    }
-    .stock-card { transition: all 0.3s; }
-    .stock-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    }
-    /* برندها فقط با کلیک روی کارت نمایش داده می‌شوند */
-    .stock-card .card-details { display: none; }
-    .stock-card.expanded .card-details { display: block; }
-    .stock-card .chevron { display: inline-block; transition: transform 0.25s; }
-    .stock-card.expanded .chevron { transform: rotate(180deg); }
-    .page-link:hover {
-        background: #f3f4f6;
-        border-color: #6366f1;
-        color: #6366f1;
-    }
-</style>
 {% endblock %}
-

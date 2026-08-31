@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}سوابق حرکت موجودی - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ سوابق حرکت موجودی — همهٔ انواع حرکت با لینک حواله ═══ */
+    .mov-wrap { max-width: 1250px; margin: 0 auto; }
+    .mov-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
+
+    .filter-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: var(--space-3); align-items: end;
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4); margin-bottom: var(--space-4);
+    }
+    .filter-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .filter-field label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
+    .filter-field input, .filter-field select {
+        padding: 0.5rem 0.75rem; border: 1.5px solid var(--border-default);
+        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
+        font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
+    }
+    .filter-field input:focus, .filter-field select:focus { outline: none; border-color: var(--accent-indigo); }
+    .filter-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+    .table-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .table-card table { width: 100%; border-collapse: collapse; }
+    .table-card thead th {
+        padding: 0.7rem 1rem; text-align: right; font-size: 0.74rem; font-weight: 700;
+        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
+        border-bottom: 1px solid var(--border-light); white-space: nowrap;
+    }
+    .table-card tbody td {
+        padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-light);
+        font-size: 0.84rem; vertical-align: middle;
+    }
+    .table-card tbody tr:hover td { background: var(--bg-subtle, #f8fafc); }
+    .table-card tbody tr:last-child td { border-bottom: none; }
+
+    .tx-badge, .v-mini {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.22rem 0.65rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .tx-in         { background: #d1fae5; color: #065f46; }
+    .tx-out        { background: #fee2e2; color: #991b1b; }
+    .tx-adjustment { background: #fce7f3; color: #9d174d; }
+    .tx-initial    { background: #f1f5f9; color: #475569; }
+    .v-mini {
+        background: var(--bg-subtle, #f1f5f9); color: var(--text-secondary);
+        text-decoration: none; font-size: 0.7rem; border: 1px solid var(--border-light);
+    }
+    .v-mini:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
+
+    .pagination { display: flex; justify-content: center; gap: 0.45rem; padding: 1.1rem; flex-wrap: wrap; }
+    .page-link {
+        padding: 0.4rem 0.8rem; border: 1.5px solid var(--border-default);
+        border-radius: var(--radius-md); text-decoration: none;
+        color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
+        background: var(--bg-card); transition: all var(--transition-fast);
+    }
+    .page-link:hover, .page-link.active {
+        background: var(--accent-indigo); border-color: var(--accent-indigo); color: white;
+    }
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;
+        transition: all var(--transition-fast); }
+    .btn-primary { background: var(--accent-indigo); color: white; }
+    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
+    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
+    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mov-wrap">
+
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-chart-line"></i> سوابق حرکت موجودی</h1>
+            <p>همهٔ انواع حرکت (ورود، خروج، تعدیل، موجودی اولیه) با لینک به حوالهٔ مبدأ</p>
+        </div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff">
+                <i class="fas fa-file-invoice"></i> حواله‌ها
+            </a>
+        </div>
+    </div>
+
+    <!-- فیلترها -->
+    <form method="get" class="filter-grid">
+        <div class="filter-field">
+            <label>انبار</label>
+            <select name="warehouse">
+                <option value="">همه</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.id }}"{% if f.warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>نوع حرکت</label>
+            <select name="tx_type">
+                <option value="">همه</option>
+                {% for key, label in tx_types.items %}
+                <option value="{{ key }}"{% if f.tx_type == key %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>نوع حواله</label>
+            <select name="voucher_type">
+                <option value="">همه</option>
+                {% for key, label in voucher_types.items %}
+                <option value="{{ key }}"{% if f.voucher_type == key %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>از تاریخ</label>
+            <input type="date" name="date_from" value="{{ f.date_from }}">
+        </div>
+        <div class="filter-field">
+            <label>تا تاریخ</label>
+            <input type="date" name="date_to" value="{{ f.date_to }}">
+        </div>
+        <div class="filter-field">
+            <label>جستجوی شماره حواله</label>
+            <input type="text" name="search" value="{{ f.search }}" placeholder="RCV-0001...">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
+            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="btn btn-outline"><i class="fas fa-rotate-right"></i> پاک</a>
+        </div>
+    </form>
+
+    <!-- جدول -->
+    <div class="table-card">
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>تاریخ</th><th>کالا</th><th>برند</th><th>انبار</th>
+                        <th>نوع حرکت</th><th>مقدار</th><th>قبل ← بعد</th>
+                        <th>حوالهٔ مبدأ</th><th>ثبت‌کننده</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in page_obj %}
+                    <tr>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">{{ tx.created_at|jalali_datetime }}</td>
+                        <td style="font-weight:700">{{ tx.stock_item.product.name }}</td>
+                        <td style="font-size:0.8rem;color:var(--text-secondary)">{{ tx.stock_item.product_brand.brand_name|default:'—' }}</td>
+                        <td style="font-size:0.8rem"><i class="fas fa-warehouse" style="color:var(--accent-indigo);font-size:0.72rem"></i> {{ tx.stock_item.warehouse.name }}</td>
+                        <td>
+                            <span class="tx-badge tx-{{ tx.transaction_type }}">
+                                {% if tx.transaction_type == 'in' %}<i class="fas fa-arrow-down"></i>
+                                {% elif tx.transaction_type == 'out' %}<i class="fas fa-arrow-up"></i>
+                                {% elif tx.transaction_type == 'adjustment' %}<i class="fas fa-scale-balanced"></i>
+                                {% else %}<i class="fas fa-circle-info"></i>{% endif %}
+                                {{ tx_types|get_item:tx.transaction_type }}
+                            </span>
+                        </td>
+                        <td style="font-weight:700">{{ tx.quantity|trim_decimal }} {{ tx.unit.name|default:'' }}</td>
+                        <td style="font-size:0.8rem;color:var(--text-secondary)">
+                            {{ tx.previous_quantity|trim_decimal }} ← {{ tx.new_quantity|trim_decimal }}
+                        </td>
+                        <td>
+                            {% if tx.voucher %}
+                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=tx.voucher_id %}" class="v-mini">
+                                <span class="mono">{{ tx.voucher.voucher_number }}</span>
+                                — {{ voucher_types|get_item:tx.voucher.voucher_type }}
+                            </a>
+                            {% elif tx.reference_type == 'warehouse_request' %}
+                            <span class="v-mini" style="color:#b45309"><i class="fas fa-truck-ramp-box"></i> تامین درخواست انبار #{{ tx.reference_id }}</span>
+                            {% else %}
+                            <span class="v-mini" style="background:transparent;border-color:transparent">{{ tx.reference_type|default:'—' }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.78rem;color:var(--text-secondary)">{% if tx.created_by %}{{ tx.created_by.get_full_name|default:tx.created_by.username }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">
+                            <div style="text-align:center;padding:3.5rem 1rem">
+                                <i class="fas fa-chart-line" style="font-size:2.6rem;color:var(--text-muted);display:block;margin-bottom:0.8rem"></i>
+                                <h3 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.4rem">حرکتی یافت نشد</h3>
+                                <p style="color:var(--text-muted);font-size:0.82rem">{% if f.warehouse or f.tx_type or f.search %}فیلترها را تغییر دهید{% else %}هنوز حرکتی روی موجودی ثبت نشده است{% endif %}</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}
+                {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
+                {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
+                {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                {% if f.search %}&search={{ f.search|urlencode }}{% endif %}"><i class="fas fa-chevron-right"></i></a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="page-link active">{{ num }}</span>
+                {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+                <a class="page-link" href="?page={{ num }}
+                    {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
+                    {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
+                    {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                    {% if f.search %}&search={{ f.search|urlencode }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}
+                {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
+                {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
+                {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
+                {% if f.search %}&search={{ f.search|urlencode }}{% endif %}"><i class="fas fa-chevron-left"></i></a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

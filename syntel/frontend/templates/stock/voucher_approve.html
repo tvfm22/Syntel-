@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}تأیید حواله - {{ voucher.voucher_number }} - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .approve-wrap { max-width: 850px; margin: 0 auto; }
+    .approve-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4);
+    }
+    .card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-5); margin-bottom: var(--space-4);
+    }
+    .card-title {
+        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; margin-bottom: var(--space-4);
+    }
+    .card-title i { color: var(--accent-indigo); }
+    .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+        padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; font-weight: 700;
+        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
+        border-bottom: 1px solid var(--border-light);
+    }
+    tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light); font-size: 0.84rem; }
+    tbody tr:last-child td { border-bottom: none; }
+    .table-scroll { overflow-x: auto; }
+
+    .notice {
+        display: flex; gap: 0.7rem; align-items: flex-start;
+        background: #fef9c3; border: 1px solid #fde047; color: #854d0e;
+        border-radius: var(--radius-lg); padding: 0.9rem 1.1rem;
+        font-size: 0.83rem; line-height: 1.8; margin-bottom: var(--space-4);
+    }
+    .notice i { margin-top: 0.2rem; }
+
+    .btn { padding: 0.6rem 1.3rem; border: none; border-radius: var(--radius-md);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
+        transition: all var(--transition-fast); }
+    .btn-success { background: #10b981; color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
+    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .actions-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="approve-wrap">
+
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-check-double"></i> تأیید و نهایی‌سازی حواله</h1>
+            <p>سند: <span class="mono">{{ voucher.voucher_number }}</span> — {{ voucher.get_voucher_type_display }}</p>
+        </div>
+        <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff">
+            <i class="fas fa-arrow-right"></i> بازگشت به جزئیات
+        </a>
+    </div>
+
+    <div class="notice">
+        <i class="fas fa-triangle-exclamation"></i>
+        <div>
+            این حواله نیازمند تأیید است. با تأیید شما، حواله <b>همان لحظه نهایی‌سازی</b> می‌شود و اثر آن روی
+            موجودی انبار اعمال می‌شود — از صحت اقلام و مقادیر مطمئن شوید.
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-list-ul"></i> اقلام حواله</div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr><th>#</th><th>محصول</th><th>برند</th><th>واحد</th><th>مقدار پایه</th><th>قیمت واحد</th></tr>
+                </thead>
+                <tbody>
+                    {% for it in items %}
+                    <tr>
+                        <td style="color:var(--text-muted)">{{ forloop.counter }}</td>
+                        <td style="font-weight:700">{{ it.product.name|default:'—' }}</td>
+                        <td>{{ it.product_brand.brand_name|default:'—' }}</td>
+                        <td>{{ it.unit.name|default:'—' }}</td>
+                        <td>{{ it.base_quantity|trim_decimal }}</td>
+                        <td>{{ it.unit_price|number_format }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-bolt"></i> اقدام</div>
+        <div class="actions-row">
+            <form method="post" action="{% url 'voucher_approve' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
+                  onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number }} تأیید و نهایی شود؟ اثر روی موجودی فوراً اعمال می‌شود.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> تأیید و نهایی‌سازی</button>
+            </form>
+            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline">انصراف</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
