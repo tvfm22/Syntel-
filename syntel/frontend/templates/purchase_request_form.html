@@ -245,6 +245,53 @@
     }
     .ac-item.ac-add-new:hover { background: #ede9fe; }
 
+    /* ── انتخاب دسته‌بندی + مرور کالاهای دسته ── */
+    .category-browse {
+        background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+    }
+    .category-browse h3 {
+        font-size: 1rem; color: #374151; margin-bottom: 0.75rem; font-weight: 600;
+    }
+    .category-search-row {
+        display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+    }
+    .category-search-row input[type="text"] {
+        flex: 1; min-width: 180px; padding: 0.5rem;
+        border: 1px solid #d1d5db; border-radius: 6px;
+        font-size: 0.875rem; font-family: 'Vazir', sans-serif;
+    }
+    .category-search-row input[type="text"]:focus { outline: none; border-color: #6366f1; }
+    .category-chip-clear {
+        background: #f3f4f6; border: 1px solid #d1d5db; color: #6b7280;
+        border-radius: 6px; padding: 0.4rem 0.9rem; font-size: 0.8rem;
+        cursor: pointer; font-family: 'Vazir', sans-serif; display: none;
+    }
+    .category-chip-clear:hover { background: #e5e7eb; }
+    .category-chip-clear.visible { display: inline-block; }
+    .category-products-list {
+        margin-top: 0.75rem; display: none;
+        border: 1px solid #e5e7eb; border-radius: 8px; max-height: 260px; overflow-y: auto;
+    }
+    .category-products-list.open { display: block; }
+    .cat-product-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+        padding: 0.55rem 0.75rem; border-bottom: 1px solid #f3f4f6;
+        font-size: 0.85rem; color: #374151; transition: background .1s; cursor: default;
+    }
+    .cat-product-item:last-child { border-bottom: none; }
+    .cat-product-item:hover { background: #f9fafb; }
+    .cat-product-item .cp-name { font-weight: 600; color: #1f2937; }
+    .cat-product-item .cp-unit { color: #9ca3af; font-size: 0.75rem; }
+    .cat-product-item .cp-select {
+        background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca;
+        border-radius: 6px; padding: 3px 12px; font-size: 12px; font-weight: 600;
+        cursor: pointer; font-family: 'Vazir', sans-serif; white-space: nowrap;
+        transition: background .15s;
+    }
+    .cat-product-item .cp-select:hover { background: #6366f1; color: #fff; }
+    .cat-empty { padding: 1rem; text-align: center; color: #9ca3af; font-size: 0.8rem; }
+
     /* ── form actions ── */
     .form-actions {
         display: flex; gap: 0.75rem; justify-content: center; padding-top: 1rem; flex-wrap: wrap;
@@ -405,6 +452,19 @@
             <input type="hidden" name="delivery_immediate" id="deliveryImmediate" value="">
         </div>
 
+        <!-- 0.5 انتخاب دسته‌بندی: کالاهای دسته در همان صفحه باز می‌شوند و قابل انتخاب/جستجو هستند -->
+        <div class="category-browse">
+            <h3>🗂️ انتخاب از دسته‌بندی</h3>
+            <div class="category-search-row">
+                <input type="text" id="categoryProductSearch" placeholder="🔍 جستجو در کالاهای این دسته..."
+                       autocomplete="off" oninput="onCategorySearchInput()">
+                <button type="button" class="category-chip-clear" id="categoryClearBtn" onclick="clearCategorySelection()">پاک کردن انتخاب دسته ✕</button>
+            </div>
+            <div class="category-products-list" id="categoryProductsList"></div>
+            <input type="hidden" id="selectedCategoryId" value="">
+            <input type="hidden" id="selectedCategoryName" value="">
+        </div>
+
         <!-- 1. Single entry form at the top -->
         <div class="entry-form-section">
             <h3>➕ افزودن کالا</h3>
@@ -421,6 +481,18 @@
                         <input type="hidden" id="entryBrandId" value="">
                         <div class="autocomplete-dropdown" id="entryAcDrop"></div>
                         <div id="entryBrandChip" class="brand-chip" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>دسته‌بندی</label>
+                    <div class="autocomplete-wrap">
+                        <input type="text" id="entryCategoryName" class="form-control ac-input"
+                               placeholder="انتخاب دسته‌بندی..."
+                               autocomplete="off"
+                               oninput="onCatAcInput(this)"
+                               onkeydown="onCatAcKeydown(event)">
+                        <input type="hidden" id="entryCategoryId" value="">
+                        <div class="autocomplete-dropdown" id="entryCatAcDrop"></div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -484,7 +556,6 @@
         <div class="modal-field">
             <label>نام کالا *</label>
             <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
-            <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-field">
             <label>واحد</label>
@@ -501,6 +572,11 @@
                 <option value="بطری">بطری</option>
                 <option value="پاکت">پاکت</option>
             </select>
+        </div>
+        <div class="modal-field">
+            <label>توضیحات * <span style="color:#dc2626;font-weight:400;">(این کالای جدید را برای چه می‌خواهی؟)</span></label>
+            <textarea id="newProductDescription" rows="3" placeholder="توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است..."></textarea>
+            <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-actions">
             <button class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
@@ -532,6 +608,7 @@
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
     const AVAILABILITY_URL = "{% url 'check_product_availability' cafe_code=cafe_code %}";
+    const CAT_AUTOCOMPLETE_URL = "{% url 'categories_autocomplete' cafe_code=cafe_code %}";
     const CSRF_TOKEN       = "{{ csrf_token }}";
     // کاربران درخواست‌دهنده نباید هنگام ثبت درخواست، خطا یا پیامی درباره موجودی کالا ببینند
     const IS_REQUESTER = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
@@ -859,6 +936,8 @@
         document.getElementById('entryProductName').value = '';
         document.getElementById('entryProductId').value = '';
         setEntryBrand('', '');
+        document.getElementById('entryCategoryName').value = '';
+        document.getElementById('entryCategoryId').value = '';
         document.getElementById('entryQuantity').value = '';
         document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
         document.getElementById('entryDescription').value = '';
@@ -1008,14 +1087,207 @@
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.autocomplete-wrap')) {
             closeDropdown();
+            closeCatDropdown();
         }
     });
+
+    // ── مرور کالاهای دسته‌بندی (انتخاب دسته → نمایش کالاها در همین صفحه) ──
+
+    let catProductTimer = null;
+    let categoryBrowseActive = false;
+
+    function onCategorySearchInput() {
+        clearTimeout(catProductTimer);
+        catProductTimer = setTimeout(() => {
+            const catId = document.getElementById('selectedCategoryId').value;
+            if (!catId) {
+                // هنوز دسته انتخاب نشده: اگر عبارتی نوشته شد، دسته‌ها را پیشنهاد بده
+                const q = document.getElementById('categoryProductSearch').value.trim();
+                if (q.length >= 2) {
+                    fetchCategoryBrowseSuggestions(q);
+                } else {
+                    document.getElementById('categoryProductsList').classList.remove('open');
+                }
+                return;
+            }
+            fetchCategoryProducts();
+        }, 250);
+    }
+
+    function fetchCategoryBrowseSuggestions(q) {
+        fetch(`${CAT_AUTOCOMPLETE_URL}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('categoryProductsList');
+                const results = data.results || [];
+                if (!results.length) { list.classList.remove('open'); return; }
+                list.innerHTML = results.map(c =>
+                    `<div class="cat-product-item" style="cursor:pointer;" onclick="setCategorySelection(${c.id}, '${escapeJs(c.name)}')">
+                        <span class="cp-name">🗂️ ${escapeHtml(c.label || c.name)}</span>
+                        <span class="cp-unit">انتخاب دسته</span>
+                    </div>`
+                ).join('');
+                list.classList.add('open');
+            }).catch(() => {});
+    }
+
+    function fetchCategoryProducts() {
+        const catId = document.getElementById('selectedCategoryId').value;
+        if (!catId) return;
+        const q = document.getElementById('categoryProductSearch').value.trim();
+        // URL دسته‌ای: /<cafe_code>/api/categories/<id>/products/
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const base = '/' + (parts.slice(0, 1).join('/'));
+        const url = `${base}/api/categories/${catId}/products/` + (q ? `?q=${encodeURIComponent(q)}` : '');
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('categoryProductsList');
+                const results = data.results || [];
+                if (!results.length) {
+                    list.innerHTML = '<div class="cat-empty">کالایی در این دسته' + (q ? ' با این عبارت' : '') + ' یافت نشد — می‌توانی از فرم پایین به‌عنوان کالای جدید تعریفش کنی.</div>';
+                } else {
+                    list.innerHTML = results.map((p, idx) =>
+                        `<div class="cat-product-item">
+                            <div>
+                                <div class="cp-name">${escapeHtml(p.label || p.name)}</div>
+                                ${p.unit ? `<div class="cp-unit">واحد: ${escapeHtml(p.unit)}</div>` : ''}
+                            </div>
+                            <button type="button" class="cp-select" onclick="selectCategoryProduct(${idx})">انتخاب</button>
+                        </div>`
+                    ).join('');
+                }
+                list.classList.add('open');
+                categoryBrowseActive = true;
+                window._catProducts = results;
+            }).catch(() => {});
+    }
+
+    function setCategorySelection(catId, catName) {
+        document.getElementById('selectedCategoryId').value = catId;
+        document.getElementById('selectedCategoryName').value = catName;
+        document.getElementById('categoryClearBtn').classList.add('visible');
+        document.getElementById('categoryProductSearch').value = '';
+        document.getElementById('categoryProductSearch').placeholder = '🔍 جستجو در کالاهای «' + catName + '»...';
+        document.getElementById('categoryProductSearch').focus();
+        // همچنین دسته در فرم ورود پایین هم ست شود تا کالای جدید در همین دسته ساخته شود
+        document.getElementById('entryCategoryId').value = catId;
+        document.getElementById('entryCategoryName').value = catName;
+        fetchCategoryProducts();
+    }
+
+    function clearCategorySelection() {
+        document.getElementById('selectedCategoryId').value = '';
+        document.getElementById('selectedCategoryName').value = '';
+        document.getElementById('categoryClearBtn').classList.remove('visible');
+        document.getElementById('categoryProductSearch').value = '';
+        document.getElementById('categoryProductSearch').placeholder = '🔍 نام دسته را جستجو کن یا از فرم پایین کالا را اضافه کن...';
+        const list = document.getElementById('categoryProductsList');
+        list.innerHTML = '';
+        list.classList.remove('open');
+        window._catProducts = [];
+    }
+
+    function selectCategoryProduct(idx) {
+        const p = (window._catProducts || [])[idx];
+        if (!p) return;
+        document.getElementById('entryProductName').value = p.name;
+        document.getElementById('entryProductId').value = p.id || '';
+        setEntryBrand(p.product_brand_id || '', p.brand || '');
+        if (p.unit) {
+            document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
+        }
+        // اسکرول به فرم ورود و فوکوس روی مقدار
+        document.querySelector('.entry-form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('entryQuantity').focus();
+    }
+
+    // ── Autocomplete دسته‌بندی در فرم ورود ─────────────────────────────
+
+    let catAcTimer = null;
+    let catAcResults = [];
+    let catAcHighlightIdx = -1;
+
+    function onCatAcInput(input) {
+        const q = input.value.trim();
+        document.getElementById('entryCategoryId').value = '';
+        clearTimeout(catAcTimer);
+        if (q.length < 1) { closeCatDropdown(); return; }
+        catAcTimer = setTimeout(() => fetchCatSuggestions(q), 250);
+    }
+
+    function fetchCatSuggestions(q) {
+        fetch(`${CAT_AUTOCOMPLETE_URL}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                catAcResults = data.results || [];
+                renderCatDropdown();
+            }).catch(() => closeCatDropdown());
+    }
+
+    function renderCatDropdown() {
+        const drop = document.getElementById('entryCatAcDrop');
+        if (!drop) return;
+        drop.innerHTML = catAcResults.map((c, idx) =>
+            `<div class="ac-item" data-idx="${idx}" onmousedown="selectCatEntry(${idx})">
+                <div class="ac-name">🗂️ ${escapeHtml(c.label || c.name)}</div>
+            </div>`
+        ).join('');
+        drop.classList.add('open');
+        catAcHighlightIdx = -1;
+    }
+
+    function closeCatDropdown() {
+        const drop = document.getElementById('entryCatAcDrop');
+        if (drop) drop.classList.remove('open');
+        catAcHighlightIdx = -1;
+    }
+
+    function selectCatEntry(idx) {
+        const c = catAcResults[idx];
+        if (!c) return;
+        document.getElementById('entryCategoryName').value = c.name;
+        document.getElementById('entryCategoryId').value = c.id || '';
+        closeCatDropdown();
+    }
+
+    function onCatAcKeydown(e) {
+        const drop = document.getElementById('entryCatAcDrop');
+        if (!drop || !drop.classList.contains('open')) {
+            if (e.key === 'Enter' && e.target.id === 'entryCategoryName') {
+                e.preventDefault();
+                document.getElementById('entryQuantity').focus();
+            }
+            return;
+        }
+        const items = drop.querySelectorAll('.ac-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            catAcHighlightIdx = Math.min((catAcHighlightIdx === -1 ? 0 : catAcHighlightIdx + 1), items.length - 1);
+            items.forEach(el => el.classList.remove('highlighted'));
+            items[catAcHighlightIdx]?.classList.add('highlighted');
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            catAcHighlightIdx = Math.max((catAcHighlightIdx === -1 ? items.length - 1 : catAcHighlightIdx - 1), 0);
+            items.forEach(el => el.classList.remove('highlighted'));
+            items[catAcHighlightIdx]?.classList.add('highlighted');
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (catAcHighlightIdx >= 0 && catAcHighlightIdx < items.length) {
+                items[catAcHighlightIdx].dispatchEvent(new MouseEvent('mousedown'));
+            }
+        } else if (e.key === 'Escape') {
+            closeCatDropdown();
+        }
+    }
 
     // ── Add New Product Modal ─────────────────────────────────────────
 
     function openAddProductModal(prefillName = '') {
         pendingProductItemId = 'entry';
         document.getElementById('newProductName').value = prefillName;
+        document.getElementById('newProductDescription').value = '';
         document.getElementById('newProductErr').textContent = '';
         document.getElementById('addProductModal').classList.add('open');
         setTimeout(() => document.getElementById('newProductName').focus(), 100);
@@ -1029,14 +1301,22 @@
     function submitNewProduct() {
         const name = document.getElementById('newProductName').value.trim();
         const unit = document.getElementById('newProductUnit').value;
+        const description = document.getElementById('newProductDescription').value.trim();
+        const categoryId = document.getElementById('entryCategoryId').value;
         const errEl = document.getElementById('newProductErr');
         if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
+        // توضیحات برای کالای جدید اجباری است — هشدار متناسب: این کالای جدید را برای چه می‌خواهی؟
+        if (!description) {
+            errEl.innerHTML = '<strong>⚠️ توضیحات اجباری است:</strong> این کالای جدید را برای چه می‌خواهی؟ لطفاً توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است.';
+            document.getElementById('newProductDescription').focus();
+            return;
+        }
         const btn = document.querySelector('.modal-btn-save');
         btn.disabled = true; btn.textContent = 'در حال ذخیره...';
         fetch(QUICK_ADD_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-            body: JSON.stringify({ name, unit })
+            body: JSON.stringify({ name, unit, description, category_id: categoryId })
         }).then(r => r.json()).then(data => {
             btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
             if (data.success) {

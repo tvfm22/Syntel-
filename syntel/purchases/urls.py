@@ -147,6 +147,7 @@ cafe_urlpatterns = [
     path('api/products/quick-add/', cv(views.quick_add_product), name='quick_add_product'),
     path('api/departments/quick-add/', cv(views.quick_add_department), name='quick_add_department'),
     path('api/categories/autocomplete/', cv(views.search_categories_autocomplete), name='categories_autocomplete'),
+    path('api/categories/<int:category_id>/products/', cv(views.category_products_api), name='category_products_api'),
     path('all-departments-requests/', cv(views.all_departments_requests), name='all_departments_requests'),
     path('request-management/', cv(views.request_management_dashboard), name='request_management_dashboard'),
     path('request-management/export-csv/', cv(views.request_management_csv), name='request_management_csv'),

@@ -3051,6 +3051,10 @@ def product_update(request, product_id):
         product.usage_location = request.POST.get("usage_location", product.usage_location)
         product.show_sub_products = request.POST.get("show_sub_products") == "on"
         product.description = request.POST.get("description", product.description)
+        # تکمیل اطلاعات کالای ناقص (ساخته‌شده از فرم درخواست): با اولین ویرایش کامل می‌شود
+        # و از این پس در پیشنهادهای درخواست نمایش داده می‌شود
+        if not product.is_complete:
+            product.is_complete = True
         product.save()
         messages.success(request, 'محصول با موفقیت ویرایش شد.')
         return redirect("product_list", cafe_code=get_cafe_code(request) or 'local')
@@ -6343,7 +6347,10 @@ def search_products_autocomplete(request):
     cafe = get_cafe_from_request(request)
     products = Product.objects.filter(
         models.Q(name__icontains=query) | models.Q(category__name__icontains=query),
-        is_active=True
+        is_active=True,
+        # کالاهای ناقص (تازه ساخته‌شده از فرم درخواست) تا تکمیل اطلاعات در مدیریت محصولات،
+        # در پیشنهادهای درخواست‌های بعدی نمایش داده نمی‌شوند
+        is_complete=True,
     ).select_related('category', 'category__parent', 'unit')
     if cafe:
         products = products.filter(cafe=cafe)
@@ -6429,6 +6436,89 @@ def search_products_autocomplete(request):
                 'unit': product.unit.name if product.unit else '',
                 'has_brands': False,
                 'brands': [],
+            })
+
+    return JsonResponse({'results': results})
+
+
+@custom_login_required
+def category_products_api(request: HttpRequest, category_id: int = None) -> JsonResponse:
+    """API محصولات فعالِ یک دسته‌بندی برای فرم درخواست خرید.
+
+    با انتخاب دسته‌بندی، محصولات همان دسته (کامل شده) در همان صفحه قابل انتخاب می‌شوند
+    و جستجوی کاربر روی همین محصولات اعمال می‌شود.
+    """
+    if category_id is None:
+        category_id = request.GET.get('category_id', '')
+    query = request.GET.get('q', '').strip()
+
+    cafe = get_cafe_from_request(request)
+    products = Product.objects.filter(is_active=True, is_complete=True).select_related(
+        'category', 'category__parent', 'unit')
+    if cafe:
+        products = products.filter(cafe=cafe)
+
+    if category_id and str(category_id).isdigit():
+        # محصولات دسته انتخاب‌شده + زیردسته‌های آن
+        cat = Category.objects.filter(id=int(category_id), is_active=True).first()
+        if not cat:
+            return JsonResponse({'results': []})
+        cat_ids = [cat.id] + list(cat.subcategories.filter(is_active=True).values_list('id', flat=True))
+        products = products.filter(category_id__in=cat_ids)
+    else:
+        return JsonResponse({'results': []})
+
+    if query:
+        products = products.filter(name__icontains=query)
+
+    user_role = request.user.role
+    unrestricted_roles = ['purchasing', 'warehouse', 'admin', 'manager', 'accounting', 'finance_manager', 'ceo']
+    if user_role not in unrestricted_roles:
+        if user_role == 'requester':
+            dep_name = request.user.department.name if request.user.department else None
+            if dep_name:
+                old_key_map = {
+                    'آشپزخانه': 'kitchen', 'بار': 'bar', 'کانتر': 'counter',
+                    'صندوق': 'cashier', 'تاسیسات': 'facilities',
+                }
+                old_key = old_key_map.get(dep_name, None)
+                q_filter = models.Q(usage_location='general') | models.Q(usage_location=dep_name)
+                if old_key:
+                    q_filter = q_filter | models.Q(usage_location=old_key)
+                products = products.filter(q_filter)
+            else:
+                products = products.filter(usage_location='general')
+        else:
+            products = products.filter(
+                models.Q(usage_location=user_role) | models.Q(usage_location='general')
+            )
+
+    products = products.order_by('name')[:50]
+
+    results = []
+    for product in products:
+        active_brands = list(product.brands.filter(is_active=True).order_by('brand_name'))
+        show_brand_rows = user_role in unrestricted_roles or product.show_sub_products
+
+        if active_brands and show_brand_rows:
+            for brand in active_brands:
+                brand_unit = brand.trade_unit or (product.unit.name if product.unit else '')
+                results.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'brand': brand.brand_name,
+                    'product_brand_id': brand.id,
+                    'label': f"{product.name} - {brand.brand_name}",
+                    'unit': brand_unit,
+                })
+        else:
+            results.append({
+                'id': product.id,
+                'name': product.name,
+                'brand': None,
+                'product_brand_id': None,
+                'label': product.name,
+                'unit': product.unit.name if product.unit else '',
             })
 
     return JsonResponse({'results': results})
@@ -9712,9 +9802,19 @@ def quick_add_product(request):
     name = data.get('name', '').strip()
     unit_name = data.get('unit', 'عدد').strip()
     usage_location = data.get('usage_location', '').strip()
+    description = data.get('description', '').strip()
+    category_id = data.get('category_id', '')
 
     if not name:
         return JsonResponse({'success': False, 'error': 'نام کالا الزامی است'})
+
+    # توضیحات برای کالای جدید اجباری است — مشخص می‌کند این کالا برای چه چیزی درخواست می‌شود
+    if not description:
+        return JsonResponse({
+            'success': False,
+            'error': 'توضیحات اجباری است: این کالای جدید را برای چه می‌خواهی؟ (توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است)',
+            'error_code': 'description_required',
+        })
 
     cafe = get_cafe_from_request(request)
 
@@ -9735,6 +9835,7 @@ def quick_add_product(request):
             'id': p.id,
             'name': p.name,
             'unit': p.unit.name if p.unit else unit_name,
+            'is_complete': p.is_complete,
         }})
 
     # Find or create the unit
@@ -9751,14 +9852,25 @@ def quick_add_product(request):
         name=name,
         unit=unit_obj,
         usage_location=usage_location,
+        description=description,
+        # کالای جدید ناقص است تا مدیریت محصولات فیلدهای دیگر (دسته‌بندی، برند، ...) را تکمیل کند
+        is_complete=False,
         cafe=cafe,
         is_active=True,
     )
+
+    # اتصال دسته‌بندی در صورت ارسال از فرم درخواست
+    if category_id and str(category_id).isdigit():
+        cat = Category.objects.filter(id=int(category_id), is_active=True).first()
+        if cat:
+            product.category = cat
+            product.save(update_fields=['category'])
 
     return JsonResponse({'success': True, 'product': {
         'id': product.id,
         'name': product.name,
         'unit': product.unit.name if product.unit else unit_name,
+        'is_complete': product.is_complete,
     }})
 
 
