@@ -9818,11 +9818,11 @@ def quick_add_product(request):
     if not name:
         return JsonResponse({'success': False, 'error': 'نام کالا الزامی است'})
 
-    # توضیحات برای کالای جدید اجباری است — مشخص می‌کند این کالا برای چه چیزی درخواست می‌شود
+    # توضیحات برای کالای جدید اجباری است
     if not description:
         return JsonResponse({
             'success': False,
-            'error': 'توضیحات اجباری است: این کالای جدید را برای چه می‌خواهی؟ (توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است)',
+            'error': 'توضیحات اجباری است — لطفاً توضیح کوتاهی بنویس.',
             'error_code': 'description_required',
         })
 
@@ -9881,6 +9881,7 @@ def quick_add_product(request):
         'name': product.name,
         'unit': product.unit.name if product.unit else unit_name,
         'is_complete': product.is_complete,
+        'description': product.description,
     }})
 
 

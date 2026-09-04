@@ -73,7 +73,6 @@ class TestQuickAddProductRules(CategoryBrowseBase):
         data = resp.json()
         self.assertFalse(data['success'])
         self.assertEqual(data['error_code'], 'description_required')
-        self.assertIn('برای چه', data['error'])
 
     def test_creates_incomplete_with_category(self):
         cat = Category.objects.create(name='سرویس', cafe=self.cafe)
