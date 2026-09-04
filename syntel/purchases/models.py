@@ -385,6 +385,9 @@ class Product(models.Model):
     )
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
+    # کالای جدیدی که از فرم درخواست ثبت شده و اطلاعات کامل آن (دسته‌بندی، واحد، ...)
+    # هنوز توسط مدیریت محصولات تکمیل نشده — تا تکمیل، در لیست کالاهای پیشنهادی نمایش داده نمی‌شود.
+    is_complete = models.BooleanField(default=True, verbose_name='اطلاعات کامل', help_text='کالای ناقص تا تکمیل اطلاعات در پیشنهادهای درخواست نمایش داده نمی‌شود.')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='products', verbose_name='کافه', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
