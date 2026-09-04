@@ -1899,9 +1899,15 @@ def purchase_request_form(request):
         cafe_code = cafe.code if cafe else 'local'
         return redirect("purchase_request_success", cafe_code=cafe_code)
 
+    cafe = get_cafe_from_request(request)
+    all_categories = Category.objects.filter(is_active=True).select_related('parent').order_by('name')
+    if cafe:
+        all_categories = all_categories.filter(cafe=cafe)
+
     return render(request, "purchase_request_form.html", {
         "department": department,
         "delivery_days": _next_delivery_days(),
+        "all_categories": all_categories,
     })
 
 
