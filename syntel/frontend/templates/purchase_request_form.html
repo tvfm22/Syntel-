@@ -274,11 +274,15 @@
     .modal-box h3 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
     .modal-field { margin-bottom: 14px; }
     .modal-field label { display: block; font-size: 14px; color: #374151; margin-bottom: 6px; font-weight: 500; }
-    .modal-field input, .modal-field select {
+    .modal-field input, .modal-field select, .modal-field textarea {
         width: 100%; padding: 9px 12px; border: 1px solid #d1d5db;
         border-radius: 8px; font-size: 14px; font-family: Vazir, sans-serif;
+        box-sizing: border-box; background: white; color: #1f2937;
     }
-    .modal-field input:focus, .modal-field select:focus { outline: none; border-color: #6366f1; }
+    .modal-field textarea { resize: vertical; min-height: 72px; line-height: 1.7; }
+    .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus {
+        outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+    }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-btn-save {
         flex: 1; padding: 10px; background: #6366f1; color: white; border: none;
@@ -291,6 +295,24 @@
         border-radius: 8px; font-size: 14px; cursor: pointer; font-family: Vazir, sans-serif;
     }
     .modal-err { color: #dc2626; font-size: 13px; margin-top: 6px; }
+
+    /* ── add-product modal: موبایل — فول‌اسکرین با پنل جمع‌شونده ── */
+    @media (max-width: 640px) {
+        .modal-overlay.open { align-items: flex-end; }
+        .modal-box {
+            width: 100%; max-width: none; max-height: 92vh; overflow-y: auto;
+            border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+        }
+        .modal-box h3 { font-size: 16px; margin-bottom: 14px; }
+        .modal-field { margin-bottom: 12px; }
+        .modal-field input, .modal-field select, .modal-field textarea {
+            padding: 11px 12px; font-size: 16px; border-radius: 10px;
+        }
+        .modal-field textarea { min-height: 84px; }
+        .modal-actions { flex-direction: column-reverse; gap: 8px; margin-top: 16px; }
+        .modal-btn-save, .modal-btn-cancel { width: 100%; padding: 12px; font-size: 15px; border-radius: 10px; }
+        .modal-btn-cancel { background: #f9fafb; }
+    }
 
     /* ── brand chip + stock hint ── */
     .brand-chip {
@@ -518,8 +540,8 @@
             </select>
         </div>
         <div class="modal-field">
-            <label>توضیحات * <span style="color:#dc2626;font-weight:400;">(این کالای جدید را برای چه می‌خواهی؟)</span></label>
-            <textarea id="newProductDescription" rows="3" placeholder="توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است..."></textarea>
+            <label>توضیحات *</label>
+            <textarea id="newProductDescription" rows="3" placeholder="توضیحات را وارد کنید..."></textarea>
             <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-actions">
@@ -881,6 +903,11 @@
         setEntryBrand('', '');
         document.getElementById('entryCategoryName').value = '';
         document.getElementById('entryCategoryId').value = '';
+        const catSel = document.getElementById('entryCategorySelect');
+        if (catSel) catSel.value = '';
+        const hint = document.getElementById('catBrowseHint');
+        if (hint) hint.style.display = 'none';
+        catBrowseSearch = '';
         document.getElementById('entryQuantity').value = '';
         document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
         document.getElementById('entryDescription').value = '';
@@ -994,6 +1021,10 @@
         document.getElementById('entryProductId').value = p.id || '';
         // برند انتخاب‌شده: اگر محصول برند دارد نام تجاری به صورت «محصول - برند» نمایش داده می‌شود
         setEntryBrand(p.product_brand_id || '', p.brand || '');
+        // دسته‌بندی خودکار از محصول پر می‌شود (کاربر می‌تواند بعداً تغییرش دهد)
+        if (p.category_id) {
+            setEntryCategory(p.category_id, p.category || '', { silent: true });
+        }
         if (p.unit) {
             document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
         }
@@ -1060,7 +1091,8 @@
         }, 250);
     }
 
-    function setEntryCategory(catId, catName) {
+    function setEntryCategory(catId, catName, opts) {
+        opts = opts || {};
         const sel = document.getElementById('entryCategorySelect');
         if (sel) sel.value = catId || '';
         document.getElementById('entryCategoryId').value = catId || '';
@@ -1070,9 +1102,26 @@
         if (hint) hint.style.display = catId ? 'inline' : 'none';
         // سرچ درون dropdown دسته ریست شود
         catBrowseSearch = '';
-        if (catId) {
+        if (catId && !opts.silent) {
             document.getElementById('entryProductName').focus();
         }
+    }
+
+    // تغییر دسته‌بندی توسط کاربر: اگر کالایی در فرم وارد/انتخاب شده باشد پاک می‌شود
+    // (چون کالای انتخاب‌شده به دسته قبلی تعلق داشت)
+    function onEntryCategorySelect(sel) {
+        const prevCatId = document.getElementById('entryCategoryId').value;
+        const newCatId = sel.value || '';
+        const nameInput = document.getElementById('entryProductName');
+        const hasProduct = nameInput.value.trim() || document.getElementById('entryProductId').value;
+        if (hasProduct && prevCatId && newCatId !== prevCatId) {
+            // پاک کردن کالای واردشده چون دسته عوض شد
+            nameInput.value = '';
+            document.getElementById('entryProductId').value = '';
+            setEntryBrand('', '');
+            catBrowseSearch = '';
+        }
+        setEntryCategory(newCatId, sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : '');
     }
 
     // فوکوس/کلیک روی فیلد نام کالا: اگر دسته انتخاب شده باشد، لیست کالاهای
@@ -1147,17 +1196,15 @@
         document.getElementById('entryProductName').value = p.name;
         document.getElementById('entryProductId').value = p.id || '';
         setEntryBrand(p.product_brand_id || '', p.brand || '');
+        // دسته همان دسته انتخابی می‌ماند (کالای دسته است) — فقط همگام‌سازی نمایش
+        if (p.category_id) {
+            setEntryCategory(p.category_id, document.getElementById('entryCategoryName').value, { silent: true });
+        }
         if (p.unit) {
             document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
         }
         closeDropdown();
         document.getElementById('entryQuantity').focus();
-    }
-
-    // ── دسته‌بندی فرم ورود: select ساده (غیرقابل تایپ) ─────────────────
-
-    function onEntryCategorySelect(sel) {
-        setEntryCategory(sel.value || '', sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : '');
     }
 
     // ── Add New Product Modal ─────────────────────────────────────────
@@ -1183,9 +1230,9 @@
         const categoryId = document.getElementById('entryCategoryId').value;
         const errEl = document.getElementById('newProductErr');
         if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
-        // توضیحات برای کالای جدید اجباری است — هشدار متناسب: این کالای جدید را برای چه می‌خواهی؟
+        // توضیحات برای کالای جدید اجباری است
         if (!description) {
-            errEl.innerHTML = '<strong>⚠️ توضیحات اجباری است:</strong> این کالای جدید را برای چه می‌خواهی؟ لطفاً توضیح کوتاهی بنویس که این کالا برای چه مصرفی درخواست شده است.';
+            errEl.textContent = '⚠️ توضیحات اجباری است — لطفاً توضیح کوتاهی بنویس.';
             document.getElementById('newProductDescription').focus();
             return;
         }
@@ -1203,6 +1250,10 @@
                 setEntryBrand('', '');
                 if (data.product.unit) {
                     document.getElementById('entryUnit').innerHTML = buildUnitOptions(data.product.unit);
+                }
+                // توضیحات کالای جدید → فیلد توضیحات درخواست در فرم اصلی
+                if (description && !document.getElementById('entryDescription').value.trim()) {
+                    document.getElementById('entryDescription').value = description;
                 }
                 closeAddProductModal();
             } else {

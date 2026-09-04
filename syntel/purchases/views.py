@@ -6425,6 +6425,7 @@ def search_products_autocomplete(request):
                     'brand': brand.brand_name,
                     'product_brand_id': brand.id,
                     'category': category_display,
+                    'category_id': product.category_id,
                     'label': f"{product.name} - {brand.brand_name}",
                     'unit': brand_unit,
                     'has_brands': True,
@@ -6438,6 +6439,7 @@ def search_products_autocomplete(request):
                 'brand': None,
                 'product_brand_id': None,
                 'category': category_display,
+                'category_id': product.category_id,
                 'label': product.name,
                 'unit': product.unit.name if product.unit else '',
                 'has_brands': False,
@@ -6514,6 +6516,7 @@ def category_products_api(request: HttpRequest, category_id: int = None) -> Json
                     'name': product.name,
                     'brand': brand.brand_name,
                     'product_brand_id': brand.id,
+                    'category_id': product.category_id,
                     'label': f"{product.name} - {brand.brand_name}",
                     'unit': brand_unit,
                 })
@@ -6523,6 +6526,7 @@ def category_products_api(request: HttpRequest, category_id: int = None) -> Json
                 'name': product.name,
                 'brand': None,
                 'product_brand_id': None,
+                'category_id': product.category_id,
                 'label': product.name,
                 'unit': product.unit.name if product.unit else '',
             })
