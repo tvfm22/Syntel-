@@ -120,9 +120,8 @@
     .req-items-table th:nth-child(2) { width: 17%; }
     .req-items-table th:nth-child(3) { width: 8%; }
     .req-items-table th:nth-child(4) { width: 11%; }
-    .req-items-table th:nth-child(5) { width: 11%; }
-    .req-items-table th:nth-child(6) { width: 21%; }
-    .req-items-table th:nth-child(7) { width: 13%; }
+    .req-items-table th:nth-child(5) { width: 32%; }
+    .req-items-table th:nth-child(6) { width: 13%; }
     .req-items-table th {
         background: var(--bg-subtle); padding: 0.6rem 0.6rem; font-size: 0.72rem; font-weight: 700;
         color: var(--text-muted); text-align: right; border-bottom: 2px solid var(--border-default);
@@ -185,6 +184,8 @@
     .stock-verdict.ok    { color: #059669; }
     .stock-verdict.short { color: #b45309; }
     .stock-verdict.none  { color: #dc2626; }
+    /* قضاوت موجودی داخل ستون انتخاب برند — بالای فرم تامین */
+    .supply-verdict { margin-bottom: 0.3rem; font-size: 0.72rem; }
     .item-desc {
         font-size: 0.74rem; color: var(--text-muted); margin-top: 0.25rem;
         padding-inline-start: 0.6rem; border-inline-start: 2px solid var(--border-default);
@@ -352,7 +353,6 @@
                             <th>کالا / وضعیت</th>
                             <th>درخواست</th>
                             <th>موجودی انبار</th>
-                            <th>قضاوت موجودی</th>
                             <th>انتخاب انبار / برند و مقدار</th>
                             <th>عملیات</th>
                         </tr>
@@ -380,25 +380,23 @@
                             {% if v.stock %}<b>{{ v.stock.trade|trim_decimal }} {{ v.stock.unit }}</b>
                             {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
                         </td>
-                        <td>
-                            {% if v.stock %}
-                                {% if v.stock.enough %}
-                                <span class="stock-verdict ok">کافی</span>
-                                {% elif v.stock.has %}
-                                <span class="stock-verdict short">ناکافی — {{ v.stock.short|trim_decimal }} {{ v.stock.unit }}</span>
-                                {% else %}
-                                <span class="stock-verdict none">انبار خالی</span>
-                                {% endif %}
-                            {% else %}
-                            <span style="color:var(--text-muted)">—</span>
-                            {% endif %}
-                        </td>
                         <td class="cell-supply">
                             <form method="post" id="supply-form-{{ v.item.id }}">
                                 {% csrf_token %}
                                 <input type="hidden" name="item_id" value="{{ v.item.id }}">
                                 {% with opts=stock_options|get_item:v.item.product_id meta=stock_meta|get_item:v.item.product_id %}
                                 {% if opts %}
+                                {% if v.stock %}
+                                <div class="supply-verdict">
+                                    {% if v.stock.enough %}
+                                    <span class="stock-verdict ok">کافی</span>
+                                    {% elif v.stock.has %}
+                                    <span class="stock-verdict short">ناکافی — {{ v.stock.short|trim_decimal }} {{ v.stock.unit }}</span>
+                                    {% else %}
+                                    <span class="stock-verdict none">انبار خالی</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                                 <div class="fulfill-form">
                                     <div class="fulfill-rows" id="rows-{{ v.item.id }}">
                                         <div class="fulfill-row">
@@ -469,7 +467,6 @@
                         </td>
                         <td class="cell-qty">{{ d.item.quantity }} {{ d.item.unit }}</td>
                         <td class="cell-stock"><span style="color:var(--text-muted)">—</span></td>
-                        <td><span style="color:var(--text-muted)">—</span></td>
                         <td><span style="color:var(--text-muted)">—</span></td>
                         <td class="cell-actions">
                             <span class="status-tag status-{{ d.assignment.status }}">
