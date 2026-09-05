@@ -29,31 +29,6 @@
         .header-filter { justify-content: center; }
     }
 
-    /* ── کارت‌های آماری ── */
-    .stats-row {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: var(--space-3); margin-bottom: var(--space-5);
-    }
-    .stat-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5);
-        display: flex; align-items: center; gap: var(--space-3);
-        transition: all var(--transition-fast);
-    }
-    .stat-card:hover { box-shadow: var(--shadow-md); }
-    .stat-icon {
-        width: 38px; height: 38px; border-radius: var(--radius-md); flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
-    }
-    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }    .stat-icon.pending  { background: rgba(139,92,246,0.12); color: #6d28d9; }
-    .stat-icon.ok       { background: #d1fae5; color: #065f46; }
-    .stat-icon.short    { background: rgba(245,158,11,0.14); color: #92400e; }
-    .stat-icon.none     { background: #fee2e2; color: #b91c1c; }
-    .stat-icon.done     { background: #dbeafe; color: #1e40af; }
-    .stat-icon.purchase { background: rgba(59,130,246,0.1); color: #1e40af; }
-
     /* ── نوار فیلتر فشرده ── */
     .filter-bar {
         display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
@@ -400,56 +375,6 @@
     </div>
 
     <!-- پیام‌ها در layout اصلی (block messages) نمایش داده می‌شوند -->
-
-    <!-- ── کارت‌های آماری خلاصه ── -->
-    {% if request_cards or purchase_items %}
-    <div class="stats-row">
-        <div class="stat-card">
-            <span class="stat-icon pending"><i class="fas fa-hourglass-half"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.pending }}</div>
-                <div class="stat-label">در انتظار اقدام</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-icon ok"><i class="fas fa-circle-check"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.enough }}</div>
-                <div class="stat-label">موجودی کافی در انبار</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-icon short"><i class="fas fa-triangle-exclamation"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.short }}</div>
-                <div class="stat-label">موجودی ناکافی</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <span class="stat-icon none"><i class="fas fa-circle-xmark"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.no_stock }}</div>
-                <div class="stat-label">بدون موجودی</div>
-            </div>
-        </div>
-        <a href="{% url 'warehouse_purchase_draft' cafe_code=cafe_code %}" style="text-decoration:none;">
-        <div class="stat-card">
-            <span class="stat-icon purchase"><i class="fas fa-shopping-cart"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.to_purchase }}</div>
-                <div class="stat-label">ارجاع‌شده به خرید</div>
-            </div>
-        </div>
-        </a>
-        <div class="stat-card">
-            <span class="stat-icon done"><i class="fas fa-list-check"></i></span>
-            <div>
-                <div class="stat-value">{{ stats.done }}</div>
-                <div class="stat-label">ثبت‌شده</div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     {% if request_cards %}
         {% for card in request_cards %}
