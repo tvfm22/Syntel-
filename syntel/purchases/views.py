@@ -8847,17 +8847,15 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action in ('edit_sent', 'delete_sent'):
-            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار)
+            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار).
+            # قلمی که تخصیص «pending» ندارد یعنی روی آن اقدام شده یا اصلا ارجاع
+            # نشده (درخواست قدیمی) — در هر دو حالت قابل ویرایش نیست.
             req = PurchaseRequest.objects.filter(
                 id=request.POST.get('request_id', '') or -1,
                 source='warehouse_purchase',
             ).exclude(status__in=('purchased', 'partial'))\
              .select_related('user').first()
-            # قلم‌های درخواست‌های در انتظار اقدام (تخصیص انبار مشترکِ pending) قابل ویرایش‌اند؛
-            # قلم‌های با تخصیص نهایی/در جریان (purchased/fulfilled) قابل ویرایش نیستند.
-            if req is None or (cafe and req.cafe_id != cafe.id) or (
-                    action == 'edit_sent' and req.items.exclude(
-                        officer_assignments__status__in=('pending', 'not_in_stock')).exists()):
+            if req is None or (cafe and req.cafe_id != cafe.id):
                 messages.error(request, 'درخواست یافت نشد یا قابل ویرایش نیست')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
@@ -8866,6 +8864,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 qty = _parse_decimal(request.POST.get('quantity', ''))
                 if item is None:
                     messages.error(request, 'قلم یافت نشد')
+                elif not item.officer_assignments.filter(status='pending').exists():
+                    messages.error(request, 'این قلم قابل ویرایش نیست (در انتظار اقدام نیست)')
                 elif qty is None or qty <= 0 or qty > 2147483647:
                     messages.error(request, 'مقدار باید عدد مثبت باشد')
                 else:
@@ -8877,7 +8877,11 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                     messages.success(request, f'«{item.product.name if item.product else item.name}» ویرایش شد')
             else:  # delete_sent
                 item = req.items.filter(id=request.POST.get('item_id', '') or -1).first()
-                if item:
+                if item is None:
+                    messages.error(request, 'قلم یافت نشد')
+                elif not item.officer_assignments.filter(status='pending').exists():
+                    messages.error(request, 'این قلم قابل حذف نیست (در انتظار اقدام نیست)')
+                else:
                     name = item.product.name if item.product else item.name
                     item.delete()
                     if not req.items.exists():
@@ -8885,8 +8889,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                         messages.info(request, f'«{name}» حذف شد (درخواست خالی بود و حذف شد)')
                     else:
                         messages.info(request, f'«{name}» از درخواست حذف شد')
-                else:
-                    messages.error(request, 'قلم یافت نشد')
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
     # ── پیش‌نویس جاری ──

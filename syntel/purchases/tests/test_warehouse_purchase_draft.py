@@ -3,8 +3,9 @@
 جریان:
 - ارجاع به خرید در داشبورد انبار → قلم به پیش‌نویس صفحه درخواست خرید می‌رود
 - ویرایش/حذف قلم پیش‌نویس، افزودن کالای جدید
-- «ارسال جهت تایید» → PurchaseRequest با status=pending_manager_approval و source=warehouse_purchase
-- درخواست ارسال‌شده تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است
+- «ارسال» → PurchaseRequest با source=warehouse_purchase که مثل همه درخواست‌ها
+  مستقیماً برای مسئول انبار (تخصیص انبار مشترک در انتظار) ارسال می‌شود
+- درخواست ارسال‌شده تا قبل از اقدام مسئول انبار قابل ویرایش/حذف قلم است
 """
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -104,7 +105,7 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(PurchaseDraftItem.objects.count(), 0)
         self.assertEqual(PurchaseDraft.objects.count(), 0)  # پیش‌نویس خالی حذف شد
 
-    def test_send_creates_pending_manager_approval_request(self):
+    def test_send_creates_request_routed_to_warehouse(self):
         self._login_as_warehouse()
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
         PurchaseDraftItem.objects.create(
@@ -114,20 +115,23 @@ class WarehousePurchaseDraftTests(TestCase):
             'action': 'send', 'delivery_choice': 'immediate',
         })
         self.assertRedirects(resp, reverse('warehouse_purchase_draft', args=['testcafe']))
-        # درخواست ساخته شد با وضعیت درست
+        # درخواست ساخته شد و مستقیماً برای مسئول انبار ارسال شد
         self.assertEqual(PurchaseRequest.objects.count(), 2)  # اصلی + جدید
         new_req = PurchaseRequest.objects.filter(source='warehouse_purchase').first()
         self.assertIsNotNone(new_req)
-        self.assertEqual(new_req.status, 'pending_manager_approval')
+        self.assertEqual(new_req.status, 'pending')
         self.assertEqual(new_req.user, self.wo)
         self.assertEqual(new_req.items.count(), 1)
         self.assertEqual(new_req.items.first().quantity, 5)
+        # تخصیص انبار مشترکِ در انتظار برای قلم ساخته شد
+        a = new_req.items.first().officer_assignments.first()
+        self.assertIsNotNone(a)
+        self.assertEqual(a.target_role, 'warehouse')
+        self.assertIsNone(a.assigned_to)
+        self.assertEqual(a.status, 'pending')
         # پیش‌نویس حذف شد
         self.assertEqual(PurchaseDraft.objects.count(), 0)
         self.assertEqual(PurchaseDraftItem.objects.count(), 0)
-        # نوتیف برای مدیرعامل
-        self.assertTrue(self.ceo.notifications.filter(
-            title__icontains='مسئول انبار').exists())
 
     def test_send_empty_draft_rejected(self):
         self._login_as_warehouse()
@@ -136,13 +140,16 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(PurchaseRequest.objects.filter(source='warehouse_purchase').count(), 0)
 
     def test_edit_and_delete_sent_request_items(self):
-        """درخواست ارسال‌شده تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است"""
+        """درخواست ارسال‌شده تا قبل از اقدام مسئول انبار قابل ویرایش/حذف قلم است"""
         self._login_as_warehouse()
         new_req = PurchaseRequest.objects.create(
-            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            user=self.wo, cafe=self.cafe, status='pending',
             source='warehouse_purchase')
         sent_item = PurchaseItem.objects.create(
             request=new_req, product=self.product, name='محصول تست', quantity=4, unit='kg')
+        # تخصیص انبار مشترک در انتظار (مثل خروجی «ارسال» واقعی)
+        OfficerAssignment.objects.create(
+            item=sent_item, target_role='warehouse', assigned_to=None, status='pending')
         # ویرایش مقدار
         self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
                          {'action': 'edit_sent', 'request_id': new_req.id,
@@ -155,15 +162,17 @@ class WarehousePurchaseDraftTests(TestCase):
                           'item_id': sent_item.id})
         self.assertEqual(PurchaseRequest.objects.filter(id=new_req.id).count(), 0)
 
-    def test_cannot_edit_approved_request(self):
-        """بعد از تایید مدیرعامل (status=pending) دیگر قابل ویرایش نیست"""
+    def test_cannot_edit_actioned_request(self):
+        """بعد از اقدام روی قلم (تخصیص purchased) دیگر قابل ویرایش نیست"""
         self._login_as_warehouse()
-        approved_req = PurchaseRequest.objects.create(
+        req = PurchaseRequest.objects.create(
             user=self.wo, cafe=self.cafe, status='pending', source='warehouse_purchase')
         sent_item = PurchaseItem.objects.create(
-            request=approved_req, product=self.product, name='محصول تست', quantity=4, unit='kg')
+            request=req, product=self.product, name='محصول تست', quantity=4, unit='kg')
+        OfficerAssignment.objects.create(
+            item=sent_item, target_role='warehouse', assigned_to=None, status='purchased')
         self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
-                         {'action': 'edit_sent', 'request_id': approved_req.id,
+                         {'action': 'edit_sent', 'request_id': req.id,
                           'item_id': sent_item.id, 'quantity': '99'})
         sent_item.refresh_from_db()
         self.assertEqual(sent_item.quantity, 4)  # تغییری نکرد
