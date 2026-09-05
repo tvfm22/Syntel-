@@ -138,23 +138,9 @@
             border-bottom: 1px solid var(--gray-200);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-        }
-        .sidebar-brand .brand-icon {
-            width: 40px; height: 40px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: var(--radius-md);
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 1.2rem; flex-shrink: 0;
-            box-shadow: var(--shadow-md);
+            justify-content: center;
         }
         .sidebar-brand:hover { opacity: 0.85; }
-        .sidebar-brand .brand-text {
-            font-size: 1.2rem; font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
 
         /* User */
         .sidebar-user {
@@ -508,6 +494,13 @@
         .alert-error, .alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
         .alert-warning { background: #fff7ed; color: #92400e; border-color: #fed7aa; }
         .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+        .alert-dismiss {
+            border: none; background: none; color: inherit; cursor: pointer;
+            float: left; font-size: 1rem; line-height: 1; padding: 0.1rem 0.3rem;
+            opacity: 0.55; transition: opacity var(--transition-fast);
+        }
+        .alert-dismiss:hover { opacity: 1; }
+        .alert-fading { opacity: 0; transform: translateY(-4px); transition: opacity 0.4s ease, transform 0.4s ease; }
 
         /* Empty State */
         .empty-state {
@@ -629,14 +622,21 @@
         <aside class="sidebar" id="sidebar" role="navigation" aria-label="منوی اصلی">
             <!-- Brand -->
             <a href="{% if cafe_code %}{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=cafe_code %}{% elif user.role == 'manager' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role == 'admin' or user.role == 'accounting' or user.role == 'finance_manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'purchasing' %}{% url 'purchase_officer_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
-                <div class="brand-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <!-- لوگوی کوکر + نوشته Kuker — عیناً همان لوگوی صفحه ورود -->
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; direction: ltr;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="k-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ec4899" />
+                                <stop offset="100%" stop-color="#8b5cf6" />
+                            </linearGradient>
+                        </defs>
                         <path d="M17 4v16"></path>
                         <path d="M6 4l11 8"></path>
                         <path d="M17 12l-11 8"></path>
                     </svg>
+                    <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>
                 </div>
-                <span class="brand-text">Kuker</span>
             </a>
 
             <!-- Current User -->
@@ -944,10 +944,25 @@
 {% block messages %}
 {% if messages %}
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
+    <div class="alert alert-{{ message.tags }}" data-alert>
         {{ message }}
+        <button type="button" class="alert-dismiss" onclick="dismissAlert(this.parentElement)" title="بستن">&times;</button>
     </div>
     {% endfor %}
+    <script>
+    function dismissAlert(el) {
+        if (!el) return;
+        el.classList.add('alert-fading');
+        setTimeout(function() { el.remove(); }, 420);
+    }
+    // اعلان‌ها بعد از ۴ ثانیه خودکار محو می‌شوند
+    (function() {
+        var alerts = document.querySelectorAll('[data-alert]');
+        if (alerts.length) {
+            setTimeout(function() { alerts.forEach(function(a) { dismissAlert(a); }); }, 4000);
+        }
+    })();
+    </script>
 {% endif %}
 {% endblock %}
 
