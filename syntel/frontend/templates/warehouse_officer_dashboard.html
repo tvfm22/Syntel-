@@ -75,6 +75,26 @@
     }
     .dept-filter:hover, .dept-filter:focus { border-color: var(--accent-indigo); outline: none; color: var(--accent-indigo); }
 
+    /* ── ناوبری تاریخ تحویل (همان الگوی صفحه «همه بخش‌ها») ── */
+    .date-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .date-arrow {
+        width: 34px; height: 34px; border-radius: var(--radius-md);
+        border: 1px solid var(--border-default); background: var(--bg-card);
+        color: var(--text-secondary); font-size: 1rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: all var(--transition-fast); cursor: pointer; line-height: 1;
+    }
+    .date-arrow:hover { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
+    .date-display {
+        cursor: pointer; padding: 0.3rem 0.9rem; border-radius: var(--radius-lg);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        text-align: center; min-width: 140px; user-select: none; transition: all var(--transition-fast);
+    }
+    .date-display:hover { border-color: var(--accent-indigo); }
+    .date-display.active { border-color: var(--accent-indigo); background: rgba(139,92,246,0.08); }
+    .date-jalali { display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+    .date-gregorian { display: block; font-size: 0.66rem; color: var(--text-muted); }
+
     /* ── کارت درخواست ── */
     .req-card {
         background: var(--bg-card); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);
@@ -394,17 +414,21 @@
     </div>
     {% endif %}
 
-    <!-- فیلتر فشرده: زمان تحویل (pill) + بخش (دراپ‌داون) -->
+    <!-- فیلتر فشرده: ناوبری تاریخ تحویل (روز قبل/بعد + انتخابگر) + فوری + بخش (دراپ‌داون) -->
     <div class="filter-bar">
         <span class="bar-label"><i class="fas fa-clock"></i> زمان تحویل:</span>
+        <div class="date-nav">
+            <a href="?delivery={{ prev_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز قبل">›</a>
+            <div class="date-display {% if selected_delivery and selected_delivery != 'immediate' %}active{% endif %}" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();" title="انتخاب تاریخ">
+                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+            </div>
+            <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
+                   onchange="var u='?delivery='+this.value{% if selected_department %}+'&department={{ selected_department|urlencode }}'{% endif %}; if(this.value) window.location.href=u;">
+            <a href="?delivery={{ next_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز بعد">‹</a>
+        </div>
         <a href="?{% if selected_department %}department={{ selected_department|urlencode }}{% endif %}"
            class="filter-pill {% if not selected_delivery %}active{% endif %}">همه</a>
-        {% for d in delivery_dates %}
-        <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery={{ d|date:'Y-m-d' }}"
-           class="filter-pill {% if selected_delivery == d|date:'Y-m-d' %}active{% endif %}">
-            {{ d|jalali_date:"%d %B" }}
-        </a>
-        {% endfor %}
         {% if has_immediate %}
         <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery=immediate"
            class="filter-pill {% if selected_delivery == 'immediate' %}active-immediate{% endif %}">
@@ -553,9 +577,9 @@
                                 {% endwith %}
                                 <div class="secondary-actions">
                                     <button type="submit" name="action" value="to_purchase" class="link-action link-blue"
-                                            onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و به تایید مدیرعامل ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
+                                            onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
                                     <button type="submit" name="action" value="not_in_stock" class="link-action link-red"
-                                            onclick="return confirm('عدم موجودی ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');"><i class="fas fa-xmark"></i> عدم امکان تأمین</button>
+                                            onclick="return confirm('عدم امکان تأمین ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');"><i class="fas fa-xmark"></i> عدم امکان تأمین</button>
                                 </div>
                             </form>
                         </td>

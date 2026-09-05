@@ -746,8 +746,9 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                 status='pending',
             )
             wh_request.converted_to_purchase = new_purchase
+            new_purchase_items = []
             for item in items_to_purchase:
-                PurchaseItem.objects.create(
+                pi = PurchaseItem.objects.create(
                     request=new_purchase,
                     product=item.product,
                     product_brand=item.product_brand,
@@ -756,6 +757,11 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                     unit=item.unit,
                     description=item.description or '',
                 )
+                new_purchase_items.append(pi)
+            # همه درخواست‌های کالا مستقیماً برای مسئول انبار ارسال می‌شوند
+            _route_request_to_warehouse(
+                new_purchase, new_purchase_items, request.user,
+                notes='ارسال مستقیم از فرم درخواست کالا')
             messages.info(request, f'{len(items_to_purchase)} قلم به لیست خرید ارجاع شد')
 
         # تعیین وضعیت نهایی درخواست انبار
@@ -1226,9 +1232,10 @@ def _process_available_products_post(request, cafe):
                     status='pending',
                 )
                 wh_request.converted_to_purchase = new_purchase
+                new_purchase_items = []
                 for wh_item in items_to_purchase:
                     q = wh_item.quantity
-                    PurchaseItem.objects.create(
+                    pi = PurchaseItem.objects.create(
                         request=new_purchase,
                         product=wh_item.product,
                         product_brand=wh_item.product_brand,
@@ -1237,6 +1244,11 @@ def _process_available_products_post(request, cafe):
                         unit=wh_item.unit,
                         description=wh_item.description or '',
                     )
+                    new_purchase_items.append(pi)
+                # همه درخواست‌های کالا مستقیماً برای مسئول انبار ارسال می‌شوند
+                _route_request_to_warehouse(
+                    new_purchase, new_purchase_items, request.user,
+                    notes='ارسال مستقیم از فرم درخواست کالا')
                 messages.info(request, f'{len(items_to_purchase)} قلم به لیست خرید ارجاع شد')
 
             # تعیین وضعیت نهایی درخواست انبار
@@ -1882,15 +1894,9 @@ def purchase_request_form(request):
 
         # ارسال مستقیم به مسئول انبار: هر قلم بلافاصله در صندوق مشترک مسئول انبار
         # قرار می‌گیرد (بدون مرحله تایید مدیرعامل/مدیر) و اعلان ارسال می‌شود.
-        warehouse_officers = list(_officer_users(cafe, 'warehouse'))
-        with transaction.atomic():
-            for item in created_items:
-                _assign_item(item, 'warehouse', None, request.user, status='pending',
-                             notes='ارسال مستقیم از فرم درخواست کالا')
-            for officer in warehouse_officers:
-                for item in created_items:
-                    _notify_officer(officer, item, 'warehouse', cafe)
-            _sync_request_status(purchase_request)
+        _route_request_to_warehouse(
+            purchase_request, created_items, request.user,
+            notes='ارسال مستقیم از فرم درخواست کالا')
 
         cafe_code = cafe.code if cafe else 'local'
         return redirect("purchase_request_success", cafe_code=cafe_code)
@@ -8039,6 +8045,26 @@ def _notify_officer(officer, item, target_role, cafe):
         )
 
 
+def _route_request_to_warehouse(purchase_request, items, assigned_by, notes='ارسال مستقیم از فرم درخواست کالا'):
+    """ارسال مستقیم اقلام یک درخواست به مسئول انبار.
+
+    هر قلم تخصیص انبار مشترک (assigned_to=None) در انتظار می‌گیرد تا در صندوق
+    مشترک مسئولان انبار کافه ظاهر شود، برای هر مسئول اعلان ارسال می‌شود و
+    وضعیت درخواست همگام می‌گردد.
+    """
+    cafe = purchase_request.cafe
+    items = list(items)
+    if not items:
+        return
+    with transaction.atomic():
+        for item in items:
+            _assign_item(item, 'warehouse', None, assigned_by, status='pending', notes=notes)
+        for officer in _officer_users(cafe, 'warehouse'):
+            for item in items:
+                _notify_officer(officer, item, 'warehouse', cafe)
+        _sync_request_status(purchase_request)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # داشبورد مسئول خرید — فقط اقلام ارسالی مدیرعامل
 # ═══════════════════════════════════════════════════════════════════════════
@@ -8544,6 +8570,22 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                              if r.delivery_date and not r.delivery_immediate})
     has_immediate = any(r.delivery_immediate for r in requests_list)
 
+    # ── ناوبری تاریخ تحویل (همان الگوی صفحه «همه بخش‌ها»): روز قبل/بعد + انتخابگر ──
+    selected_nav_date = None
+    if delivery_filter and delivery_filter != 'immediate':
+        try:
+            selected_nav_date = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            selected_nav_date = None
+    if selected_nav_date is None:
+        # پیش‌فرض ناوبری: نزدیک‌ترین تاریخ تحویل آینده، وگرنه امروز
+        today = datetime.now().date()
+        upcoming = [d for d in delivery_dates if d >= today]
+        selected_nav_date = upcoming[0] if upcoming else (delivery_dates[-1] if delivery_dates else today)
+    date_str = selected_nav_date.isoformat()
+    prev_date = selected_nav_date - timedelta(days=1)
+    next_date = selected_nav_date + timedelta(days=1)
+
     # ── آمار خلاصه برای کارت‌های بالای داشبورد (بر روی خروجی فیلترشده) ──
     visible_count = sum(len(card['visible']) for card in request_cards)
     done_count = sum(len(card['done']) for card in request_cards)
@@ -8624,6 +8666,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         'delivery_dates': delivery_dates,
         'has_immediate': has_immediate,
         'selected_delivery': delivery_filter,
+        'selected_date': selected_nav_date,
+        'date_str': date_str,
+        'prev_date': prev_date,
+        'next_date': next_date,
         'departments': departments_list,
         'selected_department': dept,
         'cafe_code': cafe_code,
@@ -8650,10 +8696,10 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
 
     - کالاهایی که در داشبورد انبار «ارجاع به خرید» شده‌اند، اول در این صفحه
       (پیش‌نویس) قرار می‌گیرند و قابل ویرایش/حذف/افزودن هستند.
-    - با «ارسال جهت تایید» یک درخواست خرید با وضعیت «منتظر تایید مدیرعامل»
-      ساخته می‌شود و به مدیرعامل نوتیفیکیشن می‌رود.
-    - درخواست‌های ارسال‌شده (تا قبل از تایید مدیرعامل) هم در همین صفحه قابل
-      ویرایش و حذف هستند.
+    - با «ارسال» یک درخواست خرید ساخته می‌شود که مثل همه درخواست‌ها مستقیماً
+      برای مسئول انبار (صندوق مشترک) ارسال می‌شود.
+    - درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار) هم در همین صفحه
+      قابل ویرایش و حذف هستند.
     """
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
@@ -8696,8 +8742,9 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                     delivery_date=delivery_date,
                     delivery_immediate=delivery_immediate,
                 )
+                new_request_items = []
                 for d_item in draft_items:
-                    PurchaseItem.objects.create(
+                    pi = PurchaseItem.objects.create(
                         request=new_request,
                         product=d_item.product,
                         product_brand=d_item.product_brand,
@@ -8706,6 +8753,7 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                         unit=d_item.unit,
                         description=d_item.description or '',
                     )
+                    new_request_items.append(pi)
                 draft.items.all().delete()
                 draft.delete()
             ActivityLog.objects.create(
@@ -8714,21 +8762,11 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 action='created',
                 description=f'درخواست خرید توسط مسئول انبار ارسال شد ({len(draft_items)} قلم)',
             )
-            # نوتیفیکیشن برای مدیرعامل و مدیر جهت تایید
-            managers = User.objects.filter(role__in=['manager', 'ceo'], is_active=True)
-            if cafe:
-                managers = managers.filter(Q(cafe=cafe) | Q(cafe__isnull=True))
-            for mgr in managers.distinct():
-                Notification.objects.create(
-                    recipient=mgr,
-                    title='درخواست خرید مسئول انبار - منتظر تایید',
-                    message=f'درخواست خرید با {len(draft_items)} قلم از طرف مسئول انبار '
-                            f'{request.user.get_full_name() or request.user.username} ثبت شد و منتظر تایید شماست.',
-                    notification_type='approval',
-                    priority='high',
-                    cafe=cafe,
-                )
-            messages.success(request, f'درخواست خرید با {len(draft_items)} قلم برای تایید مدیرعامل ارسال شد.')
+            # همه درخواست‌های کالا مستقیماً برای مسئول انبار ارسال می‌شوند
+            _route_request_to_warehouse(
+                new_request, new_request_items, request.user,
+                notes='ارسال مستقیم از فرم درخواست کالا')
+            messages.success(request, f'درخواست خرید با {len(draft_items)} قلم برای مسئول انبار ارسال شد.')
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action == 'add_item':
@@ -8809,12 +8847,17 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action in ('edit_sent', 'delete_sent'):
-            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده (تا قبل از تایید مدیرعامل)
+            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار)
             req = PurchaseRequest.objects.filter(
                 id=request.POST.get('request_id', '') or -1,
-                status='pending_manager_approval', source='warehouse_purchase',
-            ).select_related('user').first()
-            if req is None or (cafe and req.cafe_id != cafe.id):
+                source='warehouse_purchase',
+            ).exclude(status__in=('purchased', 'partial'))\
+             .select_related('user').first()
+            # قلم‌های درخواست‌های در انتظار اقدام (تخصیص انبار مشترکِ pending) قابل ویرایش‌اند؛
+            # قلم‌های با تخصیص نهایی/در جریان (purchased/fulfilled) قابل ویرایش نیستند.
+            if req is None or (cafe and req.cafe_id != cafe.id) or (
+                    action == 'edit_sent' and req.items.exclude(
+                        officer_assignments__status__in=('pending', 'not_in_stock')).exists()):
                 messages.error(request, 'درخواست یافت نشد یا قابل ویرایش نیست')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
@@ -8851,8 +8894,14 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
     draft_items = list(draft.items.select_related('product', 'product_brand', 'product__unit') if draft else [])
 
     # ── درخواست‌های ارسال‌شده (تا قبل از تایید مدیرعامل) ──
+    # درخواست‌های مسئول انبار چون مستقیماً برای خودش/همکار انبار ارسال می‌شوند
+    # در انتظار مدیرعابل نمی‌مانند؛ برای ویرایش، همان‌هایی که هنوز تخصیص اقدام
+    # نداشته‌اند نمایش داده می‌شوند (تخصیص انبار مشترکِ بدون اقدام).
     sent_qs = (PurchaseRequest.objects
-               .filter(status='pending_manager_approval', source='warehouse_purchase')
+               .filter(source='warehouse_purchase')
+               .exclude(status__in=('purchased', 'partial', 'rejected'))
+               .filter(items__officer_assignments__status='pending')
+               .distinct()
                .select_related('user')
                .prefetch_related('items', 'items__product', 'items__product__unit', 'items__product_brand')
                .order_by('-created_at'))
