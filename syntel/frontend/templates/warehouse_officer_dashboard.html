@@ -171,7 +171,7 @@
         padding-inline-start: 0.6rem; border-inline-start: 2px solid var(--border-default);
     }
 
-    /* ── نوار تامین: انتخاب برند + مقدار + دکمه، همه در یک ردیف ── */
+    /* ── نوار تامین: انتخاب برند + مقدار، همه در یک ردیف؛ دکمه‌ها ستون زیر آن ── */
     .fulfill-form {
         background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-lg);
         padding: var(--space-2) var(--space-3); margin-top: var(--space-2);
@@ -197,14 +197,6 @@
         transition: all var(--transition-fast); border-radius: var(--radius-sm);
     }
     .add-row-btn:hover { background: rgba(139,92,246,0.1); }
-    .btn {
-        border: none; border-radius: var(--radius-md); padding: 0 0.9rem; font-size: 0.78rem;
-        font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif;
-        display: inline-flex; align-items: center; gap: 0.35rem; height: 36px;
-        transition: all var(--transition-fast); text-decoration: none; white-space: nowrap;
-    }
-    .btn:hover { opacity: 0.9; }
-    .btn-green { background: var(--accent-green); color: white; }
     .remove-row {
         width: 26px; height: 26px; border-radius: 50%; border: none; flex-shrink: 0;
         background: rgba(239,68,68,0.1); color: #dc2626; font-size: 0.75rem; font-weight: 700;
@@ -212,17 +204,24 @@
         display: flex; align-items: center; justify-content: center;
     }
     .remove-row:hover { background: rgba(239,68,68,0.2); }
-    /* اکشن‌های ثانویه — لینک‌مانند و کم‌حجم، هم‌راستا با نوار تامین */
-    .secondary-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; margin-top: 0.4rem; }
-    .link-action {
-        border: none; background: none; cursor: pointer; font-family: 'Vazir', sans-serif;
-        font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm);
-        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
+    /* اکشن‌های ثانویه — ستون عمودی زیر فرم تامین */
+    .secondary-actions {
+        display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem;
+        margin-top: 0.45rem;
     }
-    .link-blue  { color: #1d4ed8; }
-    .link-blue:hover  { background: #eff6ff; }
-    .link-red   { color: #b91c1c; }
-    .link-red:hover   { background: #fef2f2; }
+    .link-action {
+        border: 1px solid var(--border-light); background: var(--bg-card); cursor: pointer;
+        font-family: 'Vazir', sans-serif; font-size: 0.76rem; font-weight: 600;
+        padding: 0 0.7rem; height: 32px; border-radius: var(--radius-md);
+        transition: all var(--transition-fast); display: inline-flex; align-items: center;
+        justify-content: center; gap: 0.35rem; width: 100%; text-align: center;
+    }
+    .link-blue  { color: #1d4ed8; background: #eff6ff; border-color: rgba(29,78,216,0.15); }
+    .link-blue:hover  { background: #dbeafe; border-color: rgba(29,78,216,0.35); }
+    .link-red   { color: #b91c1c; background: #fef2f2; border-color: rgba(185,28,28,0.15); }
+    .link-red:hover   { background: #fee2e2; border-color: rgba(185,28,28,0.35); }
+    .link-green { color: #065f46; background: #ecfdf5; border-color: rgba(6,95,70,0.2); }
+    .link-green:hover { background: #d1fae5; border-color: rgba(6,95,70,0.4); }
 
     .status-tag { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
     .status-fulfilled    { background: #d1fae5; color: #065f46; }
@@ -239,7 +238,6 @@
     @media (max-width: 700px) {
         .fulfill-form .stock-select, .fulfill-form .stock-label { min-width: 100%; flex: auto; }
         .fulfill-form .qty-input { width: 100%; }
-        .fulfill-row .btn { flex: 1; justify-content: center; }
         .req-card { padding: var(--space-4); }
         .delivery-chip { margin-top: 0.3rem; }
     }
@@ -401,10 +399,6 @@
                                             {% endif %}
                                             <input type="number" name="qty" class="qty-input" min="0.01" step="any"
                                                    value="{{ v.item.quantity|stringformat:'s' }}" required title="مقدار تأمین">
-                                            <button type="submit" name="action" value="fulfill" class="btn btn-green">
-                                                <i class="fas fa-check"></i>
-                                                <span class="btn-fulfill-label" data-unit="{{ v.item.unit }}">تأمین از انبار</span>
-                                            </button>
                                             <button type="button" class="remove-row" title="حذف ردیف" style="display:none;">✕</button>
                                         </div>
                                     </div>
@@ -419,6 +413,9 @@
                                 {% endif %}
                                 {% endwith %}
                                 <div class="secondary-actions">
+                                    <button type="submit" name="action" value="fulfill" class="link-action link-green" formnovalidate>
+                                        <i class="fas fa-check"></i> تأمین شود
+                                    </button>
                                     <button type="submit" name="action" value="to_purchase" class="link-action link-blue"
                                             onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
                                     <button type="submit" name="action" value="not_in_stock" class="link-action link-red"
@@ -472,7 +469,7 @@
     {% else %}
         <div class="empty-state">
             <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-            <p>{% if selected_delivery or selected_department %}با این فیلتر درخواستی یافت نشد — فیلترها را تغییر دهید.{% else %}در ۴۵ روز اخیر درخواستی ثبت نشده است.{% endif %}</p>
+            <p>{% if selected_delivery and selected_delivery != today_str %}با این فیلتر درخواستی یافت نشد — فیلترها را تغییر دهید.{% elif selected_department %}برای این بخش در {{ selected_date|jalali_date:"%d %B %Y" }} درخواستی یافت نشد.{% else %}برای امروز درخواستی ثبت نشده است.{% endif %}</p>
         </div>
     {% endif %}
 
@@ -510,7 +507,6 @@ document.querySelectorAll('.add-row-btn').forEach(function(btn) {
         var rm = clone.querySelector('.remove-row');
         rm.style.display = 'flex';
         rows.appendChild(clone);
-        updateFulfillLabel(btn.getAttribute('data-target').replace('rows-', ''));
     });
 });
 document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
@@ -522,36 +518,6 @@ document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
             }
         }
     });
-    rows.addEventListener('input', function(e) {
-        if (e.target.classList.contains('qty-input')) {
-            var pid = rows.getAttribute('id').replace('rows-', '');
-            updateFulfillLabel(pid);
-        }
-    });
-});
-
-/* ── برچسب دکمه تامین بر اساس مجموع مقادیر ردیف‌ها ── */
-function updateFulfillLabel(pid) {
-    var rows = document.getElementById('rows-' + pid);
-    var form = rows ? rows.closest('form') : null;
-    var label = form ? form.querySelector('.btn-fulfill-label') : null;
-    if (!rows || !label) return;
-    var total = 0;
-    rows.querySelectorAll('.qty-input').forEach(function(q) {
-        var v = parseFloat(q.value);
-        if (!isNaN(v) && v > 0) total += v;
-    });
-    var unit = label.getAttribute('data-unit') || '';
-    if (total > 0) {
-        label.textContent = 'تأمین ' + (total % 1 === 0 ? total : total.toFixed(2).replace(/\.?0+$/, '')) +
-            (unit ? ' ' + unit : '') + ' از انبار';
-    } else {
-        label.textContent = 'تأمین از انبار';
-    }
-}
-document.querySelectorAll('.fulfill-rows').forEach(function(rows) {
-    var pid = rows.getAttribute('id').replace('rows-', '');
-    updateFulfillLabel(pid);
 });
 </script>
 {% endblock %}
