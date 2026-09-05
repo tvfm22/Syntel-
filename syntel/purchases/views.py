@@ -8418,7 +8418,9 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         except (ValueError, TypeError):
             ddate = None
         if ddate:
-            requests_qs = requests_qs.filter(delivery_immediate=False, delivery_date=ddate)
+            # درخواست‌های فوری همیشه جلوی چشم مسئول انبار می‌مانند (حتی هنگام مرور یک روز دیگر)
+            requests_qs = requests_qs.filter(
+                Q(delivery_immediate=False, delivery_date=ddate) | Q(delivery_immediate=True))
         else:
             requests_qs = requests_qs.none()
     else:
@@ -8523,7 +8525,9 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
     # ── کارت‌های «تمام‌شده» (همهٔ اقلامشان ثبت‌شده) به انتهای لیست منتقل می‌شوند ──
-    request_cards.sort(key=lambda c: (0 if c['visible'] else 1,))
+    # درخواست‌های فوری همیشه بالای لیست می‌مانند تا تاخیری در تامین‌شان پیش نیاید
+    request_cards.sort(key=lambda c: (0 if c['visible'] else 1,
+                                      0 if c['request'].delivery_immediate else 1))
 
     # ── گزینه‌های تامین از انبار برای اقلام قابل تامین (بر اساس ردیف‌های موجودی) ──
     product_ids = sorted({v['item'].product_id for card in request_cards for v in card['visible'] if v['item'].product_id})
