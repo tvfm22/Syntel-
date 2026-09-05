@@ -62,7 +62,8 @@ class OfficerDashboardCardSortTest(TestCase):
             supplied_quantity=Decimal('5'))
 
         self.client.force_login(self.officer)
-        resp = self.client.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]))
+        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        resp = self.client.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]), follow=True)
         self.assertEqual(resp.status_code, 200)
         # ترتیب کارت‌ها از context می‌خوانیم (جستجوی رشته‌ای در HTML به رنگ‌های hex مثل #123 گیر می‌دهد)
         ids = [card['request'].id for card in resp.context['request_cards']]

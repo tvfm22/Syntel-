@@ -550,8 +550,11 @@ class WarehouseOfficerDashboardTests(TestCase):
             product=self.product, warehouse=self.wh, quantity=3, unit=self.unit)
 
     def test_dashboard_renders(self):
-        """رندر 200 — صفحه اصلی داشبورد بدون بخش‌های حذف‌شده"""
-        r = self.client.get(self.url)
+        """رندر 200 — صفحه اصلی داشبورد بدون بخش‌های حذف‌شده
+
+        GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم.
+        """
+        r = self.client.get(self.url, follow=True)
         self.assertEqual(r.status_code, 200)
         self.assertNotIn('stock_alerts', r.context)
         self.assertNotIn('voucher_type_shortcuts', r.context)

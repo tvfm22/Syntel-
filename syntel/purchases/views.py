@@ -8210,6 +8210,16 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if dash_params:
         dash_url += '?' + urlencode(dash_params)
 
+    # پیش‌فرض URL: تاریخ همان روز — بدون پارامتر delivery به ‎?delivery=<امروز> ریدایرکت
+    # می‌شود تا پیش‌فرض صفحه همیشه «امروز» باشد و فردا خودبه‌خود «فردای روز قبل» شود؛
+    # پارامتر صریح در URL دست‌نخورده می‌ماند (فقط GET؛ POSTها بی‌تغییر)
+    if not delivery_filter and request.method == 'GET':
+        _params = {'delivery': timezone.localtime(timezone.now()).date().isoformat()}
+        if dept:
+            _params['department'] = dept
+        return redirect(
+            reverse('warehouse_officer_dashboard', args=[cafe_code]) + '?' + urlencode(_params))
+
     # ── پردازش فرم ──
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -8418,14 +8428,19 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         except (ValueError, TypeError):
             ddate = None
         if ddate:
-            # درخواست‌های فوری همیشه جلوی چشم مسئول انبار می‌مانند (حتی هنگام مرور یک روز دیگر)
-            requests_qs = requests_qs.filter(
-                Q(delivery_immediate=False, delivery_date=ddate) | Q(delivery_immediate=True))
+            if ddate == today:
+                # صفحهٔ پیش‌فرض (‎?delivery=<امروز>): همهٔ درخواست‌های ثبت‌شدهٔ امروز،
+                # مستقل از زمان تحویل — و درخواست‌های فوری همیشه جلوی چشم می‌مانند
+                requests_qs = requests_qs.filter(
+                    Q(created_at__gte=day_start) | Q(delivery_immediate=True))
+            else:
+                # روز دیگر: تحویل‌شده‌های همان روز + درخواست‌های فوری (همیشه مرئی)
+                requests_qs = requests_qs.filter(
+                    Q(delivery_immediate=False, delivery_date=ddate) | Q(delivery_immediate=True))
         else:
             requests_qs = requests_qs.none()
     else:
-        # پیش‌فرض صفحه: تاریخ همان روز — همهٔ درخواست‌های ثبت‌شدهٔ امروز
-        # (مستقل از زمان تحویل؛ فیلتر زمان تحویل فقط با انتخاب تاریخ/فوری اعمال می‌شود)
+        # بدون پارامتر GET (مثلاً POST بدون ریدایرکت): همان رفتار پیش‌فرض امروز
         requests_qs = requests_qs.filter(created_at__gte=day_start)
 
     # فیلتر بخش درخواست‌دهنده

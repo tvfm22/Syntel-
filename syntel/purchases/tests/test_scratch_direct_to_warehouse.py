@@ -63,7 +63,8 @@ class TestDirectToWarehouse(DirectToWarehouseBase):
         self._post_request()
         self.client.force_login(self.officer)
         url = reverse('warehouse_officer_dashboard', kwargs={'cafe_code': 'dw'})
-        resp = self.client.get(url)
+        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        resp = self.client.get(url, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'کالای مستقیم')
 

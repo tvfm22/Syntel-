@@ -111,7 +111,8 @@ class WarehouseFulfillOptionsTests(TestCase):
 
     def _get(self):
         self.client.login(username='warehouse_user', password='testpass123')
-        return self.client.get(self.dash_url + f'?date={self.today.isoformat()}')
+        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        return self.client.get(self.dash_url, follow=True)
 
     def test_unbranded_single_warehouse_hides_brand_options(self):
         """بدون برند + فقط یک انبار: نه انتخاب برند نه افزودن برند"""
@@ -187,6 +188,7 @@ class WarehouseFulfillOptionsTests(TestCase):
         self.assertEqual(self.stock_unbranded.quantity, 8)  # 10 - 2
 
         # پیام موفقیت: فقط نام کالا و تامین از انبار (بدون جزئیات تعداد برندها)
-        page = self.client.get(response.url)
+        # ریدایرکت به داشبورد بدون delivery خودش به ‎?delivery=<امروز> ریدایرکت می‌شود
+        page = self.client.get(response.url, follow=True)
         self.assertContains(page, '«Unbranded Product» از انبار تامین شد.')
         self.assertNotContains(page, 'مجموع')

@@ -64,7 +64,9 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(d_item.source_item, self.item)
         self.assertEqual(d_item.quantity, 5)
         # کاربر به صفحه جدید منتقل نمی‌شود — در همان داشبورد می‌ماند
-        self.assertRedirects(resp, dash_url)
+        # (ریدایرکت POST بدون delivery به ‎?delivery=<امروز> هم هست؛ follow تا مقصد نهایی)
+        resp = self.client.post(dash_url, {'action': 'to_purchase', 'item_id': self.item.id}, follow=True)
+        self.assertEqual(resp.status_code, 200)
         # وضعیت تخصیص = returned
         self.item.refresh_from_db()
         self.assertEqual(self.item.officer_assignments.first().status, 'returned')
