@@ -9,7 +9,7 @@
     .officer-wrap { max-width: 1100px; margin: 0 auto; }
     .officer-wrap .page-header {
         height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2) var(--space-4);
     }
     .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
     .ph-icon {
@@ -17,6 +17,11 @@
         background: rgba(139,92,246,0.1); color: var(--accent-indigo);
         display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     }
+    .page-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
+    /* فیلترها داخل همان هدر */
+    .header-filter { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .header-filter .dept-form { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+    .header-divider { width: 1px; align-self: stretch; min-height: 30px; background: var(--border-light); }
 
     /* ── کارت‌های آماری ── */
     .stats-row {
@@ -36,8 +41,7 @@
         display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
     }
     .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
-    .stat-icon.pending  { background: rgba(139,92,246,0.12); color: #6d28d9; }
+    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }    .stat-icon.pending  { background: rgba(139,92,246,0.12); color: #6d28d9; }
     .stat-icon.ok       { background: #d1fae5; color: #065f46; }
     .stat-icon.short    { background: rgba(245,158,11,0.14); color: #92400e; }
     .stat-icon.none     { background: #fee2e2; color: #b91c1c; }
@@ -349,16 +353,43 @@
 {% block content %}
 <div class="officer-wrap">
 
-    <!-- هدر صفحه -->
+    <!-- هدر صفحه + فیلترها (یکی‌شده) -->
     <div class="page-header">
         <div class="ph-main">
             <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
-            <h1 class="page-title">داشبورد مسئول انبار</h1>
+            <div>
+                <h1 class="page-title">داشبورد مسئول انبار</h1>
+                <div class="page-sub">{{ user.get_full_name|default:user.username }} • درخواست‌های ۴۵ روز اخیر</div>
+            </div>
         </div>
-        <div class="header-actions">
-            <span style="font-size:0.8rem;color:var(--text-muted);">
-                {{ user.get_full_name|default:user.username }} • درخواست‌های ۴۵ روز اخیر
-            </span>
+        <div class="header-filter">
+            <!-- ناوبری تاریخ تحویل -->
+            <div class="date-nav">
+                <a href="?delivery={{ prev_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز قبل">‹</a>
+                <div class="date-display {% if selected_delivery and selected_delivery != 'immediate' %}active{% endif %}" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();" title="انتخاب تاریخ">
+                    <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
+                </div>
+                <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
+                       onchange="var u='?delivery='+this.value{% if selected_department %}+'&department={{ selected_department|urlencode }}'{% endif %}; if(this.value) window.location.href=u;">
+                <a href="?delivery={{ next_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز بعد">›</a>
+            </div>
+            {% if has_immediate %}
+            <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery=immediate"
+               class="filter-pill {% if selected_delivery == 'immediate' %}active-immediate{% endif %}">
+                <i class="fas fa-bolt"></i> فوری
+            </a>
+            {% endif %}
+            <span class="header-divider"></span>
+            <form method="get" class="dept-form">
+                {% if selected_delivery %}<input type="hidden" name="delivery" value="{{ selected_delivery }}">{% endif %}
+                <select name="department" class="dept-filter" onchange="this.form.submit()">
+                    <option value="">همه بخش‌ها</option>
+                    {% for key, label in departments %}
+                    <option value="{{ key }}"{% if selected_department == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
         </div>
     </div>
 
@@ -400,7 +431,7 @@
             <span class="stat-icon purchase"><i class="fas fa-shopping-cart"></i></span>
             <div>
                 <div class="stat-value">{{ stats.to_purchase }}</div>
-                <div class="stat-label">ارجاع‌شده به خرید →</div>
+                <div class="stat-label">ارجاع‌شده به خرید</div>
             </div>
         </div>
         </a>
@@ -413,41 +444,6 @@
         </div>
     </div>
     {% endif %}
-
-    <!-- فیلتر فشرده: ناوبری تاریخ تحویل (روز قبل/بعد + انتخابگر) + فوری + بخش (دراپ‌داون) -->
-    <div class="filter-bar">
-        <span class="bar-label"><i class="fas fa-clock"></i> زمان تحویل:</span>
-        <div class="date-nav">
-            <a href="?delivery={{ prev_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز قبل">›</a>
-            <div class="date-display {% if selected_delivery and selected_delivery != 'immediate' %}active{% endif %}" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();" title="انتخاب تاریخ">
-                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
-                <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
-            </div>
-            <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
-                   onchange="var u='?delivery='+this.value{% if selected_department %}+'&department={{ selected_department|urlencode }}'{% endif %}; if(this.value) window.location.href=u;">
-            <a href="?delivery={{ next_date|date:'Y-m-d' }}{% if selected_department %}&department={{ selected_department|urlencode }}{% endif %}" class="date-arrow" title="روز بعد">‹</a>
-        </div>
-        <a href="?{% if selected_department %}department={{ selected_department|urlencode }}{% endif %}"
-           class="filter-pill {% if not selected_delivery %}active{% endif %}">همه</a>
-        {% if has_immediate %}
-        <a href="?{% if selected_department %}department={{ selected_department|urlencode }}&{% endif %}delivery=immediate"
-           class="filter-pill {% if selected_delivery == 'immediate' %}active-immediate{% endif %}">
-            <i class="fas fa-bolt"></i> فوری
-        </a>
-        {% endif %}
-
-        <span style="flex:1;"></span>
-        <form method="get" style="display:flex;align-items:center;gap:0.4rem;margin:0;">
-            {% if selected_delivery %}<input type="hidden" name="delivery" value="{{ selected_delivery }}">{% endif %}
-            <span class="bar-label"><i class="fas fa-building"></i> بخش:</span>
-            <select name="department" class="dept-filter" onchange="this.form.submit()">
-                <option value="">همه بخش‌ها</option>
-                {% for key, label in departments %}
-                <option value="{{ key }}"{% if selected_department == key %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </form>
-    </div>
 
     {% if request_cards %}
         {% for card in request_cards %}
