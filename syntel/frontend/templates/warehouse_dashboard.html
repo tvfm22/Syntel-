@@ -1,39 +1,48 @@
-﻿{% load static %}
+{% load static %}
 {% load custom_filters %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد مسئول انبار - Kuker</title>
+    <title>داشبورد انبار - Kuker</title>
     <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        body { background: #f3f4f6; min-height: 100vh; }
+        :root {
+            --primary:#8B5CF6; --primary-dark:#7C3AED; --success:#22C55E; --warning:#F59E0B; --danger:#EF4444;
+            --dark:#0F172A; --muted:#94A3B8; --text-secondary:#64748B; --border:#E2E8F0; --border-light:#F1F5F9; --bg-subtle:#FAFAFA;
+            --shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);
+            --shadow-md:0 4px 24px rgba(15,23,42,0.05);
+        }
+        body { background: #EDEDF2; min-height: 100vh; color: var(--dark); }
 
         /* ── layout ── */
         .page-wrapper { max-width: 1280px; margin: 0 auto; padding: 20px 24px 100px; }
 
         /* ── header ── */
         .header {
-            background: white; padding: 18px 24px; border-radius: 12px;
-            margin-bottom: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            background: white; padding: 18px 24px; border-radius: 16px;
+            margin-bottom: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
         }
-        .header-left h1 { font-size: 22px; color: #1f2937; margin-bottom: 4px; }
-        .header-left p  { color: #6b7280; font-size: 14px; }
+        .header-left h1 { font-size: 1.2rem; font-weight: 800; color: var(--dark); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .header-left h1 i { color: var(--primary); }
+        .header-left p  { color: var(--text-secondary); font-size: 13px; }
 
         /* ── tabs ── */
-        .tab-row { display: flex; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
         .tab-btn {
-            padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
-            text-decoration: none; background: white; border: 1px solid #e5e7eb; color: #374151; transition: all .15s;
+            padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700;
+            text-decoration: none; background: white; border: 1.5px solid var(--border); color: var(--text-secondary); transition: all .15s;
         }
-        .tab-btn:hover { background: #f9fafb; }
-        .tab-btn.active { background: #10b981; color: white; border-color: #10b981; }
+        .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         /* ── section title ── */
-        .section-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-title { font-size: 1rem; font-weight: 800; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-title i.warn { color: var(--warning); }
         .section-block  { margin-bottom: 32px; }
 
         /* ── responsive grid ── */
@@ -43,62 +52,60 @@
         @media (min-width: 1200px) { .departments-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .department-card {
-            background: white; border-radius: 12px; padding: 18px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            background: white; border-radius: 16px; padding: 18px;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
+            border-inline-start: 4px solid var(--primary);
             transition: box-shadow .2s, transform .15s;
         }
-        .department-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .department-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
         .department-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-        .dept-icon { font-size: 28px; }
-        .dept-name { font-size: 17px; font-weight: 600; color: #1f2937; }
+        .dept-icon {
+            width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+            background: rgba(139,92,246,0.1); color: var(--primary);
+            display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        }
+        .dept-name { font-size: 0.95rem; font-weight: 700; color: var(--dark); }
         .dept-stats { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 
-        .stat-badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-        .stat-total   { background: #e5e7eb; color: #374151; }
+        .stat-badge { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+        .stat-total   { background: var(--bg-subtle); border: 1px solid var(--border-light); color: var(--text-secondary); }
         .stat-pending { background: #fef3c7; color: #92400e; }
 
         .dept-actions { display: flex; gap: 10px; }
         .dept-btn {
-            flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;
-            color: #374151; font-size: 13px; text-decoration: none; text-align: center; transition: all .15s;
+            flex: 1; padding: 9px; border: 1.5px solid var(--border); border-radius: 999px; background: white;
+            color: var(--text-secondary); font-size: 12.5px; font-weight: 600; text-decoration: none; text-align: center; transition: all .15s;
             font-family: Vazir, sans-serif;
         }
-        .dept-btn:hover    { opacity: .85; }
-        .dept-btn-all      { border-color: #10b981; color: #10b981; }
-        .dept-btn-pending  { border-color: #f59e0b; color: #f59e0b; }
-
-        /* ── all-departments banner ── */
-        .all-depts-banner {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 14px rgba(16,185,129,.3);
-            border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; color: white;
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
-        }
-        .all-depts-banner h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-        .all-depts-banner p  { font-size: 13px; opacity: .85; }
-        .banner-btn {
-            background: white; color: #059669; border: none; padding: 10px 22px; border-radius: 8px;
-            font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap;
-            font-family: Vazir, sans-serif; transition: opacity .15s;
-        }
-        .banner-btn:hover { opacity: .9; }
+        .dept-btn:hover    { border-color: var(--primary); color: var(--primary); }
+        .dept-btn-all      { border-color: rgba(139,92,246,0.4); color: var(--primary); }
+        .dept-btn-pending  { border-color: rgba(245,158,11,0.5); color: #b45309; }
 
         /* ── low stock ── */
-        .low-stock-card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 12px; }
-        .low-stock-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+        .low-stock-card {
+            background: white; border-radius: 16px; border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-sm); padding: 8px 18px; margin-bottom: 12px;
+        }
+        .low-stock-item { display: flex; justify-content: space-between; padding: 10px 0; font-size: 13.5px; border-bottom: 1px solid var(--border-light); }
         .low-stock-item:last-child { border-bottom: none; }
-        .stock-name { font-weight: 500; color: #1f2937; }
+        .stock-name { font-weight: 700; color: var(--dark); }
         .stock-quantities { display: flex; gap: 12px; align-items: center; }
-        .qty-current { color: #ef4444; font-weight: 700; }
-        .qty-min { color: #6b7280; font-size: 12px; }
+        .qty-current { color: var(--danger); font-weight: 700; }
+        .qty-min { color: var(--text-secondary); font-size: 12px; }
+
+        .see-all-link {
+            color: var(--primary); font-size: 12.5px; text-decoration: none; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .see-all-link:hover { color: var(--primary-dark); }
 
         /* ── logout ── */
         .logout-btn {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            padding: 11px 28px; background: white; border: 1px solid #e5e7eb;
-            border-radius: 8px; color: #ef4444; text-decoration: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 14px; font-weight: 600; z-index: 100;
+            padding: 10px 24px; background: white; border: 1.5px solid var(--border);
+            border-radius: 999px; color: var(--danger); text-decoration: none;
+            box-shadow: var(--shadow-md); font-size: 13px; font-weight: 700; z-index: 100;
         }
         .logout-btn:hover { background: #fef2f2; }
     </style>
@@ -109,7 +116,7 @@
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <h1>📦 داشبورد مسئول انبار</h1>
+            <h1><i class="fas fa-boxes-stacked"></i> داشبورد انبار</h1>
             <p>{{ user.first_name }} {{ user.last_name }}</p>
         </div>
     </div>
@@ -117,16 +124,16 @@
     <!-- Role tabs -->
     {% if has_purchasing or has_warehouse %}
     <div class="tab-row">
-        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active">📦 انبار</a>
-        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="tab-btn">📦 کالا های موجود در انبار</a>
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn">🛒 درخواست‌های کالا</a>
+        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active"><i class="fas fa-warehouse"></i> انبار</a>
+        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="tab-btn"><i class="fas fa-box-open"></i> کالاهای موجود در انبار</a>
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn"><i class="fas fa-cart-shopping"></i> درخواست‌های کالا</a>
     </div>
     {% endif %}
 
     <!-- Low stock -->
     {% if stock_items_low %}
     <div class="section-block">
-        <div class="section-title">⚠️ موجودی‌های کمتر از حداقل</div>
+        <div class="section-title"><i class="fas fa-triangle-exclamation warn"></i> موجودی‌های کمتر از حداقل</div>
         <div class="low-stock-card">
             {% for si in stock_items_low %}
             <div class="low-stock-item">
@@ -137,10 +144,9 @@
                 </span>
             </div>
             {% endfor %}
-            <div style="margin-top: 12px; text-align: left;">
-                <a href="{% url 'stock_list' cafe_code=cafe_code %}"
-                   style="color: #10b981; font-size: 13px; text-decoration: none; font-weight: 600;">
-                    مشاهده همه موجودی‌ها ←
+            <div style="margin-top: 12px; padding-bottom: 10px; text-align: left;">
+                <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="see-all-link">
+                    مشاهده همهٔ موجودی‌ها <i class="fas fa-arrow-left"></i>
                 </a>
             </div>
         </div>
@@ -148,7 +154,6 @@
     {% endif %}
 
 </div><!-- /page-wrapper -->
-<a href="{% url 'logout' %}" class="logout-btn">خروج از سیستم</a>
+<a href="{% url 'logout' %}" class="logout-btn"><i class="fas fa-arrow-right-from-bracket"></i> خروج از سیستم</a>
 </body>
 </html>
-

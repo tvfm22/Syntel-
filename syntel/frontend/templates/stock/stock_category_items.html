@@ -1,91 +1,98 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>موجودی دسته‌بندی - {{ category.name|default:"بدون دسته‌بندی" }}</title>
+    <title>موجودی دسته‌بندی - {{ category.name|default:"بدون دسته‌بندی" }} - Kuker</title>
 {% load static %}
     <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root{
-            --primary:#6366f1;--primary-dark:#4f46e5;
-            --success:#10b981;--warning:#f59e0b;--danger:#ef4444;
-            --dark:#1f2937;--light:#f9fafb;--border:#e5e7eb;
-            --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
-            --r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;
+            --primary:#8B5CF6;--primary-dark:#7C3AED;
+            --success:#22C55E;--warning:#F59E0B;--danger:#EF4444;
+            --dark:#0F172A;--muted:#94A3B8;--light:#FAFAFA;--border:#E2E8F0;
+            --shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);
+            --shadow-md:0 4px 24px rgba(15,23,42,0.05);
         }
-        body{font-family:'Vazir',-apple-system,sans-serif;background:#f5f5f5;min-height:100vh;color:var(--dark)}
+        body{font-family:'Vazir',-apple-system,sans-serif;background:#EDEDF2;min-height:100vh;color:var(--dark)}
 
-        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
-        .back-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--light);border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:600;transition:all .2s}
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;gap:.75rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
+        .back-btn{display:flex;align-items:center;gap:.4rem;padding:.45rem .9rem;background:var(--light);border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--dark);font-size:.82rem;font-weight:600;transition:all .2s}
         .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .topbar-title{flex:1;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+        .topbar-title{flex:1;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
         .topbar-title i{color:var(--primary)}
 
-        .main{padding:2rem;max-width:1400px;margin:0 auto}
+        .main{padding:1.75rem 1.5rem;max-width:1400px;margin:0 auto}
 
         /* PAGE HEADER */
-        .page-header{background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:var(--r-xl);padding:1.75rem 2rem;margin-bottom:2rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-        .page-header h1{font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:.75rem}
-        .page-header p{margin-top:.25rem;opacity:.85;font-size:.88rem}
+        .page-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+        .page-header h1{font-size:1.25rem;font-weight:800;display:flex;align-items:center;gap:.5rem}
+        .page-header h1 i{color:var(--primary)}
+        .page-header p{margin-top:.2rem;color:var(--muted);font-size:.82rem}
 
         /* FILTERS */
-        .filter-card{background:#fff;border-radius:var(--r-lg);padding:1.5rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem}
-        .filter-form{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap}
+        .filter-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1rem 1.25rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem}
+        .filter-form{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap}
         .filter-group{display:flex;flex-direction:column;gap:.35rem;min-width:180px;flex:1}
-        .filter-label{font-size:.8rem;font-weight:600;color:var(--dark)}
-        .filter-input{padding:.6rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;background:#fff}
-        .filter-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+        .filter-label{font-size:.74rem;font-weight:700;color:var(--muted)}
+        .filter-input{height:36px;padding:0 .8rem;border:1.5px solid var(--border);border-radius:999px;font-family:'Vazir',sans-serif;font-size:.82rem;background:#fff;transition:all .2s}
+        .filter-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(139,92,246,.1)}
 
         /* BUTTONS */
-        .btn{padding:.6rem 1.2rem;border:none;border-radius:var(--r-md);font-family:'Vazir',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;text-decoration:none}
+        .btn{height:36px;padding:0 1rem;border:none;border-radius:999px;font-family:'Vazir',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;transition:all .2s;text-decoration:none}
         .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
-        .btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
-        .btn-secondary{background:#6b7280;color:#fff}.btn-secondary:hover{background:#4b5563}
-        .btn-outline{background:#fff;color:var(--dark);border:1px solid var(--border)}.btn-outline:hover{background:var(--light)}
-        .btn-sm{padding:.4rem .75rem;font-size:.8rem}
-        .check-label{display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.6rem 1rem;background:#fef3c7;border-radius:var(--r-md);font-weight:600;color:#92400e;font-size:.85rem;white-space:nowrap}
-        .check-label input{width:16px;height:16px;accent-color:var(--primary)}
+        .btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#16A34A}
+        .btn-secondary{background:rgba(239,68,68,.08);color:#b91c1c}
+        .btn-outline{background:#fff;color:var(--dark);border:1.5px solid var(--border)}.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+        .check-label{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;height:36px;padding:0 1rem;background:#fff;border:1.5px solid var(--border);border-radius:999px;font-weight:600;color:var(--dark);font-size:.78rem;white-space:nowrap;transition:all .2s}
+        .check-label:hover{border-color:var(--warning);color:#92400e}
+        .check-label input{width:15px;height:15px;accent-color:var(--warning)}
+
+        /* Warehouse pills */
+        .wh-pills{display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap}
+        .wh-pill{padding:.35rem 1rem;border-radius:999px;font-weight:700;text-decoration:none;font-size:.78rem;border:1.5px solid var(--border);background:#fff;color:var(--dark);transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
+        .wh-pill:hover{border-color:var(--primary);color:var(--primary)}
+        .wh-pill.active{background:var(--primary);border-color:var(--primary);color:#fff}
 
         /* STOCK GRID */
-        .stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem}
+        .stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
 
         /* STOCK CARD */
-        .stock-card{background:#fff;border-radius:var(--r-xl);padding:1.5rem;box-shadow:var(--shadow-md);border-right:4px solid var(--success);transition:all .3s}
-        .stock-card:hover{box-shadow:0 20px 25px -5px rgba(0,0,0,.1);transform:translateY(-2px)}
-        .stock-card.low{border-right-color:var(--danger)}
-        .stock-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
-        .stock-name{font-size:1.1rem;font-weight:700;color:var(--dark)}
-        .stock-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem}
-        .tag{display:inline-block;padding:.2rem .6rem;border-radius:.375rem;font-size:.75rem;font-weight:600}
-        .tag-cat{background:#e0e7ff;color:#3730a3}
+        .stock-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.15rem 1.35rem;box-shadow:var(--shadow-sm);border-inline-start:4px solid var(--success);transition:all .2s;display:flex;flex-direction:column}
+        .stock-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+        .stock-card.low{border-inline-start-color:var(--danger)}
+        .stock-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.75rem}
+        .stock-name{font-size:.95rem;font-weight:800;color:var(--dark)}
+        .stock-tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem}
+        .tag{display:inline-flex;align-items:center;gap:.25rem;padding:.12rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap}
+        .tag-cat{background:rgba(139,92,246,.08);color:#6d28d9}
         .tag-wh{background:#d1fae5;color:#065f46}
-        .tag-low{background:#fee2e2;color:#dc2626}
-        .qty-badge{text-align:center;min-width:80px}
-        .qty-val{font-size:1.5rem;font-weight:700}
-        .qty-val.low{color:var(--danger)}
-        .qty-unit{font-size:.75rem;color:#6b7280}
+        .tag-low{background:#fee2e2;color:#b91c1c}
+        .qty-badge{text-align:center;flex-shrink:0;background:var(--light);border:1px solid var(--border);border-radius:12px;padding:.4rem .8rem;min-width:80px}
+        .qty-val{font-size:1.2rem;font-weight:800;color:var(--success)}
+        .stock-card.low .qty-val{color:var(--danger)}
+        .qty-unit{font-size:.68rem;color:var(--muted);font-weight:600}
         .stock-meta{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem}
-        .meta-item{font-size:.8rem;color:#6b7280}
-        .meta-item strong{color:var(--dark);display:block;font-size:.75rem}
-        .stock-actions{margin-top:1rem;display:flex;gap:.5rem}
+        .meta-item{font-size:.72rem;color:var(--muted)}
+        .meta-item strong{color:var(--dark);display:block;font-size:.75rem;font-weight:700;margin-bottom:.1rem}
+        .stock-actions{margin-top:.85rem;display:flex;gap:.5rem}
 
         /* PAGINATION */
         .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap}
-        .page-link{padding:.5rem .875rem;border:1px solid var(--border);border-radius:var(--r-md);text-decoration:none;color:var(--dark);font-size:.875rem;font-weight:500;background:#fff;transition:all .2s}
-        .page-link:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .page-link{padding:.4rem .875rem;border:1.5px solid var(--border);border-radius:999px;text-decoration:none;color:var(--dark);font-size:.8rem;font-weight:700;background:#fff;transition:all .2s}
+        .page-link:hover{border-color:var(--primary);color:var(--primary)}
         .page-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
         .page-link.disabled{opacity:.4;pointer-events:none}
 
         /* EMPTY */
-        .empty{text-align:center;padding:4rem 2rem;background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
-        .empty i{font-size:3.5rem;color:#d1d5db;display:block;margin-bottom:1rem}
-        .empty h3{color:#6b7280;font-size:1.1rem;margin-bottom:.5rem}
-        .empty p{color:#9ca3af;font-size:.85rem;margin-bottom:1.5rem}
+        .empty{text-align:center;padding:3.5rem 2rem;background:#fff;border-radius:20px;border:1px dashed var(--border-strong,#CBD5E1);box-shadow:var(--shadow-sm)}
+        .empty i{font-size:2.5rem;color:#d1d5db;display:block;margin-bottom:.8rem}
+        .empty h3{color:var(--dark);font-size:1.05rem;margin-bottom:.4rem}
+        .empty p{color:var(--muted);font-size:.82rem;margin-bottom:1.25rem}
 
-        @media(max-width:768px){.main{padding:1rem}.stock-grid{grid-template-columns:1fr}.page-header{flex-direction:column}.filter-form{flex-direction:column}}
+        @media(max-width:768px){.main{padding:1rem}.stock-grid{grid-template-columns:1fr}.filter-form{flex-direction:column;align-items:stretch}}
     </style>
 </head>
 <body>
@@ -100,10 +107,10 @@
         <i class="fas fa-boxes"></i>
         {% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}
     </div>
-    <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-outline" style="font-size:.82rem">
+    <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-outline" style="font-size:.78rem">
         <i class="fas fa-list"></i> لیست کامل
     </a>
-    <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="font-size:.82rem">
+    <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-success" style="font-size:.78rem">
         <i class="fas fa-plus"></i> ثبت حواله ورود
     </a>
 </div>
@@ -124,9 +131,9 @@
                 {% endif %}
             </p>
         </div>
-        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
             {% if category %}
-            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn btn-outline" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">
+            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn btn-outline">
                 <i class="fas fa-edit"></i> ویرایش دسته
             </a>
             {% endif %}
@@ -135,15 +142,15 @@
 
     <!-- Warehouse Tabs -->
     {% if warehouses %}
-    <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
+    <div class="wh-pills">
         <a href="?{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on{% endif %}"
-           style="padding:.5rem 1.1rem;border-radius:2rem;font-weight:600;text-decoration:none;font-size:.9rem;{% if not selected_warehouse %}background:#6366f1;color:#fff;{% else %}background:#e5e7eb;color:#374151;{% endif %}">
-            🏭 همه انبارها
+           class="wh-pill {% if not selected_warehouse %}active{% endif %}">
+            <i class="fas fa-layer-group"></i> همه انبارها
         </a>
         {% for wh in warehouses %}
         <a href="?warehouse={{ wh.id }}{% if search_q %}&search={{ search_q }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           style="padding:.5rem 1.1rem;border-radius:2rem;font-weight:600;text-decoration:none;font-size:.9rem;{% if selected_warehouse.id == wh.id %}background:#6366f1;color:#fff;{% else %}background:#e5e7eb;color:#374151;{% endif %}">
-            🏬 {{ wh.name }}
+           class="wh-pill {% if selected_warehouse.id == wh.id %}active{% endif %}">
+            <i class="fas fa-warehouse"></i> {{ wh.name }}
         </a>
         {% endfor %}
     </div>
@@ -161,14 +168,14 @@
             </div>
             <label class="check-label">
                 <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %}>
-                ⚠️ فقط کم موجود
+                <i class="fas fa-triangle-exclamation"></i> فقط کم موجود
             </label>
             <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i> جستجو
+                <i class="fas fa-magnifying-glass"></i> جستجو
             </button>
             {% if search_q or show_low_stock %}
             <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}{% endif %}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> پاک کردن
+                <i class="fas fa-xmark"></i> پاک کردن
             </a>
             {% endif %}
         </form>
@@ -176,8 +183,8 @@
 
     <!-- Items Count Info -->
     {% if page_obj %}
-    <div style="font-size:.85rem;color:#6b7280;margin-bottom:1rem">
-        نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} قلم
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;font-weight:600">
+        <i class="fas fa-boxes-stacked"></i> نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} قلم
     </div>
     {% endif %}
 
@@ -187,22 +194,22 @@
         {% for item in page_obj %}
         <div class="stock-card {% if item.is_low_stock %}low{% endif %}">
             <div class="stock-card-top">
-                <div>
+                <div style="min-width:0">
                     <div class="stock-name">{{ item.product.name }}</div>
                     <div class="stock-tags">
                         {% if item.product.category %}
                         <span class="tag tag-cat">{{ item.product.category.name }}</span>
                         {% endif %}
                         {% if item.warehouse %}
-                        <span class="tag tag-wh">🏬 {{ item.warehouse.name }}</span>
+                        <span class="tag tag-wh"><i class="fas fa-warehouse"></i> {{ item.warehouse.name }}</span>
                         {% endif %}
                         {% if item.is_low_stock %}
-                        <span class="tag tag-low">⚠️ کم موجود</span>
+                        <span class="tag tag-low"><i class="fas fa-triangle-exclamation"></i> کم موجود</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="qty-badge">
-                    <div class="qty-val {% if item.is_low_stock %}low{% endif %}">{{ item.quantity|floatformat:0 }}</div>
+                    <div class="qty-val">{{ item.quantity|floatformat:0 }}</div>
                     <div class="qty-unit">{{ item.unit.name|default:"واحد" }}</div>
                 </div>
             </div>
@@ -217,8 +224,8 @@
                 </div>
             </div>
             <div class="stock-actions">
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="btn btn-outline btn-sm">
-                    <i class="fas fa-history"></i> تاریخچه
+                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="btn btn-outline" style="font-size:.74rem;height:32px">
+                    <i class="fas fa-clock-rotate-left"></i> تاریخچه
                 </a>
             </div>
         </div>
@@ -230,7 +237,7 @@
     <div class="pagination">
         {% if page_obj.has_previous %}
         <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
-            <i class="fas fa-chevron-right"></i>
+            <i class="fas fa-chevron-right"></i> قبلی
         </a>
         {% endif %}
         {% for num in page_obj.paginator.page_range %}
@@ -242,7 +249,7 @@
         {% endfor %}
         {% if page_obj.has_next %}
         <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
-            <i class="fas fa-chevron-left"></i>
+            بعدی <i class="fas fa-chevron-left"></i>
         </a>
         {% endif %}
     </div>
@@ -254,7 +261,7 @@
         <i class="fas fa-box-open"></i>
         <h3>هیچ موجودی یافت نشد</h3>
         <p>{% if search_q or show_low_stock %}فیلتر را تغییر دهید{% else %}هیچ کالایی در این دسته‌بندی موجود نیست{% endif %}</p>
-        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary">
+        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin:0 auto">
             <i class="fas fa-plus"></i> ثبت حواله ورود
         </a>
     </div>
@@ -263,4 +270,3 @@
 </div>
 </body>
 </html>
-

@@ -1,50 +1,124 @@
-﻿{% extends 'base.html' %}
-{% load custom_filters %}
-{% block title %}درخواست‌های انبار من{% endblock %}
+{% extends 'base.html' %}
+{% load custom_filters static %}
+{% block title %}درخواست‌های انبار من - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ درخواست‌های انبار من — هماهنگ با توکن‌های سیستم ═══ */
+    .wr-wrap { max-width: 900px; margin: 0 auto; }
+    .wr-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+    }
+    .wr-count {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.15rem 0.65rem; border-radius: 999px;
+        background: rgba(139,92,246,0.08); color: #6d28d9;
+        font-size: 0.72rem; font-weight: 700;
+    }
+
+    /* ── کارت درخواست ── */
+    .wr-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);
+        border-inline-start: 4px solid var(--border-strong);
+        transition: all var(--transition-fast);
+    }
+    .wr-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .wr-card.pending          { border-inline-start-color: var(--accent-orange); }
+    .wr-card.approved_from_stock, .wr-card.fulfilled { border-inline-start-color: var(--accent-green); }
+    .wr-card.approved_purchase { border-inline-start-color: var(--accent-blue); }
+    .wr-card.declined         { border-inline-start-color: #EF4444; }
+
+    .wr-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+    .wr-id { font-size: 0.92rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem; }
+    .wr-id i { color: var(--accent-indigo); }
+    .wr-date { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .wr-status {
+        padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+    }
+    .wr-status.pending          { background: #fef3c7; color: #92400e; }
+    .wr-status.approved_from_stock { background: #d1fae5; color: #065f46; }
+    .wr-status.approved_purchase { background: #dbeafe; color: #1e40af; }
+    .wr-status.declined         { background: #fee2e2; color: #991b1b; }
+    .wr-status.fulfilled        { background: #d1fae5; color: #065f46; }
+
+    /* ── اقلام ── */
+    .wr-items {
+        background: var(--bg-subtle); border-radius: var(--radius-lg);
+        padding: var(--space-2) var(--space-4);
+    }
+    .wr-item {
+        display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
+        padding: 0.45rem 0; font-size: 0.84rem; flex-wrap: wrap;
+    }
+    .wr-item + .wr-item { border-top: 1px solid var(--border-light); }
+    .wr-item-name { font-weight: 600; color: var(--text-primary); }
+    .wr-item-side { display: flex; align-items: center; gap: 0.6rem; }
+    .wr-item-qty { color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; }
+    .wr-supply {
+        font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.55rem; border-radius: 999px; white-space: nowrap;
+    }
+    .wr-supply.pending      { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-light); }
+    .wr-supply.from_stock   { background: #d1fae5; color: #065f46; }
+    .wr-supply.to_purchase  { background: #dbeafe; color: #1e40af; }
+    .wr-supply.declined     { background: #fee2e2; color: #991b1b; }
+
+    /* ── خالی ── */
+    .wr-empty {
+        text-align: center; padding: 3.5rem 2rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-3xl);
+        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
+    }
+    .wr-empty .icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; color: var(--accent-indigo); }
+    .wr-empty h3 { font-size: 1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.35rem; }
+    .wr-empty p { font-size: 0.82rem; margin-bottom: var(--space-4); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div style="max-width: 900px; margin: 0 auto; padding: 1.5rem;">
-    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
-        <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" 
-           style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; text-decoration: none; color: #374151;">← بازگشت</a>
-        <h1 style="font-size: 1.5rem; color: #1f2937;">📦 درخواست‌های انبار من</h1>
-        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" 
-           style="margin-right: auto; background: #10b981; color: white; padding: 0.6rem 1.2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
-            + درخواست جدید
+<div class="wr-wrap">
+
+    <!-- سربرگ صفحه -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-clipboard-list"></i>
+                درخواست‌های انبار من
+            </h1>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">
+                تاریخچهٔ درخواست‌های ثبت‌شدهٔ شما و وضعیت تأمین هر قلم
+            </p>
+        </div>
+        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size:0.8rem;">
+            <i class="fas fa-plus"></i> درخواست جدید
         </a>
     </div>
 
     {% if requests %}
+    <div style="font-size:0.76rem;color:var(--text-muted);margin-bottom:var(--space-3);font-weight:600;">
+        <i class="fas fa-layer-group"></i> {{ requests|length }} درخواست ثبت شده
+    </div>
     {% for req in requests %}
-    <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+    <div class="wr-card {{ req.status }}">
+        <div class="wr-head">
             <div>
-                <span style="font-weight: 600; color: #1f2937; font-size: 0.95rem;">درخواست #{{ req.id }}</span>
-                <span style="color: #6b7280; font-size: 0.8rem; margin-right: 0.75rem;">{{ req.created_at|jalali_datetime }}</span>
+                <div class="wr-id">
+                    <i class="fas fa-hashtag"></i> درخواست #{{ req.id }}
+                </div>
+                <div class="wr-date"><i class="fas fa-clock"></i> {{ req.created_at|jalali_datetime }}</div>
             </div>
-            <span style="padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
-                {% if req.status == 'pending' %}background: #fef3c7; color: #92400e;
-                {% elif req.status == 'approved_from_stock' %}background: #d1fae5; color: #065f46;
-                {% elif req.status == 'approved_purchase' %}background: #dbeafe; color: #1e40af;
-                {% elif req.status == 'declined' %}background: #fee2e2; color: #991b1b;
-                {% elif req.status == 'fulfilled' %}background: #d1fae5; color: #065f46;
-                {% endif %}">
-                {{ req.get_status_display }}
-            </span>
+            <span class="wr-status {{ req.status }}">{{ req.get_status_display }}</span>
         </div>
 
-        <div style="background: #f9fafb; border-radius: 8px; padding: 0.75rem;">
+        <div class="wr-items">
             {% for item in req.items.all %}
-            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.875rem; {% if not forloop.last %}border-bottom: 1px solid #e5e7eb;{% endif %}">
-                <span style="font-weight: 500;">{{ item.name }}</span>
-                <span style="display: flex; align-items: center; gap: 0.75rem;">
-                    <span style="color: #6b7280;">{{ item.quantity }} {{ item.unit }}</span>
-                    <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px;
-                        {% if item.supply_status == 'pending' %}background: #f3f4f6; color: #6b7280;
-                        {% elif item.supply_status == 'from_stock' %}background: #d1fae5; color: #065f46;
-                        {% elif item.supply_status == 'to_purchase' %}background: #dbeafe; color: #1e40af;
-                        {% elif item.supply_status == 'declined' %}background: #fee2e2; color: #991b1b;
-                        {% endif %}">
+            <div class="wr-item">
+                <span class="wr-item-name">{{ item.name }}</span>
+                <span class="wr-item-side">
+                    <span class="wr-item-qty">{{ item.quantity }} {{ item.unit }}</span>
+                    <span class="wr-supply {{ item.supply_status }}">
                         {% if item.supply_status == 'pending' %}در انتظار
                         {% elif item.supply_status == 'from_stock' %}تامین از انبار
                         {% elif item.supply_status == 'to_purchase' %}ارجاع به خرید
@@ -58,15 +132,15 @@
     </div>
     {% endfor %}
     {% else %}
-    <div style="text-align: center; padding: 4rem; color: #6b7280;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-        <p>هیچ درخواستی ثبت نشده است</p>
-        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" 
-           style="display: inline-block; margin-top: 1rem; background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
-            ثبت اولین درخواست
+    <div class="wr-empty">
+        <div class="icon"><i class="fas fa-inbox"></i></div>
+        <h3>هیچ درخواستی ثبت نشده است</h3>
+        <p>برای ثبت اولین درخواست، از دکمهٔ زیر استفاده کنید</p>
+        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> ثبت اولین درخواست
         </a>
     </div>
     {% endif %}
+
 </div>
 {% endblock %}
-

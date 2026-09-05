@@ -1,171 +1,283 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}تاریخچه تراکنش‌های {{ stock_item.product.name }}{% endblock %}
+{% block title %}تاریخچه تراکنش‌های {{ stock_item.product.name }} - Kuker{% endblock %}
 
-{% block content %}
-<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
-    <!-- Header -->
-    <div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem;">
-                    📊 تاریخچه تراکنش‌ها
-                </h1>
-                <h2 style="font-size: 1.25rem; color: #6b7280;">
-                    {{ stock_item.product.name }}
-                    {% if stock_item.product_brand %}
-                    &nbsp;— 🏷️ برند: {{ stock_item.product_brand.brand_name }}
-                    {% endif %}
-                </h2>
-            </div>
-            <div style="text-align: left;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 0.5rem; color: white;">
-                    <div style="font-size: 0.875rem; margin-bottom: 0.25rem;">موجودی فعلی</div>
-                    <div style="font-size: 2rem; font-weight: 700;">{{ stock_item.quantity|floatformat:2 }}</div>
-                    <div style="font-size: 0.875rem;">{{ stock_item.unit.name }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Transactions Timeline -->
-    {% if page_obj %}
-    <div class="timeline-container" style="background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        {% for transaction in page_obj %}
-        <div class="transaction-item" style="display: flex; gap: 1.5rem; padding: 1.5rem; margin-bottom: 1rem; background: #f9fafb; border-radius: 0.5rem; border-right: 4px solid {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#10b981{% elif transaction.transaction_type == 'out' %}#ef4444{% else %}#f59e0b{% endif %};">
-            <div style="flex-shrink: 0; width: 60px; height: 60px; border-radius: 50%; background: {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#d1fae5{% elif transaction.transaction_type == 'out' %}#fee2e2{% else %}#fef3c7{% endif %}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                {% if transaction.transaction_type == 'in' %}
-                    ⬆️
-                {% elif transaction.transaction_type == 'out' %}
-                    ⬇️
-                {% elif transaction.transaction_type == 'initial' %}
-                    📦
-                {% else %}
-                    ⚙️
-                {% endif %}
-            </div>
-            
-            <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                    <div>
-                        <h3 style="font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">
-                            {{ transaction.get_transaction_type_display }}
-                        </h3>
-                        <span style="font-size: 0.875rem; color: #6b7280;">
-                            {{ transaction.created_at|date:"Y/m/d H:i" }}
-                        </span>
-                    </div>
-                    <div style="text-align: left;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}#10b981{% elif transaction.transaction_type == 'out' %}#ef4444{% else %}#f59e0b{% endif %};">
-                            {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}+{% elif transaction.transaction_type == 'out' %}-{% endif %}{{ transaction.quantity|floatformat:2 }} {{ transaction.unit.name }}
-                        </div>
-                    </div>
-                </div>
-
-                {% if transaction.conversion_rate %}
-                <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 0.375rem; font-size: 0.85rem; color: #6b21a8;">
-                    {% if transaction.transaction_type == 'out' and transaction.stock_item.product_brand %}
-                    <span style="font-weight: 600;">🏷️ برند: {{ transaction.stock_item.product_brand.brand_name }}</span>
-                    <span>&nbsp;•&nbsp;</span>
-                    {% endif %}
-                    <span>نرخ تبدیل: هر {{ transaction.stock_item.product_brand.trade_unit|default:'واحد' }} = {{ transaction.conversion_rate|trim_decimal }}{% if transaction.unit %} {{ transaction.unit.name }}{% endif %}</span>
-                    {% if transaction.transaction_type == 'out' %}
-                    <span>&nbsp;•&nbsp; معادل تجاری: {{ transaction.quantity|div:transaction.conversion_rate|trim_decimal }} {{ transaction.stock_item.product_brand.trade_unit|default:transaction.unit.name|default:'' }}</span>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                    <div style="background: white; padding: 0.75rem; border-radius: 0.375rem;">
-                        <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">موجودی قبل</div>
-                        <div style="font-weight: 600; color: #374151;">{{ transaction.previous_quantity|floatformat:2 }} {{ transaction.unit.name }}</div>
-                    </div>
-                    <div style="background: white; padding: 0.75rem; border-radius: 0.375rem;">
-                        <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">موجودی جدید</div>
-                        <div style="font-weight: 600; color: #374151;">{{ transaction.new_quantity|floatformat:2 }} {{ transaction.unit.name }}</div>
-                    </div>
-                </div>
-                
-                {% if transaction.description %}
-                <div style="margin-top: 1rem; padding: 0.75rem; background: white; border-radius: 0.375rem; border-right: 2px solid #e5e7eb;">
-                    <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.25rem;">توضیحات:</div>
-                    <div style="color: #374151;">{{ transaction.description }}</div>
-                </div>
-                {% endif %}
-                
-                {% if transaction.created_by %}
-                <div style="margin-top: 0.75rem; font-size: 0.875rem; color: #6b7280;">
-                    👤 توسط: {{ transaction.created_by.get_full_name|default:transaction.created_by.username }}
-                </div>
-                {% endif %}
-                
-                {% if transaction.reference_type and transaction.reference_id %}
-                <div style="margin-top: 0.5rem; font-size: 0.875rem;">
-                    <span style="background: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
-                        مرجع: {{ transaction.reference_type }} #{{ transaction.reference_id }}
-                    </span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    
-    <!-- Pagination -->
-    {% if page_obj.has_other_pages %}
-    <div class="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
-        {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">قبلی</a>
-        {% endif %}
-        
-        <span class="page-info" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; font-weight: 600;">
-            صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
-        </span>
-        
-        {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}" class="page-link" style="padding: 0.5rem 1rem; background: white; border: 2px solid #e5e7eb; border-radius: 0.5rem; text-decoration: none; color: #374151; font-weight: 600;">بعدی</a>
-        {% endif %}
-    </div>
-    {% endif %}
-    
-    {% else %}
-    <div style="text-align: center; padding: 3rem; background: white; border-radius: 0.75rem;">
-        <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
-        <h3 style="color: #6b7280;">هیچ تراکنشی ثبت نشده است</h3>
-    </div>
-    {% endif %}
-    
-    <!-- Back Button -->
-    <div style="margin-top: 2rem; text-align: center;">
-        <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn-back" style="display: inline-block; padding: 0.75rem 2rem; background: #6b7280; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
-            ← بازگشت به لیست موجودی
-        </a>
-    </div>
-</div>
-
+{% block extra_css %}
 <style>
-    .transaction-item {
-        transition: all 0.3s;
+    /* ═══ تاریخچه تراکنش‌های کالا — هماهنگ با توکن‌های سیستم ═══ */
+    .tx-wrap { max-width: 1100px; margin: 0 auto; }
+    .tx-wrap .page-header {
+        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
     }
-    
-    .transaction-item:hover {
-        transform: translateX(-4px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    .tx-subject { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .tx-product { font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); }
+    .tx-brand {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.12rem 0.6rem;
+        border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+        background: rgba(139,92,246,0.08); color: #6d28d9; white-space: nowrap;
     }
-    
-    .page-link:hover {
-        background: #f3f4f6;
-        border-color: #6366f1;
-        color: #6366f1;
+
+    /* ── نوار موجودی فعلی ── */
+    .tx-balance {
+        display: flex; align-items: center; gap: var(--space-3);
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5); margin-bottom: var(--space-4);
     }
-    
-    .btn-back:hover {
-        background: #4b5563;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    .tx-balance-icon {
+        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
+        background: rgba(34,197,94,0.1); color: #059669;
+        display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+    }
+    .tx-balance-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .tx-balance-label { font-size: 0.74rem; font-weight: 600; color: var(--text-muted); }
+    .tx-balance-unit {
+        font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        padding: 0.2rem 0.7rem; border-radius: 999px; white-space: nowrap;
+    }
+
+    /* ── کارت تراکنش ── */
+    .tx-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-2xl); box-shadow: var(--shadow-sm);
+        padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);
+        border-inline-start: 4px solid var(--border-strong);
+        transition: all var(--transition-fast);
+    }
+    .tx-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .tx-card.in      { border-inline-start-color: var(--accent-green); }
+    .tx-card.out     { border-inline-start-color: #EF4444; }
+    .tx-card.adjustment { border-inline-start-color: var(--accent-pink); }
+    .tx-card.initial { border-inline-start-color: var(--accent-indigo); }
+
+    .tx-head {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2);
+    }
+    .tx-title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.92rem; font-weight: 800; color: var(--text-primary); }
+    .tx-title .tx-icon {
+        width: 34px; height: 34px; border-radius: var(--radius-md); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+    }
+    .tx-icon.in      { background: rgba(34,197,94,0.1);  color: #059669; }
+    .tx-icon.out     { background: rgba(239,68,68,0.1);  color: #dc2626; }
+    .tx-icon.adjustment { background: rgba(236,72,153,0.1); color: #be185d; }
+    .tx-icon.initial { background: rgba(139,92,246,0.1); color: #6d28d9; }
+    .tx-date { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    .tx-amount { text-align: left; white-space: nowrap; }
+    .tx-amount .val { font-size: 1.25rem; font-weight: 800; }
+    .tx-amount .val.in      { color: #059669; }
+    .tx-amount .val.out     { color: #dc2626; }
+    .tx-amount .val.adjustment { color: #be185d; }
+    .tx-amount .val.initial { color: #6d28d9; }
+    .tx-amount .unit { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-inline-start: 0.2rem; }
+
+    /* نرخ تبدیل */
+    .tx-convert {
+        display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+        font-size: 0.75rem; color: #6b21a8; background: rgba(139,92,246,0.06);
+        border: 1px solid rgba(139,92,246,0.15); border-radius: var(--radius-md);
+        padding: 0.4rem 0.75rem; margin-bottom: var(--space-2);
+    }
+    .tx-convert b { font-weight: 700; }
+
+    /* قبل ← بعد */
+    .tx-flow {
+        display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--space-2);
+        align-items: center; background: var(--bg-subtle);
+        border-radius: var(--radius-lg); padding: var(--space-2) var(--space-4);
+    }
+    .tx-flow-cell { text-align: center; }
+    .tx-flow-cell .k { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .tx-flow-cell .v { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
+    .tx-flow-arrow { color: var(--text-muted); font-size: 0.85rem; }
+
+    .tx-desc {
+        font-size: 0.78rem; color: var(--text-secondary); margin-top: var(--space-2);
+        padding-inline-start: 0.6rem; border-inline-start: 2px solid var(--border-default);
+    }
+    .tx-desc .k { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); display: block; }
+
+    .tx-foot {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+        flex-wrap: wrap; margin-top: var(--space-3); padding-top: var(--space-3);
+        border-top: 1px solid var(--border-light); font-size: 0.74rem; color: var(--text-muted);
+    }
+    .tx-foot b { color: var(--text-secondary); font-weight: 600; }
+    .tx-ref {
+        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem;
+        border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+        background: #e0e7ff; color: #3730a3; white-space: nowrap;
+    }
+
+    /* صفحه‌بندی */
+    .tx-pagination {
+        display: flex; justify-content: center; align-items: center; gap: 0.5rem;
+        margin-top: var(--space-5); flex-wrap: wrap;
+    }
+    .tx-page-link {
+        padding: 0.4rem 1rem; border-radius: 999px; text-decoration: none;
+        background: var(--bg-card); border: 1.5px solid var(--border-default);
+        color: var(--text-secondary); font-weight: 700; font-size: 0.8rem;
+        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .tx-page-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .tx-page-info {
+        padding: 0.4rem 1rem; border-radius: 999px; background: var(--accent-indigo);
+        color: white; font-weight: 700; font-size: 0.8rem;
+        display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+
+    .tx-empty {
+        text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-3xl);
+        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
+    }
+    .tx-empty .icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
+
+    @media (max-width: 600px) {
+        .tx-flow { grid-template-columns: 1fr 1fr; }
+        .tx-flow-arrow { display: none; }
+        .tx-amount { text-align: right; }
     }
 </style>
 {% endblock %}
 
+{% block content %}
+<div class="tx-wrap">
+
+    <!-- هدر صفحه -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-clock-rotate-left"></i>
+                تاریخچه تراکنش‌ها
+            </h1>
+            <div class="tx-subject" style="margin-top:0.2rem;">
+                <span class="tx-product">{{ stock_item.product.name }}</span>
+                {% if stock_item.product_brand %}
+                <span class="tx-brand"><i class="fas fa-tag"></i> {{ stock_item.product_brand.brand_name }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="filter-pill" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.3rem 0.85rem;border-radius:999px;font-size:0.76rem;font-weight:600;border:1.5px solid var(--border-default);color:var(--text-secondary);transition:all var(--transition-fast);"
+               onmouseover="this.style.borderColor='var(--accent-indigo)';this.style.color='var(--accent-indigo)'"
+               onmouseout="this.style.borderColor='var(--border-default)';this.style.color='var(--text-secondary)'">
+                <i class="fas fa-arrow-right"></i> بازگشت به موجودی
+            </a>
+        </div>
+    </div>
+
+    <!-- موجودی فعلی -->
+    <div class="tx-balance">
+        <span class="tx-balance-icon"><i class="fas fa-box"></i></span>
+        <div style="flex:1;">
+            <div class="tx-balance-value">{{ stock_item.quantity|trim_decimal }}</div>
+            <div class="tx-balance-label">موجودی فعلی این کالا در انبار</div>
+        </div>
+        {% if stock_item.unit %}
+        <span class="tx-balance-unit">{{ stock_item.unit.name }}</span>
+        {% endif %}
+    </div>
+
+    <!-- کارت‌های تراکنش -->
+    {% if page_obj %}
+        {% for transaction in page_obj %}
+        <div class="tx-card {{ transaction.transaction_type }}">
+            <div class="tx-head">
+                <div>
+                    <div class="tx-title">
+                        <span class="tx-icon {{ transaction.transaction_type }}">
+                            {% if transaction.transaction_type == 'in' %}<i class="fas fa-arrow-down"></i>
+                            {% elif transaction.transaction_type == 'out' %}<i class="fas fa-arrow-up"></i>
+                            {% elif transaction.transaction_type == 'initial' %}<i class="fas fa-boxes-stacked"></i>
+                            {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
+                        </span>
+                        {{ transaction.get_transaction_type_display }}
+                    </div>
+                    <div class="tx-date"><i class="fas fa-clock"></i> {{ transaction.created_at|date:"Y/m/d H:i" }}</div>
+                </div>
+                <div class="tx-amount">
+                    <span class="val {{ transaction.transaction_type }}">
+                        {% if transaction.transaction_type == 'in' or transaction.transaction_type == 'initial' %}+{% elif transaction.transaction_type == 'out' %}−{% endif %}{{ transaction.quantity|trim_decimal }}
+                    </span><span class="unit">{{ transaction.unit.name }}</span>
+                </div>
+            </div>
+
+            {% if transaction.conversion_rate %}
+            <div class="tx-convert">
+                {% if transaction.transaction_type == 'out' and transaction.stock_item.product_brand %}
+                <b><i class="fas fa-tag"></i> {{ transaction.stock_item.product_brand.brand_name }}</b>
+                <span>•</span>
+                {% endif %}
+                <span>نرخ تبدیل: هر {{ transaction.stock_item.product_brand.trade_unit|default:'واحد' }} = {{ transaction.conversion_rate|trim_decimal }}{% if transaction.unit %} {{ transaction.unit.name }}{% endif %}</span>
+                {% if transaction.transaction_type == 'out' %}
+                <span>•</span>
+                <span>معادل تجاری: {{ transaction.quantity|div:transaction.conversion_rate|trim_decimal }} {{ transaction.stock_item.product_brand.trade_unit|default:transaction.unit.name|default:'' }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="tx-flow">
+                <div class="tx-flow-cell">
+                    <div class="k">موجودی قبل</div>
+                    <div class="v">{{ transaction.previous_quantity|trim_decimal }}</div>
+                </div>
+                <div class="tx-flow-arrow"><i class="fas fa-arrow-left"></i></div>
+                <div class="tx-flow-cell">
+                    <div class="k">موجودی بعد</div>
+                    <div class="v">{{ transaction.new_quantity|trim_decimal }}</div>
+                </div>
+            </div>
+
+            {% if transaction.description %}
+            <div class="tx-desc">
+                <span class="k">توضیحات</span>
+                {{ transaction.description }}
+            </div>
+            {% endif %}
+
+            {% if transaction.created_by or transaction.reference_type %}
+            <div class="tx-foot">
+                {% if transaction.created_by %}
+                <span><i class="fas fa-user"></i> <b>{{ transaction.created_by.get_full_name|default:transaction.created_by.username }}</b></span>
+                {% else %}<span></span>{% endif %}
+                {% if transaction.reference_type and transaction.reference_id %}
+                <span class="tx-ref"><i class="fas fa-link"></i> مرجع: {{ transaction.reference_type }} #{{ transaction.reference_id }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="tx-empty">
+            <div class="icon"><i class="fas fa-clock-rotate-left"></i></div>
+            <p>هیچ تراکنشی برای این کالا ثبت نشده است.</p>
+        </div>
+    {% endif %}
+
+    <!-- صفحه‌بندی -->
+    {% if page_obj.has_other_pages %}
+    <div class="tx-pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="tx-page-link">
+            <i class="fas fa-chevron-right"></i> قبلی
+        </a>
+        {% endif %}
+        <span class="tx-page-info">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="tx-page-link">
+            بعدی <i class="fas fa-chevron-left"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
