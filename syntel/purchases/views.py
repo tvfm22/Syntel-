@@ -1773,9 +1773,7 @@ def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
 
 
 @custom_login_required
-@role_required(["kitchen", "bar", "counter", "cashier", "facilities", "purchasing", "manager", "requester"])
-@custom_login_required
-@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing", "requester"])
+@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing", "manager", "requester"])
 def purchase_request_form(request):
     cafe = get_cafe_from_request(request)
     
@@ -1856,8 +1854,9 @@ def purchase_request_form(request):
             delivery_date=delivery_date,
             delivery_immediate=delivery_immediate,
         )
+        created_items = []
         for index, (name, qty, unit, desc, item_product, item_brand) in enumerate(items_data, start=1):
-            PurchaseItem.objects.create(
+            item = PurchaseItem.objects.create(
                 request=purchase_request,
                 product=item_product,
                 product_brand=item_brand,
@@ -1866,6 +1865,7 @@ def purchase_request_form(request):
                 unit=unit,
                 description=desc or "",
             )
+            created_items.append(item)
 
         ActivityLog.objects.create(
             user=request.user,
@@ -1880,21 +1880,17 @@ def purchase_request_form(request):
             notification_type="info",
         )
 
-        # ارسال نوتیفیکیشن به مدیرعامل و مدیر جهت تایید
-        manager_roles = ['manager', 'ceo']
-        if cafe:
-            managers = User.objects.filter(role__in=manager_roles, cafe=cafe)
-        else:
-            managers = User.objects.filter(role__in=manager_roles)
-        for mgr in managers:
-            Notification.objects.create(
-                recipient=mgr,
-                title="درخواست کالا جدید - منتظر تایید",
-                message=f"درخواست کالا جدید از طرف {request.user.get_full_name() or request.user.username} ثبت شده و منتظر تایید شماست.",
-                notification_type="approval",
-                priority="high",
-                cafe=cafe,
-            )
+        # ارسال مستقیم به مسئول انبار: هر قلم بلافاصله در صندوق مشترک مسئول انبار
+        # قرار می‌گیرد (بدون مرحله تایید مدیرعامل/مدیر) و اعلان ارسال می‌شود.
+        warehouse_officers = list(_officer_users(cafe, 'warehouse'))
+        with transaction.atomic():
+            for item in created_items:
+                _assign_item(item, 'warehouse', None, request.user, status='pending',
+                             notes='ارسال مستقیم از فرم درخواست کالا')
+            for officer in warehouse_officers:
+                for item in created_items:
+                    _notify_officer(officer, item, 'warehouse', cafe)
+            _sync_request_status(purchase_request)
 
         cafe_code = cafe.code if cafe else 'local'
         return redirect("purchase_request_success", cafe_code=cafe_code)
