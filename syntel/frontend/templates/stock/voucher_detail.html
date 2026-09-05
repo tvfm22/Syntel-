@@ -7,10 +7,26 @@
 <style>
     /* ═══ جزئیات حواله — هماهنگ با توکن‌های سیستم ═══ */
     .v-detail-wrap { max-width: 1150px; margin: 0 auto; }
+    /* ── هدر یکدست صفحه ── */
     .v-detail-wrap .page-header {
-        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
     }
+    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+    .ph-icon {
+        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+    }
+    .ph-title { min-width: 0; }
+    .ph-title h1 {
+        font-size: 1.05rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.5; margin: 0;
+    }
+    .ph-title .page-sub {
+        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
+        margin-top: 0.1rem; line-height: 1.7;
+    }
+    .ph-title .page-sub .mono { font-size: 0.78rem; }
 
     .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
     .v-type-badge, .v-status-badge, .tx-badge {
@@ -19,12 +35,19 @@
         font-size: 0.72rem; font-weight: 700; white-space: nowrap;
     }
     .t-receipt    { background: #d1fae5; color: #065f46; }
+    .ph-icon.t-receipt { background: rgba(34,197,94,0.12); color: #059669; }
     .t-issue      { background: #fee2e2; color: #991b1b; }
+    .ph-icon.t-issue { background: rgba(239,68,68,0.1); color: #dc2626; }
     .t-return     { background: #dbeafe; color: #1e40af; }
+    .ph-icon.t-return { background: rgba(59,130,246,0.1); color: #2563eb; }
     .t-sale       { background: #fef3c7; color: #92400e; }
+    .ph-icon.t-sale { background: rgba(249,115,22,0.1); color: #ea580c; }
     .t-waste      { background: #ede9fe; color: #5b21b6; }
+    .ph-icon.t-waste { background: rgba(139,92,246,0.1); color: #7c3aed; }
     .t-transfer   { background: #cffafe; color: #155e75; }
+    .ph-icon.t-transfer { background: rgba(6,182,212,0.1); color: #0891b2; }
     .t-adjustment { background: #fce7f3; color: #9d174d; }
+    .ph-icon.t-adjustment { background: rgba(236,72,153,0.1); color: #db2777; }
     .s-draft     { background: #f1f5f9; color: #475569; }
     .s-submitted { background: #fef9c3; color: #854d0e; }
     .s-approved  { background: #dcfce7; color: #166534; }
@@ -109,24 +132,24 @@
 
     <!-- سربرگ -->
     <div class="page-header">
-        <div>
-            <h1>
-                <span class="v-type-badge t-{{ voucher.voucher_type }}">
-                    {% if voucher.voucher_type == 'receipt' %}<i class="fas fa-arrow-down"></i>
-                    {% elif voucher.voucher_type == 'issue' %}<i class="fas fa-arrow-up"></i>
-                    {% elif voucher.voucher_type == 'return' %}<i class="fas fa-rotate-left"></i>
-                    {% elif voucher.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
-                    {% elif voucher.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
-                    {% elif voucher.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
-                    {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
-                    {{ voucher.get_voucher_type_display }}
-                </span>
-                <span class="mono" style="margin-inline-start:0.6rem">{{ voucher.voucher_number }}</span>
-                <span class="v-status-badge s-{{ voucher.status }}">
-                    {{ voucher.get_status_display }}
-                </span>
-            </h1>
-            <p>تاریخ سند: {{ voucher.date|jalali_datetime }} — ثبت: {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</p>
+        <div class="ph-main">
+            <div class="ph-icon t-{{ voucher.voucher_type }}">
+                {% if voucher.voucher_type == 'receipt' %}<i class="fas fa-arrow-down"></i>
+                {% elif voucher.voucher_type == 'issue' %}<i class="fas fa-arrow-up"></i>
+                {% elif voucher.voucher_type == 'return' %}<i class="fas fa-rotate-left"></i>
+                {% elif voucher.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
+                {% elif voucher.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
+                {% elif voucher.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
+                {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
+            </div>
+            <div class="ph-title">
+                <h1>
+                    <span class="v-type-badge t-{{ voucher.voucher_type }}">{{ voucher.get_voucher_type_display }}</span>
+                    <span class="mono">{{ voucher.voucher_number }}</span>
+                    <span class="v-status-badge s-{{ voucher.status }}">{{ voucher.get_status_display }}</span>
+                </h1>
+                <div class="page-sub">تاریخ سند: {{ voucher.date|jalali_datetime }} — ثبت: {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</div>
+            </div>
         </div>
         <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
             <i class="fas fa-list"></i> لیست حواله‌ها

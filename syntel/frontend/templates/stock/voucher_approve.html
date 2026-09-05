@@ -6,10 +6,27 @@
 {% block extra_css %}
 <style>
     .approve-wrap { max-width: 850px; margin: 0 auto; }
+    /* ── هدر یکدست صفحه ── */
     .approve-wrap .page-header {
-        height: auto; min-height: 58px; padding: var(--space-3) var(--space-6);
-        margin-bottom: var(--space-4);
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
     }
+    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+    .ph-icon {
+        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
+        background: rgba(34,197,94,0.12); color: #059669;
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .ph-title { min-width: 0; }
+    .ph-title h1 {
+        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.4; margin: 0;
+    }
+    .ph-title .page-sub {
+        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
+        margin-top: 0.1rem; line-height: 1.7;
+    }
+    .page-sub .mono { font-size: 0.78rem; }
     .card {
         background: var(--bg-card); border: 1px solid var(--border-light);
         border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
@@ -55,9 +72,12 @@
 <div class="approve-wrap">
 
     <div class="page-header">
-        <div>
-            <h1><i class="fas fa-check-double"></i> تأیید و نهایی‌سازی حواله</h1>
-            <p>سند: <span class="mono">{{ voucher.voucher_number }}</span> — {{ voucher.get_voucher_type_display }}</p>
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-check-double"></i></div>
+            <div class="ph-title">
+                <h1>تأیید و نهایی‌سازی حواله</h1>
+                <div class="page-sub">سند: <span class="mono">{{ voucher.voucher_number }}</span> — {{ voucher.get_voucher_type_display }}</div>
+            </div>
         </div>
         <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline">
             <i class="fas fa-arrow-right"></i> بازگشت به جزئیات
