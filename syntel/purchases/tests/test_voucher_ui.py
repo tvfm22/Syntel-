@@ -520,9 +520,11 @@ class NewEndpointsIDORTests(VoucherUIBaseline):
 
 
 class WarehouseOfficerDashboardTests(TestCase):
-    """داشبورد افسر انبار — بخش حواله‌ها + هشدار کمبود موجودی
+    """داشبورد افسر انبار
 
-    رگرسیون: فیلتر هشدار قبلاً با مقایسهٔ مستقیم دو F نوشته شده بود
+    بخش‌های حواله‌ها / هشدار کمبود / موجودی انبارها از داشبورد حذف شده‌اند
+    (۲۰۲۶-۰۹-۰۵ به درخواست کاربر) — این تست‌ها فقط رندر صفحه را چک می‌کنند.
+    رگرسیون تاریخی: فیلتر هشدار قبلاً با مقایسهٔ مستقیم دو F نوشته شده بود
     (F('quantity') <= F('product__min_stock')) که TypeError می‌داد —
     حالا quantity__lte=F(...) است.
     """
@@ -547,36 +549,13 @@ class WarehouseOfficerDashboardTests(TestCase):
         self.stock = StockItem.objects.create(
             product=self.product, warehouse=self.wh, quantity=3, unit=self.unit)
 
-    def test_dashboard_renders_with_stock_alert(self):
-        """رندر 200 — هشدار کمبود دقیقاً روی قلمِ زیرِ آستانه"""
+    def test_dashboard_renders(self):
+        """رندر 200 — صفحه اصلی داشبورد بدون بخش‌های حذف‌شده"""
         r = self.client.get(self.url)
         self.assertEqual(r.status_code, 200)
-        alerts = r.context['stock_alerts']
-        self.assertEqual(len(alerts), 1)
-        self.assertEqual(alerts[0]['stock_item'].id, self.stock.id)
-        self.assertEqual(alerts[0]['shortage'], Decimal('2'))
-
-    def test_dashboard_stock_over_threshold_no_alert(self):
-        """موجودی بالاتر از آستانه → هشدار ندارد"""
-        self.stock.quantity = Decimal('7')
-        self.stock.save()
-        r = self.client.get(self.url)
-        self.assertEqual(r.context['stock_alerts'], [])
-
-    def test_dashboard_voucher_section_renders(self):
-        """میان‌برهای هر ۷ نوع حواله + لینک‌های آن در داشبورد"""
-        r = self.client.get(self.url)
-        self.assertEqual(len(r.context['voucher_type_shortcuts']), 7)
-        self.assertContains(r, 'حواله')
-
-    def test_dashboard_stock_overview_renders(self):
-        """بخش «موجودی انبارها» روی داشبورد — قلم‌ها + وضعیت کمبود"""
-        r = self.client.get(self.url)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.context['stock_overview']), 1)
-        self.assertContains(r, 'موجودی انبارها')
-        self.assertContains(r, self.product.name)
-        self.assertContains(r, 'کمبود')  # quantity=3 ≤ min_stock=5
+        self.assertNotIn('stock_alerts', r.context)
+        self.assertNotIn('voucher_type_shortcuts', r.context)
+        self.assertNotIn('stock_overview', r.context)
 
 
 class WarehouseRoleAccessTests(TestCase):

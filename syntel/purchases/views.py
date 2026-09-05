@@ -8493,9 +8493,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     # ── دسته‌بندی اقلام هر درخواست ──
     #  ۱) قابل تامین: تخصیص در انتظار مسئول انبار یا ارسال خودکار (موجودی دارد)
     #  ۲) ثبت‌شده: تامین شده / عدم موجودی — کمرنگ با قابلیت بازگشایی
-    #  ۳) ارجاع به خرید: بخش «کالاهای درخواست‌شده برای خرید» پایین صفحه
+    #  ۳) ارجاع به خرید: قلم به پیش‌نویس صفحه «درخواست خرید» می‌رود
     request_cards = []
-    purchase_items = []
     for req in requests_list:
         visible, done = [], []
         for item in req.items.all():
@@ -8511,10 +8510,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                            and a.status in ('fulfilled', 'not_in_stock', 'returned')
                            and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
                 if my_done:
-                    if my_done[0].status == 'returned':
-                        purchase_items.append({'request': req, 'item': item, 'assignment': my_done[0]})
-                    else:
-                        done.append({'item': item, 'assignment': my_done[0]})
+                    done.append({'item': item, 'assignment': my_done[0]})
         if visible or done:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
@@ -8618,48 +8614,14 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         departments_list.append((dept, dept))
     departments_list.sort(key=lambda x: x[1])
 
-    # ── بخش «حواله‌های انبار»: حواله‌های اخیر، اقدامات در انتظار، هشدار موجودی، میان‌بر انواع ──
-    recent_vouchers = (WarehouseVoucher.objects.select_related(
-        'source_warehouse', 'destination_warehouse', 'created_by')
-        .filter(cafe=cafe).order_by('-created_at')[:8])
-    pending_vouchers = (WarehouseVoucher.objects.select_related(
-        'source_warehouse', 'destination_warehouse', 'created_by')
-        .filter(cafe=cafe)
-        .filter(Q(status='draft') | Q(status='submitted'))
-        .order_by('-created_at')[:5])
-    voucher_type_shortcuts = VOUCHER_TYPE_LABELS  # میان‌بر ایجاد هر نوع
-
-    # هشدار کمبود موجودی: مقدار ≤ حداقلِ تعریف‌شدهٔ محصول
-    stock_alerts = []
-    low_stock_qs = (StockItem.objects.select_related('product', 'warehouse', 'unit')
-                    .filter(warehouse__cafe=cafe, product__min_stock__isnull=False)
-                    .filter(quantity__lte=F('product__min_stock'))
-                    .order_by('quantity')[:8])
-    for si in low_stock_qs:
-        shortage = Decimal(str(si.product.min_stock)) - si.quantity
-        stock_alerts.append({'stock_item': si, 'shortage': shortage})
-
-    # نمای کلی موجودی انبارها برای داشبورد مسئول انبار
-    stock_overview = (StockItem.objects.select_related(
-            'product', 'product_brand', 'warehouse', 'unit')
-        .filter(warehouse__cafe=cafe)
-        .order_by('warehouse__name', 'product__name', 'product_brand__brand_name'))
-
     return render(request, 'warehouse_officer_dashboard.html', {
         'request_cards': request_cards,
-        'purchase_items': purchase_items,
-        'recent_vouchers': recent_vouchers,
-        'pending_vouchers': pending_vouchers,
-        'voucher_type_shortcuts': voucher_type_shortcuts,
-        'stock_alerts': stock_alerts,
-        'stock_overview': stock_overview,
         'stats': {
             'pending': visible_count,
             'done': done_count,
             'enough': enough_count,
             'short': short_count,
             'no_stock': no_stock_count,
-            'to_purchase': len(purchase_items),
         },
         'stock_options': stock_options,
         'stock_meta': stock_meta,
