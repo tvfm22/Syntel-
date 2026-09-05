@@ -139,8 +139,9 @@
     .req-items-table .cell-stock b { color: var(--text-primary); white-space: nowrap; }
     .item-desc-cell { font-size: 0.74rem; color: var(--text-muted); max-width: 220px; line-height: 1.6; }
 
-    /* فرم تامین داخل سلول جدول */
+    /* فرم تامین داخل ستون خودش؛ عملیات در ستون جدا */
     .req-items-table .fulfill-form { margin-top: 0.45rem; }
+    .req-items-table .cell-actions { min-width: 170px; }
     .req-items-table .secondary-actions { margin-top: 0.3rem; }
     /* قلم ثبت‌شده در جدول */
     .req-items-table tr.done-row { opacity: 0.55; cursor: pointer; transition: opacity var(--transition-fast); }
@@ -327,7 +328,8 @@
                             <th>درخواست</th>
                             <th>موجودی انبار</th>
                             <th>قضاوت موجودی</th>
-                            <th>تامین</th>
+                            <th>انتخاب انبار / برند و مقدار</th>
+                            <th>عملیات</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -370,8 +372,8 @@
                             <span style="color:var(--text-muted)">—</span>
                             {% endif %}
                         </td>
-                        <td style="min-width:250px;">
-                            <form method="post">
+                        <td class="cell-supply" style="min-width:250px;">
+                            <form method="post" id="supply-form-{{ v.item.id }}">
                                 {% csrf_token %}
                                 <input type="hidden" name="item_id" value="{{ v.item.id }}">
                                 {% with opts=stock_options|get_item:v.item.product_id meta=stock_meta|get_item:v.item.product_id %}
@@ -412,16 +414,18 @@
                                 </div>
                                 {% endif %}
                                 {% endwith %}
-                                <div class="secondary-actions">
-                                    <button type="submit" name="action" value="fulfill" class="link-action link-green" formnovalidate>
-                                        <i class="fas fa-check"></i> تأمین شود
-                                    </button>
-                                    <button type="submit" name="action" value="to_purchase" class="link-action link-blue"
-                                            onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
-                                    <button type="submit" name="action" value="not_in_stock" class="link-action link-red"
-                                            onclick="return confirm('عدم امکان تأمین ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');"><i class="fas fa-xmark"></i> عدم امکان تأمین</button>
-                                </div>
                             </form>
+                        </td>
+                        <td class="cell-actions">
+                            <div class="secondary-actions">
+                                <button type="submit" form="supply-form-{{ v.item.id }}" name="action" value="fulfill" class="link-action link-green" formnovalidate>
+                                    <i class="fas fa-check"></i> تأمین شود
+                                </button>
+                                <button type="submit" form="supply-form-{{ v.item.id }}" name="action" value="to_purchase" class="link-action link-blue"
+                                        onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و ارسال کنید.');"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
+                                <button type="submit" form="supply-form-{{ v.item.id }}" name="action" value="not_in_stock" class="link-action link-red"
+                                        onclick="return confirm('عدم امکان تأمین ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');"><i class="fas fa-xmark"></i> عدم امکان تأمین</button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -445,7 +449,8 @@
                         <td class="cell-qty">{{ d.item.quantity }} {{ d.item.unit }}</td>
                         <td class="cell-stock"><span style="color:var(--text-muted)">—</span></td>
                         <td><span style="color:var(--text-muted)">—</span></td>
-                        <td>
+                        <td><span style="color:var(--text-muted)">—</span></td>
+                        <td class="cell-actions">
                             <span class="status-tag status-{{ d.assignment.status }}">
                                 {% if d.assignment.status == 'fulfilled' %}تأمین شده
                                 {% elif d.assignment.status == 'not_in_stock' %}عدم تامین — برگشت به مدیرعامل
