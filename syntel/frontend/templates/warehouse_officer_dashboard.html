@@ -8,10 +8,12 @@
     /* ═══ داشبورد مسئول انبار — مینیمال، هماهنگ با توکن‌های سیستم ═══ */
     .officer-wrap { max-width: 1100px; margin: 0 auto; }
     .officer-wrap .page-header {
+        display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
         height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+        margin-bottom: var(--space-4); gap: var(--space-2) var(--space-4);
+        border-radius: var(--radius-lg);
     }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; justify-self: start; }
     .ph-icon {
         width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
         background: rgba(139,92,246,0.1); color: var(--accent-indigo);
@@ -19,9 +21,13 @@
     }
     .page-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
     /* فیلترها داخل همان هدر */
-    .header-filter { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .header-filter { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; justify-self: center; }
     .header-filter .dept-form { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
     .header-divider { width: 1px; align-self: stretch; min-height: 30px; background: var(--border-light); }
+    @media (width < 1024px) {
+        .officer-wrap .page-header { display: flex; flex-direction: column; align-items: center; }
+        .header-filter { justify-content: center; }
+    }
 
     /* ── کارت‌های آماری ── */
     .stats-row {
@@ -35,7 +41,7 @@
         display: flex; align-items: center; gap: var(--space-3);
         transition: all var(--transition-fast);
     }
-    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stat-card:hover { box-shadow: var(--shadow-md); }
     .stat-icon {
         width: 38px; height: 38px; border-radius: var(--radius-md); flex-shrink: 0;
         display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
@@ -359,7 +365,7 @@
             <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
             <div>
                 <h1 class="page-title">داشبورد مسئول انبار</h1>
-                <div class="page-sub">{{ user.get_full_name|default:user.username }} • درخواست‌های ۴۵ روز اخیر</div>
+                <div class="page-sub">{{ user.get_full_name|default:user.username }}</div>
             </div>
         </div>
         <div class="header-filter">
