@@ -8523,7 +8523,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
     # ── کارت‌های «تمام‌شده» (همهٔ اقلامشان ثبت‌شده) به انتهای لیست منتقل می‌شوند ──
-    request_cards.sort(key=lambda c: (not c['done'], not c['visible']))
+    request_cards.sort(key=lambda c: (0 if c['visible'] else 1,))
 
     # ── گزینه‌های تامین از انبار برای اقلام قابل تامین (بر اساس ردیف‌های موجودی) ──
     product_ids = sorted({v['item'].product_id for card in request_cards for v in card['visible'] if v['item'].product_id})
