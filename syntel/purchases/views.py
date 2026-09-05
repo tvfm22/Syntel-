@@ -8391,7 +8391,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             messages.info(request, f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.')
             return redirect(dash_url)
 
-    # ── همه درخواست‌های ۴۵ روز اخیر این کافه ──
+    # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر تاریخ تحویل روی همین پایه) ──
     cutoff_dt = datetime.now() - timedelta(days=45)
     requests_qs = (
         PurchaseRequest.objects
@@ -8405,7 +8405,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if cafe:
         requests_qs = requests_qs.filter(cafe=cafe)
 
-    # فیلتر زمان تحویل: تاریخ مشخص یا تحویل فوری
+    # فیلتر زمان تحویل: تاریخ مشخص یا تحویل فوری؛ بدون فیلتر → فقط درخواست‌های امروز
+    today = datetime.now().date()
     if delivery_filter == 'immediate':
         requests_qs = requests_qs.filter(delivery_immediate=True)
     elif delivery_filter:
@@ -8417,6 +8418,13 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             requests_qs = requests_qs.filter(delivery_immediate=False, delivery_date=ddate)
         else:
             requests_qs = requests_qs.none()
+    else:
+        # پیش‌فرض صفحه: تاریخ همان روز — فقط درخواست‌های ثبت‌شدهٔ امروز
+        requests_qs = requests_qs.filter(created_at__date=today).filter(
+            Q(delivery_immediate=True) |
+            Q(delivery_immediate=False, delivery_date=today) |
+            Q(delivery_date__isnull=True, delivery_immediate=False),
+        )
 
     # فیلتر بخش درخواست‌دهنده
     if dept:
@@ -8514,6 +8522,9 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         if visible or done:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
+    # ── کارت‌های «تمام‌شده» (همهٔ اقلامشان ثبت‌شده) به انتهای لیست منتقل می‌شوند ──
+    request_cards.sort(key=lambda c: (not c['done'], not c['visible']))
+
     # ── گزینه‌های تامین از انبار برای اقلام قابل تامین (بر اساس ردیف‌های موجودی) ──
     product_ids = sorted({v['item'].product_id for card in request_cards for v in card['visible'] if v['item'].product_id})
     stock_options = {}
@@ -8574,10 +8585,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         except (ValueError, TypeError):
             selected_nav_date = None
     if selected_nav_date is None:
-        # پیش‌فرض ناوبری: نزدیک‌ترین تاریخ تحویل آینده، وگرنه امروز
-        today = datetime.now().date()
-        upcoming = [d for d in delivery_dates if d >= today]
-        selected_nav_date = upcoming[0] if upcoming else (delivery_dates[-1] if delivery_dates else today)
+        # پیش‌فرض ناوبری: امروز (صفحه پیش‌فرض، درخواست‌های همان روز را نشان می‌دهد)
+        selected_nav_date = today
     date_str = selected_nav_date.isoformat()
     prev_date = selected_nav_date - timedelta(days=1)
     next_date = selected_nav_date + timedelta(days=1)
@@ -8629,6 +8638,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         'has_immediate': has_immediate,
         'selected_delivery': delivery_filter,
         'selected_date': selected_nav_date,
+        'today_str': today.isoformat(),
         'date_str': date_str,
         'prev_date': prev_date,
         'next_date': next_date,
