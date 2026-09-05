@@ -8392,7 +8392,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             return redirect(dash_url)
 
     # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر تاریخ تحویل روی همین پایه) ──
-    cutoff_dt = datetime.now() - timedelta(days=45)
+    cutoff_dt = timezone.localtime(timezone.now()) - timedelta(days=45)
     requests_qs = (
         PurchaseRequest.objects
         .select_related('user', 'user__department')
