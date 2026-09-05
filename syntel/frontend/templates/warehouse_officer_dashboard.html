@@ -20,13 +20,13 @@
         display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     }
     .page-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
-    /* فیلترها داخل همان هدر */
-    .header-filter { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; justify-self: center; }
-    .header-filter .dept-form { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
-    .header-divider { width: 1px; align-self: stretch; min-height: 30px; background: var(--border-light); }
+    /* فیلترها داخل همان هدر — تاریخ وسط، بخش در گوشه */
+    .header-filter { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; justify-self: center; grid-column: 2; }
+    .header-corner { grid-column: 3; justify-self: end; }
+    .header-corner .dept-form { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
     @media (width < 1024px) {
         .officer-wrap .page-header { display: flex; flex-direction: column; align-items: center; }
-        .header-filter { justify-content: center; }
+        .header-filter, .header-corner { justify-content: center; justify-self: auto; grid-column: auto; }
     }
 
     /* ── نوار فیلتر فشرده ── */
@@ -361,7 +361,8 @@
                 <i class="fas fa-bolt"></i> فوری
             </a>
             {% endif %}
-            <span class="header-divider"></span>
+        </div>
+        <div class="header-corner">
             <form method="get" class="dept-form">
                 {% if selected_delivery %}<input type="hidden" name="delivery" value="{{ selected_delivery }}">{% endif %}
                 <select name="department" class="dept-filter" onchange="this.form.submit()">
