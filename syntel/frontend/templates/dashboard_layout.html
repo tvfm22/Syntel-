@@ -644,7 +644,12 @@
             <!-- Current User -->
             <div class="sidebar-user">
                 <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
-                <div class="user-role">{{ user.get_role_display }}</div>
+                {% if user.role == 'requester' %}
+                    <!-- کاربر درخواست‌دهنده: زیر اسم، بخش درخواستش نمایش داده می‌شود نه نوع کاربر -->
+                    <div class="user-role">{{ user.department.name|default:user.get_role_display }}</div>
+                {% else %}
+                    <div class="user-role">{{ user.get_role_display }}</div>
+                {% endif %}
                 {% if user.role not in 'kitchen,bar,counter,cashier,facilities,requester' %}
                     {% if current_cafe %}
                     <div class="user-cafe"><i class="fas fa-store"></i> {{ current_cafe.name }}</div>
