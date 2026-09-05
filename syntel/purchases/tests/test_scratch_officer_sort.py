@@ -41,14 +41,16 @@ class OfficerDashboardCardSortTest(TestCase):
                                  quantity=Decimal('50'), unit=self.unit)
 
     def test_fully_processed_request_moves_to_bottom(self):
+        """دو درخواستِ امروز: قدیمی‌تر تامین‌شده → کارتش پایین‌تر از درخواست در انتظار"""
+        now = timezone.localtime(timezone.now())
         req_old = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending',
-            created_at=timezone.now() - timedelta(days=2))
+            created_at=now - timedelta(hours=2))
         PurchaseItem.objects.create(request=req_old, product=self.prod_old,
                                     name='old prod', quantity=Decimal('5'), unit='kg')
         req_new = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending',
-            created_at=timezone.now() - timedelta(days=1))
+            created_at=now - timedelta(minutes=5))
         PurchaseItem.objects.create(request=req_new, product=self.prod_new,
                                     name='new prod', quantity=Decimal('3'), unit='kg')
 
@@ -62,9 +64,9 @@ class OfficerDashboardCardSortTest(TestCase):
         self.client.force_login(self.officer)
         resp = self.client.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]))
         self.assertEqual(resp.status_code, 200)
-        body = resp.content.decode('utf-8')
-        idx_old = body.find('درخواست #{}'.format(req_old.id))
-        idx_new = body.find('درخواست #{}'.format(req_new.id))
-        self.assertTrue(idx_old != -1 and idx_new != -1)
-        self.assertLess(idx_new, idx_old,
+        # ترتیب کارت‌ها از context می‌خوانیم (جستجوی رشته‌ای در HTML به رنگ‌های hex مثل #123 گیر می‌دهد)
+        ids = [card['request'].id for card in resp.context['request_cards']]
+        self.assertIn(req_old.id, ids)
+        self.assertIn(req_new.id, ids)
+        self.assertLess(ids.index(req_new.id), ids.index(req_old.id),
                         'درخواستِ پردازش‌شده باید پایین‌تر از درخواستِ در انتظار باشد')

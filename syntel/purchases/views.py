@@ -8406,7 +8406,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         requests_qs = requests_qs.filter(cafe=cafe)
 
     # فیلتر زمان تحویل: تاریخ مشخص یا تحویل فوری؛ بدون فیلتر → فقط درخواست‌های امروز
-    today = datetime.now().date()
+    # «امروز» بر پایهٔ ساعت محلی تهران (نه UTC) — از ابتدای بامداد امروز
+    now_local = timezone.localtime(timezone.now())
+    today = now_local.date()
+    day_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     if delivery_filter == 'immediate':
         requests_qs = requests_qs.filter(delivery_immediate=True)
     elif delivery_filter:
@@ -8419,12 +8422,9 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         else:
             requests_qs = requests_qs.none()
     else:
-        # پیش‌فرض صفحه: تاریخ همان روز — فقط درخواست‌های ثبت‌شدهٔ امروز
-        requests_qs = requests_qs.filter(created_at__date=today).filter(
-            Q(delivery_immediate=True) |
-            Q(delivery_immediate=False, delivery_date=today) |
-            Q(delivery_date__isnull=True, delivery_immediate=False),
-        )
+        # پیش‌فرض صفحه: تاریخ همان روز — همهٔ درخواست‌های ثبت‌شدهٔ امروز
+        # (مستقل از زمان تحویل؛ فیلتر زمان تحویل فقط با انتخاب تاریخ/فوری اعمال می‌شود)
+        requests_qs = requests_qs.filter(created_at__gte=day_start)
 
     # فیلتر بخش درخواست‌دهنده
     if dept:

@@ -119,21 +119,21 @@ class WarehouseFulfillOptionsTests(TestCase):
         response = self._get()
         self.assertEqual(response.status_code, 200)
         # سلکت برند و دکمه افزودن برند نباشند
-        self.assertNotContains(response, '— برند دارای موجودی را انتخاب کنید —')
-        self.assertNotContains(response, '＋ افزودن برند دیگر')
+        self.assertNotContains(response, 'انتخاب برند...')
+        self.assertNotContains(response, 'تأمین از برند دیگر')
         # همان ردیف تنها به‌صورت نامرئی ارسال می‌شود
         self.assertContains(
             response, f'<input type="hidden" name="stock_item_id" value="{self.stock_unbranded.id}">')
         self.assertContains(response, 'بدون برند')
-        self.assertContains(response, 'موجودی: 10 kg')
+        self.assertContains(response, 'موجودی 10 kg')
 
     def test_unbranded_multi_warehouse_keeps_select(self):
         """بدون برند ولی در چند انبار: انتخاب انبار لازم است، نمایش داده شود"""
         self._add_item(self.p_unbranded_multi)
         response = self._get()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '— برند دارای موجودی را انتخاب کنید —')
-        self.assertContains(response, '＋ افزودن برند دیگر')
+        self.assertContains(response, 'انتخاب برند...')
+        self.assertContains(response, 'تأمین از برند دیگر')
         # سلکت‌ها همان دو انبار را دارند
         self.assertContains(response, 'انبار اصلی')
         self.assertContains(response, 'انبار فرعی')
@@ -143,11 +143,11 @@ class WarehouseFulfillOptionsTests(TestCase):
         self._add_item(self.p_single_brand)
         response = self._get()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '— برند دارای موجودی را انتخاب کنید —')
+        self.assertContains(response, 'انتخاب برند...')
         self.assertContains(response, f'<option value="{self.stock_single_brand.id}" selected>')
         self.assertContains(response, 'برند آلفا')
         # هنوز هم قابلیت افزودن برند دیگر وجود دارد
-        self.assertContains(response, '＋ افزودن برند دیگر')
+        self.assertContains(response, 'تأمین از برند دیگر')
 
     def test_single_brand_multi_warehouse_no_default(self):
         """یک برند ولی در دو انبار: هیچ‌کدام پیش‌فرض نباشند"""
