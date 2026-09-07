@@ -1847,14 +1847,15 @@ def purchase_request_form(request):
                     "error_message": "quantity" if "quantity" in errors else "product_name",
                     "department": selected_department,
                     "delivery_days": _next_delivery_days(),
+                    "allow_immediate": _allow_immediate_delivery(),
                 },
                 status=200,
             )
 
         cafe = get_cafe_from_request(request)
-        # زمان تحویل: تاریخ انتخاب‌شده (۷ روز آینده) یا تحویل فوری
+        # زمان تحویل: تاریخ انتخاب‌شده (۷ روز آینده) یا تحویل فوری (فقط در روزهای غیرجمعه)
         delivery_date = None
-        delivery_immediate = request.POST.get('delivery_immediate') == '1'
+        delivery_immediate = request.POST.get('delivery_immediate') == '1' and _allow_immediate_delivery()
         delivery_raw = request.POST.get('delivery_date', '').strip()
         if delivery_raw:
             try:
@@ -1909,6 +1910,7 @@ def purchase_request_form(request):
     return render(request, "purchase_request_form.html", {
         "department": department,
         "delivery_days": _next_delivery_days(),
+        "allow_immediate": _allow_immediate_delivery(),
         "all_categories": all_categories,
     })
 
@@ -2901,6 +2903,12 @@ def _parse_conversion_rate(value):
         return Decimal(str(value))
     except Exception:
         return None
+
+
+def _allow_immediate_delivery():
+    """امروز جمعه است؟ تحویل فوری در فرم درخواست کالا نمایش داده نمی‌شود (ساعت تهران)"""
+    from django.utils import timezone as _tz
+    return _tz.localtime(_tz.now()).weekday() != 4  # 4 = جمعه
 
 
 def _next_delivery_days():
@@ -8714,8 +8722,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'پیش‌نویس خالی است — چیزی برای ارسال نیست')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            # زمان تحویل: فوری یا تاریخ انتخابی
-            delivery_immediate = request.POST.get('delivery_immediate') == '1'
+            # زمان تحویل: فوری یا تاریخ انتخابی (فوری فقط در روزهای غیرجمعه)
+            delivery_immediate = request.POST.get('delivery_immediate') == '1' and _allow_immediate_delivery()
             delivery_date = None
             delivery_raw = request.POST.get('delivery_date', '').strip()
             if delivery_raw and not delivery_immediate:
@@ -8918,6 +8926,7 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
         'products': products,
         'product_brands': product_brands,
         'delivery_days': _next_delivery_days(),
+        'allow_immediate': _allow_immediate_delivery(),
         'cafe_code': cafe_code,
         'user': request.user,
     })

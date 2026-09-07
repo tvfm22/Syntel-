@@ -431,7 +431,9 @@
                             <span>{{ day|jalali_date:"%d %B" }}</span>
                         </button>
                         {% endfor %}
+                        {% if allow_immediate %}
                         <button type="button" class="delivery-chip immediate" data-immediate="1" onclick="selectDeliveryChip(this)">تحویل فوری</button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -1313,10 +1315,10 @@
     }
 
     document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-        // Validate delivery time: یک روز از هفته آینده یا تحویل فوری
+        // Validate delivery time: یک روز از هفته آینده یا تحویل فوری (فوری فقط در روزهای غیرجمعه)
         if (!selectedDeliveryDate && !selectedDeliveryImmediate) {
             e.preventDefault();
-            alert('⚠️ لطفاً زمان تحویل را انتخاب کنید (یکی از روزهای هفته آینده یا گزینه «تحویل فوری»).');
+            alert('⚠️ لطفاً زمان تحویل را انتخاب کنید (یکی از روزهای هفته آینده{% if allow_immediate %} یا گزینه «تحویل فوری»{% endif %}).');
             const sec = document.querySelector('.delivery-section');
             if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;

@@ -223,9 +223,11 @@
                         <span class="bar-label" style="font-size:0.75rem;font-weight:700;color:var(--text-muted);">
                             <i class="fas fa-clock"></i> زمان تحویل:
                         </span>
+                        {% if allow_immediate %}
                         <label class="radio-chip">
                             <input type="radio" name="delivery_choice" value="immediate" onchange="toggleDelivery(this)"> تحویل فوری
                         </label>
+                        {% endif %}
                         <label class="radio-chip">
                             <input type="radio" name="delivery_choice" value="date" checked onchange="toggleDelivery(this)">
                             تاریخ:
@@ -375,11 +377,16 @@ function toggleDelivery(radio) {
     var sel = document.getElementById('delivery-date-select');
     if (!sel) return;
     if (radio.value === 'immediate') {
+        var imm = document.createElement('input');
+        imm.type = 'hidden'; imm.name = 'delivery_immediate'; imm.value = '1';
+        radio.closest('form').appendChild(imm);
         sel.disabled = true;
         sel.removeAttribute('name');
     } else {
         sel.disabled = false;
         sel.setAttribute('name', 'delivery_date');
+        var old = radio.closest('form').querySelector('input[name="delivery_immediate"]');
+        if (old) old.remove();
     }
 }
 </script>
