@@ -137,13 +137,13 @@ ok('داشبورد مدیریت' in body_d and 'درخواست کالا' in body
 # ادمین (غیر سوپرادمین) — نام کافه و تغییر کافه از هدر حذف و به سایدبار منتقل شده‌اند
 r = c_admin_m.get(MOBILE)
 body = r.content.decode('utf-8')
-ok('<span class="mobile-top-bar-title">Kuker</span>' in body,
-   'ادمین: نوشته برند هدر موبایل انگلیسی است (Kuker)')
+ok('<span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>' in body,
+   'ادمین: نوشته برند هدر موبایل عیناً لوگوی صفحه ورود است (Kuker 28px گرادیان)')
 ok('id="menuToggle"' in body, 'ادمین: دکمه منوی همبرگری در هدر هست')
 ok('<span class="mobile-top-bar-cafe"' not in body and 'class="mobile-top-bar-actions"' not in body,
    'ادمین: هدر بالایی فقط Kuker و دکمه منو است (بدون نام کافه و تغییر کافه)')
 i_menu = body.find('id="menuToggle"')
-i_title = body.find('<span class="mobile-top-bar-title"')
+i_title = body.find('<span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>')
 ok('grid-template-columns: 1fr auto 1fr' in body,
    'هدر موبایل: عنوان Kuker وسط هدر است (گرید 1fr auto 1fr)')
 ok(i_menu < i_title, 'ترتیب هدر موبایل: دکمه منو سپس Kuker')
@@ -158,7 +158,7 @@ ok('class="user-cafe"' in body and cafe.name in body, 'ادمین: اسم کاف
 # مدیرعامل (سوپرادمین) — هدر موبایل مثل بقیه فقط Kuker + دکمه منو؛ تغییر کافه در منوی همبرگری
 r = c_ceo_m.get(MOBILE)
 body_ceo = r.content.decode('utf-8')
-ok('<span class="mobile-top-bar-title">Kuker</span>' in body_ceo and 'id="menuToggle"' in body_ceo,
+ok('<span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>' in body_ceo and 'id="menuToggle"' in body_ceo,
    'مدیرعامل: هدر موبایل Kuker + دکمه منوی همبرگری دارد')
 ok('<span class="mobile-top-bar-cafe"' not in body_ceo and 'class="mobile-top-bar-actions"' not in body_ceo,
    'مدیرعامل: هدر موبایل نام کافه و دکمه تغییر کافه ندارد')
