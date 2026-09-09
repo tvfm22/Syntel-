@@ -152,6 +152,20 @@
         font-weight: 600; cursor: pointer; color: var(--text-secondary);
     }
     .radio-chip input { accent-color: #6d28d9; }
+
+    /* ── چیپ اطلاعات هر قلم: ماندگاری، موجودی انبار، زمان تحویل ── */
+    .info-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.2rem 0.65rem; border-radius: 999px;
+        font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+        background: var(--bg-subtle); color: var(--text-secondary);
+        border: 1px solid var(--border-light);
+    }
+    .info-chip i { font-size: 0.65rem; opacity: .85; }
+    .info-chip.shelf { background: rgba(16,185,129,.1); color: #047857; border-color: rgba(16,185,129,.25); }
+    .info-chip.stock { background: rgba(59,130,246,.1); color: #1d4ed8; border-color: rgba(59,130,246,.25); }
+    .info-chip.stock.none { background: rgba(239,68,68,.08); color: #b91c1c; border-color: rgba(239,68,68,.28); }
+    .row-delivery { background: rgba(139,92,246,.1); color: #6d28d9; border-color: rgba(139,92,246,.28); }
 </style>
 {% endblock %}
 
@@ -171,6 +185,33 @@
         </div>
     </div>
 
+    <!-- ── فرم افزودن کالای جدید — بالای صفحه ── -->
+    <div class="section-card" style="margin-bottom:var(--space-4);">
+        <div class="section-title">
+            <i class="fas fa-plus" style="color:#059669;"></i>
+            افزودن کالای جدید
+        </div>
+        <form method="post" class="add-form-row">
+            {% csrf_token %}
+            <select name="product_id" id="product-select" style="min-width:200px;">
+                <option value="">— انتخاب کالا از لیست —</option>
+                {% for p in products %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="brand_id" id="brand-select" style="min-width:140px;" disabled>
+                <option value="">بدون برند</option>
+            </select>
+            <input type="text" name="new_name" placeholder="یا نام آزاد بنویسید">
+            <input type="number" name="new_qty" min="1" step="1" placeholder="مقدار" required>
+            <input type="text" name="unit" placeholder="واحد (پیش‌فرض: عدد)" style="width:110px;">
+            <input type="text" name="description" placeholder="توضیحات (اختیاری)" style="flex:1;min-width:140px;">
+            <button type="submit" name="action" value="add_item" class="btn btn-blue">
+                <i class="fas fa-plus"></i> افزودن
+            </button>
+        </form>
+    </div>
+
     <div class="hint-box">
         <i class="fas fa-circle-info"></i>
         کالاهایی که در داشبورد با «ارجاع به خرید» علامت می‌زنید به همین صفحه می‌آیند.
@@ -188,10 +229,21 @@
         {% if draft_items %}
             {% for d in draft_items %}
             <div class="draft-row">
+                {% with info=draft_item_infos|get_item:d.id %}
                 <span class="draft-name">{{ d.product.name|default:d.name }}</span>
                 {% if d.product_brand %}<span class="dept-badge" style="font-size:0.68rem;">{{ d.product_brand.brand_name }}</span>{% endif %}
-                {% if d.source_item_id %}<span class="dept-badge" style="background:rgba(59,130,246,0.1);color:#1e40af;font-size:0.68rem;" title="از داشبورد انبار ارجاع شده">
-                    <i class="fas fa-link"></i> ارجاعی</span>{% endif %}
+                {% if info.shelf_life %}
+                    <span class="info-chip shelf" title="عمر مفید تعریف‌شده هنگام ثبت کالا"><i class="fas fa-hourglass-half"></i> ماندگاری: {{ info.shelf_life }} روز</span>
+                {% endif %}
+                {% if d.product_id %}
+                    <span class="info-chip stock{% if not info.has_stock %} none{% endif %}" title="مجموع موجودی این کالا در انبارها (واحد تجاری)">
+                        <i class="fas fa-boxes-stacked"></i> موجودی: {{ info.stock_text }}
+                    </span>
+                {% endif %}
+                <span class="delivery-chip row-delivery" title="زمان تحویل انتخابی برای ارسال این لیست">
+                    <i class="fas fa-clock"></i> تحویل: <span class="row-delivery-text">{{ delivery_days.0.0|jalali_date }} ({{ delivery_days.0.1 }})</span>
+                </span>
+                {% endwith %}
                 <form method="post" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
                     {% csrf_token %}
                     <input type="hidden" name="item_id" value="{{ d.id }}">
@@ -226,7 +278,7 @@
                         <select name="delivery_date" id="delivery-date-select"
                                 style="border:1.5px solid var(--border-default);border-radius:var(--radius-md);padding:0.25rem 0.5rem;font-family:inherit;font-size:0.75rem;background:var(--bg-card);color:var(--text-primary);">
                             {% for day, day_name in delivery_days %}
-                            <option value="{{ day|date:'Y-m-d' }}">{{ day|jalali_date }} ({{ day_name }})</option>
+                            <option value="{{ day|date:'Y-m-d' }}"{% if forloop.first %} selected{% endif %}>{{ day|jalali_date }} ({{ day_name }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -245,35 +297,9 @@
         {% else %}
             <div class="empty-state" style="padding:var(--space-6);">
                 <div><i class="fas fa-inbox" style="font-size:2.2rem;opacity:.3;"></i></div>
-                <p style="margin-top:var(--space-2);">هنوز کالایی ارجاع نشده — از داشبورد انبار «ارجاع به خرید» بزنید یا از فرم پایین اضافه کنید.</p>
+                <p style="margin-top:var(--space-2);">هنوز کالایی اضافه نشده — از فرم «افزودن کالای جدید» بالا استفاده کنید یا در داشبورد انبار «ارجاع به خرید» بزنید.</p>
             </div>
         {% endif %}
-
-        <!-- ── فرم افزودن کالای جدید ── -->
-        <div style="margin-top:var(--space-5);border-top:1px solid var(--border-light);padding-top:var(--space-4);">
-            <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2);">
-                <i class="fas fa-plus" style="color:#059669;"></i> افزودن کالای جدید
-            </div>
-            <form method="post" class="add-form-row">
-                {% csrf_token %}
-                <select name="product_id" id="product-select" style="min-width:200px;">
-                    <option value="">— انتخاب کالا از لیست —</option>
-                    {% for p in products %}
-                    <option value="{{ p.id }}">{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-                <select name="brand_id" id="brand-select" style="min-width:140px;" disabled>
-                    <option value="">بدون برند</option>
-                </select>
-                <input type="text" name="new_name" placeholder="یا نام آزاد بنویسید">
-                <input type="number" name="new_qty" min="1" step="1" placeholder="مقدار" required>
-                <input type="text" name="unit" placeholder="واحد (پیش‌فرض: عدد)" style="width:110px;">
-                <input type="text" name="description" placeholder="توضیحات (اختیاری)" style="flex:1;min-width:140px;">
-                <button type="submit" name="action" value="add_item" class="btn btn-blue">
-                    <i class="fas fa-plus"></i> افزودن
-                </button>
-            </form>
-        </div>
     </div>
 
     <!-- ── درخواست‌های ارسال‌شده ── -->
@@ -362,6 +388,19 @@ document.getElementById('product-select').addEventListener('change', function() 
     if (this.value) { nameInput.placeholder = 'نام جایگزین (اختیاری)'; }
     else { nameInput.placeholder = 'یا نام آزاد بنویسید'; }
 });
+
+/* ── همگام‌سازی چیپ «تحویل:» روی هر ردیف با انتخابِ نوار ارسال ── */
+var deliverySelect = document.getElementById('delivery-date-select');
+var rowDeliveryTexts = document.querySelectorAll('.row-delivery-text');
+function syncRowDelivery() {
+    if (!deliverySelect || deliverySelect.selectedIndex < 0 || !rowDeliveryTexts.length) return;
+    var label = deliverySelect.options[deliverySelect.selectedIndex].textContent;
+    for (var i = 0; i < rowDeliveryTexts.length; i++) {
+        rowDeliveryTexts[i].textContent = label;
+    }
+}
+if (deliverySelect) { deliverySelect.addEventListener('change', syncRowDelivery); }
+syncRowDelivery();
 
 </script>
 {% endblock %}

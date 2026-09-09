@@ -8741,7 +8741,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
 
         elif action == 'add_item':
             draft = _get_or_create_purchase_draft(cafe, request.user)
-            name = (request.POST.get('name', '') or '').strip()
+            # فرم این صفحه با «new_name» پست می‌کند؛ «name» هم برای سازگاری پذیرفته می‌شود
+            name = (request.POST.get('name', '') or request.POST.get('new_name', '') or '').strip()
             product_id = request.POST.get('product_id', '')
             brand_id = request.POST.get('brand_id', '')
             # فرم قالب با «quantity» پست می‌کند؛ «new_qty» هم پذیرفته می‌شود
@@ -8890,9 +8891,58 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
     for b in ProductBrand.objects.filter(product_id__in=[p.id for p in products], is_active=True):
         product_brands.setdefault(b.product_id, []).append(b)
 
+    # ── اطلاعات هر قلم پیش‌نویس: ماندگاری (تعریف‌شده هنگام ثبت محصول) + موجودی انبار ──
+    # موجودی همان قرارداد داشبورد: واحد تجاری برند، و بدون برند مجموع همه برندها
+    draft_item_infos = {}
+    scope_ids = sorted({d.product_id for d in draft_items if d.product_id})
+    stock_map = {}  # (product_id, brand_id|None) -> {'trade': Decimal, 'unit': str}
+    if scope_ids:
+        sis = StockItem.objects.filter(product_id__in=scope_ids, quantity__gt=0).select_related('product_brand', 'unit')
+        if cafe:
+            sis = sis.filter(warehouse__cafe=cafe)
+        for si in sis:
+            brand = si.product_brand
+            rate = brand.conversion_rate if brand and brand.conversion_rate else None
+            trade = si.quantity / rate if rate else si.quantity
+            unit = brand.trade_unit if brand and brand.trade_unit else (
+                (si.unit.symbol or si.unit.name) if si.unit else '')
+            key = (si.product_id, brand.id if brand else None)
+            entry = stock_map.get(key)
+            if entry is None:
+                stock_map[key] = {'trade': trade, 'unit': unit}
+            else:
+                entry['trade'] += trade
+    for d in draft_items:
+        if not d.product_id:
+            continue
+        shelf = d.product.shelf_life_days or None
+        if d.product_brand_id:
+            entry = stock_map.get((d.product_id, d.product_brand_id))
+            total = entry['trade'] if entry else Decimal('0')
+            unit = entry['unit'] if entry else (
+                d.product_brand.trade_unit
+                or ((d.product.unit.name if d.product.unit else '') or d.unit))
+        else:
+            # بدون برند: مجموع موجودی همه برندهای محصول
+            total = Decimal('0')
+            unit = ''
+            for (pid, _bid), entry in stock_map.items():
+                if pid == d.product_id:
+                    total += entry['trade']
+                    if not unit:
+                        unit = entry['unit']
+            if total <= 0:
+                unit = unit or ((d.product.unit.name if d.product.unit else '') or d.unit)
+        draft_item_infos[d.id] = {
+            'shelf_life': shelf,
+            'has_stock': total > 0,
+            'stock_text': f'{total} {unit}'.strip(),
+        }
+
     return render(request, 'warehouse_purchase_draft.html', {
         'draft': draft,
         'draft_items': draft_items,
+        'draft_item_infos': draft_item_infos,
         'sent_requests': sent_requests,
         'products': products,
         'product_brands': product_brands,
