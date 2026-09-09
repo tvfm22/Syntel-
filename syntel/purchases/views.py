@@ -1847,15 +1847,13 @@ def purchase_request_form(request):
                     "error_message": "quantity" if "quantity" in errors else "product_name",
                     "department": selected_department,
                     "delivery_days": _next_delivery_days(),
-                    "allow_immediate": _allow_immediate_delivery(),
                 },
                 status=200,
             )
 
         cafe = get_cafe_from_request(request)
-        # زمان تحویل: تاریخ انتخاب‌شده (۷ روز آینده) یا تحویل فوری (فقط در روزهای غیرجمعه)
+        # زمان تحویل: تاریخ انتخاب‌شده (۷ روز آینده)
         delivery_date = None
-        delivery_immediate = request.POST.get('delivery_immediate') == '1' and _allow_immediate_delivery()
         delivery_raw = request.POST.get('delivery_date', '').strip()
         if delivery_raw:
             try:
@@ -1865,7 +1863,6 @@ def purchase_request_form(request):
         purchase_request = PurchaseRequest.objects.create(
             user=request.user, status="pending_manager_approval", cafe=cafe,
             delivery_date=delivery_date,
-            delivery_immediate=delivery_immediate,
         )
         created_items = []
         for index, (name, qty, unit, desc, item_product, item_brand) in enumerate(items_data, start=1):
@@ -1910,7 +1907,6 @@ def purchase_request_form(request):
     return render(request, "purchase_request_form.html", {
         "department": department,
         "delivery_days": _next_delivery_days(),
-        "allow_immediate": _allow_immediate_delivery(),
         "all_categories": all_categories,
     })
 
@@ -2905,19 +2901,13 @@ def _parse_conversion_rate(value):
         return None
 
 
-def _allow_immediate_delivery():
-    """امروز جمعه است؟ تحویل فوری در فرم درخواست کالا نمایش داده نمی‌شود (ساعت تهران)"""
-    from django.utils import timezone as _tz
-    return _tz.localtime(_tz.now()).weekday() != 4  # 4 = جمعه
-
-
 def _next_delivery_days():
     """روزهای قابل انتخاب زمان تحویل: ۷ روز آینده (از فردا) فقط یکشنبه تا پنجشنبه
     — جمعه و شنبه نمایش داده نمی‌شوند — به‌صورت (تاریخ، نام روز هفته)"""
     from datetime import timedelta
     from django.utils import timezone as _tz
     weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
-    today = _tz.localtime(_tz.now()).date()  # ساعت تهران، هماهنگ با _allow_immediate_delivery
+    today = _tz.localtime(_tz.now()).date()  # ساعت تهران
     days = []
     for offset in range(1, 8):  # ۷ روز آینده از فردا
         d = today + timedelta(days=offset)
@@ -8724,11 +8714,10 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'پیش‌نویس خالی است — چیزی برای ارسال نیست')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            # زمان تحویل: فوری یا تاریخ انتخابی (فوری فقط در روزهای غیرجمعه)
-            delivery_immediate = request.POST.get('delivery_immediate') == '1' and _allow_immediate_delivery()
+            # زمان تحویل: تاریخ انتخابی
             delivery_date = None
             delivery_raw = request.POST.get('delivery_date', '').strip()
-            if delivery_raw and not delivery_immediate:
+            if delivery_raw:
                 try:
                     delivery_date = datetime.strptime(delivery_raw, '%Y-%m-%d').date()
                 except (ValueError, TypeError):
@@ -8741,7 +8730,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                     status='pending_manager_approval',
                     source='warehouse_purchase',
                     delivery_date=delivery_date,
-                    delivery_immediate=delivery_immediate,
                 )
                 new_request_items = []
                 for d_item in draft_items:
@@ -8928,7 +8916,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
         'products': products,
         'product_brands': product_brands,
         'delivery_days': _next_delivery_days(),
-        'allow_immediate': _allow_immediate_delivery(),
         'cafe_code': cafe_code,
         'user': request.user,
     })

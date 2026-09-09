@@ -114,7 +114,7 @@ class WarehousePurchaseDraftTests(TestCase):
             draft=draft, product=self.product, product_brand=self.brand,
             name='محصول تست', quantity=5, unit='kg')
         resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
-            'action': 'send', 'delivery_choice': 'immediate',
+            'action': 'send', 'delivery_date': '2026-09-15',
         })
         self.assertRedirects(resp, reverse('warehouse_purchase_draft', args=['testcafe']))
         # درخواست ساخته شد و مستقیماً برای مسئول انبار ارسال شد
@@ -125,6 +125,9 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(new_req.user, self.wo)
         self.assertEqual(new_req.items.count(), 1)
         self.assertEqual(new_req.items.first().quantity, 5)
+        # گزینه «تحویل فوری» حذف شده: تاریخ ارسالی ثبت می‌شود و فوری همیشه خالی است
+        self.assertEqual(new_req.delivery_date.isoformat(), '2026-09-15')
+        self.assertFalse(new_req.delivery_immediate)
         # تخصیص انبار مشترکِ در انتظار برای قلم ساخته شد
         a = new_req.items.first().officer_assignments.first()
         self.assertIsNotNone(a)

@@ -360,7 +360,6 @@
         flex: 1; font-size: 0.8rem; color: #6366f1; font-weight: 600;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .delivery-summary.immediate-summary { color: #b45309; }
     .delivery-arrow { color: #9ca3af; font-size: 0.8rem; transition: transform .2s; }
     .delivery-section.open .delivery-arrow { transform: rotate(180deg); }
     .delivery-box {
@@ -372,7 +371,7 @@
         padding: 0.3rem 0.75rem 0.9rem;
         border-top: 1px dashed #e5e7eb; margin: 0 0.25rem;
     }
-    /* چیپ‌های تحویل: ۵ روز (یکشنبه تا پنجشنبه) + فوری — دو ردیف منظم، بدون اسکرول، حتی در موبایل */
+    /* چیپ‌های تحویل: ۵ روز (یکشنبه تا پنجشنبه) — دو ردیف منظم (۳+۲)، بدون اسکرول، حتی در موبایل */
     .delivery-chips {
         display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
     }
@@ -389,9 +388,6 @@
     }
     .delivery-chip:hover { border-color: #6366f1; color: #6366f1; }
     .delivery-chip.active { background: #6366f1; border-color: #6366f1; color: #fff; }
-    .delivery-chip.immediate { border-color: #f59e0b; color: #92400e; background: #fffbeb; }
-    .delivery-chip.immediate:hover { border-color: #f59e0b; color: #b45309; }
-    .delivery-chip.immediate.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
 
     /* ── مودال بررسی موجودی انبار ── */
     .avail-modal-msg {
@@ -415,7 +411,7 @@
     <form method="post" id="purchaseForm">
         {% csrf_token %}
 
-        <!-- 0. زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) یا تحویل فوری -->
+        <!-- 0. زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) -->
         <div class="delivery-section" id="deliverySection">
             <button type="button" class="delivery-toggle" id="deliveryToggle" onclick="toggleDeliveryBox()">
                 <span class="delivery-toggle-title">📅 زمان تحویل <span class="delivery-required">*</span></span>
@@ -431,14 +427,10 @@
                             <span>{{ day|jalali_date:"%d %B" }}</span>
                         </button>
                         {% endfor %}
-                        {% if allow_immediate %}
-                        <button type="button" class="delivery-chip immediate" data-immediate="1" onclick="selectDeliveryChip(this)">تحویل فوری</button>
-                        {% endif %}
                     </div>
                 </div>
             </div>
             <input type="hidden" name="delivery_date" id="deliveryDate" value="">
-            <input type="hidden" name="delivery_immediate" id="deliveryImmediate" value="">
         </div>
 
         <!-- 1. Single entry form at the top -->
@@ -591,9 +583,8 @@
     const IS_REQUESTER = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
     let entryBrandName = '';  // نام برند انتخاب‌شده در فرم ورود
 
-    // ── زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) یا تحویل فوری ──
+    // ── زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) ──
     let selectedDeliveryDate = '';
-    let selectedDeliveryImmediate = false;
 
     function toggleDeliveryBox() {
         document.getElementById('deliverySection').classList.toggle('open');
@@ -603,14 +594,11 @@
         document.querySelectorAll('.delivery-chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
         selectedDeliveryDate = el.getAttribute('data-date') || '';
-        selectedDeliveryImmediate = el.getAttribute('data-immediate') === '1';
         document.getElementById('deliveryDate').value = selectedDeliveryDate;
-        document.getElementById('deliveryImmediate').value = selectedDeliveryImmediate ? '1' : '';
         // نمایش خلاصه انتخاب‌شده در هدر باکس و بستن باکس بعد از انتخاب
         const summary = document.getElementById('deliverySummary');
         if (summary) {
             summary.textContent = el.textContent.trim();
-            summary.classList.toggle('immediate-summary', selectedDeliveryImmediate);
         }
         document.getElementById('deliverySection').classList.remove('open');
     }
@@ -1315,10 +1303,10 @@
     }
 
     document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-        // Validate delivery time: یک روز از هفته آینده یا تحویل فوری (فوری فقط در روزهای غیرجمعه)
-        if (!selectedDeliveryDate && !selectedDeliveryImmediate) {
+        // Validate delivery time: یک روز از هفته آینده (یکشنبه تا پنجشنبه)
+        if (!selectedDeliveryDate) {
             e.preventDefault();
-            alert('⚠️ لطفاً زمان تحویل را انتخاب کنید (یکی از روزهای هفته آینده{% if allow_immediate %} یا گزینه «تحویل فوری»{% endif %}).');
+            alert('⚠️ لطفاً زمان تحویل را انتخاب کنید (یکی از روزهای هفته آینده).');
             const sec = document.querySelector('.delivery-section');
             if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;

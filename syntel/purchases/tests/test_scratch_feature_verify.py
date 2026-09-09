@@ -70,6 +70,11 @@ class FeatureVerifyTests(TestCase):
         days = resp.context['delivery_days']
         self.assertEqual(len(days), 5)
         self.assertTrue(all(d.weekday() not in (4, 5) for d, _ in days))
+        # گزینه «تحویل فوری» از فرم حذف شده است
+        html = resp.content.decode('utf-8')
+        self.assertNotIn('تحویل فوری', html)
+        self.assertNotIn('delivery_immediate', html)
+        self.assertNotIn('allow_immediate', html)
 
     # ── Feature 2: show_sub_products in autocomplete ─────────────────
     def test_autocomplete_requester_flag_off_shows_main_name(self):
