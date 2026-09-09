@@ -12,65 +12,67 @@
         margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
     }
 
-    /* ── کارت‌های آماری ── */
-    .stats-row {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: var(--space-3); margin-bottom: var(--space-5);
-    }
-    .stat-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5);
-        display: flex; align-items: center; gap: var(--space-3);
-        transition: all var(--transition-fast);
-    }
-    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .stat-icon {
-        width: 38px; height: 38px; border-radius: var(--radius-md); flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
-    }
-    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
-    .stat-icon.draft   { background: rgba(59,130,246,0.1); color: #1e40af; }
-    .stat-icon.sent    { background: rgba(139,92,246,0.12); color: #6d28d9; }
-
-    /* ── بخش پیش‌نویس ── */
+    /* ── کارت‌های بخش‌ها ── */
     .section-card {
         background: var(--bg-card); border: 1px solid var(--border-light);
         border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
         padding: var(--space-5); margin-bottom: var(--space-5);
+        overflow: hidden;
     }
     .section-title {
         display: flex; align-items: center; gap: 0.5rem;
         font-size: 1rem; font-weight: 800; color: var(--text-primary);
-        margin-bottom: var(--space-4);
+        margin-bottom: var(--space-3);
     }
     .section-title i { color: var(--accent-indigo); }
+    .count-text { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
 
-    .draft-row {
-        display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
-        padding: var(--space-3); border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg); margin-bottom: var(--space-2);
-        background: var(--bg-card); transition: all var(--transition-fast);
+    /* ── جدول اقلام: ستون‌های صاف/جدا با سرستون ── */
+    .table-scroll { overflow-x: auto; }
+    .officer-table {
+        width: 100%; border-collapse: collapse; font-size: 0.82rem;
+        border: 1px solid var(--border-light); border-radius: var(--radius-lg);
     }
-    .draft-row:hover { border-color: var(--accent-indigo); }
-    .draft-name { font-weight: 700; color: var(--text-primary); font-size: 0.88rem; min-width: 140px; }
-    .draft-brand { font-size: 0.72rem; color: #6d28d9; font-weight: 600; }
-    .draft-qty { color: var(--accent-green); font-weight: 700; white-space: nowrap; }
-    .draft-desc { font-size: 0.75rem; color: var(--text-muted); background: #fffbeb;
-                  border-radius: var(--radius-md); padding: 0.25rem 0.6rem; }
-    .row-actions { display: flex; gap: 0.35rem; margin-inline-start: auto; align-items: center; }
+    .officer-table th, .officer-table td {
+        padding: 0.55rem 0.85rem; vertical-align: middle; text-align: right;
+        border-inline-end: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
+    }
+    .officer-table th:last-child, .officer-table td:last-child { border-inline-end: none; }
+    .officer-table thead th {
+        background: rgba(139,92,246,0.07);
+        color: var(--text-secondary);
+        font-size: 0.72rem; font-weight: 800; white-space: nowrap;
+        border-bottom: 2px solid var(--border-default);
+    }
+    .officer-table tbody tr:last-child td { border-bottom: none; }
+    .officer-table tbody tr:hover td { background: rgba(139,92,246,0.035); }
+
+    .col-name { font-weight: 700; color: var(--text-primary); min-width: 160px; }
+    .col-fix { white-space: nowrap; color: var(--text-secondary); }
+    .col-note { min-width: 150px; color: var(--text-secondary); }
+    .cell-delivery { color: #6d28d9; font-weight: 700; white-space: nowrap; }
+    .cell-actions { white-space: nowrap; text-align: center !important; }
+    .t-ok   { color: #047857; font-weight: 600; }
+    .t-bad  { color: #b91c1c; font-weight: 600; }
+    .t-warn { color: #92400e; font-weight: 600; }
+    .t-deliv { color: #6d28d9; font-weight: 700; white-space: nowrap; }
+    .dash { color: #d1d5db; }
+
+    /* ── ویرایش درون جدول ── */
     .qty-edit {
-        width: 80px; padding: 0.3rem 0.5rem; border: 1.5px solid var(--border-default);
+        padding: 0.3rem 0.4rem; border: 1.5px solid var(--border-default);
         border-radius: var(--radius-md); font-family: inherit; font-size: 0.85rem; font-weight: 600;
         text-align: center; background: var(--bg-card); color: var(--text-primary);
     }
+    .officer-table input.qty-edit { width: 64px; }
     .qty-edit:focus { outline: none; border-color: var(--accent-indigo); }
     .desc-edit {
-        width: 150px; padding: 0.3rem 0.5rem; border: 1.5px solid var(--border-default);
+        padding: 0.3rem 0.5rem; border: 1.5px solid var(--border-default);
         border-radius: var(--radius-md); font-family: inherit; font-size: 0.75rem;
         background: var(--bg-card); color: var(--text-primary);
     }
+    .officer-table input.desc-edit { width: 100%; min-width: 130px; }
     .desc-edit:focus { outline: none; border-color: var(--accent-indigo); }
     .icon-btn {
         border: none; cursor: pointer; width: 30px; height: 30px; border-radius: var(--radius-md);
@@ -80,6 +82,7 @@
     .icon-btn.save { background: rgba(16,185,129,0.12); color: #059669; }
     .icon-btn.delete { background: rgba(239,68,68,0.1); color: #b91c1c; }
     .icon-btn:hover { transform: scale(1.08); }
+    .cell-actions .icon-btn + .icon-btn { margin-inline-start: 0.3rem; }
 
     /* ── فرم افزودن ── */
     .add-form-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
@@ -95,7 +98,7 @@
         border: none; border-radius: var(--radius-md); padding: 0.55rem 1.2rem; font-size: 0.82rem;
         font-weight: 700; cursor: pointer; font-family: inherit;
         display: inline-flex; align-items: center; gap: 0.4rem; transition: all var(--transition-fast);
-;    }
+    }
     .btn:active { transform: scale(.98); }
     .btn-green { background: var(--accent-green, #10b981); color: #fff; }
     .btn-blue  { background: #3b82f6; color: #fff; }
@@ -113,25 +116,8 @@
         padding: var(--space-3) var(--space-4); background: rgba(139,92,246,0.05);
         border-bottom: 1px solid var(--border-light); flex-wrap: wrap;
     }
-    .sent-body { padding: var(--space-3) var(--space-4); }
-    .sent-item {
-        display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
-        padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
-        background: var(--bg-page, #f9fafb); margin-bottom: var(--space-2);
-    }
-    .sent-item .draft-name { flex: 1; min-width: 120px; }
-
-    .delivery-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.8rem; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
-        background: rgba(139,92,246,0.12); color: #6d28d9; border: 1px solid rgba(139,92,246,0.25);
-    }
-    .delivery-chip.immediate { background: rgba(245,158,11,0.14); color: #92400e; border-color: rgba(245,158,11,0.35); }
-    .delivery-chip.no-date { background: rgba(245,158,11,0.14); color: #92400e; border-color: rgba(245,158,11,0.35); }
-    .dept-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem; border-radius: 999px;
-        font-size: 0.7rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
-    }
+    .req-title { font-size: 0.85rem; font-weight: 800; color: var(--text-primary); }
+    .req-date { font-size: 0.72rem; color: var(--text-muted); }
 
     .empty-state { text-align: center; padding: var(--space-8) var(--space-4); color: var(--text-muted); }
     .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: var(--space-3); opacity: .5; }
@@ -146,26 +132,6 @@
         border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); margin-top: var(--space-4);
     }
     .send-note { font-size: 0.78rem; color: var(--text-muted); }
-    .radio-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.8rem;
-        border: 1.5px solid var(--border-default); border-radius: 999px; font-size: 0.76rem;
-        font-weight: 600; cursor: pointer; color: var(--text-secondary);
-    }
-    .radio-chip input { accent-color: #6d28d9; }
-
-    /* ── چیپ اطلاعات هر قلم: ماندگاری، موجودی انبار، زمان تحویل ── */
-    .info-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.2rem 0.65rem; border-radius: 999px;
-        font-size: 0.7rem; font-weight: 700; white-space: nowrap;
-        background: var(--bg-subtle); color: var(--text-secondary);
-        border: 1px solid var(--border-light);
-    }
-    .info-chip i { font-size: 0.65rem; opacity: .85; }
-    .info-chip.shelf { background: rgba(16,185,129,.1); color: #047857; border-color: rgba(16,185,129,.25); }
-    .info-chip.stock { background: rgba(59,130,246,.1); color: #1d4ed8; border-color: rgba(59,130,246,.25); }
-    .info-chip.stock.none { background: rgba(239,68,68,.08); color: #b91c1c; border-color: rgba(239,68,68,.28); }
-    .row-delivery { background: rgba(139,92,246,.1); color: #6d28d9; border-color: rgba(139,92,246,.28); }
 </style>
 {% endblock %}
 
@@ -223,48 +189,64 @@
         <div class="section-title">
             <i class="fas fa-cart-shopping"></i>
             اقلام آماده ارسال
-            {% if draft_items %}<span class="dept-badge">{{ draft_items|length }} قلم</span>{% endif %}
+            {% if draft_items %}<span class="count-text">{{ draft_items|length }} قلم</span>{% endif %}
         </div>
 
         {% if draft_items %}
-            {% for d in draft_items %}
-            <div class="draft-row">
-                {% with info=draft_item_infos|get_item:d.id %}
-                <span class="draft-name">{{ d.product.name|default:d.name }}</span>
-                {% if d.product_brand %}<span class="dept-badge" style="font-size:0.68rem;">{{ d.product_brand.brand_name }}</span>{% endif %}
-                {% if info.shelf_life %}
-                    <span class="info-chip shelf" title="عمر مفید تعریف‌شده هنگام ثبت کالا"><i class="fas fa-hourglass-half"></i> ماندگاری: {{ info.shelf_life }} روز</span>
-                {% endif %}
-                {% if d.product_id %}
-                    <span class="info-chip stock{% if not info.has_stock %} none{% endif %}" title="مجموع موجودی این کالا در انبارها (واحد تجاری)">
-                        <i class="fas fa-boxes-stacked"></i> موجودی: {{ info.stock_total|trim_decimal }} {% if info.stock_unit %}{{ info.stock_unit }}{% endif %}
-                    </span>
-                {% endif %}
-                <span class="delivery-chip row-delivery" title="زمان تحویل انتخابی برای ارسال این لیست">
-                    <i class="fas fa-clock"></i> تحویل: <span class="row-delivery-text">{{ delivery_days.0.0|jalali_date }} ({{ delivery_days.0.1 }})</span>
-                </span>
-                {% endwith %}
-                <form method="post" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
-                    {% csrf_token %}
-                    <input type="hidden" name="item_id" value="{{ d.id }}">
-                    <input type="number" name="quantity" class="qty-edit" min="1" step="1"
-                           value="{{ d.quantity|stringformat:'s' }}" required title="مقدار">
-                    <input type="text" name="description" class="desc-edit" value="{{ d.description }}"
-                           placeholder="توضیحات" title="توضیحات">
-                    <button type="submit" name="action" value="edit_item" class="icon-btn save" title="ذخیره تغییرات">
-                        <i class="fas fa-check"></i>
-                    </button>
-                </form>
-                <span class="draft-qty-label" style="font-size:0.75rem;color:var(--text-muted);">{{ d.unit }}</span>
-                <form method="post" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="item_id" value="{{ d.id }}">
-                    <button type="submit" name="action" value="delete_item" class="icon-btn delete" title="حذف"
-                            onclick="return confirm('«{{ d.name }}» از پیش‌نویس حذف شود؟');">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
+            <div class="table-scroll">
+                <table class="officer-table">
+                    <thead>
+                        <tr>
+                            <th>کالا</th>
+                            <th>برند</th>
+                            <th title="عمر مفید تعریف‌شده هنگام ثبت کالا">ماندگاری</th>
+                            <th title="مجموع موجودی این کالا در انبارها (واحد تجاری)">موجودی</th>
+                            <th>مقدار</th>
+                            <th>واحد</th>
+                            <th title="زمان تحویل انتخابی برای ارسال این لیست">تحویل</th>
+                            <th>توضیحات</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for d in draft_items %}
+                        {% with info=draft_item_infos|get_item:d.id %}
+                        <tr>
+                            <td class="col-name">{{ d.product.name|default:d.name }}</td>
+                            <td class="col-fix">{% if d.product_brand %}{{ d.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td class="col-fix">{% if info.shelf_life %}{{ info.shelf_life }} روز{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td class="col-fix">{% if info.has_stock %}<span class="t-ok">{{ info.stock_total|trim_decimal }} {{ info.stock_unit }}</span>{% elif d.product_id %}<span class="t-bad">ناموجود</span>{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td><input type="number" name="quantity" class="qty-edit" min="1" step="1"
+                                       value="{{ d.quantity|stringformat:'s' }}" required title="مقدار"
+                                       form="draft-edit-{{ d.id }}"></td>
+                            <td class="col-fix">{{ d.unit|default:'—' }}</td>
+                            <td class="cell-delivery"><span class="row-delivery-text">{{ delivery_days.0.0|jalali_date }} ({{ delivery_days.0.1 }})</span></td>
+                            <td class="col-note"><input type="text" name="description" class="desc-edit"
+                                       value="{{ d.description }}" placeholder="توضیحات" title="توضیحات"
+                                       form="draft-edit-{{ d.id }}"></td>
+                            <td class="cell-actions">
+                                <button type="submit" class="icon-btn save" title="ذخیره تغییرات" form="draft-edit-{{ d.id }}"><i class="fas fa-check"></i></button>
+                                <button type="submit" class="icon-btn delete" title="حذف" form="draft-del-{{ d.id }}"
+                                        onclick="return confirm('«{{ d.name }}» از پیش‌نویس حذف شود؟');"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
+
+            {% for d in draft_items %}
+            <form id="draft-edit-{{ d.id }}" method="post" hidden>
+                {% csrf_token %}
+                <input type="hidden" name="item_id" value="{{ d.id }}">
+                <input type="hidden" name="action" value="edit_item">
+            </form>
+            <form id="draft-del-{{ d.id }}" method="post" hidden>
+                {% csrf_token %}
+                <input type="hidden" name="item_id" value="{{ d.id }}">
+                <input type="hidden" name="action" value="delete_item">
+            </form>
             {% endfor %}
 
             <!-- نوار ارسال -->
@@ -307,48 +289,73 @@
         <div class="section-title">
             <i class="fas fa-paper-plane"></i>
             درخواست‌های ارسال‌شده (در انتظار اقدام مسئول انبار)
-            {% if sent_requests %}<span class="dept-badge">{{ sent_requests|length }}</span>{% endif %}
+            {% if sent_requests %}<span class="count-text">{{ sent_requests|length }} درخواست</span>{% endif %}
         </div>
 
         {% if sent_requests %}
             {% for req in sent_requests %}
             <div class="sent-card">
                 <div class="sent-head">
-                    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                        <b style="font-size:0.85rem;">درخواست #{{ req.id }}</b>
-                        <span style="font-size:0.72rem;color:var(--text-muted);">{{ req.created_at|jalali_datetime }}</span>
+                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست #{{ req.id }}</b>
+                        <span class="req-date">{{ req.created_at|jalali_datetime }}</span>
                         {% if req.delivery_immediate %}
-                            <span class="delivery-chip immediate"><i class="fas fa-bolt"></i> تحویل فوری</span>
+                            <span class="t-warn"><i class="fas fa-bolt"></i> تحویل فوری</span>
                         {% elif req.delivery_date %}
-                            <span class="delivery-chip">{{ req.delivery_date|jalali_date }}</span>
+                            <span class="t-deliv">تحویل: {{ req.delivery_date|jalali_date }}</span>
                         {% else %}
-                            <span class="delivery-chip no-date">بدون زمان تحویل</span>
+                            <span class="t-warn">بدون زمان تحویل</span>
                         {% endif %}
                     </div>
                 </div>
-                <div class="sent-body">
-                    {% for item in req.items.all %}
-                    <div class="sent-item">
-                        <span class="draft-name">{{ item.product.name|default:item.name }}</span>
-                        {% if item.product_brand %}<span class="dept-badge" style="font-size:0.68rem;">{{ item.product_brand.brand_name }}</span>{% endif %}
-                        <form method="post" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-inline-start:auto;">
-                            {% csrf_token %}
-                            <input type="hidden" name="request_id" value="{{ req.id }}">
-                            <input type="hidden" name="item_id" value="{{ item.id }}">
-                            <input type="number" name="quantity" class="qty-edit" min="1" step="1"
-                                   value="{{ item.quantity|stringformat:'s' }}" required>
-                            <input type="text" name="description" class="desc-edit" value="{{ item.description }}" placeholder="توضیحات">
-                            <button type="submit" name="action" value="edit_sent" class="icon-btn save" title="ذخیره">
-                                <i class="fas fa-check"></i>
-                            </button>
-                            <button type="submit" name="action" value="delete_sent" class="icon-btn delete" title="حذف قلم"
-                                    onclick="return confirm('این قلم از درخواست حذف شود؟');">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                    </div>
-                    {% endfor %}
+                <div class="table-scroll">
+                    <table class="officer-table">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th>برند</th>
+                                <th>مقدار</th>
+                                <th>واحد</th>
+                                <th>توضیحات</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in req.items.all %}
+                            <tr>
+                                <td class="col-name">{{ item.product.name|default:item.name }}</td>
+                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td><input type="number" name="quantity" class="qty-edit" min="1" step="1"
+                                           value="{{ item.quantity|stringformat:'s' }}" required title="مقدار"
+                                           form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
+                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note"><input type="text" name="description" class="desc-edit"
+                                           value="{{ item.description }}" placeholder="توضیحات"
+                                           form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
+                                <td class="cell-actions">
+                                    <button type="submit" class="icon-btn save" title="ذخیره" form="sent-edit-{{ req.id }}-{{ item.id }}"><i class="fas fa-check"></i></button>
+                                    <button type="submit" class="icon-btn delete" title="حذف قلم" form="sent-del-{{ req.id }}-{{ item.id }}"
+                                            onclick="return confirm('این قلم از درخواست حذف شود؟');"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
+                {% for item in req.items.all %}
+                <form id="sent-edit-{{ req.id }}-{{ item.id }}" method="post" hidden>
+                    {% csrf_token %}
+                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <input type="hidden" name="action" value="edit_sent">
+                </form>
+                <form id="sent-del-{{ req.id }}-{{ item.id }}" method="post" hidden>
+                    {% csrf_token %}
+                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <input type="hidden" name="action" value="delete_sent">
+                </form>
+                {% endfor %}
             </div>
             {% endfor %}
         {% else %}
@@ -389,7 +396,7 @@ document.getElementById('product-select').addEventListener('change', function() 
     else { nameInput.placeholder = 'یا نام آزاد بنویسید'; }
 });
 
-/* ── همگام‌سازی چیپ «تحویل:» روی هر ردیف با انتخابِ نوار ارسال ── */
+/* ── همگام‌سازی ستون «تحویل» هر ردیف با انتخابِ نوار ارسال ── */
 var deliverySelect = document.getElementById('delivery-date-select');
 var rowDeliveryTexts = document.querySelectorAll('.row-delivery-text');
 function syncRowDelivery() {
