@@ -2912,16 +2912,18 @@ def _allow_immediate_delivery():
 
 
 def _next_delivery_days():
-    """لیست ۶ روز آینده (از فردا) به‌جز روزهای شنبه به‌صورت (تاریخ، نام روز هفته) برای انتخاب زمان تحویل"""
+    """روزهای قابل انتخاب زمان تحویل: ۷ روز آینده (از فردا) فقط یکشنبه تا پنجشنبه
+    — جمعه و شنبه نمایش داده نمی‌شوند — به‌صورت (تاریخ، نام روز هفته)"""
     from datetime import timedelta
+    from django.utils import timezone as _tz
     weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
-    today = datetime.now().date()
+    today = _tz.localtime(_tz.now()).date()  # ساعت تهران، هماهنگ با _allow_immediate_delivery
     days = []
-    d = today + timedelta(days=1)
-    while len(days) < 6:
-        if d.weekday() != 5:  # شنبه
-            days.append((d, weekday_names[d.weekday()]))
-        d += timedelta(days=1)
+    for offset in range(1, 8):  # ۷ روز آینده از فردا
+        d = today + timedelta(days=offset)
+        if d.weekday() in (4, 5):  # جمعه و شنبه قابل سفارش نیستند
+            continue
+        days.append((d, weekday_names[d.weekday()]))
     return days
 
 

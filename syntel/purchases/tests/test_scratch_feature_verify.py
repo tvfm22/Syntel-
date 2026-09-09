@@ -3,7 +3,7 @@
 1. No stock error/message for requesters on the request page (JS gate + no server block).
 2. Product.show_sub_products: default shows product by main name to requesters;
    when checked, brand names appear as separate selectable rows.
-3. Delivery date: collapsible box; next 6 days excluding Saturdays; default tomorrow.
+3. Delivery date: collapsible box; next 7 days showing only Sun-Thu (no Fri/Sat); default tomorrow.
 4. Cafe-change section hidden for requester users in the layout.
 5. My Requests: last week's requests grouped in separate per-day lists.
 """
@@ -45,25 +45,31 @@ class FeatureVerifyTests(TestCase):
         self.client.login(username=user.username, password='testpass123')
 
     # ── Feature 3: delivery days ─────────────────────────────────────
-    def test_next_delivery_days_six_days_no_saturday(self):
+    def test_next_delivery_days_five_weekdays_no_fri_sat(self):
         days = views._next_delivery_days()
-        self.assertEqual(len(days), 6)
+        self.assertEqual(len(days), 5)
         dates = [d for d, _ in days]
-        tomorrow = timezone.now().date() + timedelta(days=1)
-        # starts from tomorrow (if tomorrow is not Saturday) and is strictly increasing
-        self.assertGreaterEqual(dates[0], tomorrow)
+        # starts from tomorrow (first working day if tomorrow is Fri/Sat) — Tehran clock,
+        # strictly increasing
+        today = timezone.localtime(timezone.now()).date()
+        expected_first = today + timedelta(days=1)
+        while expected_first.weekday() in (4, 5):  # جمعه و شنبه
+            expected_first += timedelta(days=1)
+        self.assertEqual(dates[0], expected_first)
         for a, b in zip(dates, dates[1:]):
             self.assertGreater(b, a)
-        # no Saturdays (Python weekday 5)
-        self.assertTrue(all(d.weekday() != 5 for d in dates))
+        # only Sun-Thu: no Fridays (weekday 4) and no Saturdays (weekday 5)
+        self.assertTrue(all(d.weekday() not in (4, 5) for d in dates))
+        # همه در پنجره ۷ روز آینده
+        self.assertLessEqual((dates[-1] - expected_first).days, 6)
 
     def test_request_form_context_delivery_days(self):
         self.login(self.requester)
         resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'main'}))
         self.assertEqual(resp.status_code, 200)
         days = resp.context['delivery_days']
-        self.assertEqual(len(days), 6)
-        self.assertTrue(all(d.weekday() != 5 for d, _ in days))
+        self.assertEqual(len(days), 5)
+        self.assertTrue(all(d.weekday() not in (4, 5) for d, _ in days))
 
     # ── Feature 2: show_sub_products in autocomplete ─────────────────
     def test_autocomplete_requester_flag_off_shows_main_name(self):

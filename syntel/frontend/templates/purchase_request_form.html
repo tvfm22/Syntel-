@@ -372,9 +372,9 @@
         padding: 0.3rem 0.75rem 0.9rem;
         border-top: 1px dashed #e5e7eb; margin: 0 0.25rem;
     }
-    /* چیپ‌های تحویل: ۷ روز + فوری در دو ردیف ثابت — بدون اسکرول، حتی در موبایل */
+    /* چیپ‌های تحویل: ۵ روز (یکشنبه تا پنجشنبه) + فوری — دو ردیف منظم، بدون اسکرول، حتی در موبایل */
     .delivery-chips {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
     }
     .delivery-chip {
         padding: 0.35rem 0.3rem; border-radius: 8px; font-size: 0.72rem; font-weight: 600;
@@ -415,7 +415,7 @@
     <form method="post" id="purchaseForm">
         {% csrf_token %}
 
-        <!-- 0. زمان تحویل: باکس کشویی — ۶ روز آینده (به‌جز شنبه‌ها) یا تحویل فوری -->
+        <!-- 0. زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) یا تحویل فوری -->
         <div class="delivery-section" id="deliverySection">
             <button type="button" class="delivery-toggle" id="deliveryToggle" onclick="toggleDeliveryBox()">
                 <span class="delivery-toggle-title">📅 زمان تحویل <span class="delivery-required">*</span></span>
@@ -591,7 +591,7 @@
     const IS_REQUESTER = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
     let entryBrandName = '';  // نام برند انتخاب‌شده در فرم ورود
 
-    // ── زمان تحویل: باکس کشویی — ۶ روز آینده (به‌جز شنبه‌ها) یا تحویل فوری ──
+    // ── زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) یا تحویل فوری ──
     let selectedDeliveryDate = '';
     let selectedDeliveryImmediate = false;
 
@@ -1344,7 +1344,7 @@
     });
 
     // ── Init ──────────────────────────────────────────────────────────
-    // انتخاب پیش‌فرض: فردا (اولین روز لیست تحویل — اگر فردا شنبه باشد روز بعدی)
+    // انتخاب پیش‌فرض: فردا (اولین روز لیست تحویل — اگر فردا جمعه/شنبه باشد اولین روز کاری بعدی مثل یکشنبه)
     const firstDeliveryChip = document.querySelector('.delivery-chip[data-date]');
     if (firstDeliveryChip) selectDeliveryChip(firstDeliveryChip);
     renderItemsTable();
