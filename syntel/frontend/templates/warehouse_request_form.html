@@ -462,6 +462,7 @@
     let nextItemId = 1;
     let editingId = null;
     let pendingProductItemId = null;
+    let isCheckingStock = false; // جلوگیری از ثبت دوباره هنگام کلیک/اینتر مکرر در طول بررسی موجودی
 
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
@@ -519,14 +520,20 @@
         // (فقط وقتی محصول از لیست پیشنهادها انتخاب شده باشد)
         let stockInfo = null;
         if (productId) {
-            const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(productId) +
-                             '&brand_id=' + encodeURIComponent(brandId) +
-                             '&qty=' + encodeURIComponent(quantity);
+            if (isCheckingStock) return; // کلیک/اینتر مکرر حین بررسی موجودی نادیده گرفته می‌شود
+            isCheckingStock = true;
             try {
-                const resp = await fetch(checkUrl);
-                if (resp.ok) stockInfo = await resp.json();
-            } catch (e) { /* خطای شبکه: بررسی موجودی نادیده گرفته می‌شود */ }
-            showEntryStockHint(stockInfo, entryBrandName);
+                const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(productId) +
+                                 '&brand_id=' + encodeURIComponent(brandId) +
+                                 '&qty=' + encodeURIComponent(quantity);
+                try {
+                    const resp = await fetch(checkUrl);
+                    if (resp.ok) stockInfo = await resp.json();
+                } catch (e) { /* خطای شبکه: بررسی موجودی نادیده گرفته می‌شود */ }
+                showEntryStockHint(stockInfo, entryBrandName);
+            } finally {
+                isCheckingStock = false;
+            }
         }
 
         if (editingId !== null) {
