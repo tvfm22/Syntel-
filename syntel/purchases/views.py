@@ -11,7 +11,7 @@ import shutil
 import zipfile
 import django
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 from pathlib import Path
 
@@ -239,6 +239,20 @@ def _parse_decimal(value):
         return Decimal(str(value).replace(",", ""))
     except Exception:
         return None
+
+
+def _fmt2(value):
+    """نمایش عددی موجودی: حداکثر ۲ رقم اعشار؛ رقم‌های صفرِ آخر حذف می‌شوند.
+
+    هم‌معنای فیلتر قالبی |trim_decimal — برای رشته‌سازی اعداد در view ها
+    (پیام‌ها و JSON) که از فیلتر قالب نمی‌گذرند:
+    25.00 → «25»  |  12.50 → «12.5»  |  8.333… → «8.33»
+    """
+    try:
+        d = Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return format(d.normalize(), 'f')
+    except (ValueError, TypeError, ArithmeticError):
+        return str(value)
 
 
 def _parse_iso_date(value):
@@ -928,8 +942,8 @@ def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
                     brand_label = f'{brand.brand_name} - ' if brand and brand.brand_name else ''
                     messages.error(
                         request,
-                        f'موجودی «{s_item.product.name}» ({brand_label}{available} {unit_label}) '
-                        f'کمتر از مقدار درخواستی ({trade_qty}) است'
+                        f'موجودی «{s_item.product.name}» ({brand_label}{_fmt2(available)} {unit_label}) '
+                        f'کمتر از مقدار درخواستی ({_fmt2(trade_qty)}) است'
                     )
                     item_has_error = True
                     break
@@ -1084,7 +1098,7 @@ def _build_available_products_json(cafe, product_ids=None):
                             'name': b['brand'].brand_name if b['brand'] else 'بدون برند',
                             'trade_unit': b['brand'].trade_unit if b['brand'] else '',
                             'rate': str(b['rate']) if b['rate'] else None,
-                            'available': str(b['trade_available']),
+                            'available': _fmt2(b['trade_available']),
                             'has_stock': b['has_stock'],
                         }
                         for b in w['brands']
@@ -1157,8 +1171,8 @@ def _process_available_products_post(request, cafe):
                 brand_label = f'{brand.brand_name} - ' if brand and brand.brand_name else ''
                 messages.error(
                     request,
-                    f'موجودی «{product.name}» ({brand_label}{available} {unit_label}) '
-                    f'کمتر از مقدار درخواستی ({qty}) است'
+                    f'موجودی «{product.name}» ({brand_label}{_fmt2(available)} {unit_label}) '
+                    f'کمتر از مقدار درخواستی ({_fmt2(qty)}) است'
                 )
                 has_error = True
                 continue
@@ -6606,7 +6620,7 @@ def check_product_availability(request: HttpRequest) -> JsonResponse:
                 alternatives.append({
                     'brand_id': alt.id,
                     'brand_name': alt.brand_name,
-                    'available': str(alt_trade),
+                    'available': _fmt2(alt_trade),
                     'unit': alt_unit,
                     'warehouses': alt_whs,
                 })
@@ -6614,9 +6628,9 @@ def check_product_availability(request: HttpRequest) -> JsonResponse:
     return JsonResponse({
         'product_id': product.id,
         'brand_id': brand.id if brand else None,
-        'qty': str(qty),
+        'qty': _fmt2(qty),
         'available': available,
-        'stock_trade': str(trade),
+        'stock_trade': _fmt2(trade),
         'unit_label': unit_label,
         'warehouses': warehouses,
         'alternatives': alternatives,
@@ -7826,9 +7840,9 @@ def api_product_stock_history(request: HttpRequest, warehouse_id: int, stock_ite
             'transaction_type': tx.transaction_type,
             'type_display': dict(StockTransaction.TRANSACTION_TYPE_CHOICES).get(
                 tx.transaction_type, tx.transaction_type),
-            'quantity': str(tx.quantity),
-            'prev_qty': str(tx.previous_quantity),
-            'new_qty': str(tx.new_quantity),
+            'quantity': _fmt2(tx.quantity),
+            'prev_qty': _fmt2(tx.previous_quantity),
+            'new_qty': _fmt2(tx.new_quantity),
             'unit_name': tx.unit.name if tx.unit_id else '',
             'description': tx.description or '',
             'created_by': (tx.created_by.get_full_name() or tx.created_by.username
@@ -7847,7 +7861,7 @@ def api_product_stock_history(request: HttpRequest, warehouse_id: int, stock_ite
     return JsonResponse({
         'success': True,
         'product_name': stock_item.product.name,
-        'current_qty': str(stock_item.quantity),
+        'current_qty': _fmt2(stock_item.quantity),
         'unit_name': stock_item.unit.name if stock_item.unit else '',
         'movements': [serialize_tx(tx) for tx in txs],
     })
@@ -8483,8 +8497,8 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 qty_d = Decimal('0')
             enough = trade_d >= qty_d
             short = qty_d - trade_d if not enough else Decimal('0')
-            return {'trade': str(trade_d), 'unit': unit, 'has': trade_d > 0,
-                    'enough': enough, 'short': str(short) if short > 0 else None}
+            return {'trade': _fmt2(trade_d), 'unit': unit, 'has': trade_d > 0,
+                    'enough': enough, 'short': _fmt2(short) if short > 0 else None}
 
         if item.product_brand_id:
             entry = stock_map.get((item.product_id, item.product_brand_id))
@@ -8557,10 +8571,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 'warehouse_name': si.warehouse.name if si.warehouse else '',
                 'brand_name': brand.brand_name if brand else 'بدون برند',
                 'default_selected': si.product_id not in branded_product_ids and not stock_options.get(si.product_id),
-                'available': avail,
+                'available': _fmt2(avail),
                 'unit_label': unit_label,
                 'rate': brand.conversion_rate if brand and brand.conversion_rate else None,
-                'qty': si.quantity,
+                'qty': _fmt2(si.quantity),
             })
         # اگر همان برند در چند انبار موجود باشد، نام انبار هم کنار برند نشان داده می‌شود
         for opts in stock_options.values():
@@ -8936,7 +8950,9 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
         draft_item_infos[d.id] = {
             'shelf_life': shelf,
             'has_stock': total > 0,
-            'stock_text': f'{total} {unit}'.strip(),
+            # قالب با |trim_decimal نمایش می‌دهد: حداکثر ۲ رقم اعشار، صفرها حذف (25 → «25»، 8.333… → «8.33»)
+            'stock_total': total,
+            'stock_unit': unit,
         }
 
     return render(request, 'warehouse_purchase_draft.html', {
