@@ -8928,8 +8928,11 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
     # می‌رود (status=pending_manager_approval) و تا قبل از تایید در همین صفحه
     # قابل ویرایش است. بعد از تایید، در انتظار ثبت سفارش خرید توسط واحد خرید
     # است (نمایشی) و اگر رد شود دلیلش اینجا دیده می‌شود (نمایشی).
+    # بخش ارسال‌شده فقط درخواست‌های یک هفتهٔ گذشته را نشان می‌دهد؛ درخواست‌های
+    # قدیمی‌تر (حتی در انتظار تایید) در این صفحه نمایش داده نمی‌شوند.
+    sent_cutoff = timezone.now() - timedelta(days=7)
     sent_base = (PurchaseRequest.objects
-                 .filter(source='warehouse_purchase')
+                 .filter(source='warehouse_purchase', created_at__gte=sent_cutoff)
                  .select_related('user')
                  .prefetch_related('items', 'items__product', 'items__product__unit',
                                    'items__product_brand'))

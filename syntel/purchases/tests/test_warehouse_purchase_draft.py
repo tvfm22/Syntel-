@@ -7,9 +7,12 @@
   و برای تایید مدیرعامل می‌رود (status=pending_manager_approval)
 - درخواست ارسال‌شده فقط تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است
 """
+from datetime import timedelta
+
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 from purchases.models import (
     Cafe, Category, Unit, Product, ProductBrand, PurchaseRequest,
     PurchaseItem, OfficerAssignment, PurchaseDraft, PurchaseDraftItem,
@@ -114,7 +117,7 @@ class WarehousePurchaseDraftTests(TestCase):
             draft=draft, product=self.product, product_brand=self.brand,
             name='محصول تست', quantity=5, unit='kg')
         resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
-            'action': 'send', 'delivery_date': '2026-09-15',
+            'action': 'send',
         })
         self.assertRedirects(resp, reverse('warehouse_purchase_draft', args=['testcafe']))
         # درخواست ساخته شد و برای تایید مدیرعامل رفت (بدون تخصیص به خودش)
@@ -125,8 +128,8 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(new_req.user, self.wo)
         self.assertEqual(new_req.items.count(), 1)
         self.assertEqual(new_req.items.first().quantity, 5)
-        # گزینه «تحویل فوری» حذف شده: تاریخ ارسالی ثبت می‌شود و فوری همیشه خالی است
-        self.assertEqual(new_req.delivery_date.isoformat(), '2026-09-15')
+        # درخواست خریدِ مسئول انبار زمان تحویل ندارد — تاریخِ خودِ درخواست (created_at) زمان ثبت است
+        self.assertIsNone(new_req.delivery_date)
         self.assertFalse(new_req.delivery_immediate)
         # هیچ تخصیصی ساخته نشد — درخواست به داشبورد انبار برنمی‌گردد
         self.assertEqual(OfficerAssignment.objects.filter(item__request=new_req).count(), 0)
@@ -172,6 +175,46 @@ class WarehousePurchaseDraftTests(TestCase):
                           'item_id': sent_item.id, 'quantity': '99'})
         sent_item.refresh_from_db()
         self.assertEqual(sent_item.quantity, 4)  # تغییری نکرد
+
+    def test_cannot_delete_item_after_ceo_approval(self):
+        """بعد از تایید مدیرعامل (status=pending) قلم حذف نمی‌شود — درخواست فقط-خواندنی است"""
+        self._login_as_warehouse()
+        req = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending', source='warehouse_purchase')
+        sent_item = PurchaseItem.objects.create(
+            request=req, product=self.product, name='محصول تست', quantity=4, unit='kg')
+        self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
+                         {'action': 'delete_sent', 'request_id': req.id,
+                          'item_id': sent_item.id})
+        self.assertEqual(PurchaseItem.objects.filter(id=sent_item.id).count(), 1)  # قلم ماند
+        self.assertEqual(PurchaseRequest.objects.filter(id=req.id).count(), 1)    # درخواست ماند
+
+    def test_sent_section_limits_to_last_week(self):
+        """بخش «درخواست‌های ارسال‌شده» فقط درخواست‌های یک هفتهٔ گذشته را نشان می‌دهد"""
+        self._login_as_warehouse()
+        # درخواست قدیمی‌تر از یک هفته (در انتظار تایید — نباید نمایش داده شود)
+        old_awaiting = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            source='warehouse_purchase')
+        PurchaseItem.objects.create(
+            request=old_awaiting, product=self.product, name='قلم قدیمی', quantity=1, unit='kg')
+        PurchaseRequest.objects.filter(id=old_awaiting.id).update(
+            created_at=timezone.now() - timedelta(days=8))
+        # درخواست‌های یک هفتهٔ اخیر (هر سه گروه — باید نمایش داده شوند)
+        recent_awaiting = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            source='warehouse_purchase')
+        PurchaseItem.objects.create(
+            request=recent_awaiting, product=self.product, name='قلم تازه ۱', quantity=2, unit='kg')
+        recent_approved = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending', source='warehouse_purchase')
+        PurchaseItem.objects.create(
+            request=recent_approved, product=self.product, name='قلم تازه ۲', quantity=3, unit='kg')
+
+        resp = self.client.get(reverse('warehouse_purchase_draft', args=['testcafe']))
+        self.assertContains(resp, f'درخواست #{recent_awaiting.id}')
+        self.assertContains(resp, f'درخواست #{recent_approved.id}')
+        self.assertNotContains(resp, f'درخواست #{old_awaiting.id}')  # قدیمی‌تر از یک هفته — نمایش داده نشد
 
     def test_ceo_approval_sends_request_to_purchase_order_queue(self):
         """تایید مدیرعامل: درخواست خریدِ انبار در فهرست «ثبت سفارش خرید» واحد خرید ظاهر می‌شود"""
