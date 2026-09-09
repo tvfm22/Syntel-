@@ -8504,7 +8504,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             rate = brand.conversion_rate if brand and brand.conversion_rate else None
             trade = si.quantity / rate if rate else si.quantity
             unit = brand.trade_unit if brand and brand.trade_unit else (
-                (si.unit.symbol or si.unit.name) if si.unit else '')
+                (si.unit.name or si.unit.symbol) if si.unit else '')
             key = (si.product_id, brand.id if brand else None)
             entry = stock_map.get(key)
             if entry is None:
@@ -8601,7 +8601,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             brand = si.product_brand
             avail = si.trade_quantity if si.trade_quantity is not None else si.quantity
             unit_label = brand.trade_unit if brand and brand.trade_unit else (
-                (si.unit.symbol or si.unit.name) if si.unit else '')
+                (si.unit.name or si.unit.symbol) if si.unit else '')
             stock_options.setdefault(si.product_id, []).append({
                 'id': si.id,
                 'warehouse_name': si.warehouse.name if si.warehouse else '',
@@ -8972,7 +8972,7 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             rate = brand.conversion_rate if brand and brand.conversion_rate else None
             trade = si.quantity / rate if rate else si.quantity
             unit = brand.trade_unit if brand and brand.trade_unit else (
-                (si.unit.symbol or si.unit.name) if si.unit else '')
+                (si.unit.name or si.unit.symbol) if si.unit else '')
             key = (si.product_id, brand.id if brand else None)
             entry = stock_map.get(key)
             if entry is None:
