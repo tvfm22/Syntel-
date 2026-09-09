@@ -8766,22 +8766,14 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'پیش‌نویس خالی است — چیزی برای ارسال نیست')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            # زمان تحویل: تاریخ انتخابی
-            delivery_date = None
-            delivery_raw = request.POST.get('delivery_date', '').strip()
-            if delivery_raw:
-                try:
-                    delivery_date = datetime.strptime(delivery_raw, '%Y-%m-%d').date()
-                except (ValueError, TypeError):
-                    delivery_date = None
-
             with transaction.atomic():
+                # درخواست خریدِ مسئول انبار زمان تحویل ندارد — تاریخِ خودِ درخواست
+                # (created_at) همان زمان ثبت است و همین‌جا نمایش داده می‌شود.
                 new_request = PurchaseRequest.objects.create(
                     user=request.user,
                     cafe=cafe,
                     status='pending_manager_approval',
                     source='warehouse_purchase',
-                    delivery_date=delivery_date,
                 )
                 for d_item in draft_items:
                     PurchaseItem.objects.create(
@@ -9030,7 +9022,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
         'rejected_sent_requests': rejected_sent_requests,
         'products': products,
         'product_brands': product_brands,
-        'delivery_days': _next_delivery_days(),
         'cafe_code': cafe_code,
         'user': request.user,
     })
