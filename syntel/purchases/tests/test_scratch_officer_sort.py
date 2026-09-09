@@ -1,5 +1,5 @@
 """سنگ‌آزمایش: کارت درخواستی که همه اقلامش ثبت شده به پایین لیست داشبورد مسئول انبار می‌رود."""
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.test import TestCase, Client
@@ -62,7 +62,7 @@ class OfficerDashboardCardSortTest(TestCase):
             supplied_quantity=Decimal('5'))
 
         self.client.force_login(self.officer)
-        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        # GET بدون day به ‎?day=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
         resp = self.client.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]), follow=True)
         self.assertEqual(resp.status_code, 200)
         # ترتیب کارت‌ها از context می‌خوانیم (جستجوی رشته‌ای در HTML به رنگ‌های hex مثل #123 گیر می‌دهد)
@@ -72,30 +72,43 @@ class OfficerDashboardCardSortTest(TestCase):
         self.assertLess(ids.index(req_new.id), ids.index(req_old.id),
                         'درخواستِ پردازش‌شده باید پایین‌تر از درخواستِ در انتظار باشد')
 
-    def test_other_dates_never_appear_on_selected_date(self):
-        """صفحه هر تاریخ فقط اقلامِ همان روز تحویل را نشان می‌دهد — نه فردا و نه دیروز"""
+    def test_requests_appear_on_registration_day_not_delivery_day(self):
+        """هر درخواست در صفحهٔ روزِ «ثبت» خودش می‌آید — زمان تحویلِ درخواست‌شده
+        تعیین‌کنندهٔ روزِ صفحه نیست و فقط روی کارت نمایش داده می‌شود"""
         now = timezone.localtime(timezone.now())
-        tomorrow = PurchaseRequest.objects.create(
-            user=self.ceo, cafe=self.cafe, status='pending',
-            delivery_date=now.date() + timedelta(days=1))
+        yest = now.date() - timedelta(days=1)
+
+        # ثبت‌شدهٔ دیروز با تحویلِ درخواستیِ دور → باید روی صفحهٔ دیروز باشد نه امروز
         yesterday = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending',
-            delivery_date=now.date() - timedelta(days=1))
-        PurchaseItem.objects.create(request=tomorrow, product=self.prod_new,
-                                    name='new prod', quantity=Decimal('3'), unit='kg')
-        PurchaseItem.objects.create(request=yesterday, product=self.prod_new,
-                                    name='new prod', quantity=Decimal('3'), unit='kg')
+            delivery_date=now.date() + timedelta(days=5))
+        PurchaseRequest.objects.filter(pk=yesterday.pk).update(
+            created_at=timezone.make_aware(
+                datetime.combine(yest, datetime.min.time())) + timedelta(hours=10))
+
+        # ثبت‌شدهٔ امروز با «تحویل فوری» (بدون تاریخ) → باید روی صفحهٔ امروز باشد
+        today_immediate = PurchaseRequest.objects.create(
+            user=self.ceo, cafe=self.cafe, status='pending', delivery_immediate=True)
+        PurchaseRequest.objects.filter(pk=today_immediate.pk).update(
+            created_at=now - timedelta(hours=3))
+
+        for req, prod in ((yesterday, self.prod_new), (today_immediate, self.prod_new)):
+            PurchaseItem.objects.create(request=req, product=prod,
+                                        name=prod.name, quantity=Decimal('3'), unit='kg')
 
         self.client.force_login(self.officer)
-        # صفحه پیش‌فرض (امروز) — نه درخواست فردا دیده شود نه دیروز
+        # صفحهٔ امروز (پیش‌فرض): فقط ثبت‌شده‌های امروز — «فوری» هم اینجا دیده می‌شود
         resp = self.client.get(reverse('warehouse_officer_dashboard',
                                        args=[self.cafe.code]), follow=True)
         ids = [card['request'].id for card in resp.context['request_cards']]
-        self.assertNotIn(tomorrow.id, ids, 'درخواستِ فردا نباید روی صفحه امروز بیاید')
-        self.assertNotIn(yesterday.id, ids, 'درخواستِ دیروز نباید روی صفحه امروز بیاید')
-        # صفحه فردا فقط درخواست فردا را نشان می‌دهد
-        resp2 = self.client.get(reverse('warehouse_officer_dashboard',
-                                        args=[self.cafe.code]) + f'?delivery={tomorrow.delivery_date.isoformat()}')
+        self.assertIn(today_immediate.id, ids, 'درخواستِ ثبت‌شدهٔ امروز باید روی صفحهٔ امروز باشد')
+        self.assertNotIn(yesterday.id, ids, 'درخواستِ ثبت‌شدهٔ دیروز نباید روی صفحهٔ امروز بیاید')
+        # زمان تحویلِ درخواست‌شده روی کارت هست — برچسب «تحویل فوری» باید دیده شود
+        self.assertIn('تحویل فوری', resp.content.decode('utf-8'))
+        # صفحهٔ دیروز: فقط ثبت‌شدهٔ دیروز — با هر تحویلِ درخواستی که داشته باشد
+        resp2 = self.client.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code])
+                                + f'?day={yest.isoformat()}')
         ids2 = [card['request'].id for card in resp2.context['request_cards']]
-        self.assertIn(tomorrow.id, ids2)
-        self.assertNotIn(yesterday.id, ids2, 'درخواستِ دیروز نباید روی صفحه فردا بیاید')
+        self.assertIn(yesterday.id, ids2, 'درخواستِ ثبت‌شدهٔ دیروز باید روی صفحهٔ دیروز باشد')
+        self.assertNotIn(today_immediate.id, ids2,
+                         'درخواستِ ثبت‌شدهٔ امروز نباید روی صفحهٔ دیروز بیاید')

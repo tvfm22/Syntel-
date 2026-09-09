@@ -179,7 +179,7 @@ class AdminPagesRedesignTests(TestCase):
         )
         c = Client()
         c.login(username='redesign_wo', password='testpass123')
-        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        # GET بدون day به ‎?day=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
         r = c.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]), follow=True)
         self.assertEqual(r.status_code, 200)
         content = r.content.decode('utf-8')

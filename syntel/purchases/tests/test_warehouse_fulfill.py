@@ -112,7 +112,7 @@ class WarehouseFulfillOptionsTests(TestCase):
 
     def _get(self):
         self.client.login(username='warehouse_user', password='testpass123')
-        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        # GET بدون day به ‎?day=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
         return self.client.get(self.dash_url, follow=True)
 
     def test_unbranded_single_warehouse_hides_brand_options(self):
@@ -127,7 +127,8 @@ class WarehouseFulfillOptionsTests(TestCase):
         self.assertContains(
             response, f'<input type="hidden" name="stock_item_id" value="{self.stock_unbranded.id}">')
         self.assertContains(response, 'بدون برند')
-        self.assertContains(response, 'موجودی 10 kg')
+        # واحدِ اصلیِ کالا نمایش داده می‌شود (نام واحد، نه نماد)
+        self.assertContains(response, 'موجودی 10 Kilogram')
 
     def test_unbranded_multi_warehouse_keeps_select(self):
         """بدون برند ولی در چند انبار: انتخاب انبار لازم است، نمایش داده شود"""
@@ -189,7 +190,7 @@ class WarehouseFulfillOptionsTests(TestCase):
         self.assertEqual(self.stock_unbranded.quantity, 8)  # 10 - 2
 
         # پیام موفقیت: فقط نام کالا و تامین از انبار (بدون جزئیات تعداد برندها)
-        # ریدایرکت به داشبورد بدون delivery خودش به ‎?delivery=<امروز> ریدایرکت می‌شود
+        # ریدایرکت به داشبورد بدون day خودش به ‎?day=<امروز> ریدایرکت می‌شود
         page = self.client.get(response.url, follow=True)
         self.assertContains(page, '«Unbranded Product» از انبار تامین شد.')
         self.assertNotContains(page, 'مجموع')
