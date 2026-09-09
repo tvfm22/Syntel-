@@ -64,11 +64,11 @@ class DecimalStockDisplayTest(TestCase):
         return self.client.get(self.draft_url).content.decode('utf-8')
 
     def test_draft_chips_fraction_and_whole_trade_units(self):
-        """چیپ موجودی پیش‌نویس: ۲۵/۳ → «8.33 بطری»، ۲۵/۲ → «12.5 بطری»، ۲۵/۱ → «25 کارتن»"""
+        """ستون موجودی جدول پیش‌نویس: ۲۵/۳ → «8.33 بطری»، ۲۵/۲ → «12.5 بطری»، ۲۵/۱ → «25 کارتن»"""
         content = self._draft_content([self.brand_third, self.brand_half, self.brand_one])
-        self.assertIn('موجودی: 8.33 بطری', content)
-        self.assertIn('موجودی: 12.5 بطری', content)
-        self.assertIn('موجودی: 25 کارتن', content)
+        self.assertIn('8.33 بطری', content)
+        self.assertIn('12.5 بطری', content)
+        self.assertIn('25 کارتن', content)
         # دم‌های اعشاریِ تقسیم (28 رقم) و صفرهای بی‌مورد نباید دیده شوند
         self.assertNotIn('8.333333333333', content)
         self.assertNotIn('12.50', content)

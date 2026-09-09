@@ -8355,6 +8355,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             except _InsufficientStock as exc:
                 messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت نشد')
                 return redirect(dash_url)
+            _remove_from_purchase_drafts(item)
             _sync_request_status(item.request)
             messages.success(request, f'«{item.name}» از انبار تامین شد.')
             return redirect(dash_url)
@@ -8386,6 +8387,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 assignment.status = 'not_in_stock'
                 assignment.notes = (assignment.notes or '') + ' عدم موجودی اعلام شد.'
                 assignment.save()
+                _remove_from_purchase_drafts(item)
                 _sync_request_status(item.request)
                 messages.warning(request, f'برای «{item.name}» عدم موجودی ثبت شد و به لیست مدیرعامل بازگشت.')
             return redirect(dash_url)
@@ -8411,8 +8413,13 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 StockTransaction.objects.filter(
                     reference_type='officer_assignment', reference_id=item.id).delete()
                 done_assigns.delete()
+            # قلمی که قبلاً «ارجاع به خرید» شده بود دیگر ارجاع نیست — از پیش‌نویس خرید حذف شود
+            _removed = _remove_from_purchase_drafts(item)
             _sync_request_status(item.request)
-            messages.info(request, f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.')
+            msg = f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.'
+            if _removed:
+                msg += ' از فهرست «درخواست خرید» هم حذف شد.'
+            messages.info(request, msg)
             return redirect(dash_url)
 
     # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر تاریخ تحویل روی همین پایه) ──
@@ -8673,6 +8680,27 @@ def _get_or_create_purchase_draft(cafe, user):
     if draft is None:
         draft = PurchaseDraft.objects.create(cafe=cafe, created_by=user)
     return draft
+
+
+def _remove_from_purchase_drafts(item):
+    """حذف خودکارِ قلمِ ارجاع‌شده از پیش‌نویس «درخواست خرید» پس از بازنگری مسئول انبار.
+
+    وقتی مسئول انبار در داشبورد وضعیتِ قلمِ «ارجاع به خرید» (returned) را عوض می‌کند
+    (بازگشایی / تامین از انبار / عدم موجودی)، آن قلم دیگر برای خرید ارجاع نیست؛
+    نسخهٔ کپی‌اش در اقلامِ آمادهٔ ارسالِ خرید حذف می‌شود و اگر پیش‌نویس خالی شد،
+    خود پیش‌نویس هم پاک می‌شود. تعداد قلم‌های حذف‌شده را برمی‌گرداند.
+    """
+    draft_ids = set()
+    removed = 0
+    for di in PurchaseDraftItem.objects.filter(source_item=item):
+        draft_ids.add(di.draft_id)
+        di.delete()
+        removed += 1
+    for did in draft_ids:
+        draft = PurchaseDraft.objects.filter(id=did).first()
+        if draft is not None and not draft.items.exists():
+            draft.delete()
+    return removed
 
 
 @custom_login_required
