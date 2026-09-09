@@ -627,15 +627,24 @@
 
     function commitItems(records) {
         const list = Array.isArray(records) ? records : [records];
-        if (pendingAddEditId !== null) {
-            const idx = items.findIndex(it => it.id === pendingAddEditId);
-            if (idx !== -1) items.splice(idx, 1);
+        // در حالت ویرایش، قلمِ قبلی حذف و نسخه جدید در همان جای آن قرار می‌گیرد؛
+        // شناسه قلمِ در حال ویرایش: pendingAddEditId (مسیر مودال موجودی) یا editingId
+        const editId = pendingAddEditId !== null ? pendingAddEditId : editingId;
+        let insertAt = -1;
+        if (editId !== null) {
+            const idx = items.findIndex(it => it.id === editId);
+            if (idx !== -1) {
+                items.splice(idx, 1);
+                insertAt = idx;
+            }
             pendingAddEditId = null;
             editingId = null;
             document.getElementById('addToListBtn').textContent = '+ افزودن';
             document.getElementById('cancelEditBtn').style.display = 'none';
         }
-        list.forEach(rec => items.push({ id: nextItemId++, ...rec }));
+        const newRecs = list.map(rec => ({ id: nextItemId++, ...rec }));
+        if (insertAt !== -1) items.splice(insertAt, 0, ...newRecs);
+        else items.push(...newRecs);
         clearEntryForm();
         renderItemsTable();
     }
