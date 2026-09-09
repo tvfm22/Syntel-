@@ -84,6 +84,42 @@ class VoucherUIBaseline(TestCase):
             self._url('voucher_create', voucher_type=voucher_type), data=data)
 
 
+class VoucherProductTypeaheadTests(VoucherUIBaseline):
+    """انتخاب تایپی محصول در قلم‌ها (مثل باکس «نام کالا»ی درخواست‌ها)
+
+    فیلد ارسالی همان product_id[] می‌ماند تا بک‌اند تغییری نکند؛ فقط سلکتِ
+    هر ردیف به باکس «تایپ + انتخاب از فهرست» تبدیل شده و فهرست کامل محصولات
+    یک‌بار در JS درج می‌شود (نه در هر ردیف). جعبهٔ جستجوی سراسری حذف شده.
+    """
+
+    def test_create_page_has_typeahead_row_and_single_products_list(self):
+        r = self.client.get(self._url('voucher_create', voucher_type='receipt'))
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode('utf-8')
+        # باکس تایپی + شناسهٔ مخفی با همان نام ارسالی قبلی
+        self.assertIn('row-product-name', html)
+        self.assertIn('row-product-id', html)
+        self.assertIn('name="product_id[]"', html)
+        self.assertIn('prod-ac-drop', html)
+        # سلکتِ قدیمی هر ردیف و جعبهٔ جستجوی سراسری دیگر وجود ندارند
+        self.assertNotIn('class="row-product"', html)
+        self.assertNotIn('productSearch', html)
+        # فهرست کامل محصولات فقط یک‌بار (در PRODUCTS) درج شده و نام محصول هست
+        self.assertIn('{ id: %d, name: "Sugar" }' % self.product.id, html)
+        self.assertEqual(html.count('{ id: '), 1)
+
+    def test_edit_draft_prefills_product_name_in_typeahead(self):
+        r = self._create_post('receipt', dest=self.wh_a, qty='5', action='draft')
+        self.assertEqual(r.status_code, 302)
+        v = WarehouseVoucher.objects.get(voucher_type='receipt', status='draft')
+        r = self.client.get(self._url('voucher_edit', voucher_id=v.id))
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode('utf-8')
+        # قلم پیش‌نویس: شناسهٔ مخفی + نام محصول از قبل در باکس تایپی پر شده
+        self.assertIn('product_id: %d' % self.product.id, html)
+        self.assertIn('product_name: "Sugar"', html)
+
+
 class VoucherCreateEachTypeTests(VoucherUIBaseline):
     """ایجاد هر ۷ نوع از فرم یکپارچه + اثر صحیح روی موجودی"""
 
@@ -552,7 +588,7 @@ class WarehouseOfficerDashboardTests(TestCase):
     def test_dashboard_renders(self):
         """رندر 200 — صفحه اصلی داشبورد بدون بخش‌های حذف‌شده
 
-        GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم.
+        GET بدون day به ‎?day=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم.
         """
         r = self.client.get(self.url, follow=True)
         self.assertEqual(r.status_code, 200)
