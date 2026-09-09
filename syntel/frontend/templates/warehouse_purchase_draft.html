@@ -23,17 +23,6 @@
         display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     }
     .header-corner { grid-column: 3; justify-self: end; }
-    .back-btn {
-        display: inline-flex; align-items: center; gap: 0.45rem;
-        padding: 0.5rem 1.05rem; border-radius: var(--radius-lg);
-        background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
-        text-decoration: none; transition: all var(--transition-fast); white-space: nowrap;
-    }
-    .back-btn:hover {
-        border-color: var(--accent-indigo); color: var(--accent-indigo);
-        background: rgba(139,92,246,0.06);
-    }
     @media (max-width: 900px) {
         .officer-wrap .page-header { display: flex; flex-direction: column; align-items: center; }
         .header-corner { justify-self: auto; }
@@ -172,9 +161,10 @@
             <h1 class="page-title">درخواست خرید</h1>
         </div>
         <div class="header-corner">
-            <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="back-btn">
-                <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
-            </a>
+            <div class="current-date">
+                <i class="fas fa-calendar-alt"></i>
+                <span id="persianDate"></span>
+            </div>
         </div>
     </div>
 
@@ -397,6 +387,14 @@
 
 {% block extra_js %}
 <script>
+/* ── تاریخ امروز در هدر (همان الگوی چیپ .current-date داشبوردهای مالی) ── */
+function getPersianDate() {
+    var d = new Date();
+    return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+}
+var persianDateEl = document.getElementById('persianDate');
+if (persianDateEl) { persianDateEl.textContent = getPersianDate(); }
+
 /* ── برندهای هر محصول برای فرم افزودن ── */
 var PRODUCT_BRANDS = {
     {% for p in products %}"{{ p.id }}": [
