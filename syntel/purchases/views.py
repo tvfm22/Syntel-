@@ -3642,7 +3642,21 @@ def purchase_order_inspect(request, order_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_order_complete(request, order_id):
-    return _set_order_status(request, order_id, "completed")
+    order = get_object_or_404(PurchaseOrder.objects.select_related('request'), id=order_id)
+    order.status = "completed"
+    order.save()
+    # تکمیل سفارش خرید = پایان مسیر «درخواست خرید» مسئول انبار: درخواستِ مرتبط
+    # «خریداری شده» می‌شود تا در فهرست‌های در انتظار باقی نماند
+    pr = order.request
+    if pr and pr.source == 'warehouse_purchase' and pr.status in ('pending', 'pending_manager_approval'):
+        pr.status = 'purchased'
+        pr.save(update_fields=['status'])
+        ActivityLog.objects.create(
+            user=request.user,
+            request=pr,
+            action='updated',
+            description=f'تکمیل سفارش خرید {order.order_number} — درخواست #{pr.id} خریداری شد')
+    return redirect("purchase_order_detail", order_id=order.id)
 
 
 @custom_login_required
@@ -3655,7 +3669,13 @@ def purchase_order_cancel(request, order_id):
 @role_required(["purchasing", "manager"])
 def approved_requests_for_orders(request):
     cafe = get_cafe_from_request(request)
-    approved_requests = PurchaseRequest.objects.filter(status__in=["approved", "purchased"])
+    # جریان جدید: درخواست خریدِ مسئول انبار که مدیرعامل تایید کرده
+    # (source=warehouse_purchase و status=pending) اینجا می‌آید تا واحد خرید
+    # «سفارش خرید» ثبت کند. باقی‌ماندهٔ جریان قدیمی (approved/purchased) هم
+    # برای سازگاری نمایش داده می‌شود.
+    approved_requests = PurchaseRequest.objects.filter(
+        Q(source='warehouse_purchase', status='pending')
+        | Q(status__in=['approved', 'purchased'], source='requester'))
     if cafe:
         approved_requests = approved_requests.filter(cafe=cafe)
     return render(
@@ -6840,22 +6860,27 @@ def manager_approve_request(request, request_id):
         return redirect('manager_pending_requests', cafe_code=cafe.code if cafe else purchase_request.cafe.code)
     
     if request.method == 'POST':
-        # تایید درخواست
+        # تایید درخواست — برای درخواست خریدِ مسئول انبار، تایید یعنی راه بازشدن
+        # به سمت واحد خرید برای «ثبت سفارش خرید» (درخواست با source=warehouse_purchase
+        # و status=pending در فهرست «درخواست‌های تاییدشده» واحد خرید ظاهر می‌شود)
         purchase_request.status = 'pending'
         purchase_request.manager_confirmed = True
         purchase_request.manager_confirmed_by = request.user
         purchase_request.manager_confirmed_at = timezone.now()
         purchase_request.save()
-        
+
         # ثبت لاگ
         ActivityLog.objects.create(
             user=request.user,
             request=purchase_request,
             action='approve_request',
-            description=f'تایید درخواست کالا #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}'
+            description=f'تایید درخواست #{purchase_request.id} توسط {request.user.get_full_name() or request.user.username}'
         )
-        
-        messages.success(request, f'درخواست کالا #{purchase_request.id} با موفقیت تایید شد و به واحد خرید ارسال شد')
+
+        if purchase_request.source == 'warehouse_purchase':
+            messages.success(request, f'درخواست خرید #{purchase_request.id} تایید شد و برای ثبت سفارش خرید در دسترس واحد خرید قرار گرفت')
+        else:
+            messages.success(request, f'درخواست کالا #{purchase_request.id} با موفقیت تایید شد و به واحد خرید ارسال شد')
         
         # برگشت به صفحه قبلی یا درخواست‌های در انتظار
         next_url = request.GET.get('next')
@@ -8532,6 +8557,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     #  ۳) ارجاع به خرید: قلم به پیش‌نویس صفحه «درخواست خرید» می‌رود
     request_cards = []
     for req in requests_list:
+        # درخواست‌های خریدِ خودِ مسئول انبار (source=warehouse_purchase) دیگر به
+        # داشبورد انبار برنمی‌گردند — مسیرشان: ارسال ← تایید مدیرعامل ← ثبت سفارش خرید
+        if req.source == 'warehouse_purchase':
+            continue
         visible, done = [], []
         for item in req.items.all():
             assigns = list(item.officer_assignments.all())
@@ -8710,10 +8739,10 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
 
     - کالاهایی که در داشبورد انبار «ارجاع به خرید» شده‌اند، اول در این صفحه
       (پیش‌نویس) قرار می‌گیرند و قابل ویرایش/حذف/افزودن هستند.
-    - با «ارسال» یک درخواست خرید ساخته می‌شود که مثل همه درخواست‌ها مستقیماً
-      برای مسئول انبار (صندوق مشترک) ارسال می‌شود.
-    - درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار) هم در همین صفحه
-      قابل ویرایش و حذف هستند.
+    - با «ارسال» یک درخواست خرید ساخته می‌شود که برای تایید به مدیرعامل
+      می‌رود (بدون تخصیص به مسئول انبار — خودِ فرستنده نباید اقدام کند).
+    - درخواست‌های ارسال‌شده تا قبل از تایید مدیرعامل در همین صفحه قابل
+      ویرایش و حذف هستند.
     """
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
@@ -8754,9 +8783,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                     source='warehouse_purchase',
                     delivery_date=delivery_date,
                 )
-                new_request_items = []
                 for d_item in draft_items:
-                    pi = PurchaseItem.objects.create(
+                    PurchaseItem.objects.create(
                         request=new_request,
                         product=d_item.product,
                         product_brand=d_item.product_brand,
@@ -8765,20 +8793,18 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                         unit=d_item.unit,
                         description=d_item.description or '',
                     )
-                    new_request_items.append(pi)
                 draft.items.all().delete()
                 draft.delete()
             ActivityLog.objects.create(
                 user=request.user,
                 request=new_request,
                 action='created',
-                description=f'درخواست خرید توسط مسئول انبار ارسال شد ({len(draft_items)} قلم)',
+                description=f'درخواست خرید توسط مسئول انبار ارسال شد و در انتظار تایید مدیرعامل است ({len(draft_items)} قلم)',
             )
-            # همه درخواست‌های کالا مستقیماً برای مسئول انبار ارسال می‌شوند
-            _route_request_to_warehouse(
-                new_request, new_request_items, request.user,
-                notes='ارسال مستقیم از فرم درخواست کالا')
-            messages.success(request, f'درخواست خرید با {len(draft_items)} قلم برای مسئول انبار ارسال شد.')
+            # جریان جدید: درخواست خریدِ مسئول انبار تخصیص انبار نمی‌سازد (به
+            # داشبورد خودش برنمی‌گردد) — برای تایید به مدیرعامل می‌رود و پس از
+            # تایید، واحد خرید از فهرست «درخواست‌های تاییدشده» سفارش خرید ثبت می‌کند.
+            messages.success(request, f'درخواست خرید با {len(draft_items)} قلم برای تایید مدیرعامل ارسال شد.')
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action == 'add_item':
@@ -8860,16 +8886,16 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action in ('edit_sent', 'delete_sent'):
-            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده (تا قبل از اقدام مسئول انبار).
-            # قلمی که تخصیص «pending» ندارد یعنی روی آن اقدام شده یا اصلا ارجاع
-            # نشده (درخواست قدیمی) — در هر دو حالت قابل ویرایش نیست.
+            # ویرایش/حذف اقلام درخواست‌های ارسال‌شده فقط تا قبل از تایید مدیرعامل.
+            # بعد از تایید مدیرعامل، درخواست به واحد خرید (ثبت سفارش خرید) می‌رود
+            # و دیگر در این صفحه تغییرپذیر نیست.
             req = PurchaseRequest.objects.filter(
                 id=request.POST.get('request_id', '') or -1,
                 source='warehouse_purchase',
-            ).exclude(status__in=('purchased', 'partial'))\
-             .select_related('user').first()
+                status='pending_manager_approval',
+            ).select_related('user').first()
             if req is None or (cafe and req.cafe_id != cafe.id):
-                messages.error(request, 'درخواست یافت نشد یا قابل ویرایش نیست')
+                messages.error(request, 'درخواست یافت نشد یا دیگر قابل ویرایش نیست (پس از تایید مدیرعامل)')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
             if action == 'edit_sent':
@@ -8877,8 +8903,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 qty = _parse_decimal(request.POST.get('quantity', ''))
                 if item is None:
                     messages.error(request, 'قلم یافت نشد')
-                elif not item.officer_assignments.filter(status='pending').exists():
-                    messages.error(request, 'این قلم قابل ویرایش نیست (در انتظار اقدام نیست)')
                 elif qty is None or qty <= 0 or qty > 2147483647:
                     messages.error(request, 'مقدار باید عدد مثبت باشد')
                 else:
@@ -8892,8 +8916,6 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                 item = req.items.filter(id=request.POST.get('item_id', '') or -1).first()
                 if item is None:
                     messages.error(request, 'قلم یافت نشد')
-                elif not item.officer_assignments.filter(status='pending').exists():
-                    messages.error(request, 'این قلم قابل حذف نیست (در انتظار اقدام نیست)')
                 else:
                     name = item.product.name if item.product else item.name
                     item.delete()
@@ -8909,21 +8931,23 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
     draft_items = list(draft.items.select_related(
         'product', 'product_brand', 'product__unit', 'source_item__request') if draft else [])
 
-    # ── درخواست‌های ارسال‌شده (تا قبل از تایید مدیرعامل) ──
-    # درخواست‌های مسئول انبار چون مستقیماً برای خودش/همکار انبار ارسال می‌شوند
-    # در انتظار مدیرعابل نمی‌مانند؛ برای ویرایش، همان‌هایی که هنوز تخصیص اقدام
-    # نداشته‌اند نمایش داده می‌شوند (تخصیص انبار مشترکِ بدون اقدام).
-    sent_qs = (PurchaseRequest.objects
-               .filter(source='warehouse_purchase')
-               .exclude(status__in=('purchased', 'partial', 'rejected'))
-               .filter(items__officer_assignments__status='pending')
-               .distinct()
-               .select_related('user')
-               .prefetch_related('items', 'items__product', 'items__product__unit', 'items__product_brand')
-               .order_by('-created_at'))
+    # ── درخواست‌های ارسال‌شده ──
+    # جریان جدید: درخواست خرید مسئول انبار پس از «ارسال» برای تایید مدیرعامل
+    # می‌رود (status=pending_manager_approval) و تا قبل از تایید در همین صفحه
+    # قابل ویرایش است. بعد از تایید، در انتظار ثبت سفارش خرید توسط واحد خرید
+    # است (نمایشی) و اگر رد شود دلیلش اینجا دیده می‌شود (نمایشی).
+    sent_base = (PurchaseRequest.objects
+                 .filter(source='warehouse_purchase')
+                 .select_related('user')
+                 .prefetch_related('items', 'items__product', 'items__product__unit',
+                                   'items__product_brand'))
     if cafe:
-        sent_qs = sent_qs.filter(cafe=cafe)
-    sent_requests = list(sent_qs[:30])
+        sent_base = sent_base.filter(cafe=cafe)
+    sent_requests = list(sent_base.filter(status='pending_manager_approval').order_by('-created_at')[:30])
+    # تاییدشده توسط مدیرعامل — در انتظار ثبت سفارش خرید در واحد خرید (فقط نمایش)
+    approved_sent_requests = list(sent_base.filter(status='pending').order_by('-created_at')[:15])
+    # ردشده توسط مدیرعامل (فقط نمایش)
+    rejected_sent_requests = list(sent_base.filter(status='rejected').order_by('-created_at')[:10])
 
     # محصولات و برندهای فعال برای فرم افزودن
     products = Product.objects.filter(is_active=True).order_by('name')
@@ -9002,6 +9026,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
         'draft_item_infos': draft_item_infos,
         'draft_requested_delivery': draft_requested_delivery,
         'sent_requests': sent_requests,
+        'approved_sent_requests': approved_sent_requests,
+        'rejected_sent_requests': rejected_sent_requests,
         'products': products,
         'product_brands': product_brands,
         'delivery_days': _next_delivery_days(),
@@ -9301,6 +9327,9 @@ def all_departments_requests(request):
             PurchaseRequest.objects
             .select_related('user', 'user__cafe')
             .prefetch_related('items', 'items__product', 'items__officer_assignments')
+            # درخواست خریدِ مسئول انبار بعد از تایید مدیرعامل برای «ثبت سفارش خرید»
+            # به واحد خرید می‌رود — این صفحه فقط اقلام «درخواست کالا» را پخش می‌کند
+            .exclude(source='warehouse_purchase')
         )
 
     if cafe:

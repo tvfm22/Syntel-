@@ -138,6 +138,12 @@
     .empty-state { text-align: center; padding: var(--space-8) var(--space-4); color: var(--text-muted); }
     .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: var(--space-3); opacity: .5; }
 
+    .sent-group-title {
+        font-size: 0.85rem; font-weight: 700; color: var(--text-primary);
+        display: flex; align-items: center; gap: var(--space-2);
+        margin: var(--space-4) 0 var(--space-2);
+    }
+    .sent-reason { font-size: 0.78rem; color: #b91c1c; margin-top: var(--space-1); line-height: 1.8; }
     .hint-box {
         font-size: 0.78rem; color: var(--text-muted); background: var(--bg-page, #f9fafb);
         border-radius: var(--radius-md); padding: 0.6rem 1rem; line-height: 1.9; margin-bottom: var(--space-4);
@@ -198,7 +204,7 @@
     <div class="hint-box">
         <i class="fas fa-circle-info"></i>
         کالاهایی که در داشبورد با «ارجاع به خرید» علامت می‌زنید به همین صفحه می‌آیند.
-        لیست را ویرایش یا تکمیل کنید و در پایان «ارسال» را بزنید تا درخواست در لیست اقدام مسئول انبار ثبت شود.
+        لیست را ویرایش یا تکمیل کنید و در پایان «ارسال» را بزنید تا درخواست برای تایید به مدیرعامل ارسال شود.
     </div>
 
     <!-- ── پیش‌نویس جاری ── -->
@@ -287,7 +293,7 @@
                             <i class="fas fa-trash"></i> حذف پیش‌نویس
                         </button>
                         <button type="submit" name="action" value="send" class="btn btn-green"
-                                onclick="return confirm('درخواست خرید با {{ draft_items|length }} قلم برای مسئول انبار ارسال شود؟');">
+                                onclick="return confirm('درخواست خرید با {{ draft_items|length }} قلم برای تایید مدیرعامل ارسال شود؟');">
                             <i class="fas fa-paper-plane"></i> ارسال
                         </button>
                     </div>
@@ -305,8 +311,10 @@
     <div class="section-card">
         <div class="section-title">
             <i class="fas fa-paper-plane"></i>
-            درخواست‌های ارسال‌شده (در انتظار اقدام مسئول انبار)
-            {% if sent_requests %}<span class="count-text">{{ sent_requests|length }} درخواست</span>{% endif %}
+            درخواست‌های ارسال‌شده
+            {% if sent_requests %}<span class="count-text">{{ sent_requests|length }} در انتظار تایید مدیرعامل</span>{% endif %}
+            {% if approved_sent_requests %}<span class="count-text" style="color:#059669;">{{ approved_sent_requests|length }} در انتظار ثبت سفارش خرید</span>{% endif %}
+            {% if rejected_sent_requests %}<span class="count-text" style="color:#b91c1c;">{{ rejected_sent_requests|length }} رد شده</span>{% endif %}
         </div>
 
         {% if sent_requests %}
@@ -323,6 +331,7 @@
                         {% else %}
                             <span class="t-warn">بدون زمان تحویل</span>
                         {% endif %}
+                        <span class="t-warn"><i class="fas fa-hourglass-half"></i> در انتظار تایید مدیرعامل</span>
                     </div>
                 </div>
                 <div class="table-scroll">
@@ -377,8 +386,103 @@
             {% endfor %}
         {% else %}
             <div class="empty-state" style="padding:var(--space-5);">
-                <p>درخواستی در انتظار اقدام نیست — بعد از «ارسال» اینجا نمایش داده می‌شود و تا قبل از اقدام مسئول انبار قابل ویرایش است.</p>
+                <p>درخواستی در انتظار تایید مدیرعامل نیست — بعد از «ارسال» همین‌جا نمایش داده می‌شود و تا قبل از تایید مدیرعامل قابل ویرایش است.</p>
             </div>
+        {% endif %}
+
+        {% if approved_sent_requests %}
+            <div class="sent-group-title">
+                <i class="fas fa-check-circle" style="color:#059669;"></i>
+                تایید شده توسط مدیرعامل — در انتظار ثبت سفارش خرید توسط واحد خرید
+            </div>
+            {% for req in approved_sent_requests %}
+            <div class="sent-card">
+                <div class="sent-head">
+                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست #{{ req.id }}</b>
+                        <span class="req-date">{{ req.created_at|jalali_datetime }}</span>
+                        {% if req.delivery_date %}
+                            <span class="t-deliv">تحویل: {{ req.delivery_date|jalali_date }}</span>
+                        {% endif %}
+                        <span class="t-ok"><i class="fas fa-check"></i> تایید مدیرعامل{% if req.manager_confirmed_by %} — {{ req.manager_confirmed_by.get_full_name|default:req.manager_confirmed_by.username }}{% endif %}</span>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="officer-table">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th>برند</th>
+                                <th>مقدار</th>
+                                <th>واحد</th>
+                                <th>توضیحات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in req.items.all %}
+                            <tr>
+                                <td class="col-name">{{ item.product.name|default:item.name }}</td>
+                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td>{{ item.quantity|stringformat:'s' }}</td>
+                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note">{{ item.description|default:'—' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if rejected_sent_requests %}
+            <div class="sent-group-title">
+                <i class="fas fa-ban" style="color:#b91c1c;"></i>
+                رد شده توسط مدیرعامل
+            </div>
+            {% for req in rejected_sent_requests %}
+            <div class="sent-card">
+                <div class="sent-head">
+                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست #{{ req.id }}</b>
+                        <span class="req-date">{{ req.created_at|jalali_datetime }}</span>
+                        {% if req.delivery_date %}
+                            <span class="t-deliv">تحویل: {{ req.delivery_date|jalali_date }}</span>
+                        {% endif %}
+                        <span class="t-bad"><i class="fas fa-times-circle"></i> رد شده توسط مدیرعامل{% if req.manager_confirmed_by %} — {{ req.manager_confirmed_by.get_full_name|default:req.manager_confirmed_by.username }}{% endif %}</span>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="officer-table">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th>برند</th>
+                                <th>مقدار</th>
+                                <th>واحد</th>
+                                <th>توضیحات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in req.items.all %}
+                            <tr>
+                                <td class="col-name">{{ item.product.name|default:item.name }}</td>
+                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td>{{ item.quantity|stringformat:'s' }}</td>
+                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note">{{ item.description|default:'—' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if req.rejection_reason %}
+                <div style="padding:var(--space-2) var(--space-4); border-top:1px solid var(--border-light);">
+                    <span class="sent-reason"><i class="fas fa-comment"></i> دلیل رد: {{ req.rejection_reason }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
         {% endif %}
     </div>
 

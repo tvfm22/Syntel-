@@ -3,9 +3,9 @@
 جریان:
 - ارجاع به خرید در داشبورد انبار → قلم به پیش‌نویس صفحه درخواست خرید می‌رود
 - ویرایش/حذف قلم پیش‌نویس، افزودن کالای جدید
-- «ارسال» → PurchaseRequest با source=warehouse_purchase که مثل همه درخواست‌ها
-  مستقیماً برای مسئول انبار (تخصیص انبار مشترک در انتظار) ارسال می‌شود
-- درخواست ارسال‌شده تا قبل از اقدام مسئول انبار قابل ویرایش/حذف قلم است
+- «ارسال» → PurchaseRequest با source=warehouse_purchase که تخصیص انبار نمی‌گیرد
+  و برای تایید مدیرعامل می‌رود (status=pending_manager_approval)
+- درخواست ارسال‌شده فقط تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است
 """
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -107,7 +107,7 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(PurchaseDraftItem.objects.count(), 0)
         self.assertEqual(PurchaseDraft.objects.count(), 0)  # پیش‌نویس خالی حذف شد
 
-    def test_send_creates_request_routed_to_warehouse(self):
+    def test_send_creates_request_for_ceo_approval(self):
         self._login_as_warehouse()
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
         PurchaseDraftItem.objects.create(
@@ -117,23 +117,19 @@ class WarehousePurchaseDraftTests(TestCase):
             'action': 'send', 'delivery_date': '2026-09-15',
         })
         self.assertRedirects(resp, reverse('warehouse_purchase_draft', args=['testcafe']))
-        # درخواست ساخته شد و مستقیماً برای مسئول انبار ارسال شد
+        # درخواست ساخته شد و برای تایید مدیرعامل رفت (بدون تخصیص به خودش)
         self.assertEqual(PurchaseRequest.objects.count(), 2)  # اصلی + جدید
         new_req = PurchaseRequest.objects.filter(source='warehouse_purchase').first()
         self.assertIsNotNone(new_req)
-        self.assertEqual(new_req.status, 'pending')
+        self.assertEqual(new_req.status, 'pending_manager_approval')
         self.assertEqual(new_req.user, self.wo)
         self.assertEqual(new_req.items.count(), 1)
         self.assertEqual(new_req.items.first().quantity, 5)
         # گزینه «تحویل فوری» حذف شده: تاریخ ارسالی ثبت می‌شود و فوری همیشه خالی است
         self.assertEqual(new_req.delivery_date.isoformat(), '2026-09-15')
         self.assertFalse(new_req.delivery_immediate)
-        # تخصیص انبار مشترکِ در انتظار برای قلم ساخته شد
-        a = new_req.items.first().officer_assignments.first()
-        self.assertIsNotNone(a)
-        self.assertEqual(a.target_role, 'warehouse')
-        self.assertIsNone(a.assigned_to)
-        self.assertEqual(a.status, 'pending')
+        # هیچ تخصیصی ساخته نشد — درخواست به داشبورد انبار برنمی‌گردد
+        self.assertEqual(OfficerAssignment.objects.filter(item__request=new_req).count(), 0)
         # پیش‌نویس حذف شد
         self.assertEqual(PurchaseDraft.objects.count(), 0)
         self.assertEqual(PurchaseDraftItem.objects.count(), 0)
@@ -145,16 +141,13 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(PurchaseRequest.objects.filter(source='warehouse_purchase').count(), 0)
 
     def test_edit_and_delete_sent_request_items(self):
-        """درخواست ارسال‌شده تا قبل از اقدام مسئول انبار قابل ویرایش/حذف قلم است"""
+        """درخواست ارسال‌شده تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است"""
         self._login_as_warehouse()
         new_req = PurchaseRequest.objects.create(
-            user=self.wo, cafe=self.cafe, status='pending',
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
             source='warehouse_purchase')
         sent_item = PurchaseItem.objects.create(
             request=new_req, product=self.product, name='محصول تست', quantity=4, unit='kg')
-        # تخصیص انبار مشترک در انتظار (مثل خروجی «ارسال» واقعی)
-        OfficerAssignment.objects.create(
-            item=sent_item, target_role='warehouse', assigned_to=None, status='pending')
         # ویرایش مقدار
         self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
                          {'action': 'edit_sent', 'request_id': new_req.id,
@@ -167,20 +160,44 @@ class WarehousePurchaseDraftTests(TestCase):
                           'item_id': sent_item.id})
         self.assertEqual(PurchaseRequest.objects.filter(id=new_req.id).count(), 0)
 
-    def test_cannot_edit_actioned_request(self):
-        """بعد از اقدام روی قلم (تخصیص purchased) دیگر قابل ویرایش نیست"""
+    def test_cannot_edit_approved_request(self):
+        """بعد از تایید مدیرعامل (status=pending) دیگر قابل ویرایش نیست"""
         self._login_as_warehouse()
         req = PurchaseRequest.objects.create(
             user=self.wo, cafe=self.cafe, status='pending', source='warehouse_purchase')
         sent_item = PurchaseItem.objects.create(
             request=req, product=self.product, name='محصول تست', quantity=4, unit='kg')
-        OfficerAssignment.objects.create(
-            item=sent_item, target_role='warehouse', assigned_to=None, status='purchased')
         self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
                          {'action': 'edit_sent', 'request_id': req.id,
                           'item_id': sent_item.id, 'quantity': '99'})
         sent_item.refresh_from_db()
         self.assertEqual(sent_item.quantity, 4)  # تغییری نکرد
+
+    def test_ceo_approval_sends_request_to_purchase_order_queue(self):
+        """تایید مدیرعامل: درخواست خریدِ انبار در فهرست «ثبت سفارش خرید» واحد خرید ظاهر می‌شود"""
+        wo_req = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            source='warehouse_purchase')
+        PurchaseItem.objects.create(
+            request=wo_req, product=self.product, name='محصول تست', quantity=4, unit='kg')
+
+        # تایید توسط مدیرعامل
+        self.client.login(username='ceo_test', password='testpass123')
+        resp = self.client.post(
+            reverse('manager_approve_request', args=['testcafe', wo_req.id]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        wo_req.refresh_from_db()
+        self.assertEqual(wo_req.status, 'pending')
+        self.assertTrue(wo_req.manager_confirmed)
+        # تایید، تخصیص انبار نمی‌سازد (به داشبورد انبار برنمی‌گردد)
+        self.assertEqual(OfficerAssignment.objects.filter(item__request=wo_req).count(), 0)
+
+        # مسئول خرید می‌بیندش در فهرست «تایید مدیرعامل — ثبت سفارش خرید»
+        po = User.objects.create_user(
+            username='po_test', password='testpass123', role='purchasing', cafe=self.cafe)
+        self.client.login(username='po_test', password='testpass123')
+        resp = self.client.get(reverse('approved_requests_for_orders', args=['testcafe']))
+        self.assertContains(resp, str(wo_req.id))
 
     def test_requester_role_cannot_access(self):
         self.client.login(username='req1', password='testpass123')
