@@ -8415,33 +8415,23 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if cafe:
         requests_qs = requests_qs.filter(cafe=cafe)
 
-    # فیلتر زمان تحویل: تاریخ مشخص یا تحویل فوری؛ بدون فیلتر → فقط درخواست‌های امروز
-    # «امروز» بر پایهٔ ساعت محلی تهران (نه UTC) — از ابتدای بامداد امروز
+    # فیلتر زمان تحویل: تاریخ مشخص — فقط و فقط درخواست‌هایی که زمان تحویل‌شان
+    # همان تاریخ انتخاب‌شده باشد؛ درخواست تاریخ‌های دیگر به هیچ وجه اینجا نمی‌آیند.
+    # «امروز» بر پایهٔ ساعت محلی تهران (نه UTC)
     now_local = timezone.localtime(timezone.now())
     today = now_local.date()
-    day_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-    if delivery_filter == 'immediate':
-        requests_qs = requests_qs.filter(delivery_immediate=True)
-    elif delivery_filter:
+    if delivery_filter:
         try:
             ddate = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
         except (ValueError, TypeError):
             ddate = None
         if ddate:
-            if ddate == today:
-                # صفحهٔ پیش‌فرض (‎?delivery=<امروز>): همهٔ درخواست‌های ثبت‌شدهٔ امروز،
-                # مستقل از زمان تحویل — و درخواست‌های فوری همیشه جلوی چشم می‌مانند
-                requests_qs = requests_qs.filter(
-                    Q(created_at__gte=day_start) | Q(delivery_immediate=True))
-            else:
-                # روز دیگر: تحویل‌شده‌های همان روز + درخواست‌های فوری (همیشه مرئی)
-                requests_qs = requests_qs.filter(
-                    Q(delivery_immediate=False, delivery_date=ddate) | Q(delivery_immediate=True))
+            requests_qs = requests_qs.filter(delivery_date=ddate)
         else:
             requests_qs = requests_qs.none()
     else:
-        # بدون پارامتر GET (مثلاً POST بدون ریدایرکت): همان رفتار پیش‌فرض امروز
-        requests_qs = requests_qs.filter(created_at__gte=day_start)
+        # بدون پارامتر GET (مثلاً POST بدون ریدایرکت): همان پیش‌فرض — تحویل امروز
+        requests_qs = requests_qs.filter(delivery_date=today)
 
     # فیلتر بخش درخواست‌دهنده
     if dept:
@@ -8540,9 +8530,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
     # ── کارت‌های «تمام‌شده» (همهٔ اقلامشان ثبت‌شده) به انتهای لیست منتقل می‌شوند ──
-    # درخواست‌های فوری همیشه بالای لیست می‌مانند تا تاخیری در تامین‌شان پیش نیاید
-    request_cards.sort(key=lambda c: (0 if c['visible'] else 1,
-                                      0 if c['request'].delivery_immediate else 1))
+    request_cards.sort(key=lambda c: 0 if c['visible'] else 1)
 
     # ── گزینه‌های تامین از انبار برای اقلام قابل تامین (بر اساس ردیف‌های موجودی) ──
     product_ids = sorted({v['item'].product_id for card in request_cards for v in card['visible'] if v['item'].product_id})
@@ -8591,14 +8579,9 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             if not hide_select and n_brands == 1 and len(opts) == 1:
                 opts[0]['default_selected'] = True
 
-    # ── تگ‌های زمان تحویل: تاریخ‌های انتخاب‌شده در محدوده + تحویل فوری ──
-    delivery_dates = sorted({r.delivery_date for r in requests_list
-                             if r.delivery_date and not r.delivery_immediate})
-    has_immediate = any(r.delivery_immediate for r in requests_list)
-
     # ── ناوبری تاریخ تحویل (همان الگوی صفحه «همه بخش‌ها»): روز قبل/بعد + انتخابگر ──
     selected_nav_date = None
-    if delivery_filter and delivery_filter != 'immediate':
+    if delivery_filter:
         try:
             selected_nav_date = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
         except (ValueError, TypeError):
@@ -8653,8 +8636,6 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         },
         'stock_options': stock_options,
         'stock_meta': stock_meta,
-        'delivery_dates': delivery_dates,
-        'has_immediate': has_immediate,
         'selected_delivery': delivery_filter,
         'selected_date': selected_nav_date,
         'today_str': today.isoformat(),

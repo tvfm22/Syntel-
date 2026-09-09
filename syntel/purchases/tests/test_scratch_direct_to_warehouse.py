@@ -7,6 +7,7 @@
 """
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from purchases.models import Cafe, OfficerAssignment, Product, PurchaseRequest, User
 
@@ -40,6 +41,8 @@ class TestDirectToWarehouse(DirectToWarehouseBase):
             'item_unit': ['عدد'],
             'item_description': ['برای تست'],
             'item_product_id': [str(self.product.id)],
+            # داشبورد مسئول انبار فقط اقلام همان روز تحویل را نشان می‌دهد
+            'delivery_date': timezone.localtime(timezone.now()).date().isoformat(),
         })
 
     def test_items_get_pending_warehouse_assignment(self):

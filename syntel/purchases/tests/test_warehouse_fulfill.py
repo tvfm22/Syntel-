@@ -98,9 +98,10 @@ class WarehouseFulfillOptionsTests(TestCase):
         self.dash_url = reverse('warehouse_officer_dashboard', kwargs={'cafe_code': 'main'})
 
     def _add_item(self, product, name=None):
-        """قلم درخواست امروز با تخصیص در انتظار برای مسئول انبار (تا در لیست باشد)"""
+        """قلم درخواست با زمان تحویل امروز و تخصیص در انتظار (تا در لیست داشبورد باشد)"""
         req = PurchaseRequest.objects.create(
-            user=self.wh_user, cafe=self.cafe, status='pending')
+            user=self.wh_user, cafe=self.cafe, status='pending',
+            delivery_date=self.today)
         item = PurchaseItem.objects.create(
             request=req, product=product, name=name or product.name,
             quantity=2, unit='kg')

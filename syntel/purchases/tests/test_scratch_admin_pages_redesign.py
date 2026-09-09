@@ -158,13 +158,15 @@ class AdminPagesRedesignTests(TestCase):
         self.assertIn('officer" value="1"', content)
 
     def test_warehouse_officer_dashboard_unified_header(self):
-        """هدر یکپارچه داشبورد مسئول انبار: عنوان + دو ردیف فیلتر در یک کارت"""
+        """هدر یکپارچه داشبورد مسئول انبار: عنوان + تاریخ تحویل + بخش در یک هدر (کارت فیلتر جدا ندارد)"""
         import datetime
+        from django.utils import timezone
         from purchases.models import PurchaseRequest, Department, PurchaseItem
         dept = Department.objects.create(name='آشپزخانه', cafe=self.cafe)
         req = PurchaseRequest.objects.create(
             user=self.admin, cafe=self.cafe,
-            delivery_date=datetime.date.today() + datetime.timedelta(days=1),
+            # داشبورد فقط اقلامِ همان روز تحویل را نشان می‌دهد
+            delivery_date=timezone.localtime(timezone.now()).date(),
         )
         PurchaseItem.objects.create(
             request=req, product=self.product, name='شیر',
@@ -177,18 +179,19 @@ class AdminPagesRedesignTests(TestCase):
         )
         c = Client()
         c.login(username='redesign_wo', password='testpass123')
-        r = c.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]))
+        # GET بدون delivery به ‎?delivery=<امروز> ریدایرکت می‌شود؛ با follow دنبال می‌کنیم
+        r = c.get(reverse('warehouse_officer_dashboard', args=[self.cafe.code]), follow=True)
         self.assertEqual(r.status_code, 200)
         content = r.content.decode('utf-8')
-        # عناصر هدر یکپارچه
-        self.assertIn('page-head', content)
-        self.assertIn('ph-top', content)
-        self.assertIn('ph-meta', content)
-        self.assertIn('درخواست‌های ۴۵ روز اخیر', content)
-        # دو ردیف فیلتر داخل همان کارت
-        self.assertIn('زمان تحویل', content)
-        self.assertIn('بخش:', content)
-        self.assertIn('filter-pill', content)
-        # دیگر هدر دوطبقه نباشد
-        self.assertNotIn('class="page-header"', content)
-        self.assertContains(r, 'درخواست #{}'.format(req.id))
+        # هدر یکپارچه فعلی: عنوان + ناوبری تاریخ تحویل + فیلتر بخش، همگی داخل همان page-header
+        self.assertIn('class="ph-main"', content)
+        self.assertIn('class="ph-icon"', content)
+        self.assertIn('class="page-title"', content)
+        self.assertIn('class="date-nav"', content)
+        self.assertIn('class="date-display', content)
+        self.assertIn('class="dept-filter"', content)
+        # کارت/نوار فیلتر جداگانهٔ زیر هدر و قرص‌های فیلتر چندروزه وجود نداشته باشند
+        self.assertNotIn('class="filters-container"', content)
+        self.assertNotIn('filter-pill', content)
+        # کارت درخواستِ همان روز تحویل نمایش داده شود (عنوان با span جدا شده)
+        self.assertIn('درخواست <span class="req-no">#{}</span>'.format(req.id), content)

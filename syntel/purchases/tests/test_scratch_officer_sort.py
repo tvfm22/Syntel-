@@ -45,12 +45,12 @@ class OfficerDashboardCardSortTest(TestCase):
         now = timezone.localtime(timezone.now())
         req_old = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending',
-            created_at=now - timedelta(hours=2))
+            delivery_date=now.date(), created_at=now - timedelta(hours=2))
         PurchaseItem.objects.create(request=req_old, product=self.prod_old,
                                     name='old prod', quantity=Decimal('5'), unit='kg')
         req_new = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending',
-            created_at=now - timedelta(minutes=5))
+            delivery_date=now.date(), created_at=now - timedelta(minutes=5))
         PurchaseItem.objects.create(request=req_new, product=self.prod_new,
                                     name='new prod', quantity=Decimal('3'), unit='kg')
 
@@ -71,3 +71,31 @@ class OfficerDashboardCardSortTest(TestCase):
         self.assertIn(req_new.id, ids)
         self.assertLess(ids.index(req_new.id), ids.index(req_old.id),
                         'درخواستِ پردازش‌شده باید پایین‌تر از درخواستِ در انتظار باشد')
+
+    def test_other_dates_never_appear_on_selected_date(self):
+        """صفحه هر تاریخ فقط اقلامِ همان روز تحویل را نشان می‌دهد — نه فردا و نه دیروز"""
+        now = timezone.localtime(timezone.now())
+        tomorrow = PurchaseRequest.objects.create(
+            user=self.ceo, cafe=self.cafe, status='pending',
+            delivery_date=now.date() + timedelta(days=1))
+        yesterday = PurchaseRequest.objects.create(
+            user=self.ceo, cafe=self.cafe, status='pending',
+            delivery_date=now.date() - timedelta(days=1))
+        PurchaseItem.objects.create(request=tomorrow, product=self.prod_new,
+                                    name='new prod', quantity=Decimal('3'), unit='kg')
+        PurchaseItem.objects.create(request=yesterday, product=self.prod_new,
+                                    name='new prod', quantity=Decimal('3'), unit='kg')
+
+        self.client.force_login(self.officer)
+        # صفحه پیش‌فرض (امروز) — نه درخواست فردا دیده شود نه دیروز
+        resp = self.client.get(reverse('warehouse_officer_dashboard',
+                                       args=[self.cafe.code]), follow=True)
+        ids = [card['request'].id for card in resp.context['request_cards']]
+        self.assertNotIn(tomorrow.id, ids, 'درخواستِ فردا نباید روی صفحه امروز بیاید')
+        self.assertNotIn(yesterday.id, ids, 'درخواستِ دیروز نباید روی صفحه امروز بیاید')
+        # صفحه فردا فقط درخواست فردا را نشان می‌دهد
+        resp2 = self.client.get(reverse('warehouse_officer_dashboard',
+                                        args=[self.cafe.code]) + f'?delivery={tomorrow.delivery_date.isoformat()}')
+        ids2 = [card['request'].id for card in resp2.context['request_cards']]
+        self.assertIn(tomorrow.id, ids2)
+        self.assertNotIn(yesterday.id, ids2, 'درخواستِ دیروز نباید روی صفحه فردا بیاید')
