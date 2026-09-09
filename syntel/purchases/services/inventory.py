@@ -6,10 +6,10 @@
 #
 # قواعد:
 #  1. نهایی‌سازی:
-#     - نوع‌های روتین (issue, receipt, return, transfer, waste, sale):
-#       از وضعیت «ثبت‌شده» (submitted) پذیرفته می‌شوند؛ اگر حواله تأیید را هم
-#       طی کرده باشد («تأییدشده») نیز پذیرفته است — تأیید برای این نوع‌ها اختیاری
-#       است و لازم نیست هر حواله‌ای از approved بگذرد.
+#     - نوع‌های روتین (issue, receipt, return, transfer, waste, sale,
+#       direct_delivery): از وضعیت «ثبت‌شده» (submitted) پذیرفته می‌شوند؛ اگر
+#       حواله تأیید را هم طی کرده باشد («تأییدشده») نیز پذیرفته است — تأیید برای
+#       این نوع‌ها اختیاری است و لازم نیست هر حواله‌ای از approved بگذرد.
 #     - حوالهٔ تعدیل (adjustment) و هر حوالهٔ «نیازمند تأیید» (requires_approval —
 #       مثلاً ضایعات بالای آستانه): فقط از وضعیت «تأییدشده» (با approver و
 #       approved_at) پذیرفته می‌شوند؛ در غیر این صورت رد می‌شود.
@@ -132,6 +132,7 @@ _VOUCHER_PREFIX = {
     'waste': 'WST',
     'transfer': 'TRF',
     'adjustment': 'ADJ',
+    'direct_delivery': 'DLV',
 }
 
 
@@ -222,6 +223,9 @@ def _plan_movements(v):
       waste    → −انبار مبدأ          (ضایعات = خروج)
       transfer → −مبدأ و +مقصد
       adjustment → علامتِ خودِ مقدار پایهٔ قلم (مثبت=افزایش، منفی=کاهش) روی انبار مبدأ
+      direct_delivery → عبور از انبارِ مقصد (محل ورودِ کالای تازه‌خرید): +مقدار و
+        سپس −مقدار روی همان انبار — خالصِ صفر، ولی سابقهٔ ورود و خروجِ کامل ثبت
+        می‌شود و بخشِ گیرنده روی سند می‌ماند (تحویل مستقیم).
     حوالهٔ برگشتی (reverses): همهٔ علائم معکوس می‌شوند — اثر خالصِ «اصلی + برگشت» صفر است.
     """
     if v.voucher_type == 'adjustment':
@@ -311,6 +315,11 @@ def _plan_movements(v):
             moves = [(v.source_warehouse, -sign * base), (v.destination_warehouse, sign * base)]
         elif vt == 'adjustment':
             moves = [(v.source_warehouse, sign * base)]
+        elif vt == 'direct_delivery':
+            # تحویل مستقیم: کالای تازه‌خرید از انبارِ مقصد (محل عبور) می‌گذرد —
+            # ورودِ کامل و بلافاصله خروجِ کامل به بخشِ گیرنده؛ خالصِ صفر روی انبار.
+            moves = [(v.destination_warehouse, sign * base),
+                     (v.destination_warehouse, -sign * base)]
         else:
             raise VoucherValidationError(f'نوع حوالهٔ «{vt}» شناخته‌شده نیست.')
 
@@ -323,9 +332,10 @@ def _plan_movements(v):
             # موجودیِ صریح قلم = «الان کجاست» → فقط سمتِ مبدأ؛ سمتِ مقصدِ انتقال
             # همیشه با محصول/برند در انبارِ مقصد یافت می‌شود.
             allow_explicit = not (vt == 'transfer' and wh.id != v.source_warehouse_id)
-            # سمتِ «ورود» (رسید/برگشتی): اگر موجودیِ انباری ثبت نشده، نهایی‌سازی
-            # خودکار می‌سازدش — همهٔ محصولات برای ورود به انبار قابل‌قبول‌اند.
-            create_if_missing = delta > 0 and vt in ('receipt', 'return')
+            # سمتِ «ورود» (رسید/برگشتی/تحویل مستقیم): اگر موجودیِ انباری ثبت
+            # نشده، نهایی‌سازی خودکار می‌سازدش — همهٔ محصولات برای ورود به انبار
+            # قابل‌قبول‌اند (کالای تازه‌خریدِ تحویل مستقیم هم همین‌طور).
+            create_if_missing = delta > 0 and vt in ('receipt', 'return', 'direct_delivery')
             stock = _resolve_stock_item(item, wh, allow_explicit=allow_explicit,
                                         create_if_missing=create_if_missing)
             plans.append(_PlannedMovement(
@@ -438,7 +448,10 @@ def finalize_voucher(voucher, finalized_by=None):
         # ── اعمال دلتاها و ثبت ردیف‌های تغییرناپذیر تراکنش ──
         running = {si_id: si.quantity for si_id, si in locked.items()}
         txs = []
-        for p in plans:
+        # تحویل مستقیم هر دو حرکت را روی یک موجودی دارد (+ و سپس −): «ورود» باید
+        # اول اعمال شود تا از موجودیِ صفر هم قابل‌اجرا باشد (برای اصلی و برگشتی یکسان)
+        ordered = sorted(plans, key=lambda p: (p.stock_item_id, p.delta < 0))
+        for p in ordered:
             ok, _prev, _new = _change_stock_quantity(p.stock_item_id, p.delta)
             if not ok:
                 # آخرین نگهبان؛ پس از اعتبارسنجی زیر قلم نباید رخ دهد
@@ -520,6 +533,7 @@ def reverse_voucher(voucher, created_by=None, description=None):
             voucher_number=_reversal_number(original.cafe_id, original.voucher_number),
             source_warehouse=original.source_warehouse,
             destination_warehouse=original.destination_warehouse,
+            department=original.department,
             description=description or f'برگشتِ حوالهٔ #{original.voucher_number}',
             created_by=created_by or original.created_by,
             reverses=original,

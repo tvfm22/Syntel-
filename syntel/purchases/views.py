@@ -7223,7 +7223,12 @@ VOUCHER_WAREHOUSE_FIELDS = {
     'waste':      ['source'],
     'transfer':   ['source', 'destination'],
     'adjustment': ['source'],
+    # «تحویل مستقیم»: انبارِ مقصد = محلِ عبور کالای تازه‌خرید (+ و بلافاصله −)
+    'direct_delivery': ['destination'],
 }
+
+# بخش‌گیرنده فقط برای «تحویل مستقیم» انتخاب می‌شود
+_VOUCHER_DEPARTMENT_TYPES = {'direct_delivery'}
 
 
 def _voucher_form_options(cafe, warehouse_id):
@@ -7352,6 +7357,7 @@ def _render_voucher_form(request, cafe, voucher_type, warehouse, extra=None):
         'warehouse': warehouse,
         'warehouses': Warehouse.objects.filter(cafe=cafe, is_active=True).order_by('name'),
         'warehouse_fields': VOUCHER_WAREHOUSE_FIELDS.get(voucher_type, []),
+        'departments': Department.objects.filter(cafe=cafe, is_active=True).order_by('name'),
         'cafe_code': cafe.code if cafe else '',
         'products': opts['products'],
         'units': opts['units'],
@@ -7370,7 +7376,8 @@ def voucher_list(request: HttpRequest) -> HttpResponse:
     مبدأ/مقصد، محصول، بخش، ایجادکننده، شماره)"""
     cafe = get_cafe_from_request(request)
     vouchers = WarehouseVoucher.objects.select_related(
-        'source_warehouse', 'destination_warehouse', 'created_by', 'approver'
+        'source_warehouse', 'destination_warehouse', 'department',
+        'created_by', 'approver',
     ).filter(cafe=cafe)
 
     f = {
@@ -7407,10 +7414,12 @@ def voucher_list(request: HttpRequest) -> HttpResponse:
     if f['product']:
         vouchers = vouchers.filter(items__product_id=f['product'])
     if f['department']:
-        # بخش از طریق انبارِ مرتبط با بخش — مبدأ یا مقصدِ حواله
+        # بخش گیرندهٔ مستقیمِ «تحویل مستقیم» یا بخشِ مرتبط با انبارِ مبدأ/مقصد
         dept_wh_ids = Department.objects.filter(cafe=cafe, id=f['department']).values_list('warehouse_id', flat=True)
         vouchers = vouchers.filter(
-            Q(source_warehouse_id__in=dept_wh_ids) | Q(destination_warehouse_id__in=dept_wh_ids))
+            Q(department_id=f['department'])
+            | Q(source_warehouse_id__in=dept_wh_ids)
+            | Q(destination_warehouse_id__in=dept_wh_ids))
     if f['creator']:
         vouchers = vouchers.filter(created_by_id=f['creator'])
     if f['search']:
@@ -7459,12 +7468,24 @@ def voucher_create(request: HttpRequest, voucher_type: str) -> HttpResponse:
         src_wh = get_scoped_object_or_404(Warehouse, request, id=src_id) if src_id else None
         dst_wh = get_scoped_object_or_404(Warehouse, request, id=dst_id) if dst_id else None
 
+        # بخش گیرندهٔ «تحویل مستقیم» — فقط بخش‌های کافهٔ فعلی معتبرند
+        dept = None
+        if voucher_type in _VOUCHER_DEPARTMENT_TYPES:
+            dept_id_str = request.POST.get('department', '').strip()
+            if not dept_id_str or not dept_id_str.isdigit():
+                messages.error(request, 'بخش گیرنده را انتخاب کنید')
+                return _render_voucher_form(
+                    request, cafe, voucher_type, src_wh or dst_wh,
+                    {'form_errors': ['بخش گیرنده الزامی است']})
+            dept = get_scoped_object_or_404(Department, request, id=int(dept_id_str))
+
         lines, errors = _parse_voucher_lines(request, cafe, voucher_type)
         if errors:
             for e in errors:
                 messages.error(request, e)
             return _render_voucher_form(request, cafe, voucher_type, src_wh or dst_wh,
-                                        {'form_errors': errors})
+                                        {'form_errors': errors,
+                                         'selected_department': dept})
 
         vdate = timezone.now()
         date_str = request.POST.get('date', '').strip()
@@ -7485,6 +7506,7 @@ def voucher_create(request: HttpRequest, voucher_type: str) -> HttpResponse:
                     voucher_number=next_voucher_number(cafe.id, voucher_type),
                     source_warehouse=src_wh,
                     destination_warehouse=dst_wh,
+                    department=dept,
                     date=vdate,
                     description=description,
                     created_by=request.user,
@@ -7513,6 +7535,12 @@ def voucher_create(request: HttpRequest, voucher_type: str) -> HttpResponse:
             messages.success(request, f'پیش‌نویس حواله {voucher.voucher_number} ثبت شد.')
         elif voucher_type in WarehouseVoucher.APPROVAL_REQUIRED_TYPES:
             messages.success(request, f'حوالهٔ {voucher.voucher_number} ثبت شد و در انتظار تأیید مدیر است.')
+        elif voucher_type == 'direct_delivery':
+            _dept_name = dept.name if dept else '—'
+            messages.success(
+                request,
+                f'حوالهٔ {voucher.voucher_number} نهایی شد؛ کالا به «{_dept_name}» تحویل داده شد '
+                f'(در سابقهٔ موجودیِ انبار، ورود و خروجِ آن ثبت شده).')
         else:
             messages.success(request, f'حوالهٔ {voucher.voucher_number} نهایی‌سازی شد و اثر آن روی موجودی اعمال شد.')
         return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
@@ -7574,6 +7602,14 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
         src_wh = get_scoped_object_or_404(Warehouse, request, id=src_id) if src_id else None
         dst_wh = get_scoped_object_or_404(Warehouse, request, id=dst_id) if dst_id else None
 
+        dept = voucher.department  # پیش‌فرض: نگه‌داشتن بخشِ قبلی پیش‌نویس
+        if voucher.voucher_type in _VOUCHER_DEPARTMENT_TYPES:
+            dept_id_str = request.POST.get('department', '').strip()
+            if not dept_id_str or not dept_id_str.isdigit():
+                messages.error(request, 'بخش گیرنده را انتخاب کنید')
+                return redirect('voucher_edit', cafe_code=cafe.code, voucher_id=voucher.id)
+            dept = get_scoped_object_or_404(Department, request, id=int(dept_id_str))
+
         lines, errors = _parse_voucher_lines(request, cafe, voucher.voucher_type)
         if errors:
             for e in errors:
@@ -7591,6 +7627,7 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
         with transaction.atomic():
             voucher.source_warehouse = src_wh
             voucher.destination_warehouse = dst_wh
+            voucher.department = dept
             voucher.date = vdate
             voucher.description = request.POST.get('description', '').strip()
             voucher.save()
@@ -7607,7 +7644,8 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
                                 {'editing': True, 'edit_voucher': voucher,
                                  'edit_items': items, 'edit_date': voucher.date,
                                  'edit_source_wh': voucher.source_warehouse,
-                                 'edit_dest_wh': voucher.destination_warehouse})
+                                 'edit_dest_wh': voucher.destination_warehouse,
+                                 'selected_department': voucher.department})
 
 
 @custom_login_required
@@ -8235,25 +8273,26 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if not (request.user.role == 'admin' or request.user.is_superuser or request.user.has_warehouse_role):
         return redirect('purchase_officer_dashboard', cafe_code=cafe_code)
 
-    # ── فیلترها: زمان تحویل (تاریخ انتخاب‌شده یا تحویل فوری) + بخش درخواست‌دهنده ──
+    # ── فیلترها: روزِ «ثبت درخواست» (هر درخواست در روز ثبتی که داشته قرار
+    # می‌گیرد، نه روز تحویل درخواست‌شده) + بخش درخواست‌دهنده ──
     # در ریدایرکت‌ها حفظ می‌شوند تا بعد از هر ثبت همان فیلتر باقی بماند
     from urllib.parse import urlencode
-    delivery_filter = request.GET.get('delivery', '')
+    day_filter = request.GET.get('day', '')
     dept = request.GET.get('department', '')
     dash_params = {}
-    if delivery_filter:
-        dash_params['delivery'] = delivery_filter
+    if day_filter:
+        dash_params['day'] = day_filter
     if dept:
         dash_params['department'] = dept
     dash_url = reverse('warehouse_officer_dashboard', args=[cafe_code])
     if dash_params:
         dash_url += '?' + urlencode(dash_params)
 
-    # پیش‌فرض URL: تاریخ همان روز — بدون پارامتر delivery به ‎?delivery=<امروز> ریدایرکت
+    # پیش‌فرض URL: تاریخ همان روز — بدون پارامتر day به ‎?day=<امروز> ریدایرکت
     # می‌شود تا پیش‌فرض صفحه همیشه «امروز» باشد و فردا خودبه‌خود «فردای روز قبل» شود؛
     # پارامتر صریح در URL دست‌نخورده می‌ماند (فقط GET؛ POSTها بی‌تغییر)
-    if not delivery_filter and request.method == 'GET':
-        _params = {'delivery': timezone.localtime(timezone.now()).date().isoformat()}
+    if not day_filter and request.method == 'GET':
+        _params = {'day': timezone.localtime(timezone.now()).date().isoformat()}
         if dept:
             _params['department'] = dept
         return redirect(
@@ -8447,7 +8486,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             messages.info(request, msg)
             return redirect(dash_url)
 
-    # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر تاریخ تحویل روی همین پایه) ──
+    # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر روزِ ثبت روی همین پایه) ──
     cutoff_dt = timezone.localtime(timezone.now()) - timedelta(days=45)
     requests_qs = (
         PurchaseRequest.objects
@@ -8461,23 +8500,26 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     if cafe:
         requests_qs = requests_qs.filter(cafe=cafe)
 
-    # فیلتر زمان تحویل: تاریخ مشخص — فقط و فقط درخواست‌هایی که زمان تحویل‌شان
-    # همان تاریخ انتخاب‌شده باشد؛ درخواست تاریخ‌های دیگر به هیچ وجه اینجا نمی‌آیند.
-    # «امروز» بر پایهٔ ساعت محلی تهران (نه UTC)
+    # ── فیلتر روزِ ثبت: هر درخواست در روزِ «ثبت» خودش (created_at به وقت محلی)
+    # قرار می‌گیرد، نه در روز تحویلِ درخواست‌شده؛ زمان تحویلِ درخواست‌شده فقط روی
+    # کارت نمایش داده می‌شود. مرز روز صریح محاسبه می‌شود تا درخواستِ ساعاتِ
+    # پایانیِ روزِ قبل به روز بعد نیفتد. «امروز» بر پایهٔ ساعت محلی تهران (نه UTC)
     now_local = timezone.localtime(timezone.now())
     today = now_local.date()
-    if delivery_filter:
+    if day_filter:
         try:
-            ddate = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
+            ddate = datetime.strptime(day_filter, '%Y-%m-%d').date()
         except (ValueError, TypeError):
             ddate = None
-        if ddate:
-            requests_qs = requests_qs.filter(delivery_date=ddate)
-        else:
+        if ddate is None:
             requests_qs = requests_qs.none()
     else:
-        # بدون پارامتر GET (مثلاً POST بدون ریدایرکت): همان پیش‌فرض — تحویل امروز
-        requests_qs = requests_qs.filter(delivery_date=today)
+        # بدون پارامتر GET (مثلاً POST بدون ریدایرکت): همان پیش‌فرض — امروز
+        ddate = today
+    if ddate is not None:
+        day_start = timezone.make_aware(datetime.combine(ddate, datetime.min.time()))
+        requests_qs = requests_qs.filter(
+            created_at__gte=day_start, created_at__lt=day_start + timedelta(days=1))
 
     # فیلتر بخش درخواست‌دهنده
     if dept:
@@ -8629,11 +8671,11 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             if not hide_select and n_brands == 1 and len(opts) == 1:
                 opts[0]['default_selected'] = True
 
-    # ── ناوبری تاریخ تحویل (همان الگوی صفحه «همه بخش‌ها»): روز قبل/بعد + انتخابگر ──
+    # ── ناوبری روزِ ثبت (همان الگوی صفحه «همه بخش‌ها»): روز قبل/بعد + انتخابگر ──
     selected_nav_date = None
-    if delivery_filter:
+    if day_filter:
         try:
-            selected_nav_date = datetime.strptime(delivery_filter, '%Y-%m-%d').date()
+            selected_nav_date = datetime.strptime(day_filter, '%Y-%m-%d').date()
         except (ValueError, TypeError):
             selected_nav_date = None
     if selected_nav_date is None:
@@ -8686,7 +8728,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
         },
         'stock_options': stock_options,
         'stock_meta': stock_meta,
-        'selected_delivery': delivery_filter,
+        'selected_day': day_filter,
         'selected_date': selected_nav_date,
         'today_str': today.isoformat(),
         'date_str': date_str,

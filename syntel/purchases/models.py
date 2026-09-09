@@ -2021,6 +2021,7 @@ class WarehouseVoucher(models.Model):
         ('waste',       'حواله ضایعات'),
         ('transfer',    'حواله انتقال'),
         ('adjustment',  'حواله تعدیل'),
+        ('direct_delivery', 'حواله تحویل مستقیم'),
     ]
 
     STATUS_CHOICES = [
@@ -2040,6 +2041,9 @@ class WarehouseVoucher(models.Model):
     cafe                 = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='warehouse_vouchers', verbose_name='کافه')
     source_warehouse     = models.ForeignKey('Warehouse', null=True, blank=True, on_delete=models.SET_NULL, related_name='source_vouchers', verbose_name='انبار مبدأ')
     destination_warehouse = models.ForeignKey('Warehouse', null=True, blank=True, on_delete=models.SET_NULL, related_name='destination_vouchers', verbose_name='انبار مقصد')
+    # بخش گیرنده — فقط برای «تحویل مستقیم»؛ جنسِ تازه‌خرید بدون ورودِ ماندگار،
+    # همان لحظه از انبارِ مقصد (محل عبور) به این بخش تحویل داده می‌شود
+    department           = models.ForeignKey('Department', null=True, blank=True, on_delete=models.SET_NULL, related_name='warehouse_vouchers', verbose_name='بخش گیرنده')
     voucher_type         = models.CharField(max_length=20, choices=VOUCHER_TYPE_CHOICES, verbose_name='نوع حواله')
     status               = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='وضعیت')
     # برای حواله‌هایی که طبق آستانه نیازمند تأییدند (مثلاً ضایعات بالای آستانه)؛
@@ -2084,6 +2088,13 @@ class WarehouseVoucher(models.Model):
         elif self.voucher_type == 'receipt':
             if not self.destination_warehouse_id:
                 raise ValidationError({'destination_warehouse': 'حواله ورود باید انبار مقصد داشته باشد.'})
+        elif self.voucher_type == 'direct_delivery':
+            # انبارِ مقصد اینجا «محل عبور» کالای تازه‌خرید است: به موجودیِ همان
+            # انبار اضافه و بلافاصله با تحویل به بخشِ گیرنده کم می‌شود (خالص صفر)
+            if not self.destination_warehouse_id:
+                raise ValidationError({'destination_warehouse': 'حواله تحویل مستقیم باید انبار (محل عبور کالا) داشته باشد.'})
+            if not self.department_id:
+                raise ValidationError({'department': 'حواله تحویل مستقیم باید بخش گیرنده داشته باشد.'})
         elif self.voucher_type in ('issue', 'return', 'sale', 'waste'):
             if not self.source_warehouse_id:
                 raise ValidationError({'source_warehouse': 'این نوع حواله باید انبار مبدأ داشته باشد.'})

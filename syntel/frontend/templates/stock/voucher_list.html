@@ -82,6 +82,7 @@
     .t-waste      { background: #ede9fe; color: #5b21b6; }
     .t-transfer   { background: #cffafe; color: #155e75; }
     .t-adjustment { background: #fce7f3; color: #9d174d; }
+    .t-direct_delivery { background: #ccfbf1; color: #0f766e; }
 
     .v-status-badge {
         display: inline-flex; align-items: center; gap: 0.3rem;
@@ -132,7 +133,7 @@
             <div class="ph-icon"><i class="fas fa-file-invoice"></i></div>
             <div class="ph-title">
                 <h1>حواله‌های انبار</h1>
-                <div class="page-sub">ورود، خروج، برگشتی، فروش، ضایعات، انتقال و تعدیل</div>
+                <div class="page-sub">ورود، خروج، برگشتی، فروش، ضایعات، انتقال، تعدیل و تحویل مستقیم</div>
             </div>
         </div>
         <div class="header-actions" style="display:flex;gap:0.6rem;flex-wrap:wrap">
@@ -259,6 +260,7 @@
                                 {% elif v.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
                                 {% elif v.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
                                 {% elif v.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
+                                {% elif v.voucher_type == 'direct_delivery' %}<i class="fas fa-hand-holding"></i>
                                 {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
                                 {{ v.get_voucher_type_display }}
                             </span>
@@ -278,6 +280,9 @@
                             {% endif %}
                             {% if not v.source_warehouse and not v.destination_warehouse %}
                             <span style="color:var(--text-muted);font-size:0.78rem">—</span>
+                            {% endif %}
+                            {% if v.department %}
+                            <span class="wh-cell"><i class="fas fa-users"></i> تحویل به: {{ v.department.name }}</span>
                             {% endif %}
                         </td>
                         <td style="color:var(--text-secondary);font-size:0.8rem">{{ v.date|jalali_datetime }}</td>

@@ -48,6 +48,8 @@
     .ph-icon.t-transfer { background: rgba(6,182,212,0.1); color: #0891b2; }
     .t-adjustment { background: #fce7f3; color: #9d174d; }
     .ph-icon.t-adjustment { background: rgba(236,72,153,0.1); color: #db2777; }
+    .t-direct_delivery { background: #ccfbf1; color: #0f766e; }
+    .ph-icon.t-direct_delivery { background: rgba(20,184,166,0.1); color: #0d9488; }
     .s-draft     { background: #f1f5f9; color: #475569; }
     .s-submitted { background: #fef9c3; color: #854d0e; }
     .s-approved  { background: #dcfce7; color: #166534; }
@@ -140,6 +142,7 @@
                 {% elif voucher.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
                 {% elif voucher.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
                 {% elif voucher.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
+                {% elif voucher.voucher_type == 'direct_delivery' %}<i class="fas fa-hand-holding"></i>
                 {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
             </div>
             <div class="ph-title">
@@ -160,6 +163,7 @@
     <div class="card">
         <div class="card-title"><i class="fas fa-file-signature"></i> مشخصات سند</div>
         <div class="meta-grid">
+            {% if voucher.voucher_type != 'direct_delivery' %}
             <div class="meta-item">
                 <span class="k">انبار مبدأ</span>
                 <span class="v">
@@ -171,8 +175,9 @@
                     {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
                 </span>
             </div>
+            {% endif %}
             <div class="meta-item">
-                <span class="k">انبار مقصد</span>
+                <span class="k">{% if voucher.voucher_type == 'direct_delivery' %}انبار (محل عبور کالا){% else %}انبار مقصد{% endif %}</span>
                 <span class="v">
                     {% if voucher.destination_warehouse %}
                     <i class="fas fa-warehouse" style="color:var(--accent-indigo)"></i> {{ voucher.destination_warehouse.name }}
@@ -182,6 +187,17 @@
                     {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
                 </span>
             </div>
+            {% if voucher.department %}
+            <div class="meta-item">
+                <span class="k"><i class="fas fa-users" style="color:var(--accent-indigo)"></i> بخش گیرنده</span>
+                <span class="v">
+                    <i class="fas fa-hand-holding" style="color:#0d9488"></i> {{ voucher.department.name }}
+                    {% if voucher.status == 'finalized' %}
+                    <span style="font-size:0.7rem;color:#0f766e;font-weight:700">— کالا تحویل داده شد</span>
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
             <div class="meta-item">
                 <span class="k">تاریخ سند</span>
                 <span class="v">{{ voucher.date|jalali_datetime }}</span>

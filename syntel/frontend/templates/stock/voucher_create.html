@@ -162,6 +162,7 @@
                 <div class="page-sub">
                     {% if editing %}این پیش‌نویس هنوز اثر روی موجودی ندارد — پس از ثبت، اثر اعمال می‌شود.{% else %}
                     {% if voucher_type == 'adjustment' %}تعدیل پس از ثبت، برای نهایی‌سازی به تأیید مدیر می‌رود.
+                    {% elif voucher_type == 'direct_delivery' %}کالای تازه‌خرید از انبارِ انتخابی می‌گذرد: ورود و بلافاصله خروجِ آن ثبت می‌شود و «تحویل به بخش» در سوابق می‌ماند — موجودیِ خالصِ انبار تغییر نمی‌کند.
                     {% else %}ثبت نوع‌های روتین، همان لحظه اثر روی موجودی دارد.{% endif %}{% endif %}
                 </div>
             </div>
@@ -213,13 +214,26 @@
                 {% endif %}
                 {% if 'destination' in warehouse_fields %}
                 <div class="field">
-                    <label><i class="fas fa-warehouse"></i> انبار مقصد <span style="color:#dc2626">*</span></label>
+                    <label><i class="fas fa-warehouse"></i>
+                        {% if voucher_type == 'direct_delivery' %}انبار (محل عبور کالا){% else %}انبار مقصد{% endif %}
+                        <span style="color:#dc2626">*</span></label>
                     <select name="dest_warehouse" id="dest_warehouse" required>
                         <option value="">انتخاب انبار...</option>
                         {% for wh in warehouses %}
                         <option value="{{ wh.id }}"{% if warehouse and warehouse.id == wh.id or edit_dest_wh and edit_dest_wh.id == wh.id %} selected{% endif %}>
                             {{ wh.name }}{% for dept in wh.departments.all %}{% if dept.is_department_warehouse %} (انبار بخش: {{ dept.name }}){% else %} (انبار مرکزی: {{ dept.name }}){% endif %}{% endfor %}
                         </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                {% if voucher_type == 'direct_delivery' %}
+                <div class="field">
+                    <label><i class="fas fa-users"></i> بخش گیرنده <span style="color:#dc2626">*</span></label>
+                    <select name="department" id="department" required>
+                        <option value="">انتخاب بخش...</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}"{% if selected_department and selected_department.id == dept.id %} selected{% endif %}>{{ dept.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -263,7 +277,7 @@
         <div class="form-actions">
             <button type="submit" name="action" value="submit" class="btn btn-success" id="submitBtn">
                 <i class="fas fa-check-double"></i>
-                {% if voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% else %}ثبت و نهایی‌سازی{% endif %}
+                {% if voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
             </button>
             {% if not editing %}
             <button type="submit" name="action" value="draft" class="btn btn-outline">
