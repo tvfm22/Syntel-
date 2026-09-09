@@ -220,7 +220,7 @@
                             <th title="مجموع موجودی این کالا در انبارها (واحد تجاری)">موجودی</th>
                             <th>مقدار</th>
                             <th>واحد</th>
-                            <th title="زمان تحویل انتخابی برای ارسال این لیست">تحویل</th>
+                            <th title="زمان تحویلی که کاربرِ درخواستِ اصلی برای این کالا خواسته بود">زمان درخواستی تحویل</th>
                             <th>توضیحات</th>
                             <th>عملیات</th>
                         </tr>
@@ -237,7 +237,7 @@
                                        value="{{ d.quantity|stringformat:'s' }}" required title="مقدار"
                                        form="draft-edit-{{ d.id }}"></td>
                             <td class="col-fix">{{ d.unit|default:'—' }}</td>
-                            <td class="cell-delivery"><span class="row-delivery-text">{{ delivery_days.0.0|jalali_date }} ({{ delivery_days.0.1 }})</span></td>
+                            <td class="cell-delivery">{% with src=draft_requested_delivery|get_item:d.id %}{% if src and src.date %}{{ src.date|jalali_date }}{% elif src and src.immediate %}فوری{% else %}<span class="dash">—</span>{% endif %}{% endwith %}</td>
                             <td class="col-note"><input type="text" name="description" class="desc-edit"
                                        value="{{ d.description }}" placeholder="توضیحات" title="توضیحات"
                                        form="draft-edit-{{ d.id }}"></td>
@@ -420,19 +420,6 @@ document.getElementById('product-select').addEventListener('change', function() 
     if (this.value) { nameInput.placeholder = 'نام جایگزین (اختیاری)'; }
     else { nameInput.placeholder = 'یا نام آزاد بنویسید'; }
 });
-
-/* ── همگام‌سازی ستون «تحویل» هر ردیف با انتخابِ نوار ارسال ── */
-var deliverySelect = document.getElementById('delivery-date-select');
-var rowDeliveryTexts = document.querySelectorAll('.row-delivery-text');
-function syncRowDelivery() {
-    if (!deliverySelect || deliverySelect.selectedIndex < 0 || !rowDeliveryTexts.length) return;
-    var label = deliverySelect.options[deliverySelect.selectedIndex].textContent;
-    for (var i = 0; i < rowDeliveryTexts.length; i++) {
-        rowDeliveryTexts[i].textContent = label;
-    }
-}
-if (deliverySelect) { deliverySelect.addEventListener('change', syncRowDelivery); }
-syncRowDelivery();
 
 </script>
 {% endblock %}

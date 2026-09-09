@@ -8878,7 +8878,8 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
 
     # ── پیش‌نویس جاری ──
     draft = PurchaseDraft.objects.filter(cafe=cafe, created_by=request.user).select_related('cafe').first()
-    draft_items = list(draft.items.select_related('product', 'product_brand', 'product__unit') if draft else [])
+    draft_items = list(draft.items.select_related(
+        'product', 'product_brand', 'product__unit', 'source_item__request') if draft else [])
 
     # ── درخواست‌های ارسال‌شده (تا قبل از تایید مدیرعامل) ──
     # درخواست‌های مسئول انبار چون مستقیماً برای خودش/همکار انبار ارسال می‌شوند
@@ -8955,10 +8956,23 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             'stock_unit': unit,
         }
 
+    # ── زمان درخواستیِ تحویل هر قلم (فقط نمایش) ──
+    # قلمی که با «ارجاع به خرید» از درخواستِ کاربر آمده همان delivery_date درخواستِ
+    # اصلی را نشان می‌دهد — حتی اگر آن تاریخ گذشته باشد. قلمِ دستی: «—».
+    draft_requested_delivery = {}
+    for d in draft_items:
+        if d.source_item_id and d.source_item:
+            src_req = d.source_item.request
+            draft_requested_delivery[d.id] = {
+                'date': src_req.delivery_date,
+                'immediate': bool(src_req.delivery_immediate),
+            }
+
     return render(request, 'warehouse_purchase_draft.html', {
         'draft': draft,
         'draft_items': draft_items,
         'draft_item_infos': draft_item_infos,
+        'draft_requested_delivery': draft_requested_delivery,
         'sent_requests': sent_requests,
         'products': products,
         'product_brands': product_brands,

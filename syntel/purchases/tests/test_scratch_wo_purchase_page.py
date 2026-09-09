@@ -1,18 +1,23 @@
-"""سنگ‌آزمایش: صفحه «درخواست خرید» مسئول انبار — چیدمان جدید پیش‌نویس
+"""سنگ‌آزمایش: صفحه «درخواست خرید» مسئول انبار — جدول اقلام + ستون «زمان درخواستی تحویل»
 
-۱. فرم «افزودن کالای جدید» بالای صفحه (قبل از فهرست اقلام) باشد
-۲. هر قلم: ماندگاری (تعریف‌شده روی محصول) + موجودی انبار + چیپ زمان تحویل داشته باشد
-۳. تگ «ارجاعی» دیگر نمایش داده نشود
-۴. چیپ زمان تحویل ردیف‌ها با انتخابِ نوار ارسال همگام است (متن اولیه = همان گزینه اول)
+۱. فرم «افزودن کالای جدید» بالای صفحه (قبل از جدول اقلام) باشد
+۲. جدول اقلام ستون‌های کالا/برند/ماندگاری/موجودی/…/زمان درخواستی تحویل دارد
+۳. ردیفِ ارجاع‌شده از درخواست کاربر: ستون تحویل، delivery_date همان درخواستِ اصلی
+   را نشان می‌دهد — حتی اگر آن تاریخ گذشته باشد؛ ردیفِ دستی: «—»
+۴. ارسال هنوز مثل قبل از نوار «زمان تحویل» (تاریخ آینده) انجام می‌شود
 """
+import datetime
+
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, PurchaseDraft,
+    Cafe, Unit, Product, ProductBrand, PurchaseDraft, PurchaseDraftItem,
+    PurchaseItem, PurchaseRequest,
     User, Warehouse, StockItem,
 )
+from purchases.templatetags.custom_filters import jalali_date
 
 
 class WarehousePurchaseDraftPageTest(TestCase):
@@ -51,7 +56,14 @@ class WarehousePurchaseDraftPageTest(TestCase):
             'new_name': '',
         })
 
-    def test_add_form_on_top_then_draft_rows_with_info(self):
+    def _delivery_cell(self, content):
+        """محتوای اولین خانهٔ «زمان درخواستی تحویل» (بین class=cell-delivery و </td>)"""
+        head = content.find('class="cell-delivery"')
+        self.assertGreater(head, -1, 'خانهٔ زمان درخواستی تحویل باید وجود داشته باشد')
+        tail = content.find('</td>', head)
+        return content[head:tail]
+
+    def test_add_form_on_top_then_table_with_headers(self):
         # افزودن کالا → رفتن به ردیف پیش‌نویس
         resp = self._add_item(self.brand.id)
         self.assertEqual(resp.status_code, 302)
@@ -63,7 +75,7 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.assertEqual(page.status_code, 200)
         content = page.content.decode('utf-8')
 
-        # فرم «افزودن کالای جدید» قبل از کارت «اقلام آماده ارسال» باشد
+        # فرم «افزودن کالای جدید» قبل از جدول اقلام باشد
         self.assertIn('افزودن کالای جدید', content)
         self.assertIn('اقلام آماده ارسال', content)
         self.assertLess(content.find('افزودن کالای جدید'),
@@ -73,17 +85,45 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.assertEqual(content.count('id="product-select"'), 1,
                          'فرم افزودن کالا فقط یک‌بار (بالای صفحه) باشد')
 
-        # قلم پیش‌نویس: ماندگاری + موجودی + چیپ زمان تحویل
-        self.assertIn('ماندگاری: 180 روز', content)
-        self.assertIn('موجودی: 25 بطری', content)
-        self.assertIn('class="delivery-chip row-delivery"', content)
-        self.assertIn('row-delivery-text', content)
-
-        # تگ «ارجاعی» حذف شده باشد
+        # ستون‌های جدول: ماندگاری + موجودی + «زمان درخواستی تحویل» (نه «تحویل»)
+        self.assertIn('>زمان درخواستی تحویل<', content)
+        self.assertIn('>ماندگاری<', content)
+        self.assertIn('180 روز', content)
+        self.assertIn('25 بطری', content)
         self.assertNotIn('ارجاعی', content)
 
-    def test_free_name_item_still_shows_delivery_chip(self):
-        """قلم با نام آزاد (بدون محصول): چیپ تحویل هست ولی ماندگاری/موجودی نیست"""
+        # ردیفِ دستی (بدون درخواست منبع): خانهٔ تحویل «—» است
+        cell = self._delivery_cell(content)
+        self.assertIn('—', cell)
+
+    def test_referred_item_shows_requested_delivery_even_if_past(self):
+        """ردیفِ ارجاع‌شده از درخواست کاربر: تاریخ درخواستیِ اصلی (حتی گذشته) نمایش داده شود"""
+        requester = User.objects.create_user(
+            username='dept_user', password='x', role='user', cafe=self.cafe)
+        # تاریخ درخواستیِ گذشته (مثلاً یک ماه قبل)
+        past_date = (timezone.localtime(timezone.now()).date() - datetime.timedelta(days=30))
+        src_req = PurchaseRequest.objects.create(
+            user=requester, cafe=self.cafe,
+            status='pending_manager_approval', source='requester',
+            delivery_date=past_date)
+        src_item = PurchaseItem.objects.create(
+            request=src_req, product=self.product, name='شیر',
+            quantity=3, unit='کیلوگرم')
+
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.officer)
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, product_brand=self.brand,
+            name='شیر', quantity=3, unit='کیلوگرم',
+            source_item=src_item)
+
+        content = self.client.get(self.url).content.decode('utf-8')
+        cell = self._delivery_cell(content)
+        # همان تاریخ درخواستِ اصلی (گذشته) نمایش داده شده — نه انتخاب نوار ارسال
+        self.assertIn(jalali_date(past_date), cell)
+        self.assertNotIn('فوری', cell)
+
+    def test_free_name_item_still_renders_row(self):
+        """قلم با نام آزاد (بدون محصول): سطر هست، خانه‌های ماندگاری/موجودی/تحویل «—»"""
         resp = self.client.post(self.url, data={
             'action': 'add_item',
             'product_id': '',
@@ -94,27 +134,10 @@ class WarehousePurchaseDraftPageTest(TestCase):
             'description': '',
         })
         self.assertEqual(resp.status_code, 302)
-        page = self.client.get(self.url)
-        content = page.content.decode('utf-8')
+        content = self.client.get(self.url).content.decode('utf-8')
         self.assertIn('دستمال کاغذی', content)
-        self.assertIn('row-delivery', content)
-        self.assertNotIn('ماندگاری:', content)
-        self.assertNotIn('موجودی:', content)
-        self.assertNotIn('ارجاعی', content)
-
-    def test_delivery_chip_matches_first_option_and_sync_script_exists(self):
-        """چیپ ردیف‌ها با گزینهٔ پیش‌فرض (اول) نوار ارسال شروع می‌شود و اسکریپت همگام دارد"""
-        import re
-        self._add_item(self.brand.id)
-        page = self.client.get(self.url)
-        content = page.content.decode('utf-8')
-        # گزینه اول سِلکت از پیش انتخاب شده باشد
-        m = re.search(
-            r'<select name="delivery_date"[^>]*>.*?<option value="([^"]+)" selected>(.*?)</option>',
-            content, re.S)
-        self.assertIsNotNone(m, 'گزینه اول سِلکت زمان تحویل باید selected باشد')
-        label = m.group(2).strip()
-        # چیپ اولیهٔ ردیف‌ها همان برچسب گزینه اول باشد
-        self.assertIn('تحویل: <span class="row-delivery-text">%s</span>' % label, content)
-        # اسکریپت همگام‌سازی با رویداد change وجود داشته باشد
-        self.assertIn("deliverySelect.addEventListener('change', syncRowDelivery)", content)
+        cell = self._delivery_cell(content)
+        self.assertIn('—', cell)
+        # نوار ارسال با انتخاب زمان تحویل هنوز سر جایش است
+        self.assertIn('id="delivery-date-select"', content)
+        self.assertNotIn('syncRowDelivery', content)
