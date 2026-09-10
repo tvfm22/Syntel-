@@ -256,10 +256,78 @@
     }
     .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
 
-    @media (max-width: 700px) {
-        .fulfill-form .qty-input { flex: 1 1 auto; }
-        .req-card { padding: var(--space-4); }
-        .delivery-chip { margin-top: 0.3rem; }
+    /* ═══ گوشی (زیر ۷۶۰px) ═══
+       دسکتاپ دست‌نخورده می‌ماند؛ فقط در گوشی جدولِ اقلام به کارتِ هر قلم تبدیل
+       می‌شود (هر سلول یک ردیف با برچسب خودش) تا هیچ ستونی فشرده و ناخوانا نشود */
+    @media (max-width: 760px) {
+        /* هدر: فشرده‌تر و تمام‌عرض */
+        .officer-wrap .page-header { padding: var(--space-3); gap: var(--space-2); }
+        .ph-icon { width: 38px; height: 38px; font-size: 1rem; }
+        .header-filter, .header-corner, .header-corner .dept-form { width: 100%; }
+        .date-nav { width: 100%; justify-content: center; }
+        .date-arrow { width: 40px; height: 40px; }
+        .date-display { flex: 1 1 auto; min-width: 0; }
+        .dept-filter { width: 100%; min-width: 0; height: 40px; }
+
+        .req-card { padding: 0.8rem 0.75rem; border-radius: var(--radius-xl); margin-bottom: 0.8rem; }
+        .req-card-head { gap: 0.4rem; padding-bottom: var(--space-2); }
+        .req-card-title { font-size: 0.88rem; }
+        .delivery-chip { margin-top: 0.3rem; font-size: 0.68rem; padding: 0.25rem 0.6rem; }
+
+        /* جدولِ اقلام → کارتِ هر قلم */
+        .req-items-table-wrap { border: none; border-radius: 0; overflow: visible; background: transparent; }
+        .req-items-table, .req-items-table tbody, .req-items-table tr, .req-items-table td { display: block; }
+        .req-items-table thead { display: none; }
+        .req-items-table tr {
+            display: grid; grid-template-columns: 44px minmax(0, 1.1fr) minmax(0, 1fr);
+            column-gap: 0.55rem; row-gap: 0.1rem;
+            border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+            background: var(--bg-card); padding: 0.6rem 0.65rem; margin-bottom: 0.55rem;
+        }
+        .req-items-table tbody tr:last-child { margin-bottom: 0; }
+        .req-items-table td { padding: 0.2rem 0; border: none; overflow: visible; }
+        /* عکس + نام کالا در ردیف اول، درخواست/موجودی ردیف دوم، فرم تأمین و عملیات تمام‌عرض */
+        .req-items-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+        .req-items-table td:nth-child(2) { grid-column: 2 / -1; grid-row: 1; }
+        .req-items-table td:nth-child(3) { grid-column: 2; grid-row: 2; }
+        .req-items-table td:nth-child(4) { grid-column: 3; grid-row: 2; }
+        .req-items-table td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
+        .req-items-table td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+        /* برچسبِ ستون‌ها کنار مقدار — چون سرجدول در گوشی پنهان است */
+        .req-items-table td.cell-qty::before,
+        .req-items-table td.cell-stock::before {
+            display: block; margin-bottom: 0.1rem;
+            font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
+        }
+        /* برچسب انبارِ تنها در گوشی کامل خوانده شود، نه بریده‌شده */
+        .fulfill-form .stock-label { white-space: normal; height: auto; min-height: 38px; padding-block: 0.35rem; }
+        .req-items-table td.cell-qty::before { content: 'درخواست: '; }
+        .req-items-table td.cell-stock::before { content: 'موجودی انبار: '; }
+        .req-items-table tbody tr:hover td { background: transparent; }
+        .req-items-table tr.done-row { background: var(--bg-subtle); }
+        .req-items-table tr.done-row td { background: transparent; }
+        /* قلمِ ثبت‌شده: سلول‌های «—» لازم نیست */
+        .req-items-table tr.done-row td:nth-child(4),
+        .req-items-table tr.done-row td:nth-child(5) { display: none; }
+        .req-items-table tr.done-row td:nth-child(6) { grid-row: 3; }
+
+        .fulfill-form { padding: 0.5rem 0.55rem; }
+        .fulfill-form select, .fulfill-form input { height: 38px; font-size: 0.8rem; }
+        .fulfill-form .qty-input { width: 70px; flex: 1 1 auto; }
+        .req-items-table .fulfill-row { gap: 0.35rem; }
+        .remove-row { width: 34px; height: 34px; font-size: 0.85rem; }  /* دستِ لمس راحت‌تر */
+        .add-row-btn { font-size: 0.76rem; }
+        .stock-verdict, .supply-verdict { font-size: 0.74rem; }
+
+        /* عملیات: «تأمین شود» تمام‌عرض، دو دکمه دیگر کنار هم */
+        .req-items-table .secondary-actions {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; margin-top: 0.25rem;
+        }
+        .req-items-table .secondary-actions .link-green { grid-column: 1 / -1; }
+        .link-action { height: 38px; font-size: 0.78rem; }
+        .cell-actions .status-tag { font-size: 0.72rem; white-space: normal; }
+
+        .empty-state { padding: 2rem 1rem; }
     }
 </style>
 {% endblock %}
