@@ -138,6 +138,7 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.assertIn('دستمال کاغذی', content)
         cell = self._delivery_cell(content)
         self.assertIn('—', cell)
-        # نوار ارسال با انتخاب زمان تحویل هنوز سر جایش است
-        self.assertIn('id="delivery-date-select"', content)
+        # نوار ارسالِ پیش‌نویس سر جایش است (انتخابگر زمان تحویل در جریان جدیدِ
+        # «ارسال به مدیرعامل» عمداً برداشته شده — درخواست خریدِ انبار تاریخ تحویل ندارد)
+        self.assertIn('name="action" value="send"', content)
         self.assertNotIn('syncRowDelivery', content)

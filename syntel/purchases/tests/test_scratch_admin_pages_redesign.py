@@ -88,6 +88,16 @@ class AdminPagesRedesignTests(TestCase):
         r = c.get(reverse('supplier_list', args=[self.cafe.code]), {'search': 'تست'})
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'تأمین‌کننده تست')
+        r = c.get(reverse('supplier_list', args=[self.cafe.code]), {'search': 'یافت‌نشدنی'})
+        self.assertNotContains(r, 'تأمین‌کننده تست')
+        # فیلتر نوع (تأمین‌کنندهٔ تست: شرکت)
+        r = c.get(reverse('supplier_list', args=[self.cafe.code]), {'type': 'company'})
+        self.assertContains(r, 'تأمین‌کننده تست')
+        r = c.get(reverse('supplier_list', args=[self.cafe.code]), {'type': 'individual'})
+        self.assertNotContains(r, 'تأمین‌کننده تست')
+        # انتخابِ فیلتر بعد از جستجو در فرم باقی می‌ماند
+        r = c.get(reverse('supplier_list', args=[self.cafe.code]), {'status': 'active'})
+        self.assertContains(r, 'value="active" selected')
 
     def test_stock_list_renders(self):
         c = self.login()
@@ -133,22 +143,25 @@ class AdminPagesRedesignTests(TestCase):
         # موجودی ۵۰ > حداقل ۱۰ پس نباید در نتایج باشد
         self.assertNotContains(r, 'پگاه')
 
-    def test_user_list_unified_header(self):
-        """هدر یکپارچه کاربران: عنوان + تب‌ها + جستجو در یک کارت، بدون هدر دوطبقه"""
+    def test_user_list_header_and_toolbar(self):
+        """صفحه کاربران (طرح فعلی): عنوان «مدیریت کاربران» + دکمه‌ها در page-header،
+        و تب‌های همه/مسئولان + جستجو + فیلتر نقش در نوار ابزار زیر آن.
+
+        (این تست قبلاً به‌دنبال هدر یکپارچهٔ page-head/ph-top/ph-filters بود — آن طرح
+        هرگز در قالب‌های پروژه پیاده نشد؛ با طرح موجود همراستا شد.)
+        """
         c = self.login()
         r = c.get(reverse('user_list', args=[self.cafe.code]))
         self.assertEqual(r.status_code, 200)
         content = r.content.decode('utf-8')
-        # عناصر هدر یکپارچه
-        self.assertIn('page-head', content)
-        self.assertIn('ph-top', content)
-        self.assertIn('ph-filters', content)
-        # تب‌ها و جستجو داخل همان کارت
-        self.assertIn('user-tabs', content)
-        self.assertIn('search-input', content)
-        # دیگر نباید هدر قدیمی/فیلتر جداگانه وجود داشته باشد (به‌صورت المنت)
-        self.assertNotIn('class="page-header"', content)
-        self.assertNotIn('class="filters-container"', content)
+        # هدر: عنوان صفحه + دکمه‌های «بخش‌ها»/«کاربر جدید»
+        self.assertIn('class="page-header"', content)
+        self.assertIn('class="page-title"', content)
+        self.assertIn('مدیریت کاربران', content)
+        # نوار ابزار: تب‌ها + جستجو + فیلتر نقش
+        self.assertIn('class="user-tabs"', content)
+        self.assertIn('class="search-input"', content)
+        self.assertIn('name="role"', content)
 
     def test_user_list_officer_tab(self):
         c = self.login()

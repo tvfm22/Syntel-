@@ -5384,7 +5384,30 @@ def supplier_list(request):
     suppliers = Supplier.objects.all()
     if cafe:
         suppliers = suppliers.filter(cafe=cafe)
-    return render(request, "supplier_list.html", {"suppliers": suppliers})
+
+    # فیلترهای فرمِ صفحه (جستجو / وضعیت / نوع) — تا انتخاب‌ها بعد از جستجو هم در فرم بمانند
+    search = (request.GET.get('search') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    supplier_type = (request.GET.get('type') or '').strip()
+    if search:
+        suppliers = suppliers.filter(
+            Q(name__icontains=search) |
+            Q(supplier_code__icontains=search) |
+            Q(contact_person__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(city__icontains=search)
+        )
+    if status:
+        suppliers = suppliers.filter(status=status)
+    if supplier_type:
+        suppliers = suppliers.filter(supplier_type=supplier_type)
+
+    return render(request, "supplier_list.html", {
+        "suppliers": suppliers,
+        "current_filters": {'search': search, 'status': status, 'type': supplier_type},
+        "status_choices": Supplier.STATUS_CHOICES,
+        "type_choices": Supplier.SUPPLIER_TYPE_CHOICES,
+    })
 
 
 @custom_login_required
