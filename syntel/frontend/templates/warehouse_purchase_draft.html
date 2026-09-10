@@ -154,6 +154,95 @@
         border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); margin-top: var(--space-4);
     }
     .send-note { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ═══ گوشی (زیر ۷۶۰px) ═══
+       دسکتاپ دست‌نخورده می‌ماند؛ فقط در گوشی جدول‌ها به کارتِ هر قلم تبدیل
+       می‌شوند (هر سلول با برچسب خودش) و فرم‌ها تک‌ستونی و تمام‌عرض می‌شوند */
+    @media (max-width: 760px) {
+        /* هدر و کارت‌ها */
+        .officer-wrap .page-header { padding: var(--space-3); gap: var(--space-2); }
+        .ph-icon { width: 38px; height: 38px; font-size: 1rem; }
+        .officer-wrap .page-title { font-size: 1.05rem; }
+        .section-card { padding: 0.9rem 0.75rem; border-radius: var(--radius-xl); margin-bottom: var(--space-4); }
+        .section-title { font-size: 0.9rem; margin-bottom: var(--space-2); }
+        .hint-box { padding: 0.6rem 0.8rem; }
+        .empty-state { padding: var(--space-5) var(--space-3); }
+
+        /* فرم افزودن: تک‌ستونی و تمام‌عرض — min-widthهای inline با !important خنثی می‌شوند */
+        .add-form-row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+        .add-form-row > * { width: 100% !important; min-width: 0 !important; flex: 0 0 auto !important; box-sizing: border-box; }
+        .add-form-row select, .add-form-row input[type="text"], .add-form-row input[type="number"] { height: 42px; font-size: 0.85rem; }
+        .add-form-row .btn { justify-content: center; height: 44px; }
+
+        /* نوار ارسال: دکمه‌ها تمام‌عرض */
+        .send-bar { flex-direction: column; align-items: stretch; padding: var(--space-3); margin-top: var(--space-3); }
+        .send-bar > div { flex-direction: column; }
+        .send-bar .btn { width: 100%; justify-content: center; height: 44px; }
+
+        /* سرِ کارت درخواست ارسال‌شده */
+        .sent-head { flex-direction: column; align-items: flex-start; padding: var(--space-3); }
+
+        /* جدول‌ها → کارتِ هر قلم */
+        .table-scroll { overflow: visible; }
+        .officer-table { display: block; border: none; }
+        .officer-table thead { display: none; }
+        .officer-table tbody { display: block; }
+        .officer-table tbody tr {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 0.6rem; row-gap: 0.1rem;
+            border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+            background: var(--bg-card); padding: 0.65rem 0.7rem; margin-bottom: 0.55rem;
+        }
+        .officer-table tbody tr:last-child { margin-bottom: 0; }
+        .officer-table th, .officer-table td {
+            display: block; padding: 0.2rem 0; border: none; text-align: right;
+        }
+        .officer-table tbody tr:hover td { background: transparent; }
+        .officer-table .col-name, .officer-table .col-note { min-width: 0; }
+        .officer-table .col-name { font-size: 0.9rem; }
+        .officer-table .cell-actions { text-align: center !important; margin-top: 0.3rem; }
+        /* برچسب هر سلول بالای مقدارش — سرجدول در گوشی پنهان است */
+        .officer-table tbody td[data-label]::before {
+            content: attr(data-label) ': '; display: block; margin-bottom: 0.1rem;
+            font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
+        }
+        /* ورودی‌ها: خواناتر و لمس‌پذیرتر */
+        .officer-table input.qty-edit { width: 84px; height: 38px; font-size: 0.9rem; }
+        .officer-table .desc-edit { width: 100%; height: 38px; font-size: 0.8rem; }
+        .icon-btn { width: 40px; height: 40px; font-size: 0.95rem; }
+        .cell-actions .icon-btn + .icon-btn { margin-inline-start: 0.5rem; }
+
+        /* اقلام آماده ارسال (۹ ستون):
+           [کالا | برند] [ماندگاری | موجودی] [مقدار | واحد] [زمان تحویل] [توضیحات] [عملیات] */
+        .items-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
+        .items-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
+        .items-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
+        .items-table tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
+        .items-table tbody td:nth-child(5) { grid-column: 1; grid-row: 3; }
+        .items-table tbody td:nth-child(6) { grid-column: 2; grid-row: 3; }
+        .items-table tbody td:nth-child(7) { grid-column: 1 / -1; grid-row: 4; }
+        .items-table tbody td:nth-child(8) { grid-column: 1 / -1; grid-row: 5; }
+        .items-table tbody td:nth-child(9) { grid-column: 1 / -1; grid-row: 6; }
+
+        /* درخواست ارسال‌شدهٔ در انتظار تایید (۶ ستون، قابل ویرایش):
+           [کالا | برند] [مقدار | واحد] [توضیحات] [عملیات] */
+        .sent-edit-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
+        .sent-edit-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
+        .sent-edit-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
+        .sent-edit-table tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
+        .sent-edit-table tbody td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
+        .sent-edit-table tbody td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+
+        /* درخواست تایید‌شده / رد‌شده (۵ ستون، فقط‌خواندنی):
+           [کالا | برند] [مقدار | واحد] [توضیحات] */
+        .sent-view-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
+        .sent-view-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
+        .sent-view-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
+        .sent-view-table tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
+        .sent-view-table tbody td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
+
+        .sent-reason { display: block; }
+    }
 </style>
 {% endblock %}
 
@@ -217,7 +306,7 @@
 
         {% if draft_items %}
             <div class="table-scroll">
-                <table class="officer-table">
+                <table class="officer-table items-table">
                     <thead>
                         <tr>
                             <th>کالا</th>
@@ -236,15 +325,15 @@
                         {% with info=draft_item_infos|get_item:d.id %}
                         <tr>
                             <td class="col-name">{{ d.product.name|default:d.name }}</td>
-                            <td class="col-fix">{% if d.product_brand %}{{ d.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                            <td class="col-fix">{% if info.shelf_life %}{{ info.shelf_life }} روز{% else %}<span class="dash">—</span>{% endif %}</td>
-                            <td class="col-fix">{% if info.has_stock %}<span class="t-ok">{{ info.stock_total|trim_decimal }} {{ info.stock_unit }}</span>{% elif d.product_id %}<span class="t-bad">ناموجود</span>{% else %}<span class="dash">—</span>{% endif %}</td>
-                            <td><input type="number" name="quantity" class="qty-edit" min="1" step="1"
+                            <td class="col-fix" data-label="برند">{% if d.product_brand %}{{ d.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td class="col-fix" data-label="ماندگاری">{% if info.shelf_life %}{{ info.shelf_life }} روز{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td class="col-fix" data-label="موجودی">{% if info.has_stock %}<span class="t-ok">{{ info.stock_total|trim_decimal }} {{ info.stock_unit }}</span>{% elif d.product_id %}<span class="t-bad">ناموجود</span>{% else %}<span class="dash">—</span>{% endif %}</td>
+                            <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="1" step="1"
                                        value="{{ d.quantity|stringformat:'s' }}" required title="مقدار"
                                        form="draft-edit-{{ d.id }}"></td>
-                            <td class="col-fix">{{ d.unit|default:'—' }}</td>
-                            <td class="cell-delivery">{% with src=draft_requested_delivery|get_item:d.id %}{% if src and src.date %}{{ src.date|jalali_date }}{% elif src and src.immediate %}فوری{% else %}<span class="dash">—</span>{% endif %}{% endwith %}</td>
-                            <td class="col-note"><input type="text" name="description" class="desc-edit"
+                            <td class="col-fix" data-label="واحد">{{ d.unit|default:'—' }}</td>
+                            <td class="cell-delivery" data-label="زمان تحویل">{% with src=draft_requested_delivery|get_item:d.id %}{% if src and src.date %}{{ src.date|jalali_date }}{% elif src and src.immediate %}فوری{% else %}<span class="dash">—</span>{% endif %}{% endwith %}</td>
+                            <td class="col-note" data-label="توضیحات"><input type="text" name="description" class="desc-edit"
                                        value="{{ d.description }}" placeholder="توضیحات" title="توضیحات"
                                        form="draft-edit-{{ d.id }}"></td>
                             <td class="cell-actions">
@@ -318,7 +407,7 @@
                     </div>
                 </div>
                 <div class="table-scroll">
-                    <table class="officer-table">
+                    <table class="officer-table sent-edit-table">
                         <thead>
                             <tr>
                                 <th>کالا</th>
@@ -333,12 +422,12 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td><input type="number" name="quantity" class="qty-edit" min="1" step="1"
+                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="1" step="1"
                                            value="{{ item.quantity|stringformat:'s' }}" required title="مقدار"
                                            form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
-                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
-                                <td class="col-note"><input type="text" name="description" class="desc-edit"
+                                <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note" data-label="توضیحات"><input type="text" name="description" class="desc-edit"
                                            value="{{ item.description }}" placeholder="توضیحات"
                                            form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
                                 <td class="cell-actions">
@@ -388,7 +477,7 @@
                     </div>
                 </div>
                 <div class="table-scroll">
-                    <table class="officer-table">
+                    <table class="officer-table sent-view-table">
                         <thead>
                             <tr>
                                 <th>کالا</th>
@@ -402,10 +491,10 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td>{{ item.quantity|stringformat:'s' }}</td>
-                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
-                                <td class="col-note">{{ item.description|default:'—' }}</td>
+                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td data-label="مقدار">{{ item.quantity|stringformat:'s' }}</td>
+                                <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -430,7 +519,7 @@
                     </div>
                 </div>
                 <div class="table-scroll">
-                    <table class="officer-table">
+                    <table class="officer-table sent-view-table">
                         <thead>
                             <tr>
                                 <th>کالا</th>
@@ -444,10 +533,10 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td>{{ item.quantity|stringformat:'s' }}</td>
-                                <td class="col-fix">{{ item.unit|default:'—' }}</td>
-                                <td class="col-note">{{ item.description|default:'—' }}</td>
+                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                                <td data-label="مقدار">{{ item.quantity|stringformat:'s' }}</td>
+                                <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
+                                <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
                             </tr>
                         {% endfor %}
                         </tbody>
