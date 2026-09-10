@@ -211,6 +211,12 @@ class PurchaseItem(models.Model):
     # انبار قابل تغییر وضعیت نیست.
     source_item = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='purchase_copies', verbose_name='قلم منبع')
+    # تاییدِ دریافت توسط درخواست‌دهنده («کالاهای دریافتی من») — فقط اعلامِ وصول است و
+    # هیچ اثری روی موجودی انبار ندارد (کسرِ موجودی هنگام تحویلِ مسئول انبار انجام شده).
+    received_confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تایید دریافت')
+    received_confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                              related_name='confirmed_received_items',
+                                              verbose_name='تاییدکنندهٔ دریافت')
 
     def __str__(self):
         return f"{self.name} - {self.quantity} {self.unit}"

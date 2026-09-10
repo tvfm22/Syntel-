@@ -437,7 +437,15 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 def mobile_dashboard(request: HttpRequest) -> HttpResponse:
     """Simple mobile-friendly dashboard for department users"""
     cafe = get_cafe_from_request(request)
-    return render(request, "mobile_dashboard.html", {"user": request.user, "cafe": cafe})
+    # تعداد اقلامِ تحویل‌گرفته‌شده‌ای که هنوز «تایید دریافت» نشده‌اند (نشانِ بخش
+    # «کالاهای دریافتی من» روی همین داشبورد)
+    received_pending = [r for r in _received_delivery_rows(request.user, cafe)
+                        if r['confirmed_at'] is None]
+    return render(request, "mobile_dashboard.html", {
+        "user": request.user,
+        "cafe": cafe,
+        "received_pending_count": len(received_pending),
+    })
 
 
 @custom_login_required
@@ -2018,6 +2026,104 @@ def purchase_request_detail(request, request_id):
         "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester'],
     }
     return render(request, "purchase_request_detail.html", context)
+
+
+def _received_delivery_rows(user, cafe):
+    """اقلامِ تحویل‌گرفتهٔ یک کاربر از انبار — با مقدار و واحدِ هر تحویل.
+
+    منبعِ «تحویل»: تخصیص‌های تامین‌شدهٔ مسئول انبار (OfficerAssignment.status='fulfilled')
+    روی اقلامِ درخواستِ خودِ کاربر. مقدارِ تامین‌شده در واحدِ پایه ذخیره می‌شود؛ اگر
+    ردیفِ انبار برند با نرخ تبدیل داشته باشد، به واحدِ تجاریِ همان برند برگردانده
+    می‌شود تا مقدارِ نمایش‌داده‌شده همان چیزی باشد که تحویل داده شده. بازگشاییِ قلم
+    تخصیص‌ها را پاک می‌کند، پس این فهرست همیشه وضعیتِ جاری است.
+    """
+    assigns = (OfficerAssignment.objects
+               .filter(target_role='warehouse', status='fulfilled',
+                       item__request__user=user)
+               .select_related('item', 'item__product', 'item__product_brand', 'item__request',
+                               'stock_item', 'stock_item__product_brand', 'stock_item__unit',
+                               'stock_item__warehouse')
+               .order_by('item__request__created_at', 'item_id', 'id'))
+    if cafe:
+        assigns = assigns.filter(item__request__cafe=cafe)
+
+    rows = {}
+    for a in assigns:
+        item = a.item
+        row = rows.get(item.id)
+        if row is None:
+            row = rows[item.id] = {
+                'item': item,
+                'name': item.product.name if item.product else item.name,
+                'brand': item.product_brand.brand_name if item.product_brand else '',
+                'requested_qty': _fmt2(item.quantity),
+                'unit': item.unit or '',
+                'request': item.request,
+                'deliveries': [],
+                'confirmed_at': item.received_confirmed_at,
+                'confirmed_by': item.received_confirmed_by,
+            }
+        si = a.stock_item
+        brand = si.product_brand if si else None
+        base = a.supplied_quantity if a.supplied_quantity is not None else Decimal('0')
+        rate = brand.conversion_rate if brand and brand.conversion_rate else None
+        qty = base / rate if rate else base
+        unit_label = (brand.trade_unit if brand and brand.trade_unit else
+                      ((si.unit.name or si.unit.symbol) if si and si.unit else '') or row['unit'])
+        row['deliveries'].append({
+            'qty': _fmt2(qty),
+            'unit': unit_label,
+            'brand': brand.brand_name if brand else '',
+            'warehouse': si.warehouse.name if si and si.warehouse else '',
+        })
+    return list(rows.values())
+
+
+@custom_login_required
+def my_received_items(request: HttpRequest) -> HttpResponse:
+    """«کالاهای دریافتی من» — اقلامی که از انبار به این کاربر تحویل شده است.
+
+    درخواست‌دهنده مقدارِ تحویل‌شده را می‌بیند و «تایید دریافت» را ثبت می‌کند.
+    این تایید فقط اعلامِ وصول است: هیچ اثر انبار/مالی ندارد و کسرِ موجودی همان‌جا
+    که مسئول انبار کالا را تامین می‌کند انجام شده است (به تایید درخواست‌دهنده
+    وابسته نیست).
+    """
+    cafe = get_cafe_from_request(request)
+    cafe_code = cafe.code if cafe else 'local'
+
+    rows = _received_delivery_rows(request.user, cafe)
+    pending = [r for r in rows if r['confirmed_at'] is None]
+    confirmed = [r for r in rows if r['confirmed_at'] is not None]
+    pending.sort(key=lambda r: r['item'].id, reverse=True)
+    confirmed.sort(key=lambda r: (r['confirmed_at'], r['item'].id), reverse=True)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        pending_ids = {r['item'].id for r in pending}
+        if action == 'confirm_all':
+            targets = sorted(pending_ids)
+        else:
+            raw_id = request.POST.get('item_id', '')
+            targets = [int(raw_id)] if raw_id.isdigit() and int(raw_id) in pending_ids else []
+        if not targets:
+            messages.warning(request, 'قلمی برای تایید دریافت پیدا نشد (یا قبلاً تایید شده است).')
+        else:
+            updated = (PurchaseItem.objects
+                       .filter(id__in=targets, received_confirmed_at__isnull=True)
+                       .update(received_confirmed_at=timezone.now(),
+                               received_confirmed_by=request.user))
+            if updated == 1:
+                messages.success(request, 'تایید دریافت ثبت شد.')
+            else:
+                messages.success(request, f'تایید دریافت {updated} قلم ثبت شد.')
+        return redirect('my_received_items', cafe_code=cafe_code)
+
+    return render(request, "my_received_items.html", {
+        "pending_rows": pending,
+        "confirmed_rows": confirmed,
+        "pending_count": len(pending),
+        "cafe_code": cafe_code,
+    })
 
 
 @custom_login_required

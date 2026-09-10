@@ -69,6 +69,25 @@
         color: var(--gray-500);
     }
 
+    .menu-icon { position: relative; }
+    .menu-badge {
+        position: absolute;
+        top: -8px;
+        left: -10px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--danger, #dc2626);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        direction: ltr;
+    }
+
     @media (max-width: 480px) {
         .header-info h1 { font-size: 1.2rem; }
         .menu-item { padding: 1.25rem; }
@@ -97,6 +116,19 @@
             <div class="menu-content">
                 <div class="menu-title">درخواست‌های کالا من</div>
                 <div class="menu-subtitle">مشاهده درخواست‌های کالا</div>
+            </div>
+        </a>
+
+        <a href="{% url 'my_received_items' cafe_code=cafe_code %}" class="menu-item">
+            <div class="menu-icon">
+                📦
+                {% if received_pending_count %}<span class="menu-badge">{{ received_pending_count }}</span>{% endif %}
+            </div>
+            <div class="menu-content">
+                <div class="menu-title">کالاهای دریافتی من</div>
+                <div class="menu-subtitle">
+                    {% if received_pending_count %}{{ received_pending_count }} قلم در انتظار تایید دریافت{% else %}مشاهده و تایید کالاهای تحویل‌شده{% endif %}
+                </div>
             </div>
         </a>
     </div>

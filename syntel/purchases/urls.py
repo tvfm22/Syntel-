@@ -58,6 +58,7 @@ cafe_urlpatterns = [
     path('purchase-requests/', cv(views.purchase_requests_list), name='purchase_requests_list'),
     path('purchase-request/<int:request_id>/', cv(views.purchase_request_detail), name='purchase_request_detail'),
     path('purchase-request/<int:request_id>/update/', cv(views.update_purchase_request), name='update_purchase_request'),
+    path('my-received-items/', cv(views.my_received_items), name='my_received_items'),
     path('reports/', cv(views.reports_dashboard), name='reports_dashboard'),
     path('reports/export/', cv(views.export_to_excel), name='export_to_excel'),
     path('reports/export/pdf/', cv(views.export_to_pdf), name='export_to_pdf'),

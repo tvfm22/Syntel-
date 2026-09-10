@@ -75,11 +75,13 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.assertEqual(page.status_code, 200)
         content = page.content.decode('utf-8')
 
-        # فرم «افزودن کالای جدید» قبل از جدول اقلام باشد
+        # فرم «افزودن کالای جدید» قبل از جدول اقلام باشد.
+        # مکان‌یابی با نشانگرهای markup انجام می‌شود نه متنِ فارسی: متنِ عنوان‌ها در
+        # کامنت/سلکتورهای CSS داخل <style> هم تکرار می‌شود و find() اولی را می‌گیرد.
         self.assertIn('افزودن کالای جدید', content)
         self.assertIn('اقلام آماده ارسال', content)
-        self.assertLess(content.find('افزودن کالای جدید'),
-                        content.find('اقلام آماده ارسال'),
+        self.assertLess(content.find('class="add-form-row"'),
+                        content.find('class="officer-table items-table"'),
                         'فرم افزودن باید بالای فهرست اقلام باشد')
         # فرم پستی در بخش پایینِ لیست دیگر تکرار نشده باشد (فقط یک id)
         self.assertEqual(content.count('id="product-select"'), 1,
