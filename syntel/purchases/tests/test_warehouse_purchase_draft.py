@@ -157,11 +157,14 @@ class WarehousePurchaseDraftTests(TestCase):
                           'item_id': sent_item.id, 'quantity': '12'})
         sent_item.refresh_from_db()
         self.assertEqual(sent_item.quantity, 12)
-        # حذف قلم → درخواست خالی حذف می‌شود
+        # حذف آخرین قلم → درخواست حذف نمی‌شود و در صف مدیرعامل می‌ماند
+        # (هیچ چیزی از داشبورد مدیرعامل ناپدید نمی‌شود)
         self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']),
                          {'action': 'delete_sent', 'request_id': new_req.id,
                           'item_id': sent_item.id})
-        self.assertEqual(PurchaseRequest.objects.filter(id=new_req.id).count(), 0)
+        new_req.refresh_from_db()
+        self.assertEqual(new_req.status, 'pending_manager_approval')
+        self.assertEqual(new_req.items.count(), 0)
 
     def test_cannot_edit_approved_request(self):
         """بعد از تایید مدیرعامل (status=pending) دیگر قابل ویرایش نیست"""

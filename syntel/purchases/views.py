@@ -8028,8 +8028,17 @@ def _product_key(item, include_description=False):
     return key
 
 
-def _sync_request_status(request_obj):
-    """همگام‌سازی وضعیت درخواست بر اساس وضعیت تخصیص‌های اقلامش"""
+def _sync_request_status(request_obj, keep_queue=False):
+    """همگام‌سازی وضعیت درخواست بر اساس وضعیت تخصیص‌های اقلامش
+
+    keep_queue=True (مسیرهای ویرایش/حذف اقلام): درخواستی که در صف مدیرعامل است با
+    ویرایش اقلامش از «داشبورد مدیرعامل» ناپدید نمی‌شود؛ تنها خودِ مدیرعامل با
+    تایید/رد کردن آن را از صف خارج می‌کند. مسیرهای گردش‌کار عادی (مثل ارسال مستقیم
+    فرم درخواست کالا به انبار) پیش‌فرض False را می‌فرستند و مثل قبل وضعیت را
+    همگام می‌کنند.
+    """
+    if keep_queue and request_obj.status == 'pending_manager_approval':
+        return
     items = list(request_obj.items.all())
     if not items:
         return
@@ -8987,8 +8996,13 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                     name = item.product.name if item.product else item.name
                     item.delete()
                     if not req.items.exists():
-                        req.delete()
-                        messages.info(request, f'«{name}» حذف شد (درخواست خالی بود و حذف شد)')
+                        # درخواست خالی‌شده حذف نمی‌شود: در صف مدیرعامل می‌ماند تا
+                        # خودِ مدیرعامل آن را تعیین‌تکلیف کند (تایید/رد).
+                        messages.info(
+                            request,
+                            f'«{name}» حذف شد — درخواست اکنون بدون قلم است و از صف '
+                            'مدیرعامل حذف نمی‌شود؛ برای حذف کامل، از مدیرعامل بخواهید آن را رد کند.'
+                        )
                     else:
                         messages.info(request, f'«{name}» از درخواست حذف شد')
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
@@ -9275,10 +9289,19 @@ def all_departments_requests(request):
                         request_obj = item.request
                         item_name = item.name or item.product.name if item.product else (item.name or '')
                         item.delete()
-                        _sync_request_status(request_obj)
+                        _sync_request_status(request_obj, keep_queue=True)
                         if not request_obj.items.exists():
-                            request_obj.delete()
-                            messages.info(request, f'«{item_name}» حذف شد (درخواست خالی بود و حذف شد).')
+                            if request_obj.status == 'pending_manager_approval':
+                                # درخواست در صف مدیرعامل است: حذف نمی‌شود تا از
+                                # داشبورد مدیرعامل ناپدید نشود.
+                                messages.info(
+                                    request,
+                                    f'«{item_name}» حذف شد — درخواست بدون قلم ماند و در '
+                                    'صف مدیرعامل باقی می‌ماند (مدیرعامل آن را تایید/رد کند).'
+                                )
+                            else:
+                                request_obj.delete()
+                                messages.info(request, f'«{item_name}» حذف شد (درخواست خالی بود و حذف شد).')
                         else:
                             messages.info(request, f'«{item_name}» حذف شد.')
             elif action == 'edit_item':
@@ -9315,13 +9338,21 @@ def all_departments_requests(request):
                         for it in unsent[1:]:
                             affected.add(it.request_id)
                             it.delete()
+                        kept_in_queue = False
                         for rid in affected:
                             req = PurchaseRequest.objects.filter(id=rid).first()
                             if req:
-                                _sync_request_status(req)
+                                _sync_request_status(req, keep_queue=True)
                                 if not req.items.exists():
-                                    req.delete()
+                                    if req.status == 'pending_manager_approval':
+                                        # درخواست در صف مدیرعامل است: حذف نمی‌شود تا
+                                        # از داشبورد مدیرعامل ناپدید نشود.
+                                        kept_in_queue = True
+                                    else:
+                                        req.delete()
                         messages.success(request, f'«{name}» در این بخش به {new_qty} {target.unit or ""} تغییر کرد')
+                        if kept_in_queue:
+                            messages.info(request, 'درخواست خالی‌شده در صف مدیرعامل باقی ماند (از داشبورد مدیرعامل حذف نمی‌شود).')
             elif action == 'delete_section':
                 # حذف همه قلم‌های یک بخش در ردیف کالا (فقط قلم‌های ارسال‌نشده)
                 ids = [i for i in request.POST.get('item_ids', '').split(',') if i.strip().isdigit()]
@@ -9338,16 +9369,24 @@ def all_departments_requests(request):
                     affected = {it.request_id for it in unsent}
                     for it in unsent:
                         it.delete()
+                    kept_in_queue = False
                     for rid in affected:
                         req = PurchaseRequest.objects.filter(id=rid).first()
                         if req:
-                            _sync_request_status(req)
+                            _sync_request_status(req, keep_queue=True)
                             if not req.items.exists():
-                                req.delete()
+                                if req.status == 'pending_manager_approval':
+                                    # درخواست در صف مدیرعامل است: حذف نمی‌شود تا
+                                    # از داشبورد مدیرعامل ناپدید نشود.
+                                    kept_in_queue = True
+                                else:
+                                    req.delete()
                     if unsent:
                         messages.info(request, f'«{name}» حذف شد ({len(unsent)} قلم)')
                     if sent_skipped:
                         messages.info(request, f'{sent_skipped} قلم قبلاً ارسال شده بودند و حذف نشدند')
+                    if kept_in_queue:
+                        messages.info(request, 'درخواست خالی‌شده در صف مدیرعامل باقی ماند (از داشبورد مدیرعامل حذف نمی‌شود).')
         redirect_url = reverse('all_departments_requests', kwargs={'cafe_code': cafe_code})
         params = {'type': request_type}
         if date_str:
