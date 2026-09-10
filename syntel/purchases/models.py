@@ -206,6 +206,11 @@ class PurchaseItem(models.Model):
     description = models.TextField(blank=True)
     purchased_quantity = models.PositiveIntegerField(null=True, blank=True)  # Actual purchased
     supply_status = models.CharField(max_length=20, choices=SUPPLY_STATUS_CHOICES, default='pending', verbose_name='وضعیت تامین')
+    # قلم اصلیِ درخواست‌دهنده که با «ارسال» پیش‌نویس به این درخواست خرید کپی شده است
+    # (درخواست خرید مسئول انبار). تا وقتی این کپی در جریان است، قلم مبدأ در داشبورد
+    # انبار قابل تغییر وضعیت نیست.
+    source_item = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='purchase_copies', verbose_name='قلم منبع')
 
     def __str__(self):
         return f"{self.name} - {self.quantity} {self.unit}"

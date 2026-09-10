@@ -246,6 +246,8 @@
     .status-fulfilled    { background: #d1fae5; color: #065f46; }
     .status-not_in_stock { background: #fee2e2; color: #b91c1c; }
     .status-returned     { background: #dbeafe; color: #1e40af; }
+    .status-locked       { background: #ede9fe; color: #5b21b6; }
+    .done-row-locked { opacity: 0.75; cursor: default; }
 
     .empty-state {
         text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
@@ -435,7 +437,9 @@
                     {% endfor %}
 
                     {% for d in card.done %}
-                    <tr class="done-row" onclick="reopenItem({{ d.item.id }})" title="کلیک برای ثبت مجدد">
+                    <tr class="done-row{% if d.locked %} done-row-locked{% endif %}"
+                        {% if d.locked %}title="این کالا در لیست خرید ثبت و برای مدیرعامل ارسال شده است"
+                        {% else %}onclick="reopenItem({{ d.item.id }})" title="کلیک برای ثبت مجدد"{% endif %}>
                         <td>
                             <div class="item-photo" title="عکس کالا">
                                 <i class="fas fa-image"></i>
@@ -454,6 +458,11 @@
                         <td class="cell-stock"><span style="color:var(--text-muted)">—</span></td>
                         <td><span style="color:var(--text-muted)">—</span></td>
                         <td class="cell-actions">
+                            {% if d.locked %}
+                            {% comment %}در لیست خرید ثبت و برای مدیرعامل ارسال شده — تغییر وضعیت از داشبورد ممکن نیست{% endcomment %}
+                            <span class="status-tag status-locked"><i class="fas fa-lock"></i> در لیست خرید — ارسال به مدیرعامل</span>
+                            <div class="reopen-hint">در انتظار تایید مدیرعامل؛ قابل تغییر نیست</div>
+                            {% else %}
                             <span class="status-tag status-{{ d.assignment.status }}">
                                 {% if d.assignment.status == 'fulfilled' %}تأمین شده
                                 {% elif d.assignment.status == 'not_in_stock' %}عدم تامین — برگشت به مدیرعامل
@@ -465,6 +474,7 @@
                                 <input type="hidden" name="item_id" value="{{ d.item.id }}">
                                 <input type="hidden" name="action" value="reopen">
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

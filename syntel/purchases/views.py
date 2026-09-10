@@ -8313,6 +8313,16 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             messages.error(request, 'قلم درخواست یافت نشد')
             return redirect(dash_url)
 
+        # قلمی که در لیست خرید ثبت و برای مدیرعامل ارسال شده، دیگر در داشبورد
+        # قابل تغییر وضعیت نیست (تا وقتی مدیرعامل آن درخواست خرید را رد نکرده باشد)
+        if _item_sent_to_ceo(item) is not None and action in (
+                'fulfill', 'to_purchase', 'not_in_stock', 'reopen'):
+            messages.error(
+                request,
+                f'«{item.name}» در لیست خرید ثبت شده و برای تایید مدیرعامل ارسال شده است — '
+                'از داشبورد انبار قابل تغییر وضعیت نیست.')
+            return redirect(dash_url)
+
         # تخصیص موجود (در انتظار) یا ساخت تخصیص جدید
         assignment = item.officer_assignments.filter(
             target_role='warehouse', status='pending'
@@ -8617,7 +8627,10 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                            and a.status in ('fulfilled', 'not_in_stock', 'returned')
                            and (a.assigned_to_id == request.user.id or a.assigned_to_id is None)]
                 if my_done:
-                    done.append({'item': item, 'assignment': my_done[0]})
+                    sent_copy = _item_sent_to_ceo(item)
+                    done.append({'item': item, 'assignment': my_done[0],
+                                 'locked': sent_copy is not None,
+                                 'locked_request_id': sent_copy.request_id if sent_copy else None})
         if visible or done:
             request_cards.append({'request': req, 'visible': visible, 'done': done})
 
@@ -8753,6 +8766,22 @@ def _get_or_create_purchase_draft(cafe, user):
     return draft
 
 
+def _item_sent_to_ceo(item):
+    """درخواست خریدِ ارسال‌شده‌ای که این قلم در آن کپی شده و هنوز در جریان است.
+
+    وقتی مسئول انبار پیش‌نویس «درخواست خرید» را ارسال می‌کند، اقلامِ پیش‌نویس به یک
+    درخواست خرید (source=warehouse_purchase) کپی می‌شوند و برای تایید به مدیرعامل
+    می‌روند. تا وقتی آن درخواست رد نشده باشد، قلمِ مبدأ در داشبورد انبار قابل تغییر
+    وضعیت نیست (تخصیص/عدم موجودی/بازگشایی/ارجاع مجدد). ردِ مدیرعامل قفل را باز می‌کند.
+    """
+    return (item.purchase_copies
+            .filter(request__source='warehouse_purchase')
+            .exclude(request__status='rejected')
+            .select_related('request')
+            .order_by('-id')
+            .first())
+
+
 def _remove_from_purchase_drafts(item):
     """حذف خودکارِ قلمِ ارجاع‌شده از پیش‌نویس «درخواست خرید» پس از بازنگری مسئول انبار.
 
@@ -8826,6 +8855,10 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
                         quantity=d_item.quantity,
                         unit=d_item.unit,
                         description=d_item.description or '',
+                        # پیوند به قلم اصلیِ درخواست‌دهنده: تا این درخواست خرید در
+                        # جریان باشد (رد نشده باشد)، قفلِ تغییر وضعیتِ آن قلم در
+                        # داشبورد انبار با همین پیوند تشخیص داده می‌شود
+                        source_item=d_item.source_item,
                     )
                 draft.items.all().delete()
                 draft.delete()
