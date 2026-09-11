@@ -7,17 +7,31 @@
 #  - همهٔ نقاط ورود حواله و مدیریت انبار: بدون کافه یا با شناسهٔ کافهٔ دیگر → 404.
 #  - شناسه‌های ارسالی (انبار، محصول، دسته، موجودی، حواله) فقط در کافهٔ فعلی
 #    معتبرند — کافهٔ دیگر هرگز قابل دسترسی نیست (IDOR).
+#
+# Prompt 10 — نوشتن روی موجودی از «مسیرهای تامین از انبار»:
+#  - پیش از این چهار مسیر (درخواست انبار، لیست خرید، کالاهای موجود، داشبورد
+#    مسئول انبار) موجودی را با id خامِ POST و بدون سنجاقِ کافه کم می‌کردند →
+#    مدیر کافهٔ A می‌توانست موجودی کافهٔ B را دستکاری کند.
+#  - حالا همه از apply_stock_delta عبور می‌کنند که cafe اجباری دارد و
+#    StockTransaction را هم‌زاد با کسر می‌سازد.
 # ─────────────────────────────────────────────────────────────────────────────
 import json
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from purchases.models import (
-    Cafe, Category, Product, StockItem, Unit, Warehouse, WarehouseVoucher,
+    Cafe, Category, OfficerAssignment, Product, PurchaseItem, PurchaseRequest,
+    StockItem, StockTransaction, Unit, Warehouse, WarehouseRequest,
+    WarehouseRequestItem, WarehouseVoucher,
+)
+from purchases.services.inventory import (
+    InsufficientStockError, StockScopeError, apply_stock_delta,
 )
 from purchases.views import (
     CAFE_LOOKUP_PATHS, filter_by_cafe, get_scoped_object_or_404,
@@ -330,3 +344,407 @@ class VoucherCreateSubmittedUnitScopingTests(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertEqual(WarehouseVoucher.objects.filter(cafe=self.cafe_a,
                                                          status='draft').count(), 1)
+
+
+class ApplyStockDeltaScopeTests(TestCase):
+    """apply_stock_delta — تنها نقطهٔ مجازِ تغییر موجودی خارج از جریان حواله
+
+    پیش از این، تغییر موجودی از راه `_change_stock_quantity` (بدون cafe) انجام
+    می‌شد؛ هر id خامی از POST کافی بود تا موجودیِ کافهٔ دیگری کم شود.
+    """
+
+    def setUp(self):
+        self.cafe_a = Cafe.objects.create(name='A', code='a', is_active=True)
+        self.cafe_b = Cafe.objects.create(name='B', code='b', is_active=True)
+        self.user = User.objects.create_user(
+            username='wh_a', password='testpass123', role='warehouse', cafe=self.cafe_a)
+
+        self.unit_a = Unit.objects.create(
+            name='Kilogram', symbol='kg', cafe=self.cafe_a)
+        self.wh_a = Warehouse.objects.create(
+            cafe=self.cafe_a, code='whA', name='انبار A', is_active=True,
+            is_supply_enabled=True)
+        self.product_a = Product.objects.create(
+            name='Sugar', unit=self.unit_a, cafe=self.cafe_a, min_stock=1)
+        self.stock_a = StockItem.objects.create(
+            product=self.product_a, warehouse=self.wh_a, quantity=Decimal('50'),
+            unit=self.unit_a)
+
+        # کافهٔ B — هرگز نباید از مسیر کافهٔ A لمس شود
+        self.unit_b = Unit.objects.create(
+            name='Gram', symbol='g', cafe=self.cafe_b)
+        self.wh_b = Warehouse.objects.create(
+            cafe=self.cafe_b, code='whB', name='انبار B', is_active=True,
+            is_supply_enabled=True)
+        self.product_b = Product.objects.create(
+            name='Tea', unit=self.unit_b, cafe=self.cafe_b, min_stock=1)
+        self.stock_b = StockItem.objects.create(
+            product=self.product_b, warehouse=self.wh_b, quantity=Decimal('100'),
+            unit=self.unit_b)
+        # موجودیِ بدون انبار (لجacy) — باید رد شود، نه کرش
+        self.stock_orphan = StockItem.objects.create(
+            product=self.product_b, warehouse=None, quantity=Decimal('7'),
+            unit=self.unit_b)
+        self.stock_no_warehouse_wh = StockItem.objects.create(
+            product=self.product_a, warehouse=None, quantity=Decimal('5'),
+            unit=self.unit_a)
+
+    def _txn_count(self):
+        return StockTransaction.objects.count()
+
+    def test_foreign_cafe_stock_is_rejected_and_untouched(self):
+        """موجودی کافهٔ دیگر با cafe کافهٔ A → StockScopeError، بدون تغییر و بدون سند"""
+        before_txn = self._txn_count()
+        with self.assertRaises(StockScopeError):
+            apply_stock_delta(self.stock_b, Decimal('-10'), cafe=self.cafe_a,
+                              created_by=self.user, reference_type='warehouse_request',
+                              reference_id=1)
+        self.stock_b.refresh_from_db()
+        self.assertEqual(self.stock_b.quantity, Decimal('100.0000'))
+        self.assertEqual(self._txn_count(), before_txn)
+
+    def test_without_cafe_is_rejected(self):
+        """بدون کافهٔ فعال → StockScopeError (هیچ fallback بی‌scope نداریم)"""
+        with self.assertRaises(StockScopeError):
+            apply_stock_delta(self.stock_a, Decimal('-1'), cafe=None)
+
+    def test_stock_item_without_warehouse_is_rejected(self):
+        """موجودیِ بدون انبار نمی‌تواند کافه داشته باشد → رد، نه کرش"""
+        with self.assertRaises(StockScopeError):
+            apply_stock_delta(self.stock_no_warehouse_wh, Decimal('-1'),
+                              cafe=self.cafe_a, created_by=self.user)
+        self.stock_no_warehouse_wh.refresh_from_db()
+        self.assertEqual(self.stock_no_warehouse_wh.quantity, Decimal('5.0000'))
+
+    def test_own_cafe_deduction_records_audit_row(self):
+        """کسر مجاز: موجودی کم می‌شود و ردیف ممیزی با قبل/بعد درست ساخته می‌شود"""
+        txn = apply_stock_delta(
+            self.stock_a, Decimal('-10'), cafe=self.cafe_a, created_by=self.user,
+            reference_type='warehouse_request', reference_id=99, description='تست')
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('40.0000'))
+        self.assertEqual(txn.transaction_type, 'out')
+        self.assertEqual(txn.quantity, Decimal('10.0000'))
+        self.assertEqual(txn.previous_quantity, Decimal('50.0000'))
+        self.assertEqual(txn.new_quantity, Decimal('40.0000'))
+        self.assertEqual(txn.reference_type, 'warehouse_request')
+        self.assertEqual(txn.reference_id, 99)
+
+    def test_insufficient_stock_leaves_nothing_behind(self):
+        """کسر بیش از موجودی → InsufficientStockError و بدون ردیف ممیزی"""
+        before_txn = self._txn_count()
+        with self.assertRaises(InsufficientStockError):
+            apply_stock_delta(self.stock_a, Decimal('-999'), cafe=self.cafe_a,
+                              created_by=self.user)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('50.0000'))
+        self.assertEqual(self._txn_count(), before_txn)
+
+
+class _StockWritePathTestsMixin:
+    """دنیای دوکافه‌ای + دادهٔ هر چهار مسیر نوشتن روی موجودی"""
+
+    role = 'manager'          # نقش کاربرِ مهاجم/ذی‌نفع
+    supply_status = 'pending'  # وضعیت درخواست خرید برای مسیرهای لیست خرید و داشبورد
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='user_a', password='testpass123', role=self.role)
+        self.cafe_a = Cafe.objects.create(name='A', code='a', is_active=True)
+        self.cafe_b = Cafe.objects.create(name='B', code='b', is_active=True)
+        self.user.cafe = self.cafe_a
+        self.user.save()
+        _set_cafe_session(self.client, self.cafe_a)
+        self.client.login(username='user_a', password='testpass123')
+
+        self.unit_a = Unit.objects.create(
+            name='Kilogram', symbol='kg', cafe=self.cafe_a)
+        self.unit_b = Unit.objects.create(
+            name='Gram', symbol='g', cafe=self.cafe_b)
+
+        self.wh_a = Warehouse.objects.create(
+            cafe=self.cafe_a, code='whA', name='انبار A', is_active=True,
+            is_supply_enabled=True)
+        self.wh_b = Warehouse.objects.create(
+            cafe=self.cafe_b, code='whB', name='انبار B', is_active=True,
+            is_supply_enabled=True)
+
+        self.product_a = Product.objects.create(
+            name='Sugar', unit=self.unit_a, cafe=self.cafe_a, min_stock=1)
+        self.product_b = Product.objects.create(
+            name='Tea', unit=self.unit_b, cafe=self.cafe_b, min_stock=1)
+
+        self.stock_a = StockItem.objects.create(
+            product=self.product_a, warehouse=self.wh_a, quantity=Decimal('50'),
+            unit=self.unit_a)
+        self.stock_b = StockItem.objects.create(
+            product=self.product_b, warehouse=self.wh_b, quantity=Decimal('100'),
+            unit=self.unit_b)
+
+        # درخواست کافهٔ A با یک قلم — منبعِ ردیف‌های فرم هر مسیر
+        self.request_a = PurchaseRequest.objects.create(
+            user=self.user, cafe=self.cafe_a, status=self.supply_status)
+        self.item_a = PurchaseItem.objects.create(
+            request=self.request_a, product=self.product_a, name='Sugar',
+            quantity=20, unit='Kilogram', supply_status='pending')
+
+    def _url(self, name, **kwargs):
+        return reverse(name, kwargs={'cafe_code': 'a', **kwargs})
+
+    def _assert_untouched(self):
+        """موجودی کافهٔ B دست‌نخورده + هیچ سند خروجی برایش ثبت نشده"""
+        self.stock_b.refresh_from_db()
+        self.assertEqual(self.stock_b.quantity, Decimal('100.0000'))
+        self.assertEqual(
+            StockTransaction.objects.filter(stock_item=self.stock_b).count(), 0)
+
+
+class ProcessWarehouseRequestScopeTests(_StockWritePathTestsMixin, TestCase):
+    """مسیر ۱ — process_warehouse_request: stock_item از POST
+    (پیش‌تر با id خام کم می‌شد؛ حالا get_scoped_object_or_404)"""
+
+    role = 'warehouse'
+
+    def setUp(self):
+        super().setUp()
+        self.wh_request = WarehouseRequest.objects.create(
+            user=self.user, cafe=self.cafe_a, status='pending')
+        self.wh_item = WarehouseRequestItem.objects.create(
+            warehouse_request=self.wh_request, product=self.product_a,
+            name='Sugar', quantity=Decimal('10'), unit='Kilogram')
+
+    def _post(self, stock_item, qty='10'):
+        return self.client.post(
+            self._url('process_warehouse_request', request_id=self.wh_request.id),
+            data={
+                f'supply_status_{self.wh_item.id}': 'from_stock',
+                f'stock_item_{self.wh_item.id}': str(stock_item.id),
+                f'supplied_qty_{self.wh_item.id}': qty,
+                'action': 'submit',
+            })
+
+    def test_foreign_stock_item_rejected(self):
+        """موجودیِ کافهٔ B → قلم تامین نمی‌شود، کسری رخ نمی‌دهد و کافهٔ B دست‌نخورده می‌ماند
+
+        (خطای جستجو در فرم به پیام خطا تبدیل می‌شود و صفحه دوباره رندر می‌گردد؛
+        مهم این است که هیچ نوشتنی روی موجودی انجام نشود.)
+        """
+        r = self._post(self.stock_b)
+        self.assertEqual(r.status_code, 200)
+        self._assert_untouched()
+        self.wh_item.refresh_from_db()
+        self.assertIsNone(self.wh_item.stock_item)
+        self.assertIsNone(self.wh_item.supplied_quantity)
+
+    def test_own_stock_item_deducts(self):
+        """کنترل: موجودی کافهٔ خود → کسر انجام می‌شود"""
+        r = self._post(self.stock_a, qty='10')
+        self.assertEqual(r.status_code, 302)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('40.0000'))
+        self.assertEqual(
+            StockTransaction.objects.filter(
+                stock_item=self.stock_a, reference_type='warehouse_request').count(), 1)
+
+
+class PurchaseListStockSupplyScopeTests(_StockWritePathTestsMixin, TestCase):
+    """مسیر ۲ — purchase_list_with_stock_supply: stock_sid از POST
+    (پیش‌تر با id خام کم می‌شد؛ حالا فیلتر warehouse__cafe=cafe)"""
+
+    role = 'purchasing'
+    supply_status = 'purchased'
+
+    def _post(self, stock_item, sids=None, qtys=None):
+        return self.client.post(
+            self._url('purchase_list_with_stock_supply'),
+            data={
+                'item_ids': [str(self.item_a.id)],
+                f'action_{self.item_a.id}': 'from_stock',
+                f'stock_sid_{self.item_a.id}': sids if sids else [str(stock_item.id)],
+                f'stock_qty_{self.item_a.id}': qtys if qtys else ['5'],
+            })
+
+    def test_foreign_stock_item_rejected(self):
+        """موجودیِ کافهٔ B → پیام خطا، بدون کسر و بدون تغییر وضعیت قلم"""
+        r = self._post(self.stock_b)
+        self.assertEqual(r.status_code, 302)
+        self._assert_untouched()
+        self.item_a.refresh_from_db()
+        self.assertEqual(self.item_a.supply_status, 'pending')
+        self.assertEqual(
+            StockTransaction.objects.filter(
+                reference_type='purchase_item').count(), 0)
+
+    def test_own_cafe_stock_deducts(self):
+        """کنترل: موجودی کافهٔ خود → کسر و ثبت وضعیت «تامین از انبار»"""
+        r = self._post(self.stock_a)
+        self.assertEqual(r.status_code, 302)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('45.0000'))
+        self.item_a.refresh_from_db()
+        self.assertEqual(self.item_a.supply_status, 'from_stock')
+
+    def test_foreign_stock_item_mixed_with_own_is_rejected_whole(self):
+        """ردیف بیگانه در میان ردیف‌های مجاز → کل قلم رد می‌شود (هیچ کسری)"""
+        r = self._post(self.stock_a, sids=[str(self.stock_a.id), str(self.stock_b.id)],
+                       qtys=['5', '5'])
+        self.assertEqual(r.status_code, 302)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('50.0000'))
+        self._assert_untouched()
+
+
+class WarehouseAvailableProductsScopeTests(_StockWritePathTestsMixin, TestCase):
+    """مسیر ۳ — warehouse_available_products: product_id/warehouse_id/brand_id
+    از POST (پیش‌تر با id خامِ انبار و محصولِ کافهٔ دیگر کم می‌شد)"""
+
+    role = 'warehouse'
+
+    def _post(self, product, warehouse, qty='5', status='from_stock', brand_id=''):
+        return self.client.post(
+            self._url('warehouse_available_products'),
+            data={
+                'product_id': [str(product.id)],
+                'warehouse_id': [str(warehouse.id)],
+                'brand_id': [str(brand_id)],
+                'qty': [qty],
+                'status': [status],
+            })
+
+    def test_foreign_product_and_warehouse_rejected(self):
+        """محصول و انبار کافهٔ B → خطای اعتبارسنجی، موجودی دست‌نخورده"""
+        r = self._post(self.product_b, self.wh_b)
+        self.assertEqual(r.status_code, 200)  # فرم با پیام خطا دوباره رندر می‌شود
+        self._assert_untouched()
+        self.assertEqual(WarehouseRequest.objects.filter(cafe=self.cafe_a).count(), 0)
+        self.assertEqual(
+            StockTransaction.objects.filter(
+                reference_type='warehouse_request').count(), 0)
+
+    def test_own_product_and_warehouse_deducts(self):
+        """کنترل: محصول و انبار کافهٔ خود → کسر و ثبت درخواست انبار"""
+        r = self._post(self.product_a, self.wh_a, qty='5')
+        self.assertEqual(r.status_code, 302)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('45.0000'))
+        self.assertEqual(WarehouseRequest.objects.filter(cafe=self.cafe_a).count(), 1)
+        self.assertEqual(
+            StockTransaction.objects.filter(
+                reference_type='warehouse_request').count(), 1)
+
+    def test_own_product_with_foreign_warehouse_rejected(self):
+        """محصول کافهٔ A + انبار کافهٔ B → رد (انبار کافهٔ دیگر)"""
+        r = self._post(self.product_a, self.wh_b)
+        self.assertEqual(r.status_code, 200)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('50.0000'))
+        self._assert_untouched()
+
+
+class WarehouseOfficerDashboardScopeTests(_StockWritePathTestsMixin, TestCase):
+    """مسیر ۴ — داشبورد مسئول انبار (action=fulfill): stock_item_id/qty از POST
+    (پیش‌تر با id خام کم می‌شد؛ حالا فیلتر warehouse__cafe=cafe)
+
+    نکتهٔ مهم: حتی اگر خودِ قلم واقعاً مال کافهٔ A باشد، باز هم نمی‌توان با
+    اسلایس موجودیِ کافهٔ B آن را تامین کرد — همان حفرهٔ اصلی.
+    """
+
+    role = 'warehouse'
+
+    def setUp(self):
+        super().setUp()
+        self.item_a.officer_assignments.create(
+            target_role='warehouse', status='pending',
+            assigned_by=self.user, assigned_to=self.user)
+
+    def _url(self, name, **kwargs):
+        # داشبورد بدون پارامتر day به «امروز» ریدایرکت می‌شود؛ صریح می‌فرستیم
+        url = super()._url(name, **kwargs)
+        return url + '?day=' + timezone.localtime(timezone.now()).date().isoformat()
+
+    def _post(self, stock_item, qty='5', action='fulfill'):
+        return self.client.post(
+            self._url('warehouse_officer_dashboard'),
+            data={'action': action, 'item_id': str(self.item_a.id),
+                  'stock_item_id': [str(stock_item.id)], 'qty': [qty]})
+
+    def test_foreign_stock_item_rejected(self):
+        """اسلایس موجودیِ کافهٔ B → پیام خطا، بدون کسر و بدون تخصیص fulfilled"""
+        r = self._post(self.stock_b)
+        self.assertEqual(r.status_code, 302)
+        self._assert_untouched()
+        self.assertEqual(
+            OfficerAssignment.objects.filter(item=self.item_a,
+                                             status='fulfilled').count(), 0)
+
+    def test_foreign_stock_item_rejected_even_for_same_product(self):
+        """موجودیِ کافهٔ B برای *همان* محصول کافهٔ A → همچنان رد
+
+        این تست عمداً از گاردِ «موجودی با کالا مطابقت ندارد» عبور می‌کند تا
+        گاردِ کافه‌محور تنها چیزی باشد که جلوی کسر را می‌گیرد — کافهٔ B موجودیِ
+        همان محصول را دارد و تنها مانع، تعلقِ آن به کافهٔ دیگر است.
+        """
+        stock_a_dup = StockItem.objects.create(
+            product=self.product_a, warehouse=self.wh_b, quantity=Decimal('100'),
+            unit=self.unit_a)
+        r = self._post(stock_a_dup)
+        self.assertEqual(r.status_code, 302)
+        self._assert_untouched()
+        stock_a_dup.refresh_from_db()
+        self.assertEqual(stock_a_dup.quantity, Decimal('100.0000'))
+        self.assertEqual(
+            OfficerAssignment.objects.filter(item=self.item_a,
+                                             status='fulfilled').count(), 0)
+
+    def test_own_stock_item_deducts(self):
+        """کنترل: موجودی کافهٔ خود → کسر و تخصیص fulfilled"""
+        r = self._post(self.stock_a, qty='5')
+        self.assertEqual(r.status_code, 302)
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('45.0000'))
+        self.assertEqual(
+            OfficerAssignment.objects.filter(item=self.item_a,
+                                             status='fulfilled').count(), 1)
+
+
+class OfficerDashboardReopenScopeTests(_StockWritePathTestsMixin, TestCase):
+    """بازگشایی قلم (action=reopen): تراکنش‌های تامین قبلی باید فقط وقتی برگردند
+    که موجودی‌شان واقعاً به همین کافه تعلق دارد"""
+
+    role = 'warehouse'
+
+    def setUp(self):
+        super().setUp()
+        self.assignment = OfficerAssignment.objects.create(
+            item=self.item_a, target_role='warehouse', status='fulfilled',
+            assigned_by=self.user, assigned_to=self.user)
+        # موجودی کافهٔ B پایین می‌آید و سندِ خروجی به نام همین قلم ثبت می‌شود
+        # (دادهٔ آلوده/لجcy) — بازگشایی نباید موجودی کافهٔ B را بالا ببرد
+        apply_stock_delta(self.stock_b, Decimal('-10'), cafe=self.cafe_b,
+                          created_by=self.user, reference_type='officer_assignment',
+                          reference_id=self.item_a.id, description='دادهٔ آلوده')
+        self.stock_b.refresh_from_db()
+        self.assertEqual(self.stock_b.quantity, Decimal('90.0000'))
+
+    def _url(self, name, **kwargs):
+        url = super()._url(name, **kwargs)
+        return url + '?day=' + timezone.localtime(timezone.now()).date().isoformat()
+
+    def test_reopen_does_not_credit_foreign_stock(self):
+        """بازگشایی: موجودی کافهٔ B دست‌نخورده می‌ماند (سند هم بازنمی‌گردد)"""
+        r = self.client.post(
+            self._url('warehouse_officer_dashboard'),
+            data={'action': 'reopen', 'item_id': str(self.item_a.id)})
+        self.assertEqual(r.status_code, 302)
+        self.stock_b.refresh_from_db()
+        self.assertEqual(self.stock_b.quantity, Decimal('90.0000'))
+        # ردیف ممیزیِ نامرتبط حذف نمی‌شود و سند برگشت هم ساخته نمی‌شود
+        self.assertEqual(
+            StockTransaction.objects.filter(stock_item=self.stock_b).count(), 1)
+        self.assertEqual(
+            StockTransaction.objects.filter(
+                reference_type='officer_assignment_reopen').count(), 0)
+        # تخصیصِ خودِ قلم بازگشایی شد (رفتار عادی)
+        self.assertEqual(
+            OfficerAssignment.objects.filter(item=self.item_a).count(), 0)

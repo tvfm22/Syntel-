@@ -33,9 +33,11 @@ from django.utils import timezone
 
 from . import drive_backup
 from .services.inventory import (
+    InsufficientStockError,
     InventoryServiceError,
+    StockScopeError,
     VoucherValidationError,
-    _change_stock_quantity,
+    apply_stock_delta,
     finalize_voucher,
     next_voucher_number,
     reverse_voucher,
@@ -702,14 +704,16 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
 
                 if stock_item_id and supplied_qty and supplied_qty > 0:
                     try:
-                        s_item = StockItem.objects.get(id=int(stock_item_id))
+                        # موجودی فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
+                        s_item = get_scoped_object_or_404(
+                            StockItem, request, id=int(stock_item_id))
                         if supplied_qty > s_item.quantity:
                             messages.error(request, f'موجودی {s_item.product.name} در انبار ({s_item.quantity}) کمتر از مقدار درخواستی ({supplied_qty}) است!')
                             has_error = True
                         else:
                             item.stock_item = s_item
                             item.supplied_quantity = supplied_qty
-                    except StockItem.DoesNotExist:
+                    except Http404:
                         messages.error(request, 'موجودی انبار یافت نشد')
                         has_error = True
                 else:
@@ -734,25 +738,14 @@ def process_warehouse_request(request: HttpRequest, request_id: int) -> HttpResp
                 for item in wh_request.items.all():
                     if not (item.supply_status == 'from_stock' and item.stock_item and item.supplied_quantity):
                         continue
-                    ok, prev_qty, new_qty = _change_stock_quantity(
-                        item.stock_item_id, -item.supplied_quantity)
-                    if not ok:
-                        raise _InsufficientStock(
-                            f'موجودی «{item.stock_item.product.name}» کافی نیست')
-                    StockTransaction.objects.create(
-                        stock_item=item.stock_item,
-                        transaction_type='out',
-                        quantity=item.supplied_quantity,
-                        conversion_rate=item.stock_item.product_brand.conversion_rate if item.stock_item.product_brand else None,
-                        unit=item.stock_item.unit,
+                    apply_stock_delta(
+                        item.stock_item, -item.supplied_quantity,
+                        cafe=cafe, created_by=request.user,
                         reference_type='warehouse_request',
                         reference_id=wh_request.id,
                         description=f'تامین درخواست انبار #{wh_request.id} - {item.name}',
-                        created_by=request.user,
-                        previous_quantity=prev_qty,
-                        new_quantity=new_qty,
                     )
-        except _InsufficientStock as exc:
+        except (InsufficientStockError, StockScopeError) as exc:
             messages.error(request, f'خطا در تامین: {exc}')
             return render(request, 'process_warehouse_request.html', {
                 'wh_request': wh_request,
@@ -926,9 +919,15 @@ def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
                 trade_qty = _parse_decimal(qty_str)
                 if trade_qty is None or trade_qty <= 0:
                     continue
-                try:
-                    s_item = StockItem.objects.select_related('product_brand').get(id=int(sid_str))
-                except (StockItem.DoesNotExist, ValueError):
+                if not sid_str.isdigit():
+                    messages.error(request, f'موجودی انبار برای «{item.name}» یافت نشد')
+                    item_has_error = True
+                    break
+                # موجودی فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
+                s_item = StockItem.objects.select_related(
+                    'product_brand', 'warehouse').filter(
+                    id=int(sid_str), warehouse__cafe=cafe).first()
+                if s_item is None:
                     messages.error(request, f'موجودی انبار برای «{item.name}» یافت نشد')
                     item_has_error = True
                     break
@@ -971,32 +970,21 @@ def purchase_list_with_stock_supply(request: HttpRequest) -> HttpResponse:
             try:
                 with transaction.atomic():
                     for s_item, base_deduction, trade_qty in supply_rows:
-                        ok, prev_qty, new_qty = _change_stock_quantity(
-                            s_item.id, -base_deduction)
-                        if not ok:
-                            raise _InsufficientStock(s_item.product.name)
-
                         brand = s_item.product_brand
                         desc = f'تامین لیست خرید - {item.name}'
                         if brand and brand.brand_name:
                             desc += f' - {brand.brand_name}: {trade_qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
                         desc += f' - درخواست #{item.request.id}'
 
-                        StockTransaction.objects.create(
-                            stock_item=s_item,
-                            transaction_type='out',
-                            quantity=base_deduction,
-                            conversion_rate=brand.conversion_rate if brand else None,
-                            unit=s_item.unit,
+                        apply_stock_delta(
+                            s_item, -base_deduction,
+                            cafe=cafe, created_by=request.user,
                             reference_type='purchase_item',
                             reference_id=item.id,
                             description=desc,
-                            created_by=request.user,
-                            previous_quantity=prev_qty,
-                            new_quantity=new_qty,
                         )
                         total_base_supplied += base_deduction
-            except _InsufficientStock as exc:
+            except (InsufficientStockError, StockScopeError) as exc:
                 messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست')
                 has_error = True
                 continue
@@ -1133,9 +1121,10 @@ def _process_available_products_post(request, cafe):
     rows = []  # (product, warehouse, brand, trade_qty, status, stock_item, base_deduction)
 
     for i, pid_str in enumerate(product_ids):
+        # محصول و انبار فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
         try:
-            product = Product.objects.get(id=int(pid_str))
-            warehouse = Warehouse.objects.get(id=int(warehouse_ids[i]))
+            product = Product.objects.get(id=int(pid_str), cafe=cafe)
+            warehouse = Warehouse.objects.get(id=int(warehouse_ids[i]), cafe=cafe)
         except (Product.DoesNotExist, Warehouse.DoesNotExist, ValueError, IndexError):
             messages.error(request, 'محصول یا انبار انتخاب‌شده معتبر نیست')
             has_error = True
@@ -1145,7 +1134,9 @@ def _process_available_products_post(request, cafe):
         brand_id_raw = brand_ids[i] if i < len(brand_ids) else ''
         if brand_id_raw:
             try:
-                brand = ProductBrand.objects.get(id=int(brand_id_raw))
+                # برند باید به همین محصول (و در نتیجه همین کافه) تعلق داشته باشد
+                brand = ProductBrand.objects.get(
+                    id=int(brand_id_raw), product=product)
             except (ProductBrand.DoesNotExist, ValueError):
                 messages.error(request, f'برند «{product.name}» معتبر نیست')
                 has_error = True
@@ -1222,26 +1213,16 @@ def _process_available_products_post(request, cafe):
                 )
                 if status == 'from_stock':
                     # کسر اتمیک از موجودی انبار با رعایت نرخ تبدیل
-                    ok, prev_qty, new_qty = _change_stock_quantity(
-                        stock_item.id, -base_deduction)
-                    if not ok:
-                        raise _InsufficientStock(product.name)
                     desc = f'تامین کالای موجود در انبار - {product.name}'
                     if brand and brand.brand_name:
                         desc += f' - {brand.brand_name}: {qty} {brand.trade_unit or ""} (= {base_deduction} واحد پایه)'
                     desc += f' - انبار {warehouse.name} - درخواست #{wh_request.id}'
-                    StockTransaction.objects.create(
-                        stock_item=stock_item,
-                        transaction_type='out',
-                        quantity=base_deduction,
-                        conversion_rate=brand.conversion_rate if brand else None,
-                        unit=stock_item.unit,
+                    apply_stock_delta(
+                        stock_item, -base_deduction,
+                        cafe=cafe, created_by=request.user,
                         reference_type='warehouse_request',
                         reference_id=wh_request.id,
                         description=desc,
-                        created_by=request.user,
-                        previous_quantity=prev_qty,
-                        new_quantity=new_qty,
                     )
                 elif status == 'to_purchase':
                     items_to_purchase.append(wh_item)
@@ -8494,10 +8475,12 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             validated = []  # (stock_item, base_deduction, qty) — هر عنصر یک برند/انبار
             for sid in order:
                 qty = merged[sid]['qty']
-                try:
-                    stock_item = StockItem.objects.get(id=int(sid))
-                except (StockItem.DoesNotExist, ValueError, TypeError):
+                # موجودی فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
+                if not str(sid).isdigit():
                     stock_item = None
+                else:
+                    stock_item = StockItem.objects.filter(
+                        id=int(sid), warehouse__cafe=cafe).first()
 
                 if stock_item is None or qty is None or qty <= 0:
                     messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
@@ -8530,22 +8513,12 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 with transaction.atomic():
                     for idx, (stock_item, base_deduction, qty) in enumerate(validated):
                         # کسر اتمیک از موجودی انبار
-                        ok, prev_qty, new_qty = _change_stock_quantity(
-                            stock_item.id, -base_deduction)
-                        if not ok:
-                            raise _InsufficientStock(stock_item.product.name)
-                        StockTransaction.objects.create(
-                            stock_item=stock_item,
-                            transaction_type='out',
-                            quantity=base_deduction,
-                            conversion_rate=stock_item.product_brand.conversion_rate if stock_item.product_brand else None,
-                            unit=stock_item.unit,
+                        apply_stock_delta(
+                            stock_item, -base_deduction,
+                            cafe=cafe, created_by=request.user,
                             reference_type='officer_assignment',
                             reference_id=item.id,
                             description=f'تامین کالا توسط مسئول انبار - {item.name} - درخواست #{item.request_id}',
-                            created_by=request.user,
-                            previous_quantity=prev_qty,
-                            new_quantity=new_qty,
                         )
                         if idx == 0:
                             # ردیف اول: تخصیص در انتظار قبلی (یا تخصیص جدید) تکمیل می‌شود
@@ -8564,7 +8537,7 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                             extra_assignment.supplied_quantity = base_deduction
                             extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
                             extra_assignment.save()
-            except _InsufficientStock as exc:
+            except (InsufficientStockError, StockScopeError) as exc:
                 messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت نشد')
                 return redirect(dash_url)
             _remove_from_purchase_drafts(item)
@@ -8614,17 +8587,32 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'این کالا برای بازگشایی آماده نیست')
                 return redirect(dash_url)
             # معکوس‌سازی اتمیک تراکنش‌های تامین قبلی این قلم (برگشت موجودی به انبار)
-            with transaction.atomic():
-                for tx in StockTransaction.objects.select_for_update().filter(
-                        reference_type='officer_assignment', reference_id=item.id, transaction_type='out'):
-                    si = tx.stock_item
-                    if si:
-                        ok, _prev, _new = _change_stock_quantity(si.id, +tx.quantity)
-                        if not ok:
-                            raise _InsufficientStock(si.product.name)
-                StockTransaction.objects.filter(
-                    reference_type='officer_assignment', reference_id=item.id).delete()
-                done_assigns.delete()
+            # همهٔ ردیف‌ها — چه بازگشتِ موجودی و چه پاک‌سازی — محدود به کافهٔ فعلی‌اند؛
+            # ردیف ممیزیِ موجودیِ کافهٔ دیگر نه برمی‌گردد و نه حذف می‌شود.
+            try:
+                with transaction.atomic():
+                    # ردیف‌های ممیزی قبلی حذف می‌شوند و به‌جایشان ردیف برگشت ثبت می‌گردد؛
+                    # ابتدا بازگشتِ موجودی، بعد پاک‌سازی — هر دو در یک تراکنش.
+                    own_txs = StockTransaction.objects.select_for_update().filter(
+                        reference_type='officer_assignment', reference_id=item.id,
+                        transaction_type='out', stock_item__warehouse__cafe=cafe)
+                    for tx in own_txs:
+                        si = tx.stock_item
+                        if si and si.warehouse_id and si.warehouse.cafe_id == cafe.id:
+                            apply_stock_delta(
+                                si, +tx.quantity,
+                                cafe=cafe, created_by=request.user,
+                                reference_type='officer_assignment_reopen',
+                                reference_id=item.id,
+                                description=f'بازگشایی «{item.name}» - برگشت موجودی به انبار',
+                            )
+                    StockTransaction.objects.filter(
+                        reference_type='officer_assignment', reference_id=item.id,
+                        stock_item__warehouse__cafe=cafe).delete()
+                    done_assigns.delete()
+            except (InsufficientStockError, StockScopeError) as exc:
+                messages.error(request, f'بازگشایی ناموفق بود: {exc}')
+                return redirect(dash_url)
             # قلمی که قبلاً «ارجاع به خرید» شده بود دیگر ارجاع نیست — از پیش‌نویس خرید حذف شود
             _removed = _remove_from_purchase_drafts(item)
             _sync_request_status(item.request)

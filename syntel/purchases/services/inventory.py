@@ -69,6 +69,10 @@ class InsufficientStockError(VoucherValidationError):
     """موجودی انبار برای این حرکت کافی نیست"""
 
 
+class StockScopeError(InventoryServiceError):
+    """موجودیِ انبار درخواستی متعلق به کافهٔ دیگری است (یا بدون انبار است)"""
+
+
 # ── قانونِ نام‌گذاری‌شدهٔ موجودی منفی ──────────────────────────────────────────
 # هیچ قانون تجاری فعلی اجازهٔ موجودی منفی نمی‌دهد: هر حرکت خروجی (حوالهٔ خروج،
 # فروش، ضایعات، سمتِ خروجِ انتقال، برگشتِ یک ورود، تعدیلِ منفی) باید با موجودیِ
@@ -122,6 +126,53 @@ def _change_stock_quantity(stock_item_id, delta):
         return False, None, None
     fresh = StockItem.objects.select_related('product', 'product_brand').get(id=stock_item_id)
     return True, fresh.quantity - delta, fresh.quantity
+
+
+def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
+                      reference_type='', reference_id=None, description=''):
+    """تنها نقطهٔ مجازِ تغییر موجودی خارج از جریان حواله.
+
+    مسیرهای «تامین از انبار» (درخواست انبار، لیست خرید، تحویل مستقیم، داشبورد
+    مسئول انبار) موجودی را مستقیم تغییر می‌دهند — نه از راه حواله. این تابع
+    همان کار را با همان گاردهای سرویس انجام می‌دهد:
+
+    - `cafe` اجباری است و از خودِ درخواست می‌آید؛ موجودیِ کافهٔ دیگر
+      (یا موجودیِ بدون انبار) رد می‌شود — بدون کافه هیچ فراخوانی‌ای ممکن نیست.
+    - دلتا و ردیف تراکنش هر دو در یک transaction.atomic() اتمیک‌اند و ردیف
+      ممیزی همیشه ساخته می‌شود (کسر و سند از هم جدا نمی‌شوند).
+    - موجودی منفی ممنوع است (گاردِ کفایت در `_change_stock_quantity`).
+
+    بازگشت: StockTransaction ساخته‌شده.
+    """
+    if cafe is None:
+        raise StockScopeError('کافهٔ فعال یافت نشد؛ تغییر موجودی مجاز نیست.')
+    if stock_item is None:
+        raise StockScopeError('موجودی انبار تعیین نشده است.')
+    if stock_item.warehouse_id is None:
+        raise StockScopeError(
+            f'موجودیِ «{stock_item.product.name}» به هیچ انباری متصل نیست.')
+    if stock_item.warehouse.cafe_id != cafe.id:
+        raise StockScopeError(
+            f'موجودی «{stock_item.product.name}» متعلق به کافهٔ دیگری است.')
+
+    with transaction.atomic():
+        ok, prev_qty, new_qty = _change_stock_quantity(stock_item.id, delta)
+        if not ok:
+            raise InsufficientStockError(stock_item.product.name)
+        brand = stock_item.product_brand
+        return StockTransaction.objects.create(
+            stock_item=stock_item,
+            transaction_type=_tx_type_for('', delta),
+            quantity=abs(delta),
+            conversion_rate=brand.conversion_rate if brand else None,
+            unit=stock_item.unit,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            description=description,
+            created_by=created_by,
+            previous_quantity=prev_qty,
+            new_quantity=new_qty,
+        )
 
 
 _VOUCHER_PREFIX = {
