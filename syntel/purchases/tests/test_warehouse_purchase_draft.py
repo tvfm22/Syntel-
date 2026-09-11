@@ -94,6 +94,27 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(d_item.product_brand, self.brand)
         self.assertEqual(d_item.unit, 'قوطی')
 
+    def test_foreign_product_id_does_not_leak_across_cafes(self):
+        """شناسهٔ خامِ محصولِ کافهٔ دیگر نباید به پیش‌نویس این کافه وصل شود
+
+        قلم با «نام آزاد» ثبت می‌شود تا کار مسئول انبار از بین نرود — ولی
+        هیچ‌گاه به محصولِ کافهٔ دیگر وصل نمی‌شود.
+        """
+        other_cafe = Cafe.objects.create(name='کافه دیگر', code='other', is_active=True)
+        other_unit = Unit.objects.create(name='Gram', symbol='g', cafe=other_cafe)
+        foreign_product = Product.objects.create(
+            name='محصول کافه دیگر', unit=other_unit, cafe=other_cafe)
+
+        self._login_as_warehouse()
+        resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
+            'action': 'add_item', 'product_id': str(foreign_product.id),
+            'name': 'کالای واردشده', 'quantity': '3', 'unit': 'عدد',
+        })
+        self.assertEqual(resp.status_code, 302)
+        d_item = PurchaseDraftItem.objects.get()
+        self.assertIsNone(d_item.product_id)
+        self.assertEqual(d_item.name, 'کالای واردشده')
+
     def test_edit_and_delete_draft_item(self):
         self._login_as_warehouse()
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)

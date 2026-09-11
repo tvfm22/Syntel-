@@ -625,9 +625,11 @@ def warehouse_request_form(request: HttpRequest) -> HttpResponse:
             product_id_raw = product_ids[idx] if idx < len(product_ids) else ''
             brand_id_raw = brand_ids[idx] if idx < len(brand_ids) else ''
             # محصول انتخاب‌شده از لیست پیشنهادها (اگر انتخاب نشده باشد با نام جستجو می‌شود)
+            # شناسهٔ خامِ POST هرگز بدون قفلِ کافه واکشی نمی‌شود؛ در غیر این صورت
+            # امکان وصل‌کردن محصولِ کافهٔ دیگر به درخواست همین کافه فراهم می‌شد.
             item_product = None
-            if product_id_raw.isdigit():
-                item_product = Product.objects.filter(id=int(product_id_raw)).first()
+            if product_id_raw.isdigit() and cafe is not None:
+                item_product = Product.objects.filter(id=int(product_id_raw), cafe=cafe).first()
             if item_product is None:
                 item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
             # برند انتخاب‌شده فقط در صورتی ثبت می‌شود که متعلق به همان محصول باشد
@@ -1830,9 +1832,10 @@ def purchase_request_form(request):
             product_id_raw = product_ids[idx] if idx < len(product_ids) else ""
             brand_id_raw = brand_ids[idx] if idx < len(brand_ids) else ""
             # محصول انتخاب‌شده از لیست پیشنهادها (اگر انتخاب نشده باشد با نام جستجو می‌شود)
+            # شناسهٔ خامِ POST هرگز بدون قفلِ کافه واکشی نمی‌شود.
             item_product = None
-            if product_id_raw.isdigit():
-                item_product = Product.objects.filter(id=int(product_id_raw)).first()
+            if product_id_raw.isdigit() and cafe is not None:
+                item_product = Product.objects.filter(id=int(product_id_raw), cafe=cafe).first()
             if item_product is None:
                 item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else Product.objects.filter(name__iexact=name).first()
             # برند انتخاب‌شده فقط در صورتی ثبت می‌شود که متعلق به همان محصول باشد
@@ -9012,8 +9015,9 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             description = (request.POST.get('description', '') or '').strip()
 
             item_product = None
-            if product_id.isdigit():
-                item_product = Product.objects.filter(id=int(product_id), is_active=True).first()
+            # شناسهٔ خامِ POST فقط در محدودهٔ کافهٔ فعلی — نه یک واکشی سراسری.
+            if product_id.isdigit() and cafe is not None:
+                item_product = Product.objects.filter(id=int(product_id), is_active=True, cafe=cafe).first()
             if item_product is None and name:
                 item_product = (Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe
                                 else Product.objects.filter(name__iexact=name).first())
