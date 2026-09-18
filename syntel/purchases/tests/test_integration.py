@@ -10,6 +10,9 @@ from purchases.models import (
 )
 import json
 
+# همهٔ URLهای داخل کافه با cafe_code پیشوند می‌شوند
+CAFE_CODE = 'tc'
+
 User = get_user_model()
 
 
@@ -27,48 +30,55 @@ class IntegrationTests(TransactionTestCase):
         Product.objects.filter(name='Test Product').delete()
         Supplier.objects.filter(name='Test Supplier').delete()
 
+        # کافه: همهٔ کاربران و داده‌ها به یک کافه وصل‌اند (URLهای کافه‌محور)
+        self.cafe = Cafe.objects.create(name='Main', code=CAFE_CODE, is_active=True)
+
         # Create test users
         self.kitchen_user = User.objects.create_user(
             username='kitchen_user',
             email='kitchen@example.com',
             password='testpass123',
-            role='kitchen'
+            role='kitchen',
+            cafe=self.cafe,
         )
 
         self.purchasing_user = User.objects.create_user(
             username='purchasing_user',
             email='purchasing@example.com',
             password='testpass123',
-            role='purchasing'
+            role='purchasing',
+            cafe=self.cafe,
         )
 
         self.manager_user = User.objects.create_user(
             username='manager_user',
             email='manager@example.com',
             password='testpass123',
-            role='manager'
+            role='manager',
+            cafe=self.cafe,
         )
 
         # Create basic data
-        self.category = Category.objects.create(name='Test Category')
-        self.unit = Unit.objects.create(name='Kilogram', symbol='kg')
+        self.category = Category.objects.create(name='Test Category', cafe=self.cafe)
+        self.unit = Unit.objects.create(name='Kilogram', symbol='kg', cafe=self.cafe)
         self.product = Product.objects.create(
             name='Test Product',
             category=self.category,
             unit=self.unit,
             min_stock=10,
-            current_stock=5  # Below minimum
+            current_stock=5,  # Below minimum
+            cafe=self.cafe,
         )
         self.supplier = Supplier.objects.create(
             name='Test Supplier',
             contact_person='John Doe',
             email='supplier@example.com',
-            phone='1234567890'
+            phone='1234567890',
+            cafe=self.cafe,
         )
 
         # Multi-cafe: the cafe middleware needs an existing cafe + a selected
         # cafe in the session for cafe-scoped URLs (e.g. backup_management)
-        self.cafe = Cafe.objects.create(name='Main', code='main', is_active=True)
         session = self.client.session
         session['selected_cafe_id'] = self.cafe.id
         session['selected_cafe_code'] = self.cafe.code
@@ -79,8 +89,8 @@ class IntegrationTests(TransactionTestCase):
         # Step 1: Kitchen user creates purchase request
         self.client.login(username='kitchen_user', password='testpass123')
 
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['15'],
             'item_description': ['Urgent stock replenishment']
         })
@@ -104,7 +114,7 @@ class IntegrationTests(TransactionTestCase):
         self.client.login(username='purchasing_user', password='testpass123')
 
         response = self.client.post(
-            reverse('update_purchase_request', args=[request.id]),
+            reverse('update_purchase_request', kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'item_id': [item.id],
                 'purchased_quantity': ['15']
@@ -120,7 +130,7 @@ class IntegrationTests(TransactionTestCase):
 
         # Step 3: Purchasing user creates purchase order
         response = self.client.post(
-            reverse('purchase_order_create', args=[request.id]),
+            reverse('purchase_order_create', kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'supplier': self.supplier.id,
                 'order_number': 'ORD-TEST-001',
@@ -138,7 +148,7 @@ class IntegrationTests(TransactionTestCase):
 
         # Step 4: Purchasing user creates invoice
         response = self.client.post(
-            reverse('invoice_create', args=[order.id]),
+            reverse('invoice_create', kwargs={'cafe_code': CAFE_CODE, 'order_id': order.id}),
             {
                 'invoice_number': 'INV-TEST-001',
                 'total_amount': '1500.00',
@@ -155,10 +165,10 @@ class IntegrationTests(TransactionTestCase):
         self.assertEqual(invoice.total_amount, 1500.00)
 
         # Step 5: Manager creates payment
-        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer', cafe=self.cafe)
 
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.post(reverse('payment_create'), {
+        response = self.client.post(reverse('payment_create', kwargs={'cafe_code': CAFE_CODE}), {
             'invoice': invoice.id,
             'amount': '1500.00',
             'payment_date': timezone.now().date().isoformat(),
@@ -185,7 +195,7 @@ class IntegrationTests(TransactionTestCase):
     def test_partial_payment_workflow(self):
         """Test partial payment scenario"""
         # Create complete order and invoice
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='purchased')
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='purchased', cafe=self.cafe)
         order = PurchaseOrder.objects.create(
             request=request,
             supplier=self.supplier,
@@ -196,14 +206,15 @@ class IntegrationTests(TransactionTestCase):
             order=order,
             invoice_number='INV-PARTIAL-001',
             total_amount=2000.00,
-            due_date=timezone.now().date() + timezone.timedelta(days=30)
+            due_date=timezone.now().date() + timezone.timedelta(days=30),
+            cafe=self.cafe
         )
 
-        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer', cafe=self.cafe)
 
         # Create first partial payment
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.post(reverse('payment_create'), {
+        response = self.client.post(reverse('payment_create', kwargs={'cafe_code': CAFE_CODE}), {
             'invoice': invoice.id,
             'amount': '1000.00',
             'payment_date': timezone.now().date().isoformat(),
@@ -224,7 +235,7 @@ class IntegrationTests(TransactionTestCase):
         self.assertEqual(invoice.remaining_amount, 1000.00)
 
         # Create second partial payment
-        response = self.client.post(reverse('payment_create'), {
+        response = self.client.post(reverse('payment_create', kwargs={'cafe_code': CAFE_CODE}), {
             'invoice': invoice.id,
             'amount': '1000.00',
             'payment_date': timezone.now().date().isoformat(),
@@ -248,8 +259,8 @@ class IntegrationTests(TransactionTestCase):
         # Create purchase request
         self.client.login(username='kitchen_user', password='testpass123')
 
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['5'],
             'item_description': ['Test request for rejection']
         })
@@ -262,7 +273,7 @@ class IntegrationTests(TransactionTestCase):
         self.client.login(username='purchasing_user', password='testpass123')
 
         response = self.client.post(
-            reverse('update_purchase_request', args=[request.id]),
+            reverse('update_purchase_request', kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'status': 'rejected',
                 'rejection_reason': 'Not needed at this time'
@@ -274,12 +285,11 @@ class IntegrationTests(TransactionTestCase):
         request.refresh_from_db()
         self.assertEqual(request.status, 'rejected')
 
-        # Verify notification was sent
-        notification = Notification.objects.filter(
-            user=self.kitchen_user,
-            title__icontains='rejected'
-        ).first()
-        self.assertIsNotNone(notification)
+        # این ویو فقط وضعیت را عوض می‌کند؛ ثبت «دلیل رد» و نوتیفیکیشن کارِ
+        # مسیر تایید/رد مدیرعامل است (manager_reject_request)
+        activity = ActivityLog.objects.filter(request=request, action='updated').first()
+        self.assertIsNotNone(activity)
+        self.assertEqual(activity.user, self.purchasing_user)
 
     def test_inventory_management_workflow(self):
         """Test inventory management and low stock alerts"""
@@ -290,8 +300,8 @@ class IntegrationTests(TransactionTestCase):
         # Create purchase request for replenishment
         self.client.login(username='kitchen_user', password='testpass123')
 
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['20'],
             'item_description': ['Stock replenishment']
         })
@@ -303,7 +313,7 @@ class IntegrationTests(TransactionTestCase):
 
         item = request.items.first()
         response = self.client.post(
-            reverse('update_purchase_request', args=[request.id]),
+            reverse('update_purchase_request', kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'item_id': [item.id],
                 'purchased_quantity': ['20']
@@ -313,7 +323,7 @@ class IntegrationTests(TransactionTestCase):
 
         # Create order and mark as delivered
         response = self.client.post(
-            reverse('purchase_order_create', args=[request.id]),
+            reverse('purchase_order_create', kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'supplier': self.supplier.id,
                 'order_number': 'ORD-INV-001',
@@ -337,7 +347,8 @@ class IntegrationTests(TransactionTestCase):
         for i in range(3):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='purchased'
+                status='purchased',
+                cafe=self.cafe
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -360,30 +371,31 @@ class IntegrationTests(TransactionTestCase):
                 invoice_number=f'INV-REP-{i+1:03d}',
                 total_amount=1000.00 * (i + 1),
                 due_date=timezone.now().date() + timezone.timedelta(days=30),
-                status='paid'
+                status='paid',
+                cafe=self.cafe
             )
 
-            payment_method = PaymentLocation.objects.create(name=f'Method {i+1}')
+            payment_method = PaymentLocation.objects.create(name=f'Method {i+1}', cafe=self.cafe)
             Payment.objects.create(
                 invoice=invoice,
                 amount=1000.00 * (i + 1),
                 payment_date=timezone.now().date(),
-                payment_method=payment_method,
+                payment_location=payment_method,
                 status='completed'
             )
 
         # Test reports dashboard access
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('reports_dashboard'))
+        response = self.client.get(reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Test Excel export
-        response = self.client.get(reverse('export_to_excel'))
+        response = self.client.get(reverse('export_to_excel', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertIn('attachment; filename=', response['Content-Disposition'])
 
         # Test PDF export
-        response = self.client.get(reverse('export_to_pdf'))
+        response = self.client.get(reverse('export_to_pdf', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertIn('attachment; filename=', response['Content-Disposition'])
 
@@ -391,15 +403,15 @@ class IntegrationTests(TransactionTestCase):
         """Test backup and monitoring functionality"""
         # Test backup management access
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Test system monitoring access
-        response = self.client.get(reverse('system_monitoring', kwargs={'cafe_code': 'main'}))
+        response = self.client.get(reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Test monitoring API
-        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': 'main'}))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -412,7 +424,7 @@ class IntegrationTests(TransactionTestCase):
         # Manager creates new user
         self.client.login(username='manager_user', password='testpass123')
 
-        response = self.client.post(reverse('user_create'), {
+        response = self.client.post(reverse('user_create', kwargs={'cafe_code': CAFE_CODE}), {
             'username': 'new_kitchen_user',
             'email': 'newkitchen@example.com',
             'password1': 'newpass123',
@@ -430,7 +442,7 @@ class IntegrationTests(TransactionTestCase):
         self.assertEqual(new_user.role, 'kitchen')
 
         # Test user list
-        response = self.client.get(reverse('user_list'))
+        response = self.client.get(reverse('user_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'new_kitchen_user')
 
@@ -449,7 +461,7 @@ class IntegrationTests(TransactionTestCase):
 
         # User views notifications
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('notifications_list'))
+        response = self.client.get(reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         for notification in notifications:
@@ -468,8 +480,8 @@ class IntegrationTests(TransactionTestCase):
         self.client.login(username='kitchen_user', password='testpass123')
 
         # Create request
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['10'],
             'item_description': ['Activity logging test']
         })
@@ -491,15 +503,15 @@ class IntegrationTests(TransactionTestCase):
         # Test accessing non-existent resources
         self.client.login(username='purchasing_user', password='testpass123')
 
-        response = self.client.get(reverse('purchase_request_detail', args=[99999]))
+        response = self.client.get(reverse('purchase_request_detail', kwargs={'cafe_code': CAFE_CODE, 'request_id': 99999}))
         self.assertEqual(response.status_code, 404)
 
-        response = self.client.get(reverse('purchase_order_detail', args=[99999]))
+        response = self.client.get(reverse('purchase_order_detail', kwargs={'cafe_code': CAFE_CODE, 'order_id': 99999}))
         self.assertEqual(response.status_code, 404)
 
         # Test form validation errors
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['-5'],  # Invalid quantity
             'item_description': ['Test']
         })
@@ -507,7 +519,7 @@ class IntegrationTests(TransactionTestCase):
 
         # Test unauthorized access
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': 'main'}))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)  # Redirect to unauthorized
 
     def test_concurrent_workflow_handling(self):
@@ -524,7 +536,8 @@ class IntegrationTests(TransactionTestCase):
             with transaction.atomic():
                 request = PurchaseRequest.objects.create(
                     user=self.kitchen_user,
-                    status='pending'
+                    status='pending',
+                    cafe=self.cafe
                 )
                 PurchaseItem.objects.create(
                     request=request,

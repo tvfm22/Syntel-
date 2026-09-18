@@ -4,13 +4,16 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.management import call_command
 from purchases.models import (
-    Category, Unit, Product, Supplier, PurchaseRequest,
+    Cafe, Category, Unit, Product, Supplier, PurchaseRequest,
     PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation,
     ActivityLog, Notification
 )
 import time
 import psutil
 import os
+
+# همهٔ URLهای داخل کافه با cafe_code پیشوند می‌شوند
+CAFE_CODE = 'tc'
 
 User = get_user_model()
 
@@ -29,43 +32,57 @@ class PerformanceTests(TransactionTestCase):
         Product.objects.filter(name='Test Product').delete()
         Supplier.objects.filter(name='Test Supplier').delete()
 
+        # کافه: همهٔ کاربران و دادهها به یک کافه وصلاند (URLهای کافهمحور)
+        self.cafe = Cafe.objects.create(name='Main', code=CAFE_CODE, is_active=True)
+
         # Create test users
         self.kitchen_user = User.objects.create_user(
             username='kitchen_user',
             email='kitchen@example.com',
             password='testpass123',
-            role='kitchen'
+            role='kitchen',
+            cafe=self.cafe,
         )
 
         self.purchasing_user = User.objects.create_user(
             username='purchasing_user',
             email='purchasing@example.com',
             password='testpass123',
-            role='purchasing'
+            role='purchasing',
+            cafe=self.cafe,
         )
 
         self.manager_user = User.objects.create_user(
             username='manager_user',
             email='manager@example.com',
             password='testpass123',
-            role='manager'
+            role='manager',
+            cafe=self.cafe,
         )
 
         # Create basic data
-        self.category = Category.objects.create(name='Test Category')
-        self.unit = Unit.objects.create(name='Kilogram', symbol='kg')
+        self.category = Category.objects.create(name='Test Category', cafe=self.cafe)
+        self.unit = Unit.objects.create(name='Kilogram', symbol='kg', cafe=self.cafe)
         self.product = Product.objects.create(
             name='Test Product',
             category=self.category,
             unit=self.unit,
-            min_stock=10
+            min_stock=10,
+            cafe=self.cafe,
         )
         self.supplier = Supplier.objects.create(
             name='Test Supplier',
             contact_person='John Doe',
             email='supplier@example.com',
-            phone='1234567890'
+            phone='1234567890',
+            cafe=self.cafe,
         )
+
+        # URLهای کافهمحور به کافهٔ انتخابشده در نشست نیاز دارند
+        session = self.client.session
+        session['selected_cafe_id'] = self.cafe.id
+        session['selected_cafe_code'] = self.cafe.code
+        session.save()
 
     def _measure_response_time(self, url, method='get', data=None, user=None):
         """Helper method to measure response time"""
@@ -92,7 +109,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(50):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='purchased'
+                status='purchased',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -105,7 +123,7 @@ class PerformanceTests(TransactionTestCase):
 
         # Test kitchen dashboard
         response, response_time = self._measure_response_time(
-            reverse('dashboard'),
+            reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
             user=self.kitchen_user
         )
         self.assertEqual(response.status_code, 200)
@@ -113,7 +131,7 @@ class PerformanceTests(TransactionTestCase):
 
         # Test purchasing dashboard
         response, response_time = self._measure_response_time(
-            reverse('dashboard'),
+            reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -125,7 +143,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(100):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user if i % 2 == 0 else self.purchasing_user,
-                status='pending' if i % 3 == 0 else 'purchased'
+                status='pending' if i % 3 == 0 else 'purchased',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -137,7 +156,7 @@ class PerformanceTests(TransactionTestCase):
             )
 
         response, response_time = self._measure_response_time(
-            reverse('purchase_requests_list'),
+            reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -166,26 +185,27 @@ class PerformanceTests(TransactionTestCase):
                     request=request,
                     supplier=self.supplier,
                     order_number=f'ORD-PERF-{i:03d}',
-                    status='completed'
+                    status='completed',
                 )
                 invoice = Invoice.objects.create(
                     order=order,
                     invoice_number=f'INV-PERF-{i:03d}',
                     total_amount=1000.00,
-                    status='paid'
+                    status='paid',
+                    cafe=self.cafe,
                 )
-                payment_method = PaymentLocation.objects.create(name=f'Method {i}')
+                payment_method = PaymentLocation.objects.create(name=f'Method {i}', cafe=self.cafe)
                 Payment.objects.create(
                     invoice=invoice,
                     amount=1000.00,
                     payment_date=timezone.now().date(),
-                    payment_method=payment_method,
+                    payment_location=payment_method,
                     status='completed'
                 )
 
         # Test reports dashboard
         response, response_time = self._measure_response_time(
-            reverse('reports_dashboard'),
+            reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -197,7 +217,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(500):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='purchased'
+                status='purchased',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -209,7 +230,7 @@ class PerformanceTests(TransactionTestCase):
             )
 
         response, response_time = self._measure_response_time(
-            reverse('export_to_excel'),
+            reverse('export_to_excel', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -221,7 +242,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(100):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='purchased'
+                status='purchased',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -233,7 +255,7 @@ class PerformanceTests(TransactionTestCase):
             )
 
         response, response_time = self._measure_response_time(
-            reverse('export_to_pdf'),
+            reverse('export_to_pdf', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -245,7 +267,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(100):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='pending'
+                status='pending',
+                cafe=self.cafe,
             )
             ActivityLog.objects.create(
                 user=self.kitchen_user,
@@ -255,7 +278,7 @@ class PerformanceTests(TransactionTestCase):
             )
 
         response, response_time = self._measure_response_time(
-            reverse('system_monitoring_api'),
+            reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}),
             user=self.manager_user
         )
         self.assertEqual(response.status_code, 200)
@@ -270,7 +293,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(1000):
             request = PurchaseRequest.objects.create(
                 user=users[i % 2],
-                status=statuses[i % 4]
+                status=statuses[i % 4],
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -322,7 +346,8 @@ class PerformanceTests(TransactionTestCase):
                 username=f'concurrent_user_{i}',
                 email=f'concurrent{i}@example.com',
                 password='testpass123',
-                role='kitchen'
+                role='kitchen',
+                cafe=self.cafe,
             )
             users.append(user)
 
@@ -330,7 +355,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(50):
             request = PurchaseRequest.objects.create(
                 user=users[i % len(users)],
-                status='pending'
+                status='pending',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -344,7 +370,7 @@ class PerformanceTests(TransactionTestCase):
         total_time = 0
         for user in users[:5]:  # Test first 5 users
             response, response_time = self._measure_response_time(
-                reverse('dashboard'),
+                reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
                 user=user
             )
             self.assertEqual(response.status_code, 200)
@@ -362,7 +388,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(1000):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='pending'
+                status='pending',
+                cafe=self.cafe,
             )
             PurchaseItem.objects.create(
                 request=request,
@@ -383,7 +410,7 @@ class PerformanceTests(TransactionTestCase):
         """Test form processing performance"""
         # Test purchase request form
         response, response_time = self._measure_response_time(
-            reverse('purchase_request'),
+            reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
             method='get',
             user=self.kitchen_user
         )
@@ -392,10 +419,10 @@ class PerformanceTests(TransactionTestCase):
 
         # Test form submission
         response, response_time = self._measure_response_time(
-            reverse('purchase_request'),
+            reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
             method='post',
             data={
-                'product_id': [self.product.id],
+                'product_name': [self.product.name],
                 'item_quantity': ['10'],
                 'item_description': ['Performance test']
             },
@@ -414,7 +441,8 @@ class PerformanceTests(TransactionTestCase):
                 name=f'Search Supplier {i:03d}',
                 contact_person=f'Contact {i:03d}',
                 email=f'supplier{i:03d}@example.com',
-                phone='1234567890'
+                phone='1234567890',
+                cafe=self.cafe,
             )
             suppliers.append(supplier)
 
@@ -422,13 +450,14 @@ class PerformanceTests(TransactionTestCase):
                 name=f'Search Product {i:03d}',
                 category=self.category,
                 unit=self.unit,
-                min_stock=10
+                min_stock=10,
+                cafe=self.cafe,
             )
             products.append(product)
 
         # Test supplier list loading
         response, response_time = self._measure_response_time(
-            reverse('supplier_list'),
+            reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -436,7 +465,7 @@ class PerformanceTests(TransactionTestCase):
 
         # Test product list loading
         response, response_time = self._measure_response_time(
-            reverse('product_list'),
+            reverse('product_list', kwargs={'cafe_code': CAFE_CODE}),
             user=self.purchasing_user
         )
         self.assertEqual(response.status_code, 200)
@@ -447,7 +476,8 @@ class PerformanceTests(TransactionTestCase):
         # Create many notifications
         for i in range(200):
             Notification.objects.create(
-                user=self.kitchen_user,
+                recipient=self.kitchen_user,
+                cafe=self.cafe,
                 title=f'Performance Notification {i+1}',
                 message=f'Test message {i+1}',
                 notification_type='info'
@@ -455,7 +485,7 @@ class PerformanceTests(TransactionTestCase):
 
         # Test notifications list
         response, response_time = self._measure_response_time(
-            reverse('notifications_list'),
+            reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}),
             user=self.kitchen_user
         )
         self.assertEqual(response.status_code, 200)
@@ -467,7 +497,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(500):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='pending'
+                status='pending',
+                cafe=self.cafe,
             )
             ActivityLog.objects.create(
                 user=self.kitchen_user,
@@ -476,10 +507,11 @@ class PerformanceTests(TransactionTestCase):
                 request=request
             )
 
-        # Test activity log view
+        # صفحهٔ مستقلی برای لاگ فعالیت وجود ندارد؛ آخرین فعالیتها از API
+        # پایش سیستم خوانده میشوند (فقط مدیر)
         response, response_time = self._measure_response_time(
-            reverse('activity_log', args=[request.id]),
-            user=self.purchasing_user
+            reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}),
+            user=self.manager_user
         )
         self.assertEqual(response.status_code, 200)
         self.assertLess(response_time, 2.0, "Activity log should load in under 2 seconds")
@@ -491,7 +523,8 @@ class PerformanceTests(TransactionTestCase):
         for i in range(50):
             request = PurchaseRequest.objects.create(
                 user=self.kitchen_user,
-                status='pending'
+                status='pending',
+                cafe=self.cafe,
             )
             requests.append(request)
 
@@ -518,7 +551,7 @@ class PerformanceTests(TransactionTestCase):
         response_times = []
         for i in range(5):
             response, response_time = self._measure_response_time(
-                reverse('dashboard'),
+                reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
                 user=self.purchasing_user
             )
             self.assertEqual(response.status_code, 200)

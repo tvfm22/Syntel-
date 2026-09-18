@@ -7,6 +7,9 @@ from purchases.models import (
     PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation
 )
 
+# همهٔ URLهای داخل کافه با cafe_code پیشوند می‌شوند
+CAFE_CODE = 'tc'
+
 User = get_user_model()
 
 
@@ -24,42 +27,50 @@ class ViewTests(TestCase):
         Product.objects.filter(name='Test Product').delete()
         Supplier.objects.filter(name='Test Supplier').delete()
 
+        # کافه: همهٔ کاربران و داده‌ها به یک کافه وصل‌اند (URLهای کافه‌محور)
+        self.cafe = Cafe.objects.create(name='Test Cafe', code=CAFE_CODE, is_active=True)
+
         # Create test users
         self.kitchen_user = User.objects.create_user(
             username='kitchen_user',
             email='kitchen@example.com',
             password='testpass123',
-            role='kitchen'
+            role='kitchen',
+            cafe=self.cafe,
         )
 
         self.purchasing_user = User.objects.create_user(
             username='purchasing_user',
             email='purchasing@example.com',
             password='testpass123',
-            role='purchasing'
+            role='purchasing',
+            cafe=self.cafe,
         )
 
         self.manager_user = User.objects.create_user(
             username='manager_user',
             email='manager@example.com',
             password='testpass123',
-            role='manager'
+            role='manager',
+            cafe=self.cafe,
         )
 
         # Create basic data
-        self.category = Category.objects.create(name='Test Category')
-        self.unit = Unit.objects.create(name='Kilogram', symbol='kg')
+        self.category = Category.objects.create(name='Test Category', cafe=self.cafe)
+        self.unit = Unit.objects.create(name='Kilogram', symbol='kg', cafe=self.cafe)
         self.product = Product.objects.create(
             name='Test Product',
             category=self.category,
             unit=self.unit,
-            min_stock=10
+            min_stock=10,
+            cafe=self.cafe,
         )
         self.supplier = Supplier.objects.create(
             name='Test Supplier',
             contact_person='John Doe',
             email='supplier@example.com',
-            phone='1234567890'
+            phone='1234567890',
+            cafe=self.cafe,
         )
 
     def test_login_view(self):
@@ -82,7 +93,7 @@ class ViewTests(TestCase):
             'password': 'wrongpassword'
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Invalid credentials')
+        self.assertContains(response, 'نام کاربری یا رمز عبور اشتباه است')
 
     def test_logout_view(self):
         """Test logout functionality"""
@@ -97,20 +108,23 @@ class ViewTests(TestCase):
         """Test dashboard view for different user roles"""
         # Test kitchen user dashboard
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'dashboard.html')
         self.assertContains(response, 'kitchen_user')
 
         # Test purchasing user dashboard
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
-        # Test manager dashboard
+        # Test manager dashboard — مدیر به داشبورد مالی هدایت میشود
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('dashboard'))
-        self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response['Location'],
+            reverse('finance_dashboard', kwargs={'cafe_code': CAFE_CODE}))
 
     def test_unauthorized_access(self):
         """Test that unauthorized users cannot access restricted views"""
@@ -137,13 +151,13 @@ class ViewTests(TestCase):
         self.client.login(username='kitchen_user', password='testpass123')
 
         # Test GET request
-        response = self.client.get(reverse('purchase_request'))
+        response = self.client.get(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'purchase_request_form.html')
 
-        # Test POST request with valid data
-        response = self.client.post(reverse('purchase_request'), {
-            'product_id': [self.product.id],
+        # Test POST request with valid data (فرم با نام آزاد کالا کار میکند)
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
+            'product_name': [self.product.name],
             'item_quantity': ['5'],
             'item_description': ['Test description']
         })
@@ -157,7 +171,7 @@ class ViewTests(TestCase):
     def test_purchase_requests_list(self):
         """Test purchase requests list view"""
         # Create test data
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='pending')
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='pending', cafe=self.cafe)
         PurchaseItem.objects.create(
             request=request,
             product=self.product,
@@ -167,7 +181,7 @@ class ViewTests(TestCase):
         )
 
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('purchase_requests_list'))
+        response = self.client.get(reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'purchase_requests_list.html')
         self.assertContains(response, 'pending')
@@ -175,7 +189,7 @@ class ViewTests(TestCase):
     def test_purchase_request_update(self):
         """Test purchase request update functionality"""
         # Create test data
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='pending')
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='pending', cafe=self.cafe)
         item = PurchaseItem.objects.create(
             request=request,
             product=self.product,
@@ -188,7 +202,8 @@ class ViewTests(TestCase):
 
         # Test update with purchased quantities
         response = self.client.post(
-            reverse('update_purchase_request', args=[request.id]),
+            reverse('update_purchase_request',
+                    kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'item_id': [item.id],
                 'purchased_quantity': ['8']
@@ -203,7 +218,7 @@ class ViewTests(TestCase):
     def test_reports_dashboard(self):
         """Test reports dashboard view"""
         # Create test data
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='purchased')
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='purchased', cafe=self.cafe)
         PurchaseItem.objects.create(
             request=request,
             product=self.product,
@@ -214,14 +229,14 @@ class ViewTests(TestCase):
         )
 
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('reports_dashboard'))
+        response = self.client.get(reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'reports_dashboard.html')
 
     def test_excel_export(self):
         """Test Excel export functionality"""
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('export_to_excel'))
+        response = self.client.get(reverse('export_to_excel', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -232,7 +247,7 @@ class ViewTests(TestCase):
     def test_pdf_export(self):
         """Test PDF export functionality"""
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('export_to_pdf'))
+        response = self.client.get(reverse('export_to_pdf', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertIn('attachment; filename=', response['Content-Disposition'])
@@ -240,7 +255,7 @@ class ViewTests(TestCase):
     def test_purchase_order_creation(self):
         """Test purchase order creation"""
         # Create approved request
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='approved')
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='approved', cafe=self.cafe)
         PurchaseItem.objects.create(
             request=request,
             product=self.product,
@@ -251,7 +266,8 @@ class ViewTests(TestCase):
 
         self.client.login(username='purchasing_user', password='testpass123')
         response = self.client.post(
-            reverse('purchase_order_create', args=[request.id]),
+            reverse('purchase_order_create',
+                    kwargs={'cafe_code': CAFE_CODE, 'request_id': request.id}),
             {
                 'supplier': self.supplier.id,
                 'order_number': 'ORD-TEST-001',
@@ -268,7 +284,7 @@ class ViewTests(TestCase):
     def test_invoice_creation(self):
         """Test invoice creation"""
         # Create completed order
-        request = PurchaseRequest.objects.create(user=self.kitchen_user)
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, cafe=self.cafe)
         order = PurchaseOrder.objects.create(
             request=request,
             supplier=self.supplier,
@@ -278,7 +294,8 @@ class ViewTests(TestCase):
 
         self.client.login(username='purchasing_user', password='testpass123')
         response = self.client.post(
-            reverse('invoice_create', args=[order.id]),
+            reverse('invoice_create',
+                    kwargs={'cafe_code': CAFE_CODE, 'order_id': order.id}),
             {
                 'invoice_number': 'INV-TEST-001',
                 'total_amount': '1000.00',
@@ -296,7 +313,7 @@ class ViewTests(TestCase):
     def test_payment_creation(self):
         """Test payment creation"""
         # Create invoice
-        request = PurchaseRequest.objects.create(user=self.kitchen_user)
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, cafe=self.cafe)
         order = PurchaseOrder.objects.create(
             request=request,
             supplier=self.supplier,
@@ -306,13 +323,14 @@ class ViewTests(TestCase):
             order=order,
             invoice_number='INV-001',
             total_amount=1000.00,
-            due_date=timezone.now().date() + timezone.timedelta(days=30)
+            due_date=timezone.now().date() + timezone.timedelta(days=30),
+            cafe=self.cafe,
         )
 
-        payment_method = PaymentLocation.objects.create(name='Bank Transfer')
+        payment_method = PaymentLocation.objects.create(name='Bank Transfer', cafe=self.cafe)
 
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.post(reverse('payment_create'), {
+        response = self.client.post(reverse('payment_create', kwargs={'cafe_code': CAFE_CODE}), {
             'invoice': invoice.id,
             'amount': '500.00',
             'payment_date': timezone.now().date().isoformat(),
@@ -333,6 +351,8 @@ class ViewTests(TestCase):
         cafe = Cafe.objects.create(name='Main', code='main', is_active=True)
         self.kitchen_user.cafe = cafe  # kitchen user belongs to this cafe
         self.kitchen_user.save()
+        self.manager_user.cafe = cafe  # و مدیر هم — URL با cafe_code این کافه است
+        self.manager_user.save()
         session = self.client.session
         session['selected_cafe_id'] = cafe.id
         session['selected_cafe_code'] = cafe.code
@@ -353,19 +373,19 @@ class ViewTests(TestCase):
         """Test system monitoring access control"""
         # Test unauthorized access
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring'))
+        response = self.client.get(reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)  # Access denied
 
         # Test authorized access
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring'))
+        response = self.client.get(reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'system_monitoring.html')
 
     def test_system_monitoring_api(self):
         """Test system monitoring API"""
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -377,14 +397,14 @@ class ViewTests(TestCase):
     def test_finance_dashboard(self):
         """Test finance dashboard view"""
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('finance_dashboard'))
+        response = self.client.get(reverse('finance_dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'finance_dashboard.html')
 
     def test_supplier_list(self):
         """Test supplier list view"""
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('supplier_list'))
+        response = self.client.get(reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'supplier_list.html')
         self.assertContains(response, self.supplier.name)
@@ -392,7 +412,7 @@ class ViewTests(TestCase):
     def test_product_list(self):
         """Test product list view"""
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('product_list'))
+        response = self.client.get(reverse('product_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'product_list.html')
         self.assertContains(response, self.product.name)
@@ -402,12 +422,12 @@ class ViewTests(TestCase):
         self.client.login(username='manager_user', password='testpass123')
 
         # Test user list
-        response = self.client.get(reverse('user_list'))
+        response = self.client.get(reverse('user_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'user_list.html')
 
         # Test user creation form
-        response = self.client.get(reverse('user_create'))
+        response = self.client.get(reverse('user_create', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'user_form.html')
 
@@ -424,7 +444,7 @@ class ViewTests(TestCase):
         )
 
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('notifications_list'))
+        response = self.client.get(reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'notifications_list.html')
         self.assertContains(response, 'Test Notification')
@@ -434,29 +454,36 @@ class ViewTests(TestCase):
         from purchases.models import ActivityLog
 
         # Create test activity
-        request = PurchaseRequest.objects.create(user=self.kitchen_user)
+        request = PurchaseRequest.objects.create(user=self.kitchen_user, cafe=self.cafe)
         activity = ActivityLog.objects.create(
             user=self.kitchen_user,
             action='created',
             description='Test activity',
             request=request
         )
+        self.assertEqual(activity.request_id, request.id)
+        self.assertEqual(ActivityLog.objects.filter(request=request).count(), 1)
 
-        self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('activity_log', args=[request.id]))
+        # صفحهٔ مستقلی برای لاگ فعالیت وجود ندارد؛ آخرین فعالیتها از API
+        # پایش سیستم (فقط مدیر) خوانده میشوند
+        self.client.login(username='manager_user', password='testpass123')
+        response = self.client.get(
+            reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'activity_log.html')
 
     def test_error_handling(self):
         """Test error handling in views"""
         # Test accessing non-existent objects
         self.client.login(username='purchasing_user', password='testpass123')
 
-        response = self.client.get(reverse('purchase_request_detail', args=[99999]))
+        response = self.client.get(reverse(
+            'purchase_request_detail', kwargs={'cafe_code': CAFE_CODE, 'request_id': 99999}))
         self.assertEqual(response.status_code, 404)
 
-        response = self.client.get(reverse('purchase_order_detail', args=[99999]))
+        response = self.client.get(reverse(
+            'purchase_order_detail', kwargs={'cafe_code': CAFE_CODE, 'order_id': 99999}))
         self.assertEqual(response.status_code, 404)
 
-        response = self.client.get(reverse('invoice_detail', args=[99999]))
+        response = self.client.get(reverse(
+            'invoice_detail', kwargs={'cafe_code': CAFE_CODE, 'invoice_id': 99999}))
         self.assertEqual(response.status_code, 404)

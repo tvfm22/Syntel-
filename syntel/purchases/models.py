@@ -793,9 +793,21 @@ class Invoice(models.Model):
         """Check if invoice can be marked as paid"""
         return self.status in ['sent', 'approved']
 
+    def payment_records(self):
+        """همهٔ پرداخت‌های این فاکتور — چه با کلید خارجی (invoice) و چه با
+        رابطهٔ چندبه‌چند (invoices) ثبت شده باشند.
+
+        دو مسیر ثبت پرداخت وجود دارد (صفحهٔ «پرداخت جدید»/فاکتور دستی از کلید
+        خارجی استفاده می‌کنند و ویرایش فاکتور از رابطهٔ چندبه‌چند)؛ همهٔ
+        محاسبه‌های مالی باید هر دو را ببینند.
+        """
+        return Payment.objects.filter(
+            models.Q(invoices=self) | models.Q(invoice=self)
+        ).distinct()
+
     def update_payment_status(self):
         """Update payment status based on payments"""
-        total_paid = self.payments.filter(payment_status='completed').aggregate(
+        total_paid = self.payment_records().filter(payment_status='completed').aggregate(
             total=models.Sum('amount')
         )['total'] or 0
         
@@ -816,7 +828,7 @@ class Invoice(models.Model):
 
     @property
     def paid_amount(self):
-        return self.payments.filter(payment_status='completed').aggregate(
+        return self.payment_records().filter(payment_status='completed').aggregate(
             total=models.Sum('amount')
         )['total'] or 0
 
@@ -828,7 +840,7 @@ class Invoice(models.Model):
 
     def get_total_paid(self):
         """Get total amount paid"""
-        return self.payments.filter(payment_status='completed').aggregate(
+        return self.payment_records().filter(payment_status='completed').aggregate(
             total=models.Sum('amount')
         )['total'] or 0
 

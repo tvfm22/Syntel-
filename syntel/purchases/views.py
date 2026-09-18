@@ -177,6 +177,14 @@ def get_cafe_redirect_url(url_name, request, **kwargs):
     return redirect(url_name, **kwargs)
 
 
+def get_cafe_url(url_name, request, **kwargs):
+    """مثل get_cafe_redirect_url ولی رشتهٔ URL برمیگرداند (برای افزودن query string)"""
+    cafe_code = get_cafe_code(request)
+    if cafe_code:
+        kwargs['cafe_code'] = cafe_code
+    return reverse(url_name, kwargs=kwargs)
+
+
 def cafe_context(request):
     """اضافه کردن اطلاعات کافه به context"""
     cafe = get_cafe_from_request(request)
@@ -1382,12 +1390,12 @@ def purchase_lists_by_date(request: HttpRequest) -> HttpResponse:
 def purchase_day_detail(request: HttpRequest) -> HttpResponse:
     """Show detailed purchase list for a specific date and department"""
     from datetime import datetime
-    
+
     date_str = request.GET.get('date')
     role = request.GET.get('role')
-    
+
     if not date_str or not role:
-        return redirect('purchase_lists_by_date')
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
     
     # Parse date
     date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -1462,12 +1470,12 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     import os
     import arabic_reshaper
     from bidi.algorithm import get_display
-    
+
     date_str = request.GET.get('date')
     role = request.GET.get('role')
-    
+
     if not date_str or not role:
-        return redirect('purchase_lists_by_date')
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
     
     # Parse date
     date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -1694,7 +1702,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
     # اگر کاربر manager است، به داشبورد مالی redirect شود
     if request.user.role == 'manager':
-        return redirect('finance_dashboard')
+        return get_cafe_redirect_url('finance_dashboard', request)
 
     # برای کاربران عادی - داشبورد ساده
     cafe = get_cafe_from_request(request)
@@ -2142,7 +2150,7 @@ def update_purchase_request(request, request_id):
             action="updated",
             description="Purchase request updated",
         )
-        return redirect("purchase_request_detail", request_id=purchase_request.id)
+        return get_cafe_redirect_url("purchase_request_detail", request, request_id=purchase_request.id)
 
     items = purchase_request.items.all()
     return render(
@@ -2866,7 +2874,7 @@ def create_migration_script(request):
 @role_required(["manager"])
 def run_migration_script(request):
     messages.success(request, "Migration executed")
-    return redirect("backup_management")
+    return get_cafe_redirect_url("backup_management", request)
 
 
 @custom_login_required
@@ -2905,11 +2913,11 @@ def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpRes
         # Get the date and role for redirect
         date_str = request.POST.get('date', '')
         role = request.POST.get('role', '')
-        
+
         if date_str and role:
-            return redirect(f"{reverse('purchase_day_detail')}?date={date_str}&role={role}")
-        return redirect('purchase_lists_by_date')
-    
+            return redirect(f"{get_cafe_url('purchase_day_detail', request)}?date={date_str}&role={role}")
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
+
     # GET request - show edit form
     date_str = request.GET.get('date', '')
     role = request.GET.get('role', '')
@@ -2939,16 +2947,16 @@ def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> Http
             purchase_request.manager_confirmed_by = request.user
         
         purchase_request.save()
-        
+
         # Get the date and role for redirect
         date_str = request.POST.get('date', '')
         role = request.POST.get('role', '')
-        
+
         if date_str and role:
-            return redirect(f"{reverse('purchase_day_detail')}?date={date_str}&role={role}")
-        return redirect('purchase_lists_by_date')
-    
-    return redirect('purchase_lists_by_date')
+            return redirect(f"{get_cafe_url('purchase_day_detail', request)}?date={date_str}&role={role}")
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
+
+    return get_cafe_redirect_url('purchase_lists_by_date', request)
 
 
 # ---------------------------------------------------------------------------
@@ -3229,7 +3237,7 @@ def product_delete(request, product_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def unit_list(request):
-    units = Unit.objects.all()
+    units = filter_by_cafe(Unit.objects.all(), request)
     return render(request, "unit_list.html", {"units": units})
 
 
@@ -3240,66 +3248,65 @@ def unit_create(request):
         name = request.POST.get("name")
         symbol = request.POST.get("symbol", "")
         if name:
-            Unit.objects.create(name=name, symbol=symbol)
-            return redirect("unit_list")
+            Unit.objects.create(name=name, symbol=symbol, cafe=get_cafe_from_request(request))
+            return get_cafe_redirect_url("unit_list", request)
     return render(request, "unit_form.html")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def unit_update(request, unit_id):
-    unit = get_object_or_404(Unit, id=unit_id)
+    # فقط واحد کافه جاری قابل ویرایش است — واحد کافه دیگر ۴۰۴ میشود
+    unit = get_scoped_object_or_404(Unit, request, id=unit_id)
     if request.method == "POST":
         unit.name = request.POST.get("name", unit.name)
         unit.symbol = request.POST.get("symbol", unit.symbol)
         unit.save()
-        return redirect("unit_list")
+        return get_cafe_redirect_url("unit_list", request)
     return render(request, "unit_form.html", {"unit": unit})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def unit_delete(request, unit_id):
-    unit = get_object_or_404(Unit, id=unit_id)
+    unit = get_scoped_object_or_404(Unit, request, id=unit_id)
     if request.method == "POST":
         unit.delete()
-        return redirect("unit_list")
+        return get_cafe_redirect_url("unit_list", request)
     return render(request, "unit_confirm_delete.html", {"unit": unit})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_list(request):
-    cafe = get_cafe_from_request(request)
-    categories = Category.objects.all()
-    if cafe:
-        categories = categories.filter(cafe=cafe)
+    categories = filter_by_cafe(Category.objects.all(), request)
     return render(request, "category_list.html", {"categories": categories})
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_update(request, category_id):
     cafe = get_cafe_from_request(request)
-    category = get_object_or_404(Category, id=category_id)
+    # فقط دستهٔ کافه جاری قابل ویرایش است — دستهٔ کافه دیگر ۴۰۴ میشود
+    category = get_scoped_object_or_404(Category, request, id=category_id)
     if request.method == "POST":
         category.name = request.POST.get("name", category.name)
         category.description = request.POST.get("description", category.description)
         parent_id = request.POST.get("parent")
         if parent_id:
-            category.parent = Category.objects.filter(id=parent_id).first()
+            category.parent = Category.objects.filter(id=parent_id, cafe=cafe).first()
         else:
             category.parent = None
         category.save()
-        return redirect("category_list")
-    
+        return get_cafe_redirect_url("category_list", request)
+
     # Get all parent categories except the current one and its descendants
     parent_categories = Category.objects.filter(
-        parent__isnull=True, 
+        parent__isnull=True,
         is_active=True
     ).exclude(id=category_id)
     if cafe:
         parent_categories = parent_categories.filter(cafe=cafe)
-    
+
     return render(request, "category_form.html", {
         "category": category,
         "parent_categories": parent_categories
@@ -3309,10 +3316,10 @@ def category_update(request, category_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def category_delete(request, category_id):
-    category = get_object_or_404(Category, id=category_id)
+    category = get_scoped_object_or_404(Category, request, id=category_id)
     if request.method == "POST":
         category.delete()
-        return redirect("category_list")
+        return get_cafe_redirect_url("category_list", request)
     return render(request, "category_confirm_delete.html", {"category": category})
 
 
@@ -3395,7 +3402,10 @@ def department_delete(request, department_id):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def payment_type_list(request):
-    payment_types = PaymentType.objects.all()
+    cafe = get_cafe_from_request(request)
+    # انواع پرداختِ سراسری (cafe=NULL) + انواع همین کافه
+    payment_types = PaymentType.objects.none() if cafe is None else \
+        PaymentType.objects.filter(Q(cafe=cafe) | Q(cafe__isnull=True))
     return render(request, "payment_type_list.html", {"payment_types": payment_types})
 
 
@@ -3405,29 +3415,32 @@ def payment_type_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
         if name:
-            PaymentType.objects.create(name=name)
-            return redirect("payment_type_list")
+            PaymentType.objects.create(name=name, cafe=get_cafe_from_request(request))
+            return get_cafe_redirect_url("payment_type_list", request)
     return render(request, "payment_type_form.html")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def payment_type_update(request, payment_type_id):
-    payment_type = get_object_or_404(PaymentType, id=payment_type_id)
+    cafe = get_cafe_from_request(request)
+    # انواع پرداختِ سراسری مشترکاند و از این صفحه ویرایش نمیشوند؛ فقط انواع کافه جاری
+    payment_type = get_object_or_404(PaymentType, cafe=cafe, id=payment_type_id)
     if request.method == "POST":
         payment_type.name = request.POST.get("name", payment_type.name)
         payment_type.save()
-        return redirect("payment_type_list")
+        return get_cafe_redirect_url("payment_type_list", request)
     return render(request, "payment_type_form.html", {"payment_type": payment_type})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def payment_type_delete(request, payment_type_id):
-    payment_type = get_object_or_404(PaymentType, id=payment_type_id)
+    cafe = get_cafe_from_request(request)
+    payment_type = get_object_or_404(PaymentType, cafe=cafe, id=payment_type_id)
     if request.method == "POST":
         payment_type.delete()
-        return redirect("payment_type_list")
+        return get_cafe_redirect_url("payment_type_list", request)
     return render(request, "payment_type_confirm_delete.html", {"payment_type": payment_type})
 
 
@@ -3668,7 +3681,7 @@ def purchase_order_create(request, request_id):
             action="updated",
             description="Purchase order created",
         )
-        return redirect("purchase_order_detail", order_id=order.id)
+        return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
     return render(
         request,
         "purchase_order_form.html",
@@ -3688,7 +3701,7 @@ def purchase_order_update(request, order_id):
     if request.method == "POST":
         order.status = request.POST.get("status", order.status)
         order.save()
-        return redirect("purchase_order_detail", order_id=order.id)
+        return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
     return render(request, "purchase_order_form.html", {"order": order})
 
 
@@ -3696,7 +3709,7 @@ def _set_order_status(request, order_id, status):
     order = get_object_or_404(PurchaseOrder, id=order_id)
     order.status = status
     order.save()
-    return redirect("purchase_order_detail", order_id=order.id)
+    return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
 
 
 @custom_login_required
@@ -3746,7 +3759,7 @@ def purchase_order_complete(request, order_id):
             request=pr,
             action='updated',
             description=f'تکمیل سفارش خرید {order.order_number} — درخواست #{pr.id} خریداری شد')
-    return redirect("purchase_order_detail", order_id=order.id)
+    return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
 
 
 @custom_login_required
@@ -4174,8 +4187,8 @@ def invoice_register(request):
                         created_by=request.user
                     )
                     
-                    # بروزرسانی وضعیت پرداخت فاکتور
-                    total_paid = invoice.payments.aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+                    # بروزرسانی وضعیت پرداخت فاکتور (هر دو نوع اتصال پرداخت)
+                    total_paid = invoice.payment_records().aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
                     if total_paid >= invoice.total_amount:
                         invoice.payment_status = 'paid'
                     elif total_paid > 0:
@@ -4189,7 +4202,7 @@ def invoice_register(request):
                     messages.warning(request, "محل پرداخت معتبر نیست.")
         
         messages.success(request, f"فاکتور {invoice.invoice_number} با موفقیت ایجاد شد.")
-        return redirect("invoice_detail", invoice_id=invoice.id)
+        return get_cafe_redirect_url("invoice_detail", request, invoice_id=invoice.id)
 
     # نمایش فرم ایجاد فاکتور دستی
     cafe = get_cafe_from_request(request)
@@ -4246,7 +4259,7 @@ def invoice_create(request, order_id):
             notes=request.POST.get("notes", ""),
             created_by=request.user,
         )
-        return redirect("invoice_detail", invoice_id=invoice.id)
+        return get_cafe_redirect_url("invoice_detail", request, invoice_id=invoice.id)
 
     return render(request, "invoice_form.html", {"order": order})
 
@@ -4384,8 +4397,8 @@ def invoice_update(request, invoice_id):
         invoice.discount_amount = (invoice.subtotal * invoice.discount_rate / 100) if invoice.discount_rate else 0
         invoice.total_amount = invoice.subtotal + invoice.tax_amount - invoice.discount_amount + (invoice.shipping_cost or 0)
         
-        # بروزرسانی پرداخت‌های موجود
-        for payment in invoice.payments.all():
+        # بروزرسانی پرداخت‌های موجود (هر دو نوع اتصال پرداخت)
+        for payment in invoice.payment_records():
             payment_date_key = f"payment_date_{payment.id}"
             payment_amount_key = f"payment_amount_{payment.id}"
             payment_location_key = f"payment_location_{payment.id}"
@@ -4449,8 +4462,8 @@ def invoice_update(request, invoice_id):
                         pass
             i += 1
         
-        # محاسبه وضعیت پرداخت بر اساس مجموع پرداخت‌ها
-        total_paid = sum(payment.amount for payment in invoice.payments.all())
+        # محاسبه وضعیت پرداخت بر اساس مجموع پرداخت‌ها (هر دو نوع اتصال)
+        total_paid = sum(payment.amount for payment in invoice.payment_records())
         
         if total_paid == 0:
             invoice.payment_status = 'unpaid'
@@ -4496,7 +4509,7 @@ def invoice_send(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "sent"
     invoice.save()
-    return redirect("invoice_detail", invoice_id=invoice.id)
+    return get_cafe_redirect_url("invoice_detail", request, invoice_id=invoice.id)
 
 
 @custom_login_required
@@ -4558,16 +4571,18 @@ def invoice_cancel(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id)
     invoice.status = "cancelled"
     invoice.save()
-    return redirect("invoice_detail", invoice_id=invoice.id)
+    return get_cafe_redirect_url("invoice_detail", request, invoice_id=invoice.id)
 
 
 @custom_login_required
 @role_required(["manager", "finance_manager"])
 def invoice_delete(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
+    cafe = get_cafe_from_request(request)
+    # فاکتور فقط با کافهٔ صریح قابل حذف است؛ فاکتور بدون کافه در scope هیچ کافهای نیست
+    invoice = get_scoped_object_or_404(Invoice, request, id=invoice_id, cafe=cafe)
     if request.method == "POST":
         invoice.delete()
-        return redirect("invoices_list")
+        return get_cafe_redirect_url("invoices_list", request)
     return render(request, "invoice_confirm_delete.html", {"invoice": invoice})
 
 
@@ -4579,7 +4594,7 @@ def invoice_bulk_payment(request):
         invoice_ids = request.POST.getlist('invoice_ids')
         if not invoice_ids:
             messages.warning(request, "هیچ فاکتوری برای پرداخت انتخاب نشده است.")
-            return redirect('invoices_list')
+            return get_cafe_redirect_url('invoices_list', request)
 
         invoices = Invoice.objects.filter(id__in=invoice_ids)
         count = invoices.count()
@@ -4603,7 +4618,7 @@ def invoice_bulk_payment(request):
         else:
             messages.warning(request, "فاکتورهای انتخاب شده یافت نشدند.")
 
-    return redirect('invoices_list')
+    return get_cafe_redirect_url('invoices_list', request)
 
 
 @custom_login_required
@@ -4613,7 +4628,7 @@ def invoice_bulk_delete(request):
         invoice_ids = request.POST.getlist('invoice_ids')
         if not invoice_ids:
             messages.warning(request, "هیچ فاکتوری برای حذف انتخاب نشده است.")
-            return redirect('invoices_list')
+            return get_cafe_redirect_url('invoices_list', request)
 
         invoices_to_delete = Invoice.objects.filter(id__in=invoice_ids)
         count = invoices_to_delete.count()
@@ -4624,7 +4639,7 @@ def invoice_bulk_delete(request):
         else:
             messages.warning(request, "فاکتورهای انتخاب شده برای حذف یافت نشدند.")
 
-    return redirect('invoices_list')
+    return get_cafe_redirect_url('invoices_list', request)
 
 
 @custom_login_required
@@ -5321,7 +5336,11 @@ def payment_create(request, invoice_id=None):
                 )
                 # Add all selected invoices to the payment
                 payment.invoices.add(*selected_invoices)
-                
+                # اتصال چندبه‌چند بعد از ذخیره اضافه می‌شود، پس وضعیت پرداخت
+                # هر فاکتور باید اینجا دوباره محاسبه شود
+                for invoice in selected_invoices:
+                    invoice.update_payment_status()
+
                 # Send notifications to all related users
                 notified_users = set()
                 for invoice in selected_invoices:
@@ -5768,8 +5787,8 @@ def requester_create(request):
     if request.method == "POST":
         name = request.POST.get("name")
         if name:
-            Requester.objects.create(name=name)
-            return redirect("requester_list")
+            Requester.objects.create(name=name, cafe=get_cafe_from_request(request))
+            return get_cafe_redirect_url("requester_list", request)
     return render(request, "requester_form.html")
 
 
@@ -5779,7 +5798,7 @@ def requester_delete(request, requester_id):
     requester = get_object_or_404(Requester, id=requester_id)
     if request.method == "POST":
         requester.delete()
-        return redirect("requester_list")
+        return get_cafe_redirect_url("requester_list", request)
     return render(request, "requester_confirm_delete.html", {"requester": requester})
 
 
@@ -5802,7 +5821,7 @@ def invoice_issue_create(request):
         name = request.POST.get("name")
         if name:
             InvoiceIssue.objects.create(name=name)
-            return redirect("invoice_issue_list")
+            return get_cafe_redirect_url("invoice_issue_list", request)
     return render(request, "invoice_issue_form.html")
 
 
@@ -5812,7 +5831,7 @@ def invoice_issue_delete(request, issue_id):
     issue = get_object_or_404(InvoiceIssue, id=issue_id)
     if request.method == "POST":
         issue.delete()
-        return redirect("invoice_issue_list")
+        return get_cafe_redirect_url("invoice_issue_list", request)
     return render(request, "invoice_issue_confirm_delete.html", {"issue": issue})
 
 
@@ -6416,7 +6435,7 @@ def system_monitoring_api(request):
 
 
 @custom_login_required
-def notifications_list(request):
+def notifications_list(request, cafe_code=None):
     notifications = Notification.objects.filter(recipient=request.user)
     return render(request, "notifications_list.html", {"notifications": notifications})
 
@@ -6432,14 +6451,14 @@ def mark_notification_read(request, notification_id):
     notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
     notification.is_read = True
     notification.save()
-    return redirect("notifications_list")
+    return get_cafe_redirect_url("notifications_list", request)
 
 
 @custom_login_required
 def delete_notification(request, notification_id):
     notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
     notification.delete()
-    return redirect("notifications_list")
+    return get_cafe_redirect_url("notifications_list", request)
 
 
 @custom_login_required

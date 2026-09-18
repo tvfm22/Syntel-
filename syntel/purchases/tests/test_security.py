@@ -4,10 +4,13 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from purchases.models import (
-    Category, Unit, Product, Supplier, PurchaseRequest,
+    Cafe, Category, Unit, Product, Supplier, PurchaseRequest,
     PurchaseItem, PurchaseOrder, Invoice, Payment, PaymentLocation
 )
 import json
+
+# همهٔ URLهای داخل کافه با cafe_code پیشوند می‌شوند
+CAFE_CODE = 'tc'
 
 User = get_user_model()
 
@@ -19,12 +22,17 @@ class SecurityTests(TestCase):
         """Set up test data and client"""
         self.client = Client()
 
+        # کافه: همهٔ کاربران و داده‌ها به یک کافه وصل‌اند (URLهای کافه‌محور)
+        self.cafe, _ = Cafe.objects.get_or_create(
+            code=CAFE_CODE, defaults={'name': 'Test Cafe', 'is_active': True})
+
         # Create test users with different roles
         self.kitchen_user, _ = User.objects.get_or_create(
             username='kitchen_user',
             defaults={
                 'email': 'kitchen@example.com',
-                'role': 'kitchen'
+                'role': 'kitchen',
+                'cafe': self.cafe,
             }
         )
         self.kitchen_user.set_password('testpass123')
@@ -34,7 +42,8 @@ class SecurityTests(TestCase):
             username='purchasing_user',
             defaults={
                 'email': 'purchasing@example.com',
-                'role': 'purchasing'
+                'role': 'purchasing',
+                'cafe': self.cafe,
             }
         )
         self.purchasing_user.set_password('testpass123')
@@ -44,7 +53,8 @@ class SecurityTests(TestCase):
             username='manager_user',
             defaults={
                 'email': 'manager@example.com',
-                'role': 'manager'
+                'role': 'manager',
+                'cafe': self.cafe,
             }
         )
         self.manager_user.set_password('testpass123')
@@ -56,7 +66,8 @@ class SecurityTests(TestCase):
             defaults={
                 'email': 'inactive@example.com',
                 'role': 'kitchen',
-                'is_active': False
+                'is_active': False,
+                'cafe': self.cafe,
             }
         )
         self.inactive_user.set_password('testpass123')
@@ -68,14 +79,17 @@ class SecurityTests(TestCase):
         Product.objects.filter(name='Test Product').delete()
         Supplier.objects.filter(name='Test Supplier').delete()
 
-        self.category, _ = Category.objects.get_or_create(name='Test Category')
-        self.unit, _ = Unit.objects.get_or_create(name='Kilogram', defaults={'symbol': 'kg'})
+        self.category, _ = Category.objects.get_or_create(
+            name='Test Category', defaults={'cafe': self.cafe})
+        self.unit, _ = Unit.objects.get_or_create(
+            name='Kilogram', defaults={'symbol': 'kg', 'cafe': self.cafe})
         self.product, _ = Product.objects.get_or_create(
             name='Test Product',
             defaults={
                 'category': self.category,
                 'unit': self.unit,
-                'min_stock': 10
+                'min_stock': 10,
+                'cafe': self.cafe,
             }
         )
         self.supplier, _ = Supplier.objects.get_or_create(
@@ -83,7 +97,8 @@ class SecurityTests(TestCase):
             defaults={
                 'contact_person': 'John Doe',
                 'email': 'supplier@example.com',
-                'phone': '1234567890'
+                'phone': '1234567890',
+                'cafe': self.cafe,
             }
         )
 
@@ -91,14 +106,14 @@ class SecurityTests(TestCase):
         """Test that unauthorized users cannot access restricted resources"""
         # Test access to purchasing views without login
         urls_to_test = [
-            reverse('purchase_requests_list'),
-            reverse('supplier_list'),
-            reverse('product_list'),
-            reverse('reports_dashboard'),
-            reverse('backup_management'),
-            reverse('system_monitoring'),
-            reverse('user_list'),
-            reverse('finance_dashboard'),
+            reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('product_list', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('user_list', kwargs={'cafe_code': CAFE_CODE}),
+            reverse('finance_dashboard', kwargs={'cafe_code': CAFE_CODE}),
         ]
 
         for url in urls_to_test:
@@ -114,31 +129,33 @@ class SecurityTests(TestCase):
         # Define role permissions
         role_permissions = {
             'kitchen': [
-                reverse('dashboard'),
-                reverse('purchase_request'),
-                reverse('notifications_list'),
+                reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                # آشپزخانه لیست درخواستهای خودش را میبیند (نمای موبایل)
+                reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}),
             ],
             'purchasing': [
-                reverse('dashboard'),
-                reverse('purchase_requests_list'),
-                reverse('supplier_list'),
-                reverse('product_list'),
-                reverse('reports_dashboard'),
-                reverse('purchase_request'),
-                reverse('notifications_list'),
+                reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('product_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}),
             ],
             'manager': [
-                reverse('dashboard'),
-                reverse('backup_management'),
-                reverse('system_monitoring'),
-                reverse('user_list'),
-                reverse('finance_dashboard'),
-                reverse('purchase_requests_list'),
-                reverse('supplier_list'),
-                reverse('product_list'),
-                reverse('reports_dashboard'),
-                reverse('purchase_request'),
-                reverse('notifications_list'),
+                reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('user_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('finance_dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('purchase_requests_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('product_list', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
+                reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}),
             ]
         }
 
@@ -157,11 +174,17 @@ class SecurityTests(TestCase):
             # Test allowed URLs
             for url in allowed_urls:
                 response = self.client.get(url)
-                self.assertEqual(
-                    response.status_code, 200,
-                    f"{role_name} should have access to {url}"
+                # ۲۰۰ = دسترسی دارد؛ ۳۰۲ فقط اگر به یکی از صفحات مجاز خودش
+                # ریدایرکت شود (مثلاً dashboard مدیر → داشبورد مالی)
+                ok = response.status_code == 200 or (
+                    response.status_code == 302
+                    and any(response['Location'].startswith(u) for u in allowed_urls)
                 )
-
+                self.assertTrue(
+                    ok,
+                    f"{role_name} should have access to {url} "
+                    f"(got {response.status_code} → {response.get('Location', '')})"
+                )
             # Test restricted URLs (URLs not in allowed list)
             all_urls = set()
             for urls in role_permissions.values():
@@ -186,11 +209,11 @@ class SecurityTests(TestCase):
             'password': 'testpass123'
         })
         self.assertEqual(response.status_code, 200)  # Form re-displayed
-        self.assertContains(response, 'Invalid credentials')
+        self.assertContains(response, 'نام کاربری یا رمز عبور اشتباه است')
 
         # Try direct access to protected resource
         self.client.login(username='inactive_user', password='testpass123')
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)  # Redirect to login
 
     def test_sql_injection_prevention(self):
@@ -215,7 +238,7 @@ class SecurityTests(TestCase):
         self.client.login(username='purchasing_user', password='testpass123')
 
         # Test supplier search
-        response = self.client.get(reverse('supplier_list'), {
+        response = self.client.get(reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}), {
             'search': "' OR '1'='1"
         })
         self.assertEqual(response.status_code, 200)
@@ -234,7 +257,7 @@ class SecurityTests(TestCase):
 
         # Test in purchase request form
         for payload in xss_payloads:
-            response = self.client.post(reverse('purchase_request'), {
+            response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
                 'product_id': [self.product.id],
                 'item_quantity': ['5'],
                 'item_description': [payload]
@@ -252,7 +275,7 @@ class SecurityTests(TestCase):
 
         # Try POST request without CSRF token
         response = self.client.post(
-            reverse('purchase_request'),
+            reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}),
             {
                 'product_id': [self.product.id],
                 'item_quantity': ['5'],
@@ -271,7 +294,7 @@ class SecurityTests(TestCase):
         invalid_quantities = ['-5', '0', 'abc', '999999999999', '1.5.5']
 
         for quantity in invalid_quantities:
-            response = self.client.post(reverse('purchase_request'), {
+            response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
                 'product_id': [self.product.id],
                 'item_quantity': [quantity],
                 'item_description': ['Test']
@@ -286,7 +309,7 @@ class SecurityTests(TestCase):
         invalid_emails = ['invalid-email', '@example.com', 'user@', 'user@@example.com']
 
         for email in invalid_emails:
-            response = self.client.post(reverse('user_create'), {
+            response = self.client.post(reverse('user_create', kwargs={'cafe_code': CAFE_CODE}), {
                 'username': f'testuser_{email.replace("@", "_")}',
                 'email': email,
                 'password1': 'testpass123',
@@ -326,7 +349,7 @@ class SecurityTests(TestCase):
         self.client.login(username='kitchen_user', password='testpass123')
 
         # Access a protected resource
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Simulate session expiry (if session timeout is implemented)
@@ -338,8 +361,8 @@ class SecurityTests(TestCase):
         client2.login(username='kitchen_user', password='testpass123')
 
         # Both should work (or one should be invalidated based on policy)
-        response1 = self.client.get(reverse('dashboard'))
-        response2 = client2.get(reverse('dashboard'))
+        response1 = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
+        response2 = client2.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
 
         # At minimum, both requests should not crash
         self.assertIn(response1.status_code, [200, 302])
@@ -351,7 +374,7 @@ class SecurityTests(TestCase):
         weak_passwords = ['123', 'password', '123456', 'qwerty']
 
         for password in weak_passwords:
-            response = self.client.post(reverse('user_create'), {
+            response = self.client.post(reverse('user_create', kwargs={'cafe_code': CAFE_CODE}), {
                 'username': f'weak_user_{password}',
                 'email': f'weak_{password}@example.com',
                 'password1': password,
@@ -369,21 +392,24 @@ class SecurityTests(TestCase):
     def test_data_exposure_prevention(self):
         """Test prevention of sensitive data exposure"""
         # Create test data with sensitive information
-        request = PurchaseRequest.objects.create(user=self.kitchen_user, status='pending')
+        request = PurchaseRequest.objects.create(
+            user=self.kitchen_user, status='pending', cafe=self.cafe)
         order = PurchaseOrder.objects.create(
             request=request,
             supplier=self.supplier,
             order_number='SECURE-001'
         )
         invoice = Invoice.objects.create(
-            order=order,
+            purchase_order=order,
             invoice_number='SECURE-INV-001',
-            total_amount=1000.00
+            due_date=timezone.now().date(),
+            total_amount=1000.00,
+            cafe=self.cafe,
         )
 
         # Test that sensitive data is not exposed in API responses
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -406,12 +432,18 @@ class SecurityTests(TestCase):
 
     def test_error_information_leakage(self):
         """Test that errors don't leak sensitive information"""
+        # کاربر واردشده (وگرنه login_required ریدایرکت می‌دهد نه ۴۰۴)
+        self.client.login(username='manager_user', password='testpass123')
+
         # Test accessing non-existent resources
         urls_to_test = [
             '/nonexistent/',
-            reverse('purchase_request_detail', args=[99999]),
-            reverse('purchase_order_detail', args=[99999]),
-            reverse('invoice_detail', args=[99999]),
+            reverse('purchase_request_detail',
+                    kwargs={'cafe_code': CAFE_CODE, 'request_id': 99999}),
+            reverse('purchase_order_detail',
+                    kwargs={'cafe_code': CAFE_CODE, 'order_id': 99999}),
+            reverse('invoice_detail',
+                    kwargs={'cafe_code': CAFE_CODE, 'invoice_id': 99999}),
         ]
 
         for url in urls_to_test:
@@ -464,7 +496,7 @@ class SecurityTests(TestCase):
         request2 = PurchaseRequest.objects.create(user=self.purchasing_user, status='pending')
 
         # Kitchen user should only see their own requests in certain views
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Check that request2 is not visible to kitchen_user
@@ -478,7 +510,7 @@ class SecurityTests(TestCase):
         self.client.login(username='kitchen_user', password='testpass123')
 
         # Create purchase request
-        response = self.client.post(reverse('purchase_request'), {
+        response = self.client.post(reverse('purchase_request', kwargs={'cafe_code': CAFE_CODE}), {
             'product_id': [self.product.id],
             'item_quantity': ['5'],
             'item_description': ['Security audit test']
@@ -499,7 +531,7 @@ class SecurityTests(TestCase):
         self.client.login(username='manager_user', password='testpass123')
 
         # Try to create user with invalid data
-        response = self.client.post(reverse('user_create'), {
+        response = self.client.post(reverse('user_create', kwargs={'cafe_code': CAFE_CODE}), {
             'username': '',  # Empty username
             'email': 'invalid-email',
             'password1': '123',  # Weak password

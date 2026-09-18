@@ -6,6 +6,8 @@ from purchases.models import Product, PriceHistory, Category, Supplier, User
 from decimal import Decimal
 from django.utils import timezone
 
+CAFE_CODE = 'tc'
+
 @pytest.mark.django_db
 class TestDashboardAPI:
     @pytest.fixture
@@ -41,7 +43,7 @@ class TestDashboardAPI:
 
     def test_dashboard_stats(self, api_client, user, setup_data):
         api_client.force_authenticate(user=user)
-        url = reverse('api_dashboard_stats')
+        url = reverse('api_dashboard_stats', kwargs={'cafe_code': CAFE_CODE})
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
@@ -51,7 +53,7 @@ class TestDashboardAPI:
 
     def test_product_changes_list(self, api_client, user, setup_data):
         api_client.force_authenticate(user=user)
-        url = reverse('api_product_changes')
+        url = reverse('api_product_changes', kwargs={'cafe_code': CAFE_CODE})
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
@@ -61,7 +63,7 @@ class TestDashboardAPI:
 
     def test_high_increase_products(self, api_client, user, setup_data):
         api_client.force_authenticate(user=user)
-        url = reverse('api_high_increase')
+        url = reverse('api_high_increase', kwargs={'cafe_code': CAFE_CODE})
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
@@ -71,7 +73,7 @@ class TestDashboardAPI:
     def test_price_history(self, api_client, user, setup_data):
         product, _, _ = setup_data
         api_client.force_authenticate(user=user)
-        url = reverse('api_price_history', kwargs={'pk': product.id})
+        url = reverse('api_price_history', kwargs={'cafe_code': CAFE_CODE, 'pk': product.id})
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
@@ -79,7 +81,7 @@ class TestDashboardAPI:
 
     def test_filters(self, api_client, user, setup_data):
         api_client.force_authenticate(user=user)
-        url = reverse('api_dashboard_filters')
+        url = reverse('api_dashboard_filters', kwargs={'cafe_code': CAFE_CODE})
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK

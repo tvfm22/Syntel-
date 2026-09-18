@@ -3,10 +3,13 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from purchases.models import (
-    Category, Unit, Product, Supplier, PurchaseRequest,
+    Cafe, Category, Unit, Product, Supplier, PurchaseRequest,
     PurchaseItem, PurchaseOrder, Invoice, Payment, ActivityLog
 )
 import json
+
+# همهٔ URLهای داخل کافه با cafe_code پیشوند می‌شوند
+CAFE_CODE = 'tc'
 
 User = get_user_model()
 
@@ -25,53 +28,61 @@ class APITests(TestCase):
         Product.objects.filter(name='Test Product').delete()
         Supplier.objects.filter(name='Test Supplier').delete()
 
+        # کافه: همهٔ کاربران و داده‌ها به یک کافه وصل‌اند (URLهای کافه‌محور)
+        self.cafe = Cafe.objects.create(name='Test Cafe', code=CAFE_CODE, is_active=True)
+
         # Create test users
         self.kitchen_user = User.objects.create_user(
             username='kitchen_user',
             email='kitchen@example.com',
             password='testpass123',
-            role='kitchen'
+            role='kitchen',
+            cafe=self.cafe,
         )
 
         self.purchasing_user = User.objects.create_user(
             username='purchasing_user',
             email='purchasing@example.com',
             password='testpass123',
-            role='purchasing'
+            role='purchasing',
+            cafe=self.cafe,
         )
 
         self.manager_user = User.objects.create_user(
             username='manager_user',
             email='manager@example.com',
             password='testpass123',
-            role='manager'
+            role='manager',
+            cafe=self.cafe,
         )
 
         # Create basic data
-        self.category = Category.objects.create(name='Test Category')
-        self.unit = Unit.objects.create(name='Kilogram', symbol='kg')
+        self.category = Category.objects.create(name='Test Category', cafe=self.cafe)
+        self.unit = Unit.objects.create(name='Kilogram', symbol='kg', cafe=self.cafe)
         self.product = Product.objects.create(
             name='Test Product',
             category=self.category,
             unit=self.unit,
-            min_stock=10
+            min_stock=10,
+            cafe=self.cafe,
         )
         self.supplier = Supplier.objects.create(
             name='Test Supplier',
             contact_person='John Doe',
             email='supplier@example.com',
-            phone='1234567890'
+            phone='1234567890',
+            cafe=self.cafe,
         )
 
     def test_system_monitoring_api_unauthorized(self):
         """Test system monitoring API without authentication"""
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)  # Redirect to login
 
     def test_system_monitoring_api_authorized(self):
         """Test system monitoring API with proper authentication"""
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -99,7 +110,7 @@ class APITests(TestCase):
             )
 
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -130,7 +141,7 @@ class APITests(TestCase):
     def test_system_monitoring_api_health_checks(self):
         """Test system monitoring API health check functionality"""
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -156,7 +167,7 @@ class APITests(TestCase):
         # self.assertEqual(response.status_code, 200)
 
         # For now, just test that backup management page loads
-        response = self.client.get(reverse('backup_management'))
+        response = self.client.get(reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
     def test_analytics_api_endpoints(self):
@@ -180,7 +191,7 @@ class APITests(TestCase):
         self.client.login(username='purchasing_user', password='testpass123')
 
         # Test reports dashboard (which likely has API-like data)
-        response = self.client.get(reverse('reports_dashboard'))
+        response = self.client.get(reverse('reports_dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Check for analytics data in context
@@ -202,7 +213,7 @@ class APITests(TestCase):
         # self.assertEqual(response.status_code, 200)
 
         # For now, test that regular pages load with AJAX-ready content
-        response = self.client.get(reverse('supplier_list'))
+        response = self.client.get(reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
     def test_api_response_formats(self):
@@ -211,7 +222,7 @@ class APITests(TestCase):
 
         # Test JSON response format
         response = self.client.get(
-            reverse('system_monitoring_api'),
+            reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}),
             HTTP_ACCEPT='application/json'
         )
         self.assertEqual(response.status_code, 200)
@@ -227,7 +238,7 @@ class APITests(TestCase):
 
         # Test with invalid parameters
         response = self.client.get(
-            reverse('system_monitoring_api') + '?invalid_param=test'
+            reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}) + '?invalid_param=test'
         )
         self.assertEqual(response.status_code, 200)  # Should still work
 
@@ -240,7 +251,7 @@ class APITests(TestCase):
 
         # Make multiple rapid requests
         for i in range(10):
-            response = self.client.get(reverse('system_monitoring_api'))
+            response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
             self.assertEqual(response.status_code, 200)
 
         # If rate limiting is implemented, this might eventually fail
@@ -251,8 +262,8 @@ class APITests(TestCase):
         self.client.login(username='manager_user', password='testpass123')
 
         # Make same request multiple times
-        response1 = self.client.get(reverse('system_monitoring_api'))
-        response2 = self.client.get(reverse('system_monitoring_api'))
+        response1 = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
+        response2 = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
 
         self.assertEqual(response1.status_code, 200)
         self.assertEqual(response2.status_code, 200)
@@ -263,17 +274,17 @@ class APITests(TestCase):
     def test_api_authentication(self):
         """Test API authentication and authorization"""
         # Test without authentication
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)
 
         # Test with insufficient permissions
         self.client.login(username='kitchen_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 302)  # Should be denied
 
         # Test with proper permissions
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
     def test_api_data_consistency(self):
@@ -288,7 +299,7 @@ class APITests(TestCase):
         )
 
         self.client.login(username='manager_user', password='testpass123')
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
@@ -314,7 +325,7 @@ class APITests(TestCase):
         self.client.login(username='manager_user', password='testpass123')
 
         start_time = time.time()
-        response = self.client.get(reverse('system_monitoring_api'))
+        response = self.client.get(reverse('system_monitoring_api', kwargs={'cafe_code': CAFE_CODE}))
         end_time = time.time()
 
         self.assertEqual(response.status_code, 200)
@@ -343,7 +354,7 @@ class APITests(TestCase):
         self.client.login(username='purchasing_user', password='testpass123')
 
         # Test Excel export
-        response = self.client.get(reverse('export_to_excel'))
+        response = self.client.get(reverse('export_to_excel', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -352,7 +363,7 @@ class APITests(TestCase):
         self.assertIn('attachment; filename=', response['Content-Disposition'])
 
         # Test PDF export
-        response = self.client.get(reverse('export_to_pdf'))
+        response = self.client.get(reverse('export_to_pdf', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertIn('attachment; filename=', response['Content-Disposition'])
@@ -375,7 +386,7 @@ class APITests(TestCase):
         self.client.login(username='kitchen_user', password='testpass123')
 
         # Test notifications list
-        response = self.client.get(reverse('notifications_list'))
+        response = self.client.get(reverse('notifications_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         for notification in notifications:
@@ -397,7 +408,7 @@ class APITests(TestCase):
             )
 
         self.client.login(username='purchasing_user', password='testpass123')
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         # Check for dashboard data in context
@@ -412,7 +423,8 @@ class APITests(TestCase):
                 name=f'Search Supplier {i+1}',
                 contact_person=f'Contact {i+1}',
                 email=f'supplier{i+1}@example.com',
-                phone='1234567890'
+                phone='1234567890',
+                cafe=self.cafe,
             )
             suppliers.append(supplier)
 
@@ -423,7 +435,7 @@ class APITests(TestCase):
         # self.assertEqual(response.status_code, 200)
 
         # For now, test regular search functionality
-        response = self.client.get(reverse('supplier_list'))
+        response = self.client.get(reverse('supplier_list', kwargs={'cafe_code': CAFE_CODE}))
         self.assertEqual(response.status_code, 200)
 
         for supplier in suppliers:
