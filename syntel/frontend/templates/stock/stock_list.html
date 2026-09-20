@@ -6,219 +6,275 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ لیست موجودی انبار — مینیمال، هماهنگ با داشبورد مسئول انبار ═══ */
-    .stk-wrap { max-width: 1100px; margin: 0 auto; }
-    /* ── هدر یکدست صفحه ── */
-    .stk-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+    /* ═══ لیست موجودی انبار — مینیمال، هماهنگ با دیزاین‌سیستم داشبورد ═══ */
+    /* صفحه به اندازه یک ویوپورت قفل می‌شود؛ جدول داخل خودش اسکرول می‌کند
+       و تا پایین صفحه ادامه دارد (از پایین جدا نمی‌افتد).
+       ارتفاع = ویوپورت منهای padding عمودی main-content (۲۴px بالا و پایین). */
+    .stk-page {
+        max-width: 1400px; margin: 0 auto;
+        display: flex; flex-direction: column;
+        height: calc(100vh - 48px);
+        min-height: 420px;
     }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
+    /* کارت جدول / حالت خالی: باقی ارتفاع صفحه را می‌گیرند */
+    .stk-page > .stk-table-card,
+    .stk-page > .stk-empty { flex: 1 1 auto; min-height: 0; }
+
+    /* ── هدر صفحه (تک‌ردیفه، بدون نوارهای تودرتو) ── */
+    .stk-page .page-header {
+        height: auto; min-height: 64px;
+        padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4);
+        flex-wrap: wrap; gap: var(--space-3);
+        flex-shrink: 0;
+        /* گوشه‌های کم‌انحنا (به‌جای radius-3xl پیش‌فرض لایوت) */
+        border-radius: var(--radius-lg);
+    }
+    .stk-head-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .stk-head-icon {
+        width: 44px; height: 44px; flex-shrink: 0;
+        border-radius: var(--radius-md);
         background: rgba(139,92,246,0.1); color: var(--accent-indigo);
         display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     }
-    .ph-title { min-width: 0; }
-    .ph-title h1 {
-        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.4; margin: 0;
+    .stk-head-title { min-width: 0; }
+    .stk-head-title h1 {
+        margin: 0; font-size: 1.15rem; font-weight: 800; line-height: 1.4;
+        color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
     }
-    .ph-title .page-sub {
-        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
-        margin-top: 0.1rem; line-height: 1.7;
-    }
+    .stk-page .btn { height: 40px; padding: 0 1.1rem; font-size: 0.82rem; }
 
-    /* ── نوار فیلتر: انبارها + جستجو ── */
-    .stk-filter-bar {
-        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: 0.55rem 0.9rem; margin-bottom: var(--space-3);
+    /* ── تولبار واحد: انبار + جستجو + وضعیت ── */
+    .stk-toolbar {
+        display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3);
+        margin-bottom: var(--space-4);
+        flex-shrink: 0;
     }
-    .stk-filter-bar .stk-bar-label {
-        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.15rem;
-        white-space: nowrap;
+    .stk-wh-tabs {
+        display: inline-flex; align-items: center; gap: 4px; padding: 4px;
+        background: var(--bg-subtle); border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg); flex-wrap: wrap;
     }
-    .stk-filter-pill {
+    .stk-wh-tab {
         display: inline-flex; align-items: center; gap: 0.35rem;
-        padding: 0.3rem 0.85rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
-        text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); transition: all var(--transition-fast); white-space: nowrap;
-        cursor: pointer; font-family: 'Vazir', sans-serif;
-    }
-    .stk-filter-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .stk-filter-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
-    .stk-filter-pill.active-amber { background: #f59e0b; border-color: #f59e0b; color: white; }
-
-    /* فرم جستجو */
-    .stk-search-form {
-        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: 0.55rem 0.9rem; margin-bottom: var(--space-4);
-    }
-    .stk-search-input {
-        height: 32px; padding: 0 0.75rem; min-width: 190px; flex: 1;
-        border: 1.5px solid var(--border-default); border-radius: 999px;
-        font-family: 'Vazir', sans-serif; font-size: 0.78rem; font-weight: 600;
-        background: var(--bg-card); color: var(--text-primary); transition: all var(--transition-fast);
-    }
-    .stk-search-input:focus { outline: none; border-color: var(--accent-indigo); }
-    .stk-clear-link {
-        border: none; background: none; cursor: pointer; font-family: 'Vazir', sans-serif;
-        font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm);
-        color: #b91c1c; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
-    }
-    .stk-clear-link:hover { background: #fef2f2; }
-
-    /* نوار اطلاعات انبار انتخاب‌شده */
-    .stk-wh-strip {
-        display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 0.6rem 1rem; margin-bottom: var(--space-4);
-        font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;
-    }
-    .stk-wh-strip i { color: var(--accent-indigo); }
-    .stk-wh-strip b { color: var(--text-primary); }
-
-    /* ── گرید کارت‌های کالا ── */
-    .stk-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: var(--space-4);
-    }
-    .stk-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-2xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5);
-        border-inline-start: 4px solid var(--accent-green);
-        cursor: pointer; transition: all var(--transition-fast);
-        display: flex; flex-direction: column;
-    }
-    .stk-card.low-stock { border-inline-start-color: #EF4444; }
-    .stk-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .stk-card.expanded { border-inline-start-color: var(--accent-indigo); }
-
-    .stk-card-head {
-        display: flex; justify-content: space-between; align-items: center;
-        gap: var(--space-2); margin-bottom: var(--space-2);
-    }
-    .stk-card-name {
-        font-size: 0.95rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.4rem; min-width: 0;
-    }
-    .stk-card-name .stk-chevron {
-        font-size: 0.8rem; color: var(--text-muted); transition: transform 0.25s;
-    }
-    .stk-card.expanded .stk-chevron { transform: rotate(180deg); }
-
-    /* چیپ‌ها */
-    .stk-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem;
-        border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;
-    }
-    .stk-chip.category  { background: #e0e7ff; color: #3730a3; }
-    .stk-chip.warehouse { background: #d1fae5; color: #065f46; }
-    .stk-chip.low-warn  { background: #fee2e2; color: #b91c1c; }
-
-    /* کادر موجودی */
-    .stk-total-box {
-        background: var(--bg-subtle); border-radius: var(--radius-lg);
-        padding: 0.65rem 0.9rem; display: flex; justify-content: space-between;
-        align-items: center; margin-top: var(--space-2);
-    }
-    .stk-total-label { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; }
-    .stk-total-value { font-size: 1.25rem; font-weight: 800; color: var(--accent-green); }
-    .stk-card.low-stock .stk-total-value { color: #EF4444; }
-    .stk-min-line {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.35rem 0.9rem 0; font-size: 0.75rem;
-    }
-    .stk-min-line .lbl { color: var(--text-muted); font-weight: 600; }
-    .stk-min-line .val { color: var(--text-secondary); font-weight: 700; }
-
-    /* برندها — بازشونده با کلیک */
-    .stk-details {
-        display: none; margin-top: var(--space-3); padding-top: var(--space-3);
-        border-top: 1px dashed var(--border-default);
-    }
-    .stk-card.expanded .stk-details { display: block; }
-    .stk-brand-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.35rem 0.6rem; background: #faf5ff; border: 1px solid #f3e8ff;
-        border-radius: var(--radius-md); margin-bottom: 0.2rem;
-    }
-    .stk-brand-name { font-size: 0.82rem; font-weight: 700; color: #6b21a8; }
-    .stk-brand-qty { font-size: 0.82rem; font-weight: 800; color: #6b21a8; }
-    .stk-brand-rate {
-        font-size: 0.72rem; color: #a78bfa; margin: 0 0.6rem 0.35rem;
-    }
-    .stk-unbranded-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.35rem 0.6rem; background: var(--bg-subtle); border: 1px solid var(--border-light);
-        border-radius: var(--radius-md); margin-bottom: 0.2rem;
-    }
-    .stk-unbranded-name { font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
-    .stk-unbranded-qty { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
-
-    /* پاورقی */
-    .stk-card-foot {
-        display: flex; justify-content: space-between; align-items: center;
-        padding-top: var(--space-3); margin-top: var(--space-3);
-        border-top: 1px solid var(--border-light); font-size: 0.72rem;
-    }
-    .stk-foot-date { color: var(--text-muted); }
-    .stk-history-link {
-        color: #1d4ed8; text-decoration: none; font-weight: 700;
-        display: inline-flex; align-items: center; gap: 0.25rem;
-        padding: 0.2rem 0.5rem; border-radius: var(--radius-sm);
+        padding: 0.4rem 0.9rem; border-radius: var(--radius-sm);
+        font-size: 0.8rem; font-weight: 600; text-decoration: none;
+        color: var(--text-secondary); white-space: nowrap;
         transition: all var(--transition-fast);
     }
-    .stk-history-link:hover { background: #eff6ff; }
+    .stk-wh-tab:hover { color: var(--text-primary); background: rgba(139,92,246,0.06); }
+    .stk-wh-tab.active {
+        background: var(--bg-card); color: var(--accent-indigo);
+        font-weight: 700; box-shadow: var(--shadow-sm);
+    }
+    .stk-spacer { flex: 1; }
 
-    /* ── صفحه‌بندی ── */
-    .stk-pagination {
-        display: flex; justify-content: center; gap: 0.5rem; margin-top: var(--space-5);
-        padding: 1rem 0;
+    .stk-search-box { position: relative; flex: 1; min-width: 220px; max-width: 330px; }
+    .stk-search-box > i {
+        position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
     }
-    .stk-page-link {
-        padding: 0.4rem 1rem; border-radius: 999px; text-decoration: none;
-        background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); font-weight: 700; font-size: 0.8rem;
-        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
+    .stk-search-box input {
+        width: 100%; height: 40px; padding: 0 2.4rem 0 0.9rem;
+        border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
+        transition: all var(--transition-fast);
     }
-    .stk-page-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .stk-page-info {
-        padding: 0.4rem 1rem; border-radius: 999px; background: var(--accent-indigo);
-        color: white; font-weight: 700; font-size: 0.8rem;
+    .stk-search-box input:focus {
+        outline: none; border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+    }
+
+    .stk-toggle {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        height: 40px; padding: 0 0.85rem; cursor: pointer;
+        border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        background: var(--bg-card); color: var(--text-secondary);
+        font-size: 0.8rem; font-weight: 600; white-space: nowrap;
+        transition: all var(--transition-fast);
+    }
+    .stk-toggle:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+    .stk-toggle.active {
+        background: rgba(249,115,22,0.08);
+        border-color: rgba(249,115,22,0.35); color: #EA580C;
+    }
+    .stk-clear {
         display: inline-flex; align-items: center; gap: 0.3rem;
+        height: 40px; padding: 0 0.7rem; text-decoration: none;
+        font-size: 0.78rem; font-weight: 600; color: #b91c1c;
+        border-radius: var(--radius-lg); transition: all var(--transition-fast);
+    }
+    .stk-clear:hover { background: #fef2f2; }
+
+    /* ── نوار اطلاعات انبار انتخاب‌شده ── */
+    .stk-wh-info {
+        display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4);
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        padding: 0.7rem 1.1rem; margin-bottom: var(--space-4);
+        font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);
+    }
+    .stk-wh-info span { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .stk-wh-info i { color: var(--accent-indigo); }
+    .stk-wh-info b { color: var(--text-primary); }
+    .stk-wh-info .stk-wh-count {
+        margin-inline-start: auto; padding: 0.2rem 0.7rem;
+        border-radius: 999px; background: var(--bg-subtle);
+        border: 1px solid var(--border-light); font-size: 0.75rem;
     }
 
-    /* حالت خالی */
+    /* ── جدول ── */
+    .stk-page .table-header { flex-wrap: wrap; gap: var(--space-3); flex-shrink: 0; }
+    /* همه اقلام در یک صفحه‌اند؛ جدول داخل خودش اسکرول می‌شود
+       (به‌جای رفتن به «صفحه بعد»).
+       ارتفاع جدول با flex پر می‌شود تا تا پایین صفحه ادامه داشته باشد. */
+    .stk-table-card {
+        display: flex; flex-direction: column;
+        min-height: 0; overflow: hidden;
+    }
+    /* min-height:0 حیاتی است؛ وگرنه flex-item تا اندازه محتوا رشد می‌کند
+       و به‌جای اسکرول داخلی، کل صفحه بلند می‌شود. */
+    .stk-table-scroll {
+        overflow: auto;
+        flex: 1 1 0;
+        min-height: 0;
+    }
+    .stk-table { min-width: 1040px; }
+    .stk-table th { white-space: nowrap; }
+    .stk-table td { vertical-align: middle; }
+    /* سلول‌های فشرده‌تر تا ارتفاع ردیف‌ها کم بماند */
+    .stk-table td, .stk-table th { padding: 10px var(--space-4); }
+
+    /* عرض ستون‌ها: ستون محصول پهن‌تر تا نام‌ها در یک/دو خط جا شوند */
+    .stk-th-prod { width: 260px; }
+    .stk-th-cat { width: 130px; }
+    .stk-th-num { width: 110px; }
+    .stk-th-brand { width: 250px; }
+    .stk-th-date { width: 120px; }
+    .stk-th-act { width: 96px; }
+
+    /* هدر چسبان — با اسکرول جدول، نام ستون‌ها از دست نمی‌روند */
+    .stk-table thead th {
+        position: sticky; top: 0; z-index: 2;
+        background: var(--bg-subtle);
+    }
+
+    /* سلول محصول */
+    .stk-prod { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+    .stk-prod-icon {
+        width: 34px; height: 34px; flex-shrink: 0;
+        border-radius: var(--radius-md);
+        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.82rem; font-weight: 700;
+    }
+    .stk-prod-icon.low { background: rgba(239,68,68,0.1); color: #EF4444; }
+    .stk-prod-body { min-width: 0; }
+    .stk-prod-name {
+        font-size: 0.86rem; font-weight: 700; color: var(--text-primary);
+        line-height: 1.45;
+        /* حداکثر دو خط؛ بقیه با … کوتاه می‌شود تا ارتفاع ردیف ثابت بماند */
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .stk-prod-sub {
+        font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;
+        display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    }
+
+    /* دسته‌بندی: تک‌خطی تا ارتفاع ردیف را بالا نبرد */
+    .stk-cat-badge { white-space: nowrap; max-width: 100%; }
+    .stk-wh-name { white-space: nowrap; }
+
+    /* عدد موجودی (داده اصلی سطر — باید غالب باشد) */
+    .stk-qty {
+        font-size: 1rem; font-weight: 800; color: var(--accent-green);
+        white-space: nowrap;
+    }
+    .stk-qty.low { color: #EF4444; }
+    .stk-qty small { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+
+    /* حداقل موجودی (داده ثانویه — عمداً کم‌رنگ‌تر تا با موجودی رقابت نکند) */
+    .stk-min { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+    .stk-min small { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+    .stk-min.dash { color: var(--text-muted); font-weight: 500; }
+
+    /* برندها در جدول — تک‌خطی و فشرده تا ارتفاع ردیف‌ها کم بماند */
+    .stk-brand-cell {
+        display: flex; flex-wrap: nowrap; align-items: center; gap: 0.25rem;
+        overflow: hidden;
+    }
+    .stk-brand-chip {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        padding: 0.15rem 0.55rem; border-radius: 999px;
+        background: #faf5ff; border: 1px solid #f3e8ff;
+        color: #6b21a8; font-size: 0.72rem; font-weight: 700;
+        max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        flex: 0 1 auto; min-width: 0;
+    }
+    .stk-brand-more {
+        display: inline-flex; align-items: center; flex-shrink: 0;
+        padding: 0.15rem 0.55rem; border-radius: 999px;
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        color: var(--text-muted); font-size: 0.72rem; font-weight: 700;
+    }
+    .stk-brand-cell .stk-brand-none { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* دکمه تاریخچه */
+    .stk-act {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        height: 32px; padding: 0 0.7rem;
+        border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+        background: var(--bg-card); color: var(--text-secondary);
+        font-size: 0.78rem; font-weight: 500; text-decoration: none;
+        white-space: nowrap; transition: all var(--transition-fast);
+    }
+    .stk-act:hover {
+        color: #2563EB; border-color: rgba(59,130,246,0.4);
+        background: rgba(59,130,246,0.07);
+    }
+
+    /* ── حالت خالی ── */
     .stk-empty {
-        text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
-        background: var(--bg-card); border-radius: var(--radius-3xl);
-        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
+        text-align: center; padding: var(--space-8) var(--space-6);
+        background: var(--bg-card); border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-3xl); box-shadow: var(--shadow-sm);
     }
-    .stk-empty .stk-empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
-    .stk-empty h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 1rem; }
+    .stk-empty > i {
+        display: block; font-size: 2.4rem; margin-bottom: var(--space-4);
+        color: var(--text-muted); opacity: 0.6;
+    }
+    .stk-empty h3 {
+        margin: 0 0 var(--space-2); font-size: 1rem; font-weight: 700;
+        color: var(--text-secondary);
+    }
+    .stk-empty p {
+        margin: 0 0 var(--space-5); font-size: 0.82rem; color: var(--text-muted);
+    }
+    .stk-empty .btn { height: 40px; }
 
+    /* ── ریسپانسیو ── */
+    @media (max-width: 992px) {
+        .stk-search-box { max-width: none; flex-basis: 100%; order: 10; }
+        .stk-spacer { display: none; }
+    }
     @media (max-width: 700px) {
-        .stk-grid { grid-template-columns: 1fr; }
-        .stk-search-input { min-width: 100%; }
+        .stk-wh-tabs { width: 100%; }
+        .stk-wh-tab { flex: 1; justify-content: center; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="stk-wrap">
+<div class="stk-page">
 
-    <!-- هدر صفحه -->
+    <!-- ═══ هدر صفحه: عنوان + اکشن اصلی ═══ -->
     <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
-            <div class="ph-title">
+        <div class="stk-head-main">
+            <div class="stk-head-icon"><i class="fas fa-boxes-stacked"></i></div>
+            <div class="stk-head-title">
                 <h1>موجودی انبارها</h1>
             </div>
         </div>
@@ -231,50 +287,57 @@
         </div>
     </div>
 
-    <!-- فیلتر انبارها -->
-    {% if warehouses %}
-    <div class="stk-filter-bar">
-        <span class="stk-bar-label"><i class="fas fa-warehouse"></i> انبار:</span>
-        <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if search_query %}?search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           class="stk-filter-pill {% if not selected_warehouse %}active{% endif %}">
-            <i class="fas fa-layer-group"></i> همه انبارها
-        </a>
-        {% for wh in warehouses %}
-        <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ wh.id }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           class="stk-filter-pill {% if selected_warehouse.id == wh.id %}active{% endif %}">
-            <i class="fas fa-warehouse"></i> {{ wh.name }}
-        </a>
-        {% endfor %}
-    </div>
-    {% endif %}
+    <!-- ═══ تولبار: فیلتر انبار + جستجو + وضعیت ═══ -->
+    <form method="get" class="stk-toolbar">
+        {% if warehouses %}
+        <div class="stk-wh-tabs">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if search_query %}?search={{ search_query }}{% endif %}{% if show_low_stock %}{% if search_query %}&{% else %}?{% endif %}low_stock=on{% endif %}"
+               class="stk-wh-tab {% if not selected_warehouse %}active{% endif %}">
+                <i class="fas fa-layer-group"></i> همه انبارها
+            </a>
+            {% for wh in warehouses %}
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ wh.id }}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
+               class="stk-wh-tab {% if selected_warehouse.id == wh.id %}active{% endif %}">
+                <i class="fas fa-warehouse"></i> {{ wh.name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-    <!-- فرم جستجو -->
-    <form method="get" class="stk-search-form">
+        <!-- نگه‌داشتن انبار انتخاب‌شده هنگام جستجو -->
         {% if selected_warehouse %}
         <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
         {% endif %}
-        <span class="stk-bar-label"><i class="fas fa-search"></i> جستجو:</span>
-        <input type="text" name="search" value="{{ search_query|default:'' }}"
-               placeholder="نام محصول یا دسته‌بندی..." class="stk-search-input">
-        <label class="stk-filter-pill {% if show_low_stock %}active-amber{% endif %}" style="cursor:pointer">
+
+        <div class="stk-spacer"></div>
+
+        <div class="stk-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" name="search" value="{{ search_query|default:'' }}"
+                   placeholder="نام محصول، برند یا دسته‌بندی...">
+        </div>
+
+        <label class="stk-toggle {% if show_low_stock %}active{% endif %}">
             <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %}
                    style="display:none" onchange="this.form.submit()">
             <i class="fas fa-triangle-exclamation"></i> فقط موجودی کم
         </label>
-        <button type="submit" class="stk-filter-pill" style="background:var(--accent-indigo);border-color:var(--accent-indigo);color:white">
+
+        <button type="submit" class="btn btn-primary">
             <i class="fas fa-magnifying-glass"></i> جستجو
         </button>
+
         {% if search_query or show_low_stock %}
         <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if selected_warehouse %}?warehouse={{ selected_warehouse.id }}{% endif %}"
-           class="stk-clear-link">
+           class="stk-clear">
             <i class="fas fa-xmark"></i> حذف فیلترها
         </a>
         {% endif %}
     </form>
 
-    <!-- نوار انبار انتخاب‌شده -->
+    <!-- ═══ نوار اطلاعات انبار انتخاب‌شده ═══ -->
     {% if selected_warehouse %}
-    <div class="stk-wh-strip">
+    <div class="stk-wh-info">
         <span><i class="fas fa-warehouse"></i> <b>{{ selected_warehouse.name }}</b></span>
         {% if selected_warehouse.location %}
         <span><i class="fas fa-map-marker-alt"></i> {{ selected_warehouse.location }}</span>
@@ -282,134 +345,197 @@
         {% if selected_warehouse.manager_name %}
         <span><i class="fas fa-user-tie"></i> {{ selected_warehouse.manager_name }}</span>
         {% endif %}
+        <span class="stk-wh-count">{{ page_obj.paginator.count }} قلم کالا</span>
     </div>
     {% endif %}
 
-    <!-- کارت‌های کالا — برندها با کلیک باز می‌شوند -->
-    {% if page_obj %}
-    <div class="stk-grid">
-        {% for group in page_obj %}
-        <div class="stk-card {% if group.is_low_stock %}low-stock{% endif %}"
-             onclick="this.classList.toggle('expanded')" title="برای مشاهده برندها کلیک کنید">
-
-            <!-- هدر: نام محصول + هشدار کمبود -->
-            <div class="stk-card-head">
-                <span class="stk-card-name">
-                    {{ group.product.name }}
-                    <span class="stk-chevron"><i class="fas fa-chevron-down"></i></span>
-                </span>
-                {% if group.is_low_stock %}
-                <span class="stk-chip low-warn"><i class="fas fa-triangle-exclamation"></i> کمبود</span>
-                {% endif %}
-            </div>
-
-            <!-- نشان‌های دسته‌بندی و انبار -->
-            <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
-                {% if group.product.category %}
-                <span class="stk-chip category">{{ group.product.category.name }}</span>
-                {% endif %}
-                {% if group.warehouse %}
-                <span class="stk-chip warehouse"><i class="fas fa-warehouse"></i> {{ group.warehouse.name }}</span>
-                {% endif %}
-            </div>
-
-            <!-- موجودی کل (واحد پایه) -->
-            <div class="stk-total-box">
-                <span class="stk-total-label">موجودی کل (واحد پایه)</span>
-                <span class="stk-total-value">
-                    {{ group.total_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
-                </span>
-            </div>
-            {% if group.total_min_quantity > 0 %}
-            <div class="stk-min-line">
-                <span class="lbl">حداقل موجودی</span>
-                <span class="val">
-                    {{ group.total_min_quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
-                </span>
-            </div>
-            {% endif %}
-
-            <!-- بخش بازشونده: برندها -->
-            <div class="stk-details">
-                {% if group.brand_items %}
-                <div style="margin-bottom:0.4rem">
-                    {% for si in group.brand_items %}
-                    <div class="stk-brand-row">
-                        <span class="stk-brand-name">
-                            <i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}
-                        </span>
-                        <span class="stk-brand-qty">
-                            {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
-                                {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
-                            {% else %}
-                                {{ si.quantity|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
-                    <div class="stk-brand-rate">
-                        نرخ تبدیل: هر {{ si.product_brand.trade_unit }} = {{ si.product_brand.conversion_rate|trim_decimal }}{% if group.product.unit %} {{ group.product.unit.name }}{% endif %}
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                {% for si in group.unbranded_items %}
-                <div class="stk-unbranded-row">
-                    <span class="stk-unbranded-name">موجودی عمومی</span>
-                    <span class="stk-unbranded-qty">
-                        {{ si.quantity|trim_decimal }}{% if si.unit %} {{ si.unit.name }}{% elif group.product.unit %} {{ group.product.unit.name }}{% endif %}
-                    </span>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- پاورقی -->
-            <div class="stk-card-foot">
-                <span class="stk-foot-date">
-                    <i class="fas fa-clock"></i> آخرین بروزرسانی: {{ group.first_item.last_updated|date:"Y/m/d H:i" }}
-                </span>
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=group.first_item.id %}"
-                   class="stk-history-link" onclick="event.stopPropagation()">
-                    <i class="fas fa-chart-line"></i> تاریخچه
-                </a>
-            </div>
+    <!-- ═══ جدول موجودی ═══ -->
+    {% if page_obj.object_list %}
+    <div class="table-card stk-table-card">
+        <div class="table-header">
+            <span class="table-title"><i class="fas fa-list"></i> اقلام موجودی</span>
+            <span class="table-meta">
+                نمایش {{ page_obj.start_index }}–{{ page_obj.end_index }}
+                از {{ page_obj.paginator.count }} قلم
+            </span>
         </div>
-        {% endfor %}
+
+        <div class="stk-table-scroll">
+            <table class="data-table stk-table">
+                <thead>
+                    <tr>
+                        <th class="stk-th-prod">محصول</th>
+                        <th class="stk-th-cat">دسته‌بندی</th>
+                        <th class="stk-th-num">انبار</th>
+                        <th class="stk-th-num">موجودی کل</th>
+                        <th class="stk-th-num">حداقل موجودی</th>
+                        <th class="stk-th-brand">برندها</th>
+                        <th class="stk-th-num">وضعیت</th>
+                        <th class="stk-th-date">آخرین بروزرسانی</th>
+                        <th class="stk-th-act">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in page_obj %}
+                    <tr>
+                        <!-- محصول -->
+                        <td>
+                            <div class="stk-prod">
+                                <div class="stk-prod-icon {% if group.is_low_stock %}low{% endif %}">
+                                    {{ group.product.name|slice:":1" }}
+                                </div>
+                                <div class="stk-prod-body">
+                                    <div class="stk-prod-name" title="{{ group.product.name }}">{{ group.product.name }}</div>
+                                    <div class="stk-prod-sub">
+                                        {% if group.product.unit %}
+                                        <span><i class="fas fa-ruler"></i> {{ group.product.unit.name }}</span>
+                                        {% endif %}
+                                        {% if group.brand_items %}
+                                        <span>• {{ group.brand_items|length }} برند</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- دسته‌بندی -->
+                        <td>
+                            {% if group.product.category %}
+                            <span class="badge badge-neutral stk-cat-badge" title="{{ group.product.category.name }}">{{ group.product.category.name }}</span>
+                            {% else %}
+                            <span style="color:var(--text-muted)">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- انبار -->
+                        <td>
+                            {% if group.warehouse %}
+                            <span class="stk-wh-name" style="font-weight:600;color:var(--text-secondary)">
+                                <i class="fas fa-warehouse" style="color:var(--text-muted)"></i>
+                                {{ group.warehouse.name }}
+                            </span>
+                            {% else %}
+                            <span style="color:var(--text-muted)">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- موجودی کل -->
+                        <td>
+                            <span class="stk-qty {% if group.is_low_stock %}low{% endif %}">
+                                {{ group.total_quantity|trim_decimal }}
+                                <small>{% if group.product.unit %}{{ group.product.unit.name }}{% endif %}</small>
+                            </span>
+                        </td>
+
+                        <!-- حداقل موجودی -->
+                        <td>
+                            {% if group.total_min_quantity > 0 %}
+                            <span class="stk-min">
+                                {{ group.total_min_quantity|trim_decimal }}
+                                <small>{% if group.product.unit %}{{ group.product.unit.name }}{% endif %}</small>
+                            </span>
+                            {% else %}
+                            <span class="stk-min dash">تعیین نشده</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- برندها -->
+                        <td>
+                            <div class="stk-brand-cell">
+                                {% for si in group.brand_items|slice:":3" %}
+                                <span class="stk-brand-chip" title="{{ si.product_brand.brand_name }}">
+                                    <i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}
+                                    {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
+                                    — {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
+                                    {% else %}
+                                    — {{ si.quantity|trim_decimal }}
+                                    {% endif %}
+                                </span>
+                                {% endfor %}
+
+                                {% if group.brand_items|length > 3 %}
+                                <span class="stk-brand-more">+{{ group.brand_items|length|add:"-3" }}</span>
+                                {% endif %}
+
+                                {% if group.unbranded_items %}
+                                <span class="stk-brand-chip" style="background:var(--bg-subtle);border-color:var(--border-light);color:var(--text-secondary)">
+                                    <i class="fas fa-box"></i> موجودی عمومی —
+                                    {% for si in group.unbranded_items %}
+                                        {{ si.quantity|trim_decimal }}{% if not forloop.last %} + {% endif %}
+                                    {% endfor %}
+                                </span>
+                                {% endif %}
+
+                                {% if not group.brand_items and not group.unbranded_items %}
+                                <span class="stk-brand-none">—</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- وضعیت -->
+                        <td>
+                            {% if group.is_low_stock %}
+                            <span class="badge badge-danger">
+                                <i class="fas fa-triangle-exclamation"></i> کمبود
+                            </span>
+                            {% else %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check"></i> کافی
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- آخرین بروزرسانی -->
+                        <td style="color:var(--text-muted);font-size:0.78rem;white-space:nowrap">
+                            {{ group.first_item.last_updated|date:"Y/m/d H:i" }}
+                        </td>
+
+                        <!-- عملیات -->
+                        <td>
+                            <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=group.first_item.id %}"
+                               class="stk-act">
+                                <i class="fas fa-chart-line"></i> تاریخچه
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <!-- صفحه‌بندی -->
-    {% if page_obj.has_other_pages %}
-    <div class="stk-pagination">
-        {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="stk-page-link">
-            <i class="fas fa-chevron-right"></i> قبلی
-        </a>
-        {% endif %}
-
-        <span class="stk-page-info">
-            صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
-        </span>
-
-        {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if selected_warehouse %}&warehouse={{ selected_warehouse.id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}" class="stk-page-link">
-            بعدی <i class="fas fa-chevron-left"></i>
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
 
     {% else %}
-    <!-- حالت خالی -->
+    <!-- ═══ حالت خالی ═══ -->
     <div class="stk-empty">
-        <div class="stk-empty-icon"><i class="fas fa-boxes"></i></div>
+        <i class="fas fa-boxes"></i>
         <h3>
-            {% if selected_warehouse %}هیچ موجودی در انبار «{{ selected_warehouse.name }}» ثبت نشده است{% else %}هیچ موجودی ثبت نشده است{% endif %}
+            {% if search_query %}
+                نتیجه‌ای برای «{{ search_query }}» یافت نشد
+            {% elif show_low_stock %}
+                هیچ کالایی زیر حداقل موجودی نیست 🎉
+            {% elif selected_warehouse %}
+                هیچ موجودی در انبار «{{ selected_warehouse.name }}» ثبت نشده است
+            {% else %}
+                هیچ موجودی ثبت نشده است
+            {% endif %}
         </h3>
+        <p>
+            {% if search_query or show_low_stock %}
+                فیلترها را تغییر دهید یا همه فیلترها را حذف کنید.
+            {% else %}
+                برای شروع، اولین حواله ورود را ثبت کنید.
+            {% endif %}
+        </p>
+        {% if search_query or show_low_stock %}
+        <a href="{% url 'stock_list' cafe_code=cafe_code %}{% if selected_warehouse %}?warehouse={{ selected_warehouse.id }}{% endif %}"
+           class="btn btn-primary">
+            <i class="fas fa-xmark"></i> حذف فیلترها
+        </a>
+        {% elif user.role != 'warehouse' %}
         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary">
             <i class="fas fa-plus"></i> ثبت اولین حواله ورود
         </a>
+        {% endif %}
     </div>
     {% endif %}
 </div>

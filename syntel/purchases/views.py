@@ -6897,10 +6897,12 @@ def stock_list(request: HttpRequest) -> HttpResponse:
     for g in groups_list:
         g['is_low_stock'] = g['total_quantity'] <= g['total_min_quantity']
 
-    # صفحه‌بندی
-    paginator = Paginator(groups_list, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # بدون صفحه‌بندی: همه اقلام در یک صفحه و با اسکرول نمایش داده می‌شوند
+    # (قبلاً Paginator با ۵۰ آیتم بود که کاربر را مجبور به رفتن به صفحه بعد می‌کرد؛
+    #  طبق درخواست، همه محصولات در همان صفحه دیده می‌شوند.)
+    # برای سازگاری با قالب، همچنان یک page_obj می‌فرستیم که همه اقلام را دارد.
+    paginator = Paginator(groups_list, max(len(groups_list), 1))
+    page_obj = paginator.get_page(1)
 
     return render(request, 'stock/stock_list.html', {
         'page_obj': page_obj,
