@@ -4,6 +4,7 @@
 {% block title %}لیست حواله‌های انبار - Kuker{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
     /* ═══ لیست حواله‌ها — هماهنگ با توکن‌های سیستم ═══ */
     .voucher-wrap { max-width: 1250px; margin: 0 auto; }
@@ -29,12 +30,31 @@
     }
 
     /* ── نوار فیلترها ── */
-    .filter-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: var(--space-3); align-items: end;
+    .filter-card {
         background: var(--bg-card); border: 1px solid var(--border-light);
         border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
         padding: var(--space-4); margin-bottom: var(--space-4);
+    }
+    .filter-row {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: var(--space-3); align-items: end;
+    }
+    .filter-more { margin-top: var(--space-3); border-top: 1px dashed var(--border-light); padding-top: var(--space-2); }
+    .filter-more > summary {
+        cursor: pointer; list-style: none; font-size: 0.78rem; font-weight: 700;
+        color: var(--accent-indigo); display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.25rem 0; user-select: none;
+    }
+    .filter-more > summary::-webkit-details-marker { display: none; }
+    .filter-more > summary i { transition: transform var(--transition-fast); }
+    .filter-more[open] > summary i { transform: rotate(180deg); }
+    .filter-more .active-dot {
+        background: var(--accent-indigo); color: #fff; border-radius: 999px;
+        font-size: 0.64rem; font-weight: 700; padding: 0.05rem 0.45rem;
+    }
+    .filter-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: var(--space-3); align-items: end; margin-top: var(--space-3);
     }
     .filter-field { display: flex; flex-direction: column; gap: 0.3rem; }
     .filter-field label {
@@ -68,6 +88,7 @@
     .table-card tbody tr:hover td { background: var(--bg-subtle, #f8fafc); }
     .table-card tbody tr:last-child td { border-bottom: none; }
 
+    .row-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
     .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
     .v-type-badge {
         display: inline-flex; align-items: center; gap: 0.3rem;
@@ -137,99 +158,104 @@
             </div>
         </div>
         <div class="header-actions" style="display:flex;gap:0.6rem;flex-wrap:wrap">
-            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-sm" style="background:var(--accent-indigo);color:#fff">
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> ثبت حوالهٔ جدید
-            </a>
-            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="btn btn-outline btn-sm">
-                <i class="fas fa-chart-line"></i> سوابق حرکت موجودی
-            </a>
-            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-outline btn-sm">
-                <i class="fas fa-warehouse"></i> مدیریت انبارها
             </a>
         </div>
     </div>
 
-    <!-- فیلترها -->
-    <form method="get" class="filter-grid">
-        <div class="filter-field">
-            <label>نوع حواله</label>
-            <select name="type">
-                <option value="">همه</option>
-                {% for key, label in voucher_types.items %}
-                <option value="{{ key }}"{% if f.type == key %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
+    <!-- فیلترها: پرکاربردها همیشه، بقیه در «فیلترهای بیشتر» -->
+    <form method="get" class="filter-card">
+        <div class="filter-row">
+            <div class="filter-field">
+                <label>نوع حواله</label>
+                <select name="type">
+                    <option value="">همه</option>
+                    {% for key, label in voucher_types.items %}
+                    <option value="{{ key }}"{% if f.type == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>وضعیت</label>
+                <select name="status">
+                    <option value="">همه</option>
+                    {% for key, label in statuses.items %}
+                    <option value="{{ key }}"{% if f.status == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>جستجوی شماره</label>
+                <input type="text" name="search" value="{{ f.search }}" placeholder="مثلاً RCV-0001...">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
+                <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline"><i class="fas fa-rotate-right"></i> پاک</a>
+            </div>
         </div>
-        <div class="filter-field">
-            <label>وضعیت</label>
-            <select name="status">
-                <option value="">همه</option>
-                {% for key, label in statuses.items %}
-                <option value="{{ key }}"{% if f.status == key %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>انبار مبدأ</label>
-            <select name="source_warehouse">
-                <option value="">همه</option>
-                {% for wh in warehouses %}
-                <option value="{{ wh.id }}"{% if f.source_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>انبار مقصد</label>
-            <select name="dest_warehouse">
-                <option value="">همه</option>
-                {% for wh in warehouses %}
-                <option value="{{ wh.id }}"{% if f.dest_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>بخش</label>
-            <select name="department">
-                <option value="">همه</option>
-                {% for dept in departments %}
-                <option value="{{ dept.id }}"{% if f.department == dept.id|stringformat:'s' %} selected{% endif %}>{{ dept.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>محصول</label>
-            <select name="product">
-                <option value="">همه</option>
-                {% for p in products %}
-                <option value="{{ p.id }}"{% if f.product == p.id|stringformat:'s' %} selected{% endif %}>{{ p.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>ایجادکننده</label>
-            <select name="creator">
-                <option value="">همه</option>
-                {% for u in creators %}
-                <option value="{{ u.id }}"{% if f.creator == u.id|stringformat:'s' %} selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>از تاریخ</label>
-            <input type="date" name="date_from" value="{{ f.date_from }}">
-        </div>
-        <div class="filter-field">
-            <label>تا تاریخ</label>
-            <input type="date" name="date_to" value="{{ f.date_to }}">
-        </div>
-        <div class="filter-field">
-            <label>جستجوی شماره</label>
-            <input type="text" name="search" value="{{ f.search }}" placeholder="مثلاً RCV-0001...">
-        </div>
-        <div class="filter-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
-            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline"><i class="fas fa-rotate-right"></i> پاک</a>
-        </div>
+
+        <details class="filter-more"{% if advanced_active %} open{% endif %}>
+            <summary>
+                <i class="fas fa-chevron-down"></i> فیلترهای بیشتر
+                {% if advanced_active %}<span class="active-dot">فعال</span>{% endif %}
+            </summary>
+            <div class="filter-grid">
+                <div class="filter-field">
+                    <label>انبار مبدأ</label>
+                    <select name="source_warehouse">
+                        <option value="">همه</option>
+                        {% for wh in warehouses %}
+                        <option value="{{ wh.id }}"{% if f.source_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>انبار مقصد</label>
+                    <select name="dest_warehouse">
+                        <option value="">همه</option>
+                        {% for wh in warehouses %}
+                        <option value="{{ wh.id }}"{% if f.dest_warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>بخش</label>
+                    <select name="department">
+                        <option value="">همه</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}"{% if f.department == dept.id|stringformat:'s' %} selected{% endif %}>{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>محصول</label>
+                    <select name="product">
+                        <option value="">همه</option>
+                        {% for p in products %}
+                        <option value="{{ p.id }}"{% if f.product == p.id|stringformat:'s' %} selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>ایجادکننده</label>
+                    <select name="creator">
+                        <option value="">همه</option>
+                        {% for u in creators %}
+                        <option value="{{ u.id }}"{% if f.creator == u.id|stringformat:'s' %} selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>از تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='date_from' jd_id='filter_date_from' jd_value=f.date_from %}
+                </div>
+                <div class="filter-field">
+                    <label>تا تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='date_to' jd_id='filter_date_to' jd_value=f.date_to %}
+                </div>
+            </div>
+        </details>
     </form>
 
     <!-- جدول -->
@@ -291,9 +317,18 @@
                             {{ v.created_by.get_full_name|default:v.created_by.username|default:'—' }}
                         </td>
                         <td>
-                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=v.id %}" class="btn btn-outline btn-sm">
-                                <i class="fas fa-eye"></i> مشاهده
-                            </a>
+                            <div class="row-actions">
+                                <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=v.id %}" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-eye"></i> مشاهده
+                                </a>
+                                {% if v.status == 'draft' %}
+                                    {% if v.created_by_id == user.id or user.role == 'manager' or user.role == 'admin' or user.role == 'ceo' %}
+                                    <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=v.id %}" class="btn btn-outline btn-sm" title="ویرایش پیش‌نویس">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -359,4 +394,8 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jalali_date_group.js' %}"></script>
 {% endblock %}

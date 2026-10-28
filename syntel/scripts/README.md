@@ -37,11 +37,11 @@ Deployment and validation scripts:
 Most scripts should be run from the project root directory:
 
 ```bash
-cd /path/to/syntel
-python scripts/setup/create_users.py
+cd /path/to/Syntel
+python syntel/scripts/setup/create_users.py
 ```
 
 For bash scripts:
 ```bash
-bash scripts/deployment/deploy.sh
+bash syntel/scripts/deployment/deploy.sh
 ```

@@ -147,10 +147,12 @@ class SentToCeoLockTest(TestCase):
         self.assertContains(page, f'onclick="reopenItem({self.item.id})"')
         # (توجه: رشتهٔ CSS «done-row-locked» همیشه در صفحه هست؛ سطرِ قفل است که نباید باشد)
         self.assertNotContains(page, 'done-row done-row-locked')
-        resp = self.client.post(self.dash_url, {'action': 'reopen', 'item_id': self.item.id},
-                                follow=True)
+        resp = self.client.post(self.dash_url, {
+            'action': 'reopen', 'item_id': self.item.id,
+            'reason': 'تست بازگشایی'}, follow=True)
         self.assertContains(resp, 'بازگشایی شد')
-        self.assertIsNone(self._assignment(), 'تخصیصِ done باید پاک شود')
+        self.assertEqual(self._assignment().status, 'reopened',
+                         'تخصیص باید با وضعیت بازگشایی‌شده نگه داشته شود')
         self.assertEqual(PurchaseDraft.objects.count(), 0, 'قلم از پیش‌نویس هم حذف شود')
 
     def test_lock_releases_after_ceo_reject(self):
@@ -168,7 +170,8 @@ class SentToCeoLockTest(TestCase):
         _resp, entry = self._done_entry()
         self.assertIsNotNone(entry)
         self.assertFalse(entry['locked'], 'بعد از رد مدیرعامل قلم باید آزاد باشد')
-        resp = self.client.post(self.dash_url, {'action': 'reopen', 'item_id': self.item.id},
-                                follow=True)
+        resp = self.client.post(self.dash_url, {
+            'action': 'reopen', 'item_id': self.item.id,
+            'reason': 'تست بازگشایی پس از رد'}, follow=True)
         self.assertContains(resp, 'بازگشایی شد')
-        self.assertIsNone(self._assignment())
+        self.assertEqual(self._assignment().status, 'reopened')

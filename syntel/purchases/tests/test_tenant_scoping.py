@@ -735,7 +735,8 @@ class OfficerDashboardReopenScopeTests(_StockWritePathTestsMixin, TestCase):
         """بازگشایی: موجودی کافهٔ B دست‌نخورده می‌ماند (سند هم بازنمی‌گردد)"""
         r = self.client.post(
             self._url('warehouse_officer_dashboard'),
-            data={'action': 'reopen', 'item_id': str(self.item_a.id)})
+            data={'action': 'reopen', 'item_id': str(self.item_a.id),
+                  'reason': 'تست بازگشایی'})
         self.assertEqual(r.status_code, 302)
         self.stock_b.refresh_from_db()
         self.assertEqual(self.stock_b.quantity, Decimal('90.0000'))
@@ -745,6 +746,6 @@ class OfficerDashboardReopenScopeTests(_StockWritePathTestsMixin, TestCase):
         self.assertEqual(
             StockTransaction.objects.filter(
                 reference_type='officer_assignment_reopen').count(), 0)
-        # تخصیصِ خودِ قلم بازگشایی شد (رفتار عادی)
-        self.assertEqual(
-            OfficerAssignment.objects.filter(item=self.item_a).count(), 0)
+        # تخصیص حذف نمی‌شود؛ با وضعیت terminal «بازگشایی‌شده» نگه داشته می‌شود
+        assignment = OfficerAssignment.objects.get(item=self.item_a)
+        self.assertEqual(assignment.status, 'reopened')

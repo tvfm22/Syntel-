@@ -38,9 +38,12 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from purchases.models import (
+    OfficerAssignment,
+    PurchaseItem,
     StockItem,
     StockTransaction,
     WarehouseVoucher,
@@ -71,6 +74,10 @@ class InsufficientStockError(VoucherValidationError):
 
 class StockScopeError(InventoryServiceError):
     """موجودیِ انبار درخواستی متعلق به کافهٔ دیگری است (یا بدون انبار است)"""
+
+
+class ReopenNotAllowedError(InventoryServiceError):
+    """بازگشایی در این وضعیت مجاز نیست (قبلاً انجام شده، دریافت تأیید شده، ...)"""
 
 
 # ── قانونِ نام‌گذاری‌شدهٔ موجودی منفی ──────────────────────────────────────────
@@ -173,6 +180,86 @@ def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
             previous_quantity=prev_qty,
             new_quantity=new_qty,
         )
+
+
+def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason):
+    """بازگشایی تخصیص‌های تامین‌شدهٔ مسئول انبار با ردیف ممیزی جبرانی.
+
+    - هیچ StockTransaction حذف نمی‌شود؛ برای هر خروج اصلی یک ورود جبرانی با
+      reference_type='officer_assignment_reopen' ساخته می‌شود.
+    - تخصیص‌ها حذف نمی‌شوند؛ وضعیتشان به 'reopened' می‌رود تا سابقه بماند.
+    - دلیل اجباری است و در description تراکنش جبرانی ثبت می‌شود.
+    - اگر دریافت توسط درخواست‌دهنده تأیید شده باشد، بازگشایی ممنوع است.
+    - فقط خروج‌های همین قلم و همین کافه برمی‌گردند؛ هر خروج حداکثر یک‌بار.
+
+    باید داخل transaction.atomic() صدا زده شود (خودش هم atomic تودرتو دارد).
+    """
+    reason = (reason or '').strip()
+    if not reason:
+        raise ReopenNotAllowedError('دلیل بازگشایی الزامی است.')
+    if cafe is None:
+        raise StockScopeError('کافهٔ فعال یافت نشد؛ بازگشایی مجاز نیست.')
+
+    with transaction.atomic():
+        locked_item = (
+            PurchaseItem.objects.select_for_update()
+            .select_related('request')
+            .get(pk=item.pk)
+        )
+        if locked_item.request.cafe_id != cafe.id:
+            raise StockScopeError('این قلم به کافهٔ دیگری تعلق دارد.')
+        if locked_item.received_confirmed_at is not None:
+            raise ReopenNotAllowedError(
+                'دریافت این کالا توسط درخواست‌دهنده تأیید شده است؛ بازگشایی مجاز نیست.')
+
+        assignments_qs = OfficerAssignment.objects.select_for_update().filter(
+            item=locked_item,
+            target_role='warehouse',
+            status__in=('fulfilled', 'returned', 'not_in_stock'),
+        )
+        if reopened_by is not None:
+            assignments_qs = assignments_qs.filter(
+                Q(assigned_to=reopened_by) | Q(assigned_to__isnull=True))
+        assignments = list(assignments_qs)
+        if not assignments:
+            raise ReopenNotAllowedError(
+                'این کالا قبلاً بازگشایی شده یا برای بازگشایی آماده نیست.')
+
+        already_reopened = StockTransaction.objects.filter(
+            reference_type='officer_assignment_reopen',
+            reference_id=locked_item.id,
+            stock_item__warehouse__cafe=cafe,
+        ).exists()
+        if already_reopened:
+            raise ReopenNotAllowedError('این کالا قبلاً بازگشایی شده است.')
+
+        original_txs = list(
+            StockTransaction.objects.select_for_update().filter(
+                reference_type='officer_assignment',
+                reference_id=locked_item.id,
+                transaction_type='out',
+                stock_item__warehouse__cafe=cafe,
+            ).select_related('stock_item')
+        )
+
+        for tx in original_txs:
+            apply_stock_delta(
+                tx.stock_item, tx.quantity,
+                cafe=cafe, created_by=reopened_by,
+                reference_type='officer_assignment_reopen',
+                reference_id=locked_item.id,
+                description=f'بازگشایی «{locked_item.name}» - دلیل: {reason}',
+            )
+
+        for assignment in assignments:
+            assignment.status = 'reopened'
+            assignment.notes = (
+                (assignment.notes or '')
+                + f' بازگشایی شد. دلیل: {reason}'
+            )
+            assignment.save(update_fields=['status', 'notes'])
+
+        return len(original_txs)
 
 
 _VOUCHER_PREFIX = {

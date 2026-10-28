@@ -3,66 +3,48 @@
 [![Django](https://img.shields.io/badge/Django-5.0.2-green.svg)](https://www.djangoproject.com/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://postgresql.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-3-blue.svg)](https://sqlite.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 سیستم جامع مدیریت خرید، انبار، فاکتور و مالی با رابط کاربری فارسی - آماده برای استقرار روی سرور
 
-## � ساختار پروژه
+## ساختار پروژه
 
 ```
 Syntel/
-├── syntel/                    # Django Project Root
-│   ├── docs/                  # مستندات کامل پروژه
-│   ├── frontend/              # فایل‌های استاتیک فرانت‌اند
-│   ├── logs/                  # لاگ‌های سیستم
-│   ├── purchases/             # اپلیکیشن اصلی
-│   │   ├── management/        # دستورات مدیریتی Django
-│   │   ├── migrations/        # مایگریشن‌های دیتابیس
-│   │   ├── templates/         # قالب‌های HTML
-│   │   ├── templatetags/      # تگ‌های سفارشی
-│   │   └── tests/             # تست‌های اپلیکیشن
-│   ├── scripts/               # اسکریپت‌های کمکی
-│   │   ├── deployment/        # اسکریپت‌های استقرار
-│   │   ├── fixes/             # اسکریپت‌های رفع مشکل
-│   │   ├── management_commands/ # ابزارهای مدیریتی
-│   │   ├── setup/             # اسکریپت‌های راه‌اندازی اولیه
-│   │   └── tests/             # ابزارهای تست
-│   ├── staticfiles/           # فایل‌های استاتیک جمع‌آوری شده
+├── manage.py                  # نقطه ورود Django
+├── requirements.txt           # وابستگی‌های Python
+├── Dockerfile                 # ساخت ایمیج Production
+├── entrypoint.sh              # اجرای migration و collectstatic
+├── liara.json                 # تنظیمات استقرار Liara
+├── README.md                  # این فایل
+├── docs/                      # مستندات اصلی و آرشیو
+├── reference/                 # فایل‌های مرجع (اکسل منو و ورودی‌های قدیمی)
+├── data/                      # داده‌های قابل نوشتن: db, uploads, logs, cache, tmp, sessions, backups
+├── syntel/
 │   ├── syntel/                # تنظیمات Django
-│   ├── data/                  # همه داده‌های قابل نوشتن (DATA_PATH، پیش‌فرض /app/data)
-│   ├── tests/                 # تست‌های کل پروژه
-│   ├── manage.py              # اسکریپت مدیریت Django
-│   ├── requirements.txt       # وابستگی‌های Python
-│   ├── Dockerfile             # تنظیمات Docker
-│   └── docker-compose.yml     # تنظیمات Docker Compose
-└── README.md                  # این فایل
+│   ├── purchases/             # اپلیکیشن اصلی
+│   ├── frontend/              # قالب‌ها و فایل‌های استاتیک
+│   ├── scripts/               # اسکریپت‌های کمکی
+│   ├── deploy/                # فایل‌های استقرار قدیمی و آرشیو
+│   ├── staticfiles/           # خروجی collectstatic
+│   └── gunicorn_config.py     # تنظیمات Gunicorn
+└── .venv/                     # محیط مجازی محلی (خارج از گیت)
 ```
 
 ## 🚀 نصب سریع
 
-### با Docker (توصیه شده برای Production)
+### با Docker (Production)
 
-```bash
-# کلون پروژه
-git clone https://github.com/tvfm22/Syntel-.git
-cd Syntel-/syntel
-
-# تنظیمات محیطی
-cp .env.example .env
-nano .env  # ویرایش و تکمیل متغیرها
-
-# استقرار خودکار
-chmod +x scripts/deployment/deploy.sh
-bash scripts/deployment/deploy.sh
-```
-
-سایت روی http://localhost در دسترس خواهد بود.
+استقرار فعلی روی Liara با `Dockerfile` ریشه پروژه انجام می‌شود. راهنمای کامل در
+[`docs/LIARA_DEPLOYMENT_GUIDE.md`](docs/LIARA_DEPLOYMENT_GUIDE.md) است.
 
 ### نصب دستی (Development)
 
 ```bash
-cd syntel
+# از ریشه پروژه
+python -m venv .venv
+.venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
@@ -101,43 +83,43 @@ python manage.py runserver
 
 ## 📚 مستندات
 
-تمام مستندات پروژه در پوشه `syntel/docs/` قرار دارد:
+تمام مستندات پروژه در پوشه `docs/` قرار دارد:
 
-- [راهنمای کاربر](syntel/docs/USER_MANUAL.md) - راهنمای استفاده برای کاربران
-- [راهنمای مدیر](syntel/docs/MANAGER_MANUAL.md) - راهنمای مدیریت سیستم
-- [مستندات فنی](syntel/docs/TECHNICAL_DOCUMENTATION.md) - مستندات توسعه‌دهنده
-- [راهنمای استقرار](syntel/docs/DEPLOYMENT_GUIDE.md) - نحوه استقرار روی سرور
-- [راهنمای عیب‌یابی](syntel/docs/TROUBLESHOOTING_GUIDE.md) - رفع مشکلات رایج
-- [راهنمای سریع](syntel/docs/QUICK_START_GUIDE.md) - شروع سریع
+- [راهنمای کاربر](docs/USER_MANUAL.md) - راهنمای استفاده برای کاربران
+- [راهنمای مدیر](docs/MANAGER_MANUAL.md) - راهنمای مدیریت سیستم
+- [مستندات فنی](docs/TECHNICAL_DOCUMENTATION.md) - مستندات توسعه‌دهنده
+- [راهنمای استقرار Liara](docs/LIARA_DEPLOYMENT_GUIDE.md) - نحوه استقرار روی Liara
+- [راهنمای عیب‌یابی](docs/TROUBLESHOOTING_GUIDE.md) - رفع مشکلات رایج
+- [راهنمای سریع](docs/QUICK_START_GUIDE.md) - شروع سریع
+- [مدیریت انبار](docs/STOCK_MANAGEMENT_GUIDE.md) - راهنمای انبار و موجودی
 
 ## 🛠️ اسکریپت‌های کمکی
 
 اسکریپت‌های کمکی در پوشه `syntel/scripts/` سازماندهی شده‌اند:
 
-### راه‌اندازی اولیه (`scripts/setup/`)
+### راه‌اندازی اولیه (`syntel/scripts/setup/`)
 ```bash
-python scripts/setup/create_users.py          # ایجاد کاربران نمونه
-python scripts/setup/setup_cafes.py           # راه‌اندازی کافه‌ها
+python syntel/scripts/setup/create_users.py          # ایجاد کاربران نمونه
+python syntel/scripts/setup/setup_cafes.py           # راه‌اندازی کافه‌ها
 ```
 
-### مدیریت (`scripts/management_commands/`)
+### مدیریت (`syntel/scripts/management_commands/`)
 ```bash
-python scripts/management_commands/check_users.py      # بررسی کاربران
-python scripts/management_commands/clear_cache.py      # پاک کردن کش
+python syntel/scripts/management_commands/check_users.py      # بررسی کاربران
+python syntel/scripts/management_commands/clear_cache.py      # پاک کردن کش
 ```
 
-### رفع مشکل (`scripts/fixes/`)
+### رفع مشکل (`syntel/scripts/fixes/`)
 ```bash
-python scripts/fixes/fix_csrf.py              # رفع مشکل CSRF
-python scripts/fixes/fix_urls2.py             # تصحیح URLها
+python syntel/scripts/fixes/fix_csrf.py              # رفع مشکل CSRF
+python syntel/scripts/fixes/fix_urls2.py             # تصحیح URLها
 ```
 
-### استقرار (`scripts/deployment/`)
+### استقرار (`syntel/scripts/deployment/`)
 ```bash
-bash scripts/deployment/deploy.sh             # استقرار روی سرور
-bash scripts/deployment/validate_production.sh # اعتبارسنجی Production
+bash syntel/scripts/deployment/deploy.sh             # استقرار روی سرور
+bash syntel/scripts/deployment/validate_production.sh # اعتبارسنجی Production
 ```
-- بازیابی سیستم در صورت مشکل
 
 ### 📈 مانیتورینگ سیستم
 - نظارت بر منابع سیستم (CPU، حافظه، دیسک)
@@ -147,8 +129,8 @@ bash scripts/deployment/validate_production.sh # اعتبارسنجی Production
 
 ## پیش‌نیازها
 
-- Python 3.8 یا بالاتر
-- PostgreSQL 12 یا بالاتر
+- Python 3.11 یا بالاتر
+- SQLite (پیش‌فرض پروژه؛ نیازی به نصب جداگانه ندارد)
 - pip (مدیریت بسته Python)
 - Git
 
@@ -157,7 +139,7 @@ bash scripts/deployment/validate_production.sh # اعتبارسنجی Production
 ### 1. کلون کردن پروژه
 ```bash
 git clone <repository-url>
-cd syntel
+cd Syntel
 ```
 
 ### 2. ایجاد محیط مجازی
@@ -176,46 +158,25 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. تنظیمات پایگاه داده
+### 4. تنظیمات محیطی
 ```bash
-# ایجاد پایگاه داده PostgreSQL
-createdb syntel_db
-
-# یا از طریق SQL
-psql -U postgres
-CREATE DATABASE syntel_db;
-CREATE USER syntel_user WITH PASSWORD 'password123';
-GRANT ALL PRIVILEGES ON DATABASE syntel_db TO syntel_user;
-\q
+cp .env.example .env
+# سپس DJANGO_SECRET_KEY و DATA_PATH را در .env تنظیم کنید
 ```
 
-### 5. تنظیمات Django
-فایل `syntel/settings.py` را ویرایش کنید و تنظیمات پایگاه داده را وارد کنید:
+دیتابیس پیش‌فرض SQLite است و در `data/db/db.sqlite3` ساخته می‌شود.
 
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'syntel_db',
-        'USER': 'syntel_user',
-        'PASSWORD': 'password123',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-```
-
-### 6. اجرای Migrationها
+### 5. اجرای Migrationها
 ```bash
 python manage.py migrate
 ```
 
-### 7. ایجاد کاربر مدیر
+### 6. ایجاد کاربر مدیر
 ```bash
 python manage.py createsuperuser
 ```
 
-### 8. اجرای سرور توسعه
+### 7. اجرای سرور توسعه
 ```bash
 python manage.py runserver
 ```
@@ -241,40 +202,32 @@ python manage.py runserver
 3. **روش‌های پرداخت**: تنظیم روش‌های پرداخت
 4. **تأمین‌کنندگان**: افزودن تأمین‌کنندگان اولیه
 
-## ساختار پروژه
+## ساختار پوشه‌های اصلی
 
 ```
-syntel/
-├── syntel/                 # تنظیمات اصلی Django
-│   ├── settings.py        # تنظیمات Django
-│   ├── urls.py           # URLهای اصلی
-│   ├── wsgi.py           # تنظیمات WSGI
-│   └── asgi.py           # تنظیمات ASGI
-├── purchases/             # اپلیکیشن اصلی
-│   ├── models.py         # مدل‌های داده
-│   ├── views.py          # منطق برنامه
-│   ├── urls.py           # URLهای اپلیکیشن
-│   ├── forms.py          # فرم‌های Django
-│   ├── admin.py          # تنظیمات ادمین Django
-│   └── migrations/       # Migrationهای پایگاه داده
-├── frontend/              # قالب‌ها و فایل‌های استاتیک
-│   └── templates/        # قالب‌های HTML
-├── static/               # فایل‌های استاتیک (CSS, JS, images)
-├── data/                 # همه داده‌های قابل نوشتن: db, uploads, logs, cache, tmp, sessions, backups
-└── docs/                 # مستندات پروژه
+Syntel/
+├── syntel/syntel/          # تنظیمات Django
+├── syntel/purchases/       # اپلیکیشن اصلی
+├── syntel/frontend/        # قالب‌ها و فایل‌های استاتیک
+├── syntel/scripts/         # اسکریپت‌های کمکی
+├── syntel/deploy/          # آرشیو استقرار قدیمی
+├── reference/              # اکسل منو و ورودی‌های مرجع
+├── data/                   # دیتابیس، آپلودها، لاگ‌ها و پشتیبان‌ها
+└── docs/                   # مستندات و آرشیو
 ```
 
 ## مستندات
 
 ### راهنمای کاربری
-- [راهنمای کامل کاربر](USER_MANUAL.md) - راهنمای استفاده از سیستم
-- [راهنمای مدیر سیستم](MANAGER_MANUAL.md) - راهنمای مخصوص مدیران
-- [راهنمای شروع سریع](QUICK_START_GUIDE.md) - راه‌اندازی سریع سیستم
-- [راهنمای عیب‌یابی](TROUBLESHOOTING_GUIDE.md) - حل مشکلات رایج
+- [راهنمای کامل کاربر](docs/USER_MANUAL.md) - راهنمای استفاده از سیستم
+- [راهنمای مدیر سیستم](docs/MANAGER_MANUAL.md) - راهنمای مخصوص مدیران
+- [راهنمای شروع سریع](docs/QUICK_START_GUIDE.md) - راه‌اندازی سریع سیستم
+- [راهنمای عیب‌یابی](docs/TROUBLESHOOTING_GUIDE.md) - حل مشکلات رایج
 
 ### مستندات فنی
-- [مستندات فنی](TECHNICAL_DOCUMENTATION.md) - معماری، API، و تنظیمات فنی
-- [راهنمای مانیتورینگ سیستم](SYSTEM_MONITORING_README.md) - مستندات مانیتورینگ
+- [مستندات فنی](docs/TECHNICAL_DOCUMENTATION.md) - معماری، API، و تنظیمات فنی
+- [راهنمای مانیتورینگ سیستم](docs/SYSTEM_MONITORING_README.md) - مستندات مانیتورینگ
+- [استقرار روی Liara](docs/LIARA_DEPLOYMENT_GUIDE.md) - راهنمای Production
 
 ## نقش‌های کاربری
 
@@ -388,13 +341,13 @@ psql -U syntel_user -h localhost syntel_db < backup_file.sql
 ```bash
 # کلون کردن پروژه
 git clone <repository-url>
-cd syntel
+cd Syntel
 
 # ایجاد branch توسعه
 git checkout -b feature/new-feature
 
-# نصب وابستگی‌های توسعه
-pip install -r requirements-dev.txt
+# نصب وابستگی‌ها
+pip install -r requirements.txt
 ```
 
 ### اجرای تست‌ها

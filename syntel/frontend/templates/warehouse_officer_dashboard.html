@@ -430,13 +430,13 @@
                             <div class="item-desc-cell">{{ v.item.description }}</div>
                             {% endif %}
                         </td>
-                        <td class="cell-qty">{{ v.item.quantity }} {{ v.item.unit }}</td>
+                        <td class="cell-qty">{{ v.item.quantity|trim_decimal }} {{ v.item.unit }}</td>
                         <td class="cell-stock">
                             {% if v.stock %}<b>{{ v.stock.trade|trim_decimal }} {{ v.stock.unit }}</b>
                             {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
                         </td>
                         <td class="cell-supply">
-                            <form method="post" id="supply-form-{{ v.item.id }}">
+                            <form method="post" id="supply-form-{{ v.item.id }}" data-lock-submit>
                                 {% csrf_token %}
                                 <input type="hidden" name="item_id" value="{{ v.item.id }}">
                                 {% with opts=stock_options|get_item:v.item.product_id meta=stock_meta|get_item:v.item.product_id %}
@@ -474,7 +474,7 @@
                                             </select>
                                             {% endif %}
                                             <input type="number" name="qty" class="qty-input" min="0.01" step="any"
-                                                   value="{{ v.item.quantity|stringformat:'s' }}" required title="مقدار تأمین">
+                                                   value="{{ v.item.quantity|trim_decimal }}" required title="مقدار تأمین">
                                             <button type="button" class="remove-row" title="حذف ردیف" style="display:none;">✕</button>
                                         </div>
                                     </div>
@@ -522,7 +522,7 @@
                             <div class="item-desc-cell">{{ d.item.description }}</div>
                             {% endif %}
                         </td>
-                        <td class="cell-qty">{{ d.item.quantity }} {{ d.item.unit }}</td>
+                        <td class="cell-qty">{{ d.item.quantity|trim_decimal }} {{ d.item.unit }}</td>
                         <td class="cell-stock"><span style="color:var(--text-muted)">—</span></td>
                         <td><span style="color:var(--text-muted)">—</span></td>
                         <td class="cell-actions">
@@ -537,10 +537,11 @@
                                 {% else %}ارجاع به خرید — برگشت به مدیرعامل{% endif %}
                             </span>
                             <div class="reopen-hint"><i class="fas fa-rotate-left"></i> کلیک برای ثبت مجدد</div>
-                            <form method="post" id="reopen-form-{{ d.item.id }}" style="display:none;">
+                            <form method="post" id="reopen-form-{{ d.item.id }}" style="display:none;" data-lock-submit>
                                 {% csrf_token %}
                                 <input type="hidden" name="item_id" value="{{ d.item.id }}">
                                 <input type="hidden" name="action" value="reopen">
+                                <input type="hidden" name="reason" id="reopen-reason-{{ d.item.id }}">
                             </form>
                             {% endif %}
                         </td>
@@ -566,9 +567,16 @@
 <script>
 /* ── بازگشایی کالای ثبت‌شده برای ثبت مجدد (موجودی قبلی برگردانده می‌شود) ── */
 function reopenItem(id) {
-    if (confirm('این کالا بازگشایی شود؟ موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.')) {
-        document.getElementById('reopen-form-' + id).submit();
+    if (!confirm('این کالا بازگشایی شود؟ موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.')) return;
+    var reason = prompt('دلیل بازگشایی را وارد کنید (الزامی):');
+    if (reason === null) return;
+    reason = reason.trim();
+    if (!reason) {
+        alert('برای بازگشایی، وارد کردن دلیل الزامی است.');
+        return;
     }
+    document.getElementById('reopen-reason-' + id).value = reason;
+    document.getElementById('reopen-form-' + id).submit();
 }
 
 /* ── ردیف‌های پویا: افزودن برند دیگر / حذف ردیف ── */

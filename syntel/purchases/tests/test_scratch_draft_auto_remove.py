@@ -60,17 +60,19 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
         return draft
 
     def test_reopen_purges_referred_item_and_empty_draft(self):
-        """بازگشایی: کپیِ ارجاعی حذف، تخصیص پاک، پیش‌نویسِ خالی‌شده هم حذف شود"""
+        """بازگشایی: کپیِ ارجاعی حذف، تخصیص با وضعیت reopened می‌ماند، پیش‌نویس خالی حذف شود"""
         draft = self._refer_and_open()
         resp = self.client.post(
-            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id)})
+            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id),
+                            'reason': 'تست بازگشایی'})
         self.assertEqual(resp.status_code, 302)
 
         self.assertEqual(PurchaseDraftItem.objects.filter(source_item=self.item).count(), 0)
         self.assertFalse(PurchaseDraft.objects.filter(id=draft.id).exists(),
                          'پیش‌نویسی که با حذفِ این قلم خالی شده باید پاک شود')
-        self.assertEqual(self.item.officer_assignments.count(), 0,
-                         'تخصیصِ بستهٔ (returned) قلمِ بازگشایی‌شده هم حذف شود')
+        assignment = self.item.officer_assignments.get()
+        self.assertEqual(assignment.status, 'reopened',
+                         'تخصیصِ بستهٔ (returned) باید با وضعیت بازگشایی‌شده بماند')
 
     def test_reopen_keeps_draft_with_other_items(self):
         """بازگشایی: فقط کپیِ همین قلم حذف شود؛ پیش‌نویس با قلم‌های دیگر سر جایش بماند"""
@@ -78,7 +80,8 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
         PurchaseDraftItem.objects.create(
             draft=draft, name='دستمال کاغذی', quantity=1, unit='بسته')
         self.client.post(
-            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id)})
+            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id),
+                            'reason': 'تست بازگشایی'})
 
         draft.refresh_from_db()
         self.assertEqual(draft.items.count(), 1)
@@ -89,7 +92,8 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
         """ارجاعِ دوباره بعد از بازگشایی: یک کپیِ تازه (نه دوتایی) ساخته شود"""
         self._refer_and_open()
         self.client.post(
-            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id)})
+            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id),
+                            'reason': 'تست بازگشایی'})
         resp = self.client.post(
             self.dash_url, {'action': 'to_purchase', 'item_id': str(self.item.id)})
         self.assertEqual(resp.status_code, 302)

@@ -4,6 +4,7 @@ from functools import wraps
 from . import views
 from . import views_dashboard
 from . import views_analytics
+from . import views_cogs
 
 
 def cafe_view(view_func):
@@ -58,6 +59,7 @@ cafe_urlpatterns = [
     path('purchase-requests/', cv(views.purchase_requests_list), name='purchase_requests_list'),
     path('purchase-request/<int:request_id>/', cv(views.purchase_request_detail), name='purchase_request_detail'),
     path('purchase-request/<int:request_id>/update/', cv(views.update_purchase_request), name='update_purchase_request'),
+    path('my-requests/<int:request_id>/edit/', cv(views.edit_my_request), name='edit_my_request'),
     path('my-received-items/', cv(views.my_received_items), name='my_received_items'),
     path('reports/', cv(views.reports_dashboard), name='reports_dashboard'),
     path('reports/export/', cv(views.export_to_excel), name='export_to_excel'),
@@ -113,10 +115,12 @@ cafe_urlpatterns = [
     path('payment-types/<int:payment_type_id>/delete/', cv(views.payment_type_delete), name='payment_type_delete'),
     # User Management URLs
     path('users/', cv(views.user_list), name='user_list'),
+    path('users/exit-impersonation/', cv(views.user_impersonate_stop), name='user_impersonate_stop'),
     path('users/create/', cv(views.user_create), name='user_create'),
     path('users/<int:user_id>/update/', cv(views.user_update), name='user_update'),
     path('users/<int:user_id>/delete/', cv(views.user_delete), name='user_delete'),
     path('users/<int:user_id>/reset-password/', cv(views.user_reset_password), name='user_reset_password'),
+    path('users/<int:user_id>/login-as/', cv(views.user_impersonate), name='user_impersonate'),
     # Department (بخش) Management URLs — از صفحه مدیریت کاربران
     path('departments/', cv(views.department_list), name='department_list'),
     path('departments/create/', cv(views.department_create), name='department_create'),
@@ -212,6 +216,12 @@ cafe_urlpatterns = [
     path('payment-analytics/', cv(views.payment_analytics), name='payment_analytics'),
     path('inventory-reports/', cv(views.inventory_reports), name='inventory_reports'),
     path('reports/consumption/', cv(views.consumption_report), name='consumption_report'),
+
+    # بهای تمام شده (کالاهای مصرفی منو بر اساس فروش)
+    path('cogs/', cv(views_cogs.cogs_dashboard), name='cogs_dashboard'),
+    path('cogs/recipe/<int:item_id>/', cv(views_cogs.cogs_recipe_api), name='cogs_recipe_api'),
+    path('cogs/item/add/', cv(views_cogs.cogs_item_add), name='cogs_item_add'),
+    path('cogs/menu-item/add/', cv(views_cogs.cogs_menu_item_add), name='cogs_menu_item_add'),
     # Advanced Analytics URLs
     path('analytics/', cv(views.analytics_dashboard), name='analytics_dashboard'),
     path('analytics/purchase/', cv(views.purchase_analytics), name='purchase_analytics'),

@@ -23,6 +23,10 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+
+# Source workbooks are reference inputs, not writable runtime data.
+MENU_WORKBOOK_PATH = PROJECT_ROOT / 'reference' / 'menu' / 'منو کوکر.xlsx'
 
 # =============================================================================
 # DATA PATH — all writable data (database, uploads, logs, cache, temp files,

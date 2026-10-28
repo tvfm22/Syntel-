@@ -727,6 +727,9 @@
                 <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
                     <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
                 </a>
+                <a href="{% url 'cogs_dashboard' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'cogs_dashboard' %} active{% endif %}">
+                    <i class="fas fa-utensils"></i><span>بهای تمام شده</span>
+                </a>
 
                 <div class="nav-section-title">سیستم</div>
                 <a href="{% url 'system_monitoring' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'system_monitoring' %} active{% endif %}">
@@ -895,21 +898,21 @@
                 <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_list' %} active{% endif %}">
                     <i class="fas fa-boxes"></i><span>موجودی انبار</span>
                 </a>
-                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
-                    <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
-                </a>
-                <div class="nav-section-title">حواله‌های انبار</div>
-                <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_list' %} active{% endif %}">
-                    <i class="fas fa-file-invoice"></i><span>لیست حواله‌ها</span>
-                </a>
-                <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_create' %} active{% endif %}">
-                    <i class="fas fa-plus"></i><span>ثبت حواله</span>
-                </a>
                 <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'stock_movements' %} active{% endif %}">
                     <i class="fas fa-chart-line"></i><span>سوابق حرکت</span>
                 </a>
                 <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'warehouse_management' %} active{% endif %}">
                     <i class="fas fa-warehouse"></i><span>مدیریت انبارها</span>
+                </a>
+                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'consumption_report' %} active{% endif %}">
+                    <i class="fas fa-chart-pie"></i><span>گزارش مصرف</span>
+                </a>
+                <div class="nav-section-title">حواله‌های انبار</div>
+                <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_list' or request.resolver_match.url_name == 'voucher_detail' or request.resolver_match.url_name == 'voucher_edit' or request.resolver_match.url_name == 'voucher_approve' or request.resolver_match.url_name == 'voucher_reverse' %} active{% endif %}">
+                    <i class="fas fa-file-invoice"></i><span>لیست حواله‌ها</span>
+                </a>
+                <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="nav-item{% if request.resolver_match.url_name == 'voucher_create' %} active{% endif %}">
+                    <i class="fas fa-plus"></i><span>ثبت حواله</span>
                 </a>
                 {% endif %}
 
@@ -949,6 +952,46 @@
 {% endif %}
 
 {% block messages %}
+
+<!-- بنر جانشینی (ورود با حساب کاربر دیگر) — فقط وقتی ادمین با حساب دیگری وارد شده باشد -->
+{% if user.is_authenticated and request.session.impersonator_id %}
+<style>
+    .impersonation-bar {
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;
+        background: linear-gradient(135deg, rgba(217, 70, 239, 0.10), rgba(139, 92, 246, 0.10));
+        border: 1px dashed rgba(217, 70, 239, 0.45);
+        border-radius: var(--radius-lg, 12px);
+        padding: 0.6rem 1rem; margin-bottom: 1rem;
+        font-size: 0.85rem; color: var(--text-primary);
+    }
+    .impersonation-bar .imp-info { display: flex; align-items: center; gap: 0.5rem; }
+    .impersonation-bar .imp-exit {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        border: 1px solid rgba(217, 70, 239, 0.45);
+        background: var(--bg-card, #fff);
+        color: #A21CAF; border-radius: var(--radius-sm, 8px);
+        padding: 0.35rem 0.9rem; font-size: 0.8rem; font-weight: 600;
+        cursor: pointer; font-family: 'Vazir', sans-serif;
+        transition: all 0.15s ease;
+    }
+    .impersonation-bar .imp-exit:hover { background: rgba(217, 70, 239, 0.08); }
+</style>
+<div class="impersonation-bar" role="alert">
+    <div class="imp-info">
+        <i class="fas fa-user-secret" style="color: #A21CAF;"></i>
+        <span>شما با حساب <strong>{{ user.get_full_name|default:user.username }}</strong> وارد شده‌اید؛ این حساب جایگزین حساب اصلی شماست.</span>
+    </div>
+    {% if cafe_code %}
+    <form method="post" action="{% url 'user_impersonate_stop' cafe_code=cafe_code %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="imp-exit">
+            <i class="fas fa-right-from-bracket"></i> بازگشت به حساب اصلی
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if messages %}
     {% for message in messages %}
     <div class="alert alert-{{ message.tags }}" data-alert>
@@ -1116,5 +1159,24 @@ function toggleSidebar() {
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 {% endif %}
+<script>
+/* قفل سمت کلاینت فقط به‌عنوان لایهٔ دوم؛ گارد اصلی در سرور است. */
+(function () {
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form.matches || !form.matches('form[data-lock-submit]')) return;
+        if (form.dataset.submitting === '1') {
+            event.preventDefault();
+            return;
+        }
+        form.dataset.submitting = '1';
+        setTimeout(function () {
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+                button.disabled = true;
+            });
+        }, 0);
+    });
+})();
+</script>
 </body>
 </html>

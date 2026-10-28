@@ -68,7 +68,7 @@ class VoucherUIBaseline(TestCase):
 
     def _create_post(self, voucher_type, source=None, dest=None, qty='5',
                      brand=None, stock_item=None, action='submit',
-                     department=None, product=None):
+                     department=None, product=None, date=None):
         data = {
             'action': action,
             'product_id[]': [str((product or self.product).id)],
@@ -85,6 +85,8 @@ class VoucherUIBaseline(TestCase):
             data['dest_warehouse'] = str(dest.id)
         if department is not None:
             data['department'] = str(department.id)
+        if date is not None:
+            data['date'] = date
         return self.client.post(
             self._url('voucher_create', voucher_type=voucher_type), data=data)
 

@@ -226,25 +226,14 @@
                 <span class="v" style="color:#b45309"><i class="fas fa-triangle-exclamation"></i> این حواله طبق آستانه نیازمند تأیید است</span>
             </div>
             {% endif %}
+            {% if voucher.source_object %}
+            <div class="meta-item">
+                <span class="k">سند منبع</span>
+                <span class="v"><i class="fas fa-link" style="color:var(--accent-indigo)"></i> {{ voucher.source_content_type.model }} — {{ voucher.source_object }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
-
-    <!-- سند منبع -->
-    {% if voucher.source_object %}
-    <div class="card">
-        <div class="card-title"><i class="fas fa-link"></i> سند منبع</div>
-        <div class="meta-grid">
-            <div class="meta-item">
-                <span class="k">نوع سند</span>
-                <span class="v">{{ voucher.source_content_type.model }}</span>
-            </div>
-            <div class="meta-item">
-                <span class="k">سند</span>
-                <span class="v">{{ voucher.source_object }}</span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- اقلام -->
     <div class="card">
@@ -373,11 +362,11 @@
         </div>
     </div>
 
-    <!-- اقدامات -->
+    <!-- اقدامات (فقط وقتی اقدامی در دسترس است) -->
+    {% if can_edit or can_cancel or can_approve or can_reverse or voucher.reverses_id %}
     <div class="card">
         <div class="card-title"><i class="fas fa-bolt"></i> اقدامات</div>
         <div class="actions-row">
-            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-right"></i> بازگشت به لیست</a>
             {% if can_edit %}
             <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
                 <i class="fas fa-pen"></i> ویرایش پیش‌نویس
@@ -407,6 +396,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
 
 </div>
 {% endblock %}

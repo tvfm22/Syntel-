@@ -227,3 +227,16 @@ def div(value, divisor):
         return Decimal(str(value)) / Decimal(str(divisor))
     except (ValueError, TypeError, ArithmeticError):
         return None
+
+
+@register.filter
+def num2(value):
+    """Persian digits with thousands separators, up to 2 decimals (drops trailing zeros)."""
+    if value is None:
+        return '—'
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    text = f'{v:,.2f}'.rstrip('0').rstrip('.')
+    return text.translate(str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹'))

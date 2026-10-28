@@ -4,270 +4,224 @@
 
 {% block extra_css %}
 <style>
-    .page-container {
-        max-width: 800px;
+    /* ===== درخواست‌ها — هماهنگ با تم داشبورد (Kuker) ===== */
+    .requests-page {
+        max-width: 1000px;
         margin: 0 auto;
-        padding: 1.5rem;
     }
 
-    .page-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .page-header h1 {
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
-    }
-
-    .requests-list {
+    /* ---------- تولبار: جستجو/فیلتر ---------- */
+    .req-toolbar-row {
         display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .request-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .request-card:hover {
-        border-color: #6366f1;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
-    }
-
-    .request-card-link {
-        text-decoration: none;
-        color: inherit;
-        display: block;
-        flex: 1;
-    }
-
-    .request-header {
-        display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+        gap: var(--space-3);
     }
 
-    .request-id {
-        font-weight: 600;
-        color: #1f2937;
-        font-size: 1rem;
+    .req-spacer { flex: 1; }
+
+    .req-select {
+        height: 40px; padding: 0 0.75rem;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
+        cursor: pointer; transition: all var(--transition-fast);
     }
 
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
+    .req-select:focus {
+        outline: none;
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
     }
 
-    .status-pending {
-        background: #fef3c7;
-        color: #92400e;
+    /* ---------- نشان وضعیت (نقطه + برچسب) ---------- */
+    .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+    .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .st-draft                    { color: var(--gray-500); }
+    .st-draft .dot               { background: var(--border-strong); }
+    .st-pending_manager_approval { color: #2563EB; }
+    .st-pending_manager_approval .dot { background: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+    .st-pending                  { color: #B45309; }
+    .st-pending .dot             { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.12); }
+    .st-purchased                { color: #15803D; }
+    .st-purchased .dot           { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
+    .st-partial                  { color: #EA580C; }
+    .st-partial .dot             { background: #F97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+    .st-rejected                 { color: #DC2626; }
+    .st-rejected .dot            { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+
+    /* ---------- کارت درخواست (نمای درخواست‌های من) ---------- */
+    .req-list { display: flex; flex-direction: column; gap: 0.65rem; }
+
+    .req-card {
+        display: flex; align-items: stretch; gap: 0.5rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        padding: 0.35rem 0.35rem 0.35rem 0.85rem;
+        transition: all var(--transition-fast);
     }
 
-    .status-pending_manager_approval {
-        background: #dbeafe;
-        color: #1e40af;
+    .req-card:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        box-shadow: var(--shadow-sm);
     }
 
-    .status-approved {
-        background: #d1fae5;
-        color: #065f46;
+    .req-main {
+        flex: 1; min-width: 0;
+        display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.25rem;
+        text-decoration: none; color: inherit;
+        padding: 0.55rem 0;
     }
 
-    .status-purchased {
-        background: #d1fae5;
-        color: #065f46;
+    .req-id {
+        font-size: 0.92rem; font-weight: 700; color: var(--text-primary);
+        display: inline-flex; align-items: center; gap: 0.45rem;
     }
 
-    .status-partial {
-        background: #fef3c7;
-        color: #92400e;
+    .req-id i { color: var(--accent-indigo); font-size: 0.82rem; }
+
+    .req-meta {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 1rem;
+        font-size: 0.78rem; color: var(--text-secondary);
     }
 
-    .status-rejected {
-        background: #fee2e2;
-        color: #991b1b;
+    .req-meta i { color: var(--text-muted); font-size: 0.75rem; margin-left: 0.25rem; }
+
+    .req-side {
+        display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;
     }
 
-    .request-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        color: #6b7280;
-        font-size: 0.875rem;
+    /* چیپ‌های عملیات — هماهنگ با user_list */
+    .act-chip {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        height: 32px; padding: 0 0.7rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-default);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        font-size: 0.78rem; font-weight: 500;
+        text-decoration: none; white-space: nowrap;
+        transition: all var(--transition-fast);
     }
 
-    .info-row {
-        display: flex;
-        gap: 0.5rem;
+    .act-chip i { font-size: 0.78rem; }
+
+    .act-view:hover { color: var(--primary-dark); border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.07); }
+    .act-edit:hover { color: #059669; border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.07); }
+
+    .act-locked {
+        color: var(--text-muted); cursor: not-allowed;
+        background: var(--bg-subtle); border-style: dashed;
     }
 
-    .info-label {
-        font-weight: 500;
-        color: #9ca3af;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: #9ca3af;
-    }
-
-    .empty-state-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-
-    .empty-state-text {
-        font-size: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .btn-primary {
-        background: #6366f1;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 0.875rem;
-        font-weight: 600;
-        transition: background 0.2s;
-    }
-
-    .btn-primary:hover {
-        background: #4f46e5;
-    }
-
-    .request-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid #f3f4f6;
-    }
-
-    .btn-edit {
-        padding: 0.5rem 1rem;
-        background: #f59e0b;
-        color: white;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: background 0.2s;
-    }
-
-    .btn-edit:hover {
-        background: #d97706;
-    }
-
-    /* Filters for purchasing/manager */
-    .filters {
-        background: #f9fafb;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-
-    .filters label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #6b7280;
-    }
-
-    .filters select {
-        padding: 0.5rem;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-family: 'Vazir', sans-serif;
-    }
-
-    /* Day grouping (mobile users) */
-    .day-section {
-        margin-bottom: 1.25rem;
-    }
+    /* ---------- سربرگ روز ---------- */
+    .day-section { margin-bottom: 1.5rem; }
 
     .day-header {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.6rem;
+        display: flex; align-items: center; gap: 0.6rem;
+        margin-bottom: 0.7rem;
+        font-size: 0.88rem; font-weight: 700; color: var(--text-primary);
     }
 
-    .day-header::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: #e5e7eb;
+    .day-header .day-icon {
+        width: 30px; height: 30px; flex-shrink: 0;
+        border-radius: var(--radius-sm);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--accent-indigo); font-size: 0.78rem;
     }
 
     .day-header .day-date {
-        color: #6b7280;
-        font-weight: 500;
-        font-size: 0.8rem;
+        color: var(--text-muted); font-weight: 500; font-size: 0.76rem;
     }
 
-    .day-header.today .day-title { color: #6366f1; }
-    .day-header.today .day-date { color: #6366f1; }
+    .day-header::after { content: ''; flex: 1; height: 1px; background: var(--border-light); }
 
-    /* Mobile Responsive */
+    .day-header.today .day-icon { border-color: rgba(139,92,246,0.35); background: rgba(139,92,246,0.07); }
+
+    /* ---------- جدول (نمای مسئول خرید/مدیر) — سازگار با partial جدولی ---------- */
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.28rem 0.65rem; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+    }
+    .status-badge.status-draft                    { background: var(--bg-subtle);         color: var(--gray-500); }
+    .status-badge.status-pending_manager_approval { background: rgba(59,130,246,0.10);    color: #2563EB; }
+    .status-badge.status-pending                  { background: rgba(245,158,11,0.12);    color: #B45309; }
+    .status-badge.status-purchased                { background: rgba(34,197,94,0.10);     color: #15803D; }
+    .status-badge.status-partial                  { background: rgba(249,115,22,0.10);    color: #EA580C; }
+    .status-badge.status-rejected                 { background: rgba(239,68,68,0.10);     color: #DC2626; }
+
+    .action-btn {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
+        background: var(--bg-subtle); color: var(--text-primary);
+        border: 1px solid var(--border-default);
+        font-size: 0.76rem; font-weight: 600; text-decoration: none;
+        transition: all var(--transition-fast);
+    }
+    .action-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+
+    /* ---------- ریسپانسیو ---------- */
     @media (max-width: 768px) {
-        .page-container {
-            padding: 1rem;
-        }
-
-        .page-header h1 {
-            font-size: 1.5rem;
-        }
-
-        .request-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .filters {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .filters select {
-            width: 100%;
-        }
+        .req-card { flex-direction: column; padding: 0.6rem 0.85rem; }
+        .req-main { padding: 0; gap: 0.45rem; }
+        .req-side { padding-top: 0.55rem; border-top: 1px dashed var(--border-light); }
+        .req-side .act-chip { flex: 1; justify-content: center; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
+<div class="requests-page">
+
+    <!-- هدر صفحه -->
     <div class="page-header">
-        <h1>درخواست‌های من</h1>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; direction: ltr;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient-req)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="k-gradient-req" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ec4899" />
+                            <stop offset="100%" stop-color="#8b5cf6" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M17 4v16"></path>
+                    <path d="M6 4l11 8"></path>
+                    <path d="M17 12l-11 8"></path>
+                </svg>
+                <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>
+            </div>
+            <h1 class="page-title">
+                {% if is_mobile_user %}
+                <i class="fas fa-list-check"></i> درخواست‌های من
+                {% else %}
+                <i class="fas fa-list-check"></i> درخواست‌های کاربران
+                {% endif %}
+            </h1>
+        </div>
+        <div class="header-actions">
+            <span class="table-meta">{{ requests|length }} درخواست</span>
+            {% if is_mobile_user %}
+            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> ثبت درخواست جدید
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     {% if not is_mobile_user %}
-    <!-- Filters for purchasing/manager users -->
-    <div class="filters">
-        <form class="filter-group" style="display: flex; gap: 1rem; align-items: center; width: 100%;">
-            <label for="department">فیلتر بخش:</label>
-            <select name="department" id="department" hx-get="{% url 'purchase_requests_list' cafe_code=cafe_code %}"
+    <!-- فیلتر بخش (مسئول خرید/مدیر) -->
+    <div class="filters-container">
+        <div class="req-toolbar-row">
+            <label for="department" style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">
+                <i class="fas fa-filter" style="margin-left: 0.3rem;"></i> فیلتر بخش:
+            </label>
+            <select name="department" id="department" class="req-select"
+                hx-get="{% url 'purchase_requests_list' cafe_code=cafe_code %}"
                 hx-target="#requests-container" hx-trigger="change">
                 <option value="">همه</option>
                 {% for dept_id, dept_name in departments %}
@@ -276,174 +230,167 @@
                 </option>
                 {% endfor %}
             </select>
-        </form>
+        </div>
     </div>
     {% endif %}
 
-    <div class="requests-list" id="requests-container">
-        {% if is_mobile_user %}
-            {% if day_groups %}
-                {% for day, weekday_label, reqs in day_groups %}
-                <div class="day-section">
-                    <div class="day-header{% if day == today %} today{% endif %}">
-                        <span class="day-title">
-                            {% if day == today %}امروز{% elif day == yesterday %}دیروز{% else %}{{ weekday_label }}{% endif %}
-                        </span>
-                        <span class="day-date">{{ day|jalali_date:"%d %B" }}</span>
-                    </div>
+    {% if is_mobile_user %}
+        {% if day_groups or older_requests %}
+            {% for day, weekday_label, reqs in day_groups %}
+            <div class="day-section">
+                <div class="day-header{% if day == today %} today{% endif %}">
+                    <span class="day-icon"><i class="far fa-calendar"></i></span>
+                    <span>
+                        {% if day == today %}امروز{% elif day == yesterday %}دیروز{% else %}{{ weekday_label }}{% endif %}
+                        <span class="day-date">— {{ day|jalali_date:"%d %B" }}</span>
+                    </span>
+                </div>
+                <div class="req-list">
                     {% for req in reqs %}
-                    <div class="request-card">
-                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
-                            <div class="request-header">
-                                <span class="request-id">درخواست #{{ req.id }}</span>
-                                <span class="status-badge status-{{ req.status }}">
-                                    {% if req.status == 'pending_manager_approval' %}
-                                        در انتظار تایید مدیر
-                                    {% elif req.status == 'pending' %}
-                                        در انتظار خرید
-                                    {% elif req.status == 'purchased' %}
-                                        خریداری شده
-                                    {% elif req.status == 'partial' %}
-                                        خرید جزئی
-                                    {% elif req.status == 'rejected' %}
-                                        رد شده
-                                    {% else %}
-                                        {{ req.get_status_display }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                            <div class="request-info">
-                                <div class="info-row">
-                                    <span class="info-label">ساعت:</span>
-                                    <span>{{ req.created_at|jalali_time }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">تعداد اقلام:</span>
-                                    <span>{{ req.items.count }} قلم</span>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endfor %}
-
-                {% if older_requests %}
-                <div class="day-section">
-                    <div class="day-header">
-                        <span class="day-title">درخواست‌های قبلی</span>
-                    </div>
-                    {% for req in older_requests %}
-                    <div class="request-card">
-                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
-                            <div class="request-header">
-                                <span class="request-id">درخواست #{{ req.id }}</span>
-                                <span class="status-badge status-{{ req.status }}">
-                                    {% if req.status == 'pending_manager_approval' %}
-                                        در انتظار تایید مدیر
-                                    {% elif req.status == 'pending' %}
-                                        در انتظار خرید
-                                    {% elif req.status == 'purchased' %}
-                                        خریداری شده
-                                    {% elif req.status == 'partial' %}
-                                        خرید جزئی
-                                    {% elif req.status == 'rejected' %}
-                                        رد شده
-                                    {% else %}
-                                        {{ req.get_status_display }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                            <div class="request-info">
-                                <div class="info-row">
-                                    <span class="info-label">تاریخ:</span>
-                                    <span>{{ req.created_at|jalali_date }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">ساعت:</span>
-                                    <span>{{ req.created_at|jalali_time }}</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">تعداد اقلام:</span>
-                                    <span>{{ req.items.count }} قلم</span>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
-                    <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
-                    <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn-primary">ثبت درخواست جدید</a>
-                </div>
-            {% endif %}
-        {% else %}
-            {% if requests %}
-                {% for req in requests %}
-                <div class="request-card">
-                    <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="request-card-link">
-                        <div class="request-header">
-                            <span class="request-id">درخواست #{{ req.id }}</span>
-                            <span class="status-badge status-{{ req.status }}">
-                                {% if req.status == 'pending_manager_approval' %}
-                                    در انتظار تایید مدیر
-                                {% elif req.status == 'pending' %}
-                                    در انتظار خرید
-                                {% elif req.status == 'purchased' %}
-                                    خریداری شده
-                                {% elif req.status == 'partial' %}
-                                    خرید جزئی
-                                {% elif req.status == 'rejected' %}
-                                    رد شده
-                                {% else %}
-                                    {{ req.get_status_display }}
+                    <article class="req-card">
+                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="req-main">
+                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست #{{ req.id }}</span>
+                            <span class="status-pill st-{{ req.status }}">
+                                <span class="dot"></span> {{ req.get_status_display }}
+                            </span>
+                            <span class="req-meta">
+                                <span><i class="far fa-clock"></i>{{ req.created_at|jalali_time }}</span>
+                                <span><i class="fas fa-layer-group"></i>{{ req.items.count }} قلم</span>
+                                {% if req.delivery_date %}
+                                <span><i class="far fa-calendar-check"></i>تحویل: {{ req.delivery_date|jalali_date:"%d %B" }}</span>
                                 {% endif %}
                             </span>
+                        </a>
+                        <div class="req-side">
+                            {% if req.can_edit %}
+                            <a href="{% url 'edit_my_request' cafe_code=cafe_code request_id=req.id %}" class="act-chip act-edit"
+                               title="ویرایش درخواست — تا قبل از تعیین وضعیت توسط مسئول انبار">
+                                <i class="fas fa-pen"></i> ویرایش
+                            </a>
+                            {% else %}
+                            <span class="act-chip act-locked"
+                                  title="{% if req.status == 'rejected' %}این درخواست رد شده و قابل ویرایش نیست{% else %}پس از تعیین وضعیت توسط مسئول انبار، درخواست قفل می‌شود{% endif %}">
+                                <i class="fas fa-lock"></i> قفل
+                            </span>
+                            {% endif %}
                         </div>
-                        <div class="request-info">
-                            <div class="info-row">
-                                <span class="info-label">بخش:</span>
-                                <span>{{ req.user.department_display }}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">کاربر:</span>
-                                <span>{{ req.user.first_name }} {{ req.user.last_name }}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">تاریخ:</span>
-                                <span>{{ req.created_at|jalali_date }}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">ساعت:</span>
-                                <span>{{ req.created_at|jalali_time }}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">تعداد اقلام:</span>
-                                <span>{{ req.items.count }} قلم</span>
-                            </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if older_requests %}
+            <div class="day-section">
+                <div class="day-header">
+                    <span class="day-icon"><i class="fas fa-history"></i></span>
+                    <span>درخواست‌های قبلی</span>
+                </div>
+                <div class="req-list">
+                    {% for req in older_requests %}
+                    <article class="req-card">
+                        <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="req-main">
+                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست #{{ req.id }}</span>
+                            <span class="status-pill st-{{ req.status }}">
+                                <span class="dot"></span> {{ req.get_status_display }}
+                            </span>
+                            <span class="req-meta">
+                                <span><i class="far fa-calendar"></i>{{ req.created_at|jalali_date }}</span>
+                                <span><i class="far fa-clock"></i>{{ req.created_at|jalali_time }}</span>
+                                <span><i class="fas fa-layer-group"></i>{{ req.items.count }} قلم</span>
+                            </span>
+                        </a>
+                        <div class="req-side">
+                            {% if req.can_edit %}
+                            <a href="{% url 'edit_my_request' cafe_code=cafe_code request_id=req.id %}" class="act-chip act-edit"
+                               title="ویرایش درخواست — تا قبل از تعیین وضعیت توسط مسئول انبار">
+                                <i class="fas fa-pen"></i> ویرایش
+                            </a>
+                            {% else %}
+                            <span class="act-chip act-locked"
+                                  title="{% if req.status == 'rejected' %}این درخواست رد شده و قابل ویرایش نیست{% else %}پس از تعیین وضعیت توسط مسئول انبار، درخواست قفل می‌شود{% endif %}">
+                                <i class="fas fa-lock"></i> قفل
+                            </span>
+                            {% endif %}
                         </div>
-                    </a>
-                    {% if user.role == 'purchasing' %}
-                    <div class="request-actions">
-                        <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="btn-edit">✏️ ویرایش</a>
-                    </div>
-                    {% endif %}
+                    </article>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
-                    <div class="empty-state-text">هیچ درخواستی یافت نشد</div>
-                </div>
+            </div>
             {% endif %}
+        {% else %}
+            <div class="table-card">
+                <div class="card-body">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox" style="font-size: 2.6rem; color: var(--text-muted); margin-bottom: 0.9rem;"></i>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">هیچ درخواستی ثبت نشده است</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">اولین درخواست کالای خود را ثبت کنید.</p>
+                        <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> ثبت درخواست جدید
+                        </a>
+                    </div>
+                </div>
+            </div>
         {% endif %}
-    </div>
+    {% else %}
+        {% if requests %}
+        <div class="table-card">
+            <div class="table-header">
+                <div class="table-title"><i class="fas fa-clipboard-list"></i> همهٔ درخواست‌ها</div>
+                <span class="table-meta">{{ requests|length }} درخواست</span>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>درخواست</th>
+                            <th>بخش</th>
+                            <th>کاربر</th>
+                            <th>تاریخ</th>
+                            <th>وضعیت</th>
+                            <th style="text-align: left;">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-container">
+                        {% for req in requests %}
+                        <tr>
+                            <td><strong>#{{ req.id }}</strong></td>
+                            <td>{{ req.user.department_display }}</td>
+                            <td>{{ req.user.first_name }} {{ req.user.last_name|default:req.user.username }}</td>
+                            <td>{{ req.created_at|jalali_date }} — {{ req.created_at|jalali_time }}</td>
+                            <td>
+                                <span class="status-badge status-{{ req.status }}">
+                                    {{ req.get_status_display }}
+                                </span>
+                            </td>
+                            <td style="text-align: left;">
+                                <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="action-btn">
+                                    <i class="far fa-eye"></i> مشاهده
+                                </a>
+                                {% if user.role == 'purchasing' %}
+                                <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="action-btn">
+                                    <i class="fas fa-cart-shopping"></i> ثبت خرید
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="table-card">
+            <div class="card-body">
+                <div class="empty-state">
+                    <i class="fas fa-inbox" style="font-size: 2.6rem; color: var(--text-muted); margin-bottom: 0.9rem;"></i>
+                    <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">هیچ درخواستی یافت نشد</h3>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
 </div>
 
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
 {% endblock %}
-
-

@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}ویرایش درخواست #{{ purchase_request.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== ویرایش درخواست — هماهنگ با تم داشبورد (Kuker) ===== */
+    .edit-page {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    /* نوار اطلاعات درخواست */
+    .req-summary {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.5rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.83rem; color: var(--text-secondary);
+    }
+
+    .req-summary i { color: var(--accent-indigo); margin-left: 0.3rem; }
+    .req-summary strong { color: var(--text-primary); }
+
+    .lock-hint {
+        display: flex; align-items: center; gap: 0.5rem;
+        background: rgba(59, 130, 246, 0.07);
+        border: 1px dashed rgba(59, 130, 246, 0.35);
+        color: #1D4ED8;
+        border-radius: var(--radius-lg);
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem; font-weight: 500;
+        margin-bottom: 1.25rem;
+    }
+
+    /* جدول اقلام */
+    .items-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+
+    .items-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0.8rem 1.1rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .items-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .items-title i { color: var(--accent-indigo); margin-left: 0.35rem; }
+
+    .items-scroll { overflow-x: auto; }
+
+    .items-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .items-table th {
+        background: var(--bg-subtle);
+        color: var(--text-secondary);
+        font-size: 0.75rem; font-weight: 700;
+        padding: 0.55rem 0.75rem;
+        text-align: right;
+        border-bottom: 1px solid var(--border-light);
+        white-space: nowrap;
+    }
+
+    .items-table td {
+        padding: 0.5rem 0.6rem;
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: middle;
+    }
+
+    .items-table tr:last-child td { border-bottom: none; }
+
+    .items-table tr.removed-row td { opacity: 0.45; text-decoration: line-through; }
+
+    .cell-input {
+        width: 100%; height: 36px;
+        padding: 0 0.6rem;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+        font-family: 'Vazir', sans-serif; font-size: 0.82rem; color: var(--text-primary);
+        transition: all var(--transition-fast);
+    }
+
+    .cell-input:focus {
+        outline: none;
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .col-name { min-width: 170px; }
+    .col-qty { width: 90px; }
+    .col-unit { width: 100px; }
+    .col-desc { min-width: 170px; }
+    .col-remove { width: 46px; text-align: center; }
+
+    .remove-check {
+        width: 17px; height: 17px; cursor: pointer;
+        accent-color: #EF4444;
+    }
+
+    .add-row-btn {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        height: 34px; padding: 0 0.85rem;
+        border: 1px dashed rgba(139, 92, 246, 0.45);
+        border-radius: var(--radius-sm);
+        background: rgba(139, 92, 246, 0.05);
+        color: var(--primary-dark);
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 600;
+        cursor: pointer; transition: all var(--transition-fast);
+    }
+
+    .add-row-btn:hover { background: rgba(139, 92, 246, 0.1); }
+
+    /* کارت زمان تحویل */
+    .delivery-card {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .delivery-card label {
+        font-size: 0.83rem; font-weight: 700; color: var(--text-primary);
+    }
+
+    .delivery-card label i { color: var(--accent-indigo); margin-left: 0.3rem; }
+
+    .delivery-select {
+        height: 40px; padding: 0 0.75rem; min-width: 220px;
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.84rem;
+        cursor: pointer; transition: all var(--transition-fast);
+    }
+
+    .delivery-select:focus {
+        outline: none;
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    /* دکمه‌ها */
+    .form-actions {
+        display: flex; gap: 0.6rem; flex-wrap: wrap;
+    }
+
+    /* ریسپانسیو: جدول اقلام → کارت */
+    @media (max-width: 768px) {
+        .items-table thead { display: none; }
+        .items-table, .items-table tbody, .items-table tr, .items-table td { display: block; width: 100%; }
+        .items-table tr {
+            border-bottom: 1px solid var(--border-light);
+            padding: 0.5rem 0;
+        }
+        .items-table td { border-bottom: none; padding: 0.3rem 0.75rem; position: relative; }
+        .col-remove { text-align: left; }
+        .col-qty, .col-unit { display: inline-block; width: calc(50% - 0.6rem); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-page">
+
+    <!-- هدر صفحه -->
+    <div class="page-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-outline"
+               title="بازگشت به درخواست‌های من">
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            <h1 class="page-title"><i class="fas fa-pen-to-square"></i> ویرایش درخواست #{{ purchase_request.id }}</h1>
+        </div>
+    </div>
+
+    <!-- خلاصه درخواست -->
+    <div class="req-summary">
+        <span><i class="far fa-calendar-plus"></i>ثبت: <strong>{{ purchase_request.created_at|jalali_date }} — {{ purchase_request.created_at|jalali_time }}</strong></span>
+        <span>
+            <i class="fas fa-circle-half-stroke"></i>وضعیت:
+            <strong>{{ purchase_request.get_status_display }}</strong>
+        </span>
+        {% if purchase_request.delivery_date %}
+        <span><i class="far fa-calendar-check"></i>تحویل: <strong>{{ purchase_request.delivery_date|jalali_date:"%d %B" }}</strong></span>
+        {% endif %}
+    </div>
+
+    <div class="lock-hint">
+        <i class="fas fa-shield-halved"></i>
+        تا وقتی مسئول انبار برای اقلامِ این درخواست وضعیتی ثبت نکرده، می‌توانید آن را ویرایش کنید؛ پس از تعیین وضعیت، درخواست قفل می‌شود.
+    </div>
+
+    <form method="post" id="editRequestForm">
+        {% csrf_token %}
+
+        <!-- اقلام درخواست -->
+        <div class="items-card">
+            <div class="items-head">
+                <div class="items-title"><i class="fas fa-layer-group"></i> اقلام درخواست</div>
+                <button type="button" class="add-row-btn" onclick="addRow()">
+                    <i class="fas fa-plus"></i> افزودن قلم
+                </button>
+            </div>
+            <div class="items-scroll">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th class="col-name">نام کالا</th>
+                            <th class="col-qty">مقدار</th>
+                            <th class="col-unit">واحد</th>
+                            <th class="col-desc">توضیح</th>
+                            <th class="col-remove" title="حذف قلم">حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        {% for row in form_rows %}
+                        <tr {% if row.removed %}class="removed-row"{% endif %}>
+                            <td class="col-name">
+                                <input type="hidden" name="item_id" value="{{ row.id }}">
+                                <input type="text" name="name" class="cell-input" value="{{ row.name }}" placeholder="نام کالا" required>
+                            </td>
+                            <td class="col-qty">
+                                <input type="number" min="0.01" step="0.01" name="quantity" class="cell-input" value="{{ row.quantity|trim_decimal }}" required>
+                            </td>
+                            <td class="col-unit">
+                                <input type="text" name="unit" class="cell-input" value="{{ row.unit }}" placeholder="مثال: عدد">
+                            </td>
+                            <td class="col-desc">
+                                <input type="text" name="description" class="cell-input" value="{{ row.description }}" placeholder="توضیح (اختیاری)">
+                            </td>
+                            <td class="col-remove">
+                                {% if row.id %}
+                                <input type="checkbox" name="remove_item_id" value="{{ row.id }}" class="remove-check"
+                                       title="حذف این قلم" onchange="this.closest('tr').classList.toggle('removed-row', this.checked)">
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- قالب ردیف جدید (برای دکمه افزودن قلم) -->
+        <template id="rowTemplate">
+            <tr>
+                <td class="col-name">
+                    <input type="hidden" name="item_id" value="">
+                    <input type="text" name="name" class="cell-input" placeholder="نام کالا" required>
+                </td>
+                <td class="col-qty">
+                    <input type="number" min="0.01" step="0.01" name="quantity" class="cell-input" placeholder="1" required>
+                </td>
+                <td class="col-unit">
+                    <input type="text" name="unit" class="cell-input" placeholder="مثال: عدد">
+                </td>
+                <td class="col-desc">
+                    <input type="text" name="description" class="cell-input" placeholder="توضیح (اختیاری)">
+                </td>
+                <td class="col-remove">
+                    <button type="button" class="remove-check" style="border:none; background:none; cursor:pointer; color:#EF4444;"
+                            title="حذف این قلم" onclick="removeRow(this)">
+                        <i class="far fa-trash-can"></i>
+                    </button>
+                </td>
+            </tr>
+        </template>
+
+        <!-- زمان تحویل -->
+        <div class="delivery-card">
+            <label for="delivery_date"><i class="far fa-calendar-check"></i> زمان تحویل</label>
+            <select name="delivery_date" id="delivery_date" class="delivery-select">
+                <option value="">— بدون تغییر —</option>
+                {% for day_date, day_name in delivery_days %}
+                <option value="{{ day_date|date:'Y-m-d' }}" {% if selected_delivery == day_date|date:'Y-m-d' %}selected{% endif %}>
+                    {{ day_name }} {{ day_date|jalali_date:"%d %B" }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- دکمه‌ها -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-check"></i> ثبت تغییرات
+            </button>
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-outline">
+                <i class="fas fa-times"></i> انصراف
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function addRow() {
+        var tpl = document.getElementById('rowTemplate');
+        var body = document.getElementById('itemsBody');
+        body.appendChild(tpl.content.cloneNode(true));
+        var last = body.lastElementChild;
+        if (last) {
+            var firstInput = last.querySelector('input[name="name"]');
+            if (firstInput) firstInput.focus();
+        }
+    }
+
+    function removeRow(btn) {
+        var row = btn.closest('tr');
+        if (row) row.remove();
+    }
+
+    // جلوگیری از ثبت با ردیف‌های کاملاً خالی (ردیف دست‌نخورده افزوده‌شده)
+    document.getElementById('editRequestForm').addEventListener('submit', function () {
+        var body = document.getElementById('itemsBody');
+        Array.prototype.slice.call(body.querySelectorAll('tr')).forEach(function (tr) {
+            var isNew = !tr.querySelector('input[name="remove_item_id"]');
+            var isEmpty = !tr.querySelector('input[name="name"]').value.trim();
+            if (isNew && isEmpty) tr.remove();
+        });
+    });
+</script>
+{% endblock %}

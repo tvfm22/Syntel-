@@ -188,9 +188,11 @@
     }
 
     .act-chip i { font-size: 0.78rem; }
+    button.act-chip { cursor: pointer; font-family: 'Vazir', sans-serif; }
     .act-edit:hover { color: var(--primary-dark);       border-color: rgba(139,92,246,0.4);  background: rgba(139,92,246,0.07); }
     .act-key:hover  { color: #2563EB;                   border-color: rgba(59,130,246,0.4);  background: rgba(59,130,246,0.07); }
     .act-del:hover  { color: #DC2626;                   border-color: rgba(239,68,68,0.4);   background: rgba(239,68,68,0.07); }
+    .act-login:hover{ color: #059669;                   border-color: rgba(16,185,129,0.4);  background: rgba(16,185,129,0.07); }
 
     /* ---------- ریسپانسیو ---------- */
     @media (max-width: 992px) {
@@ -345,6 +347,15 @@
                         <td>{{ user.date_joined|date:"Y/m/d" }}</td>
                         <td style="text-align:left;">
                             <div class="user-actions">
+                                {% if user != request.user %}
+                                <form method="post" action="{% url 'user_impersonate' cafe_code=cafe_code user_id=user.id %}"
+                                      style="display:inline;" title="ورود با این کاربر">
+                                    {% csrf_token %}
+                                    <button type="submit" class="act-chip act-login">
+                                        <i class="fas fa-right-to-bracket"></i> ورود
+                                    </button>
+                                </form>
+                                {% endif %}
                                 <a href="{% url 'user_update' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-edit"
                                    title="ویرایش کاربر">
                                     <i class="fas fa-pen"></i> ویرایش

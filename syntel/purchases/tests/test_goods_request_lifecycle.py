@@ -316,8 +316,8 @@ class ProcessWarehouseRequestBranchTests(_GoodsRequestBase):
         self.item.refresh_from_db()
         self.assertEqual(self.item.supply_status, 'declined')
 
-    def test_mixed_from_stock_and_to_purchase_is_fulfilled(self):
-        """قلم مختلط: یکی از انبار و یکی ارجاع → وضعیت «تامین شده»"""
+    def test_mixed_from_stock_and_to_purchase_is_partial(self):
+        """قلم مختلط: یکی از انبار و یکی ارجاع → وضعیت «تامین جزئی»"""
         second = WarehouseRequestItem.objects.create(
             warehouse_request=self.wh_request, product=self.product_a,
             name='Flour', quantity=D('3'), unit='Kilogram')
@@ -330,7 +330,7 @@ class ProcessWarehouseRequestBranchTests(_GoodsRequestBase):
         })
         self.assertEqual(r.status_code, 302)
         self.wh_request.refresh_from_db()
-        self.assertEqual(self.wh_request.status, 'fulfilled')
+        self.assertEqual(self.wh_request.status, 'partial')
         stock.refresh_from_db()
         self.assertEqual(stock.quantity, D('46'))
 
@@ -467,7 +467,7 @@ class ManagerApprovalOfRequesterRequestTests(_GoodsRequestBase):
             reverse('manager_approve_request',
                     kwargs={'cafe_code': 'b',
                             'request_id': self.purchase_request.id}))
-        self.assertEqual(r.status_code, 302)  # ریدایرکت با پیام «دسترسی غیرمجاز»
+        self.assertEqual(r.status_code, 404)  # شناسهٔ کافهٔ دیگر حتی برای مدیر → 404
         self.purchase_request.refresh_from_db()
         self.assertEqual(self.purchase_request.status,
                          'pending_manager_approval')

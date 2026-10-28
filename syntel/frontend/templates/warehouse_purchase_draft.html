@@ -281,7 +281,7 @@
                 <option value="">بدون برند</option>
             </select>
             <input type="text" name="new_name" placeholder="یا نام آزاد بنویسید">
-            <input type="number" name="new_qty" min="1" step="1" placeholder="مقدار" required>
+            <input type="number" name="new_qty" min="0.01" step="0.01" placeholder="مقدار" required>
             <input type="text" name="unit" placeholder="واحد (پیش‌فرض: عدد)" style="width:110px;">
             <input type="text" name="description" placeholder="توضیحات (اختیاری)" style="flex:1;min-width:140px;">
             <button type="submit" name="action" value="add_item" class="btn btn-blue">
@@ -328,8 +328,8 @@
                             <td class="col-fix" data-label="برند">{% if d.product_brand %}{{ d.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                             <td class="col-fix" data-label="ماندگاری">{% if info.shelf_life %}{{ info.shelf_life }} روز{% else %}<span class="dash">—</span>{% endif %}</td>
                             <td class="col-fix" data-label="موجودی">{% if info.has_stock %}<span class="t-ok">{{ info.stock_total|trim_decimal }} {{ info.stock_unit }}</span>{% elif d.product_id %}<span class="t-bad">ناموجود</span>{% else %}<span class="dash">—</span>{% endif %}</td>
-                            <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="1" step="1"
-                                       value="{{ d.quantity|stringformat:'s' }}" required title="مقدار"
+                            <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="0.01" step="0.01"
+                                       value="{{ d.quantity|trim_decimal }}" required title="مقدار"
                                        form="draft-edit-{{ d.id }}"></td>
                             <td class="col-fix" data-label="واحد">{{ d.unit|default:'—' }}</td>
                             <td class="cell-delivery" data-label="زمان تحویل">{% with src=draft_requested_delivery|get_item:d.id %}{% if src and src.date %}{{ src.date|jalali_date }}{% elif src and src.immediate %}فوری{% else %}<span class="dash">—</span>{% endif %}{% endwith %}</td>
@@ -423,8 +423,8 @@
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
                                 <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="1" step="1"
-                                           value="{{ item.quantity|stringformat:'s' }}" required title="مقدار"
+                                <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="0.01" step="0.01"
+                                           value="{{ item.quantity|trim_decimal }}" required title="مقدار"
                                            form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
                                 <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
                                 <td class="col-note" data-label="توضیحات"><input type="text" name="description" class="desc-edit"
@@ -492,7 +492,7 @@
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
                                 <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td data-label="مقدار">{{ item.quantity|stringformat:'s' }}</td>
+                                <td data-label="مقدار">{{ item.quantity|trim_decimal }}</td>
                                 <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
                                 <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
                             </tr>
@@ -534,7 +534,7 @@
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
                                 <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
-                                <td data-label="مقدار">{{ item.quantity|stringformat:'s' }}</td>
+                                <td data-label="مقدار">{{ item.quantity|trim_decimal }}</td>
                                 <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
                                 <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
                             </tr>
