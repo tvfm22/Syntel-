@@ -144,3 +144,26 @@ c = Client(); c.force_login(u)
 r = c.get('/baba_adam/finance-dashboard/')   # → 200
 ```
 کاربر `admin` سوپرادمین است و همه صفحات را می‌بیند.
+
+## ساختار و قواعد جدید (۲۰۲۶-۱۰-۲۸)
+
+- ریشه: `manage.py`, `requirements.txt`, `Dockerfile`, `entrypoint.sh`,
+  `liara.json`, `README.md`, `docs/`, `reference/`, `data/`, `syntel/`.
+- `reference/menu/منو کوکر.xlsx` منبع COGS است؛ مسیر در
+  `settings.MENU_WORKBOOK_PATH`.
+- `docs/` مرجع مستندات است؛ `docs/archive/` فقط تاریخچه.
+- `syntel/deploy/baremetal/` بستهٔ قدیمی nginx/systemd است و در Docker/Liara
+  نقشی ندارد. `syntel/gunicorn_config.py` باید سر جایش بماند.
+- `WarehouseRequest.status` می‌تواند `partial` باشد؛ نتیجهٔ مختلط هرگز
+  `fulfilled` نمی‌شود.
+- `OfficerAssignment.status` می‌تواند `reopened` باشد؛ ردیف‌های تخصیص در
+  بازگشایی حذف نمی‌شوند.
+- بازگشایی دلیل اجباری دارد، بعد از `received_confirmed_at` ممنوع است، و
+  `StockTransaction` جبرانی با `officer_assignment_reopen` می‌سازد.
+- جستجوهای جدید باید از `CAFE_LOOKUP_PATHS` و
+  `get_scoped_object_or_404`/`get_scoped_locked_object_or_404` استفاده کنند.
+- تست‌ها در این محیط با `--settings=syntel.test_settings` اجرا شوند
+  (session مبتنی بر signed cookie).
+- هشدار بازیابی: یک `cline restore transaction` کارهای uncommitted را به HEAD
+  برگرداند. بعد از هر فاز، commit یا stash نام‌دار بسازید. در صورت ناپدیدشدن
+  فایل‌ها، `git stash list`، `git reflog` و کامیت‌های unreachable را بررسی کنید.
