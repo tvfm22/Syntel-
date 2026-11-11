@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, PurchaseRequest, PurchaseItem, Category, Product,
-    Unit, Supplier, Invoice, InvoiceItem, Payment, OfficerAssignment
+    Unit, Supplier, Invoice, InvoiceItem, Payment, OfficerAssignment,
+    KukerItem, KukerItemCostHistory, MenuSection, CogsReport, ProductPriceEntry,
 )
 
 # Custom User Admin
@@ -34,8 +35,8 @@ class PurchaseItemAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'parent', 'is_active')
-    list_filter = ('is_active',)
+    list_display = ('name', 'parent', 'is_active', 'requires_recipe')
+    list_filter = ('is_active', 'requires_recipe')
     search_fields = ('name', 'description')
     ordering = ('name',)
 
@@ -105,3 +106,48 @@ class OfficerAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('target_role', 'status', 'assigned_at')
     search_fields = ('item__name', 'assigned_to__username')
     date_hierarchy = 'assigned_at'
+
+
+@admin.register(MenuSection)
+class MenuSectionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'kind', 'cafe', 'display_order', 'is_active')
+    list_filter = ('kind', 'cafe', 'is_active')
+    search_fields = ('name',)
+    ordering = ('cafe', 'kind', 'display_order', 'name')
+
+
+@admin.register(KukerItem)
+class KukerItemAdmin(admin.ModelAdmin):
+    list_display = ('name', 'kind', 'cafe', 'out_unit', 'price', 'product', 'is_custom')
+    list_filter = ('kind', 'cafe', 'is_custom')
+    search_fields = ('name', 'key', 'code')
+    ordering = ('cafe', 'kind', 'name')
+    raw_id_fields = ('product', 'section')
+
+
+@admin.register(KukerItemCostHistory)
+class KukerItemCostHistoryAdmin(admin.ModelAdmin):
+    list_display = ('item', 'cost_per_unit', 'recorded_at', 'note')
+    list_filter = ('item__cafe', 'item__kind')
+    search_fields = ('item__name', 'note')
+    date_hierarchy = 'recorded_at'
+    ordering = ('-recorded_at', '-id')
+
+
+@admin.register(ProductPriceEntry)
+class ProductPriceEntryAdmin(admin.ModelAdmin):
+    """تاریخچهٔ «وارد کردن قیمت» مواد اولیه از صفحهٔ قیمت‌گذاری."""
+    list_display = ('product', 'entered_amount', 'entered_unit',
+                    'price_per_smallest_unit', 'smallest_unit', 'recorded_at')
+    list_filter = ('cafe', 'smallest_unit')
+    search_fields = ('product__name', 'note')
+    date_hierarchy = 'recorded_at'
+    ordering = ('-recorded_at', '-id')
+    raw_id_fields = ('product',)
+
+
+@admin.register(CogsReport)
+class CogsReportAdmin(admin.ModelAdmin):
+    list_display = ('period_start', 'period_end', 'cafe', 'created_by', 'created_at')
+    list_filter = ('cafe', 'created_at')
+    date_hierarchy = 'created_at'

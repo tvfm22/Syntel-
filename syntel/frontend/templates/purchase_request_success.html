@@ -1,225 +1,26 @@
-{% load static %}<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>تایید درخواست - Kuker</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #f3e8ff 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            direction: rtl;
-        }
-        .container {
-            max-width: 480px;
-            width: 100%;
-            background: white;
-            padding: 48px 36px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.15), 0 4px 16px rgba(0,0,0,0.06);
-            text-align: center;
-            animation: float-in 0.6s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1);
-            background-size: 200% 100%;
-            animation: shimmer 2s ease-in-out infinite;
-        }
-        @keyframes float-in {
-            0% { opacity: 0; transform: translateY(24px) scale(0.96); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes shimmer {
-            0%, 100% { background-position: 200% 0; }
-            50% { background-position: -200% 0; }
-        }
-        @keyframes pop-in {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.15); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes check-draw {
-            0% { stroke-dashoffset: 100; }
-            100% { stroke-dashoffset: 0; }
-        }
-        @keyframes ring-pulse {
-            0% { transform: scale(1); opacity: 0.2; }
-            50% { transform: scale(1.4); opacity: 0.08; }
-            100% { transform: scale(1); opacity: 0.2; }
-        }
-        .icon-wrapper {
-            position: relative;
-            width: 88px;
-            height: 88px;
-            margin: 0 auto 24px;
-        }
-        .icon-ring {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: #eef2ff;
-            animation: ring-pulse 2.5s ease-in-out infinite;
-        }
-        .success-icon {
-            position: relative;
-            width: 88px;
-            height: 88px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: pop-in 0.5s ease-out 0.1s both;
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
-        }
-        .success-icon svg {
-            width: 44px;
-            height: 44px;
-        }
-        .success-icon .check-path {
-            fill: none;
-            stroke: white;
-            stroke-width: 3;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-dasharray: 100;
-            stroke-dashoffset: 100;
-            animation: check-draw 0.6s ease-out 0.4s forwards;
-        }
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 12px;
-        }
-        .subtitle {
-            color: #6b7280;
-            font-size: 0.95rem;
-            line-height: 1.7;
-            margin-bottom: 6px;
-        }
-        .highlight-text {
-            display: inline-block;
-            background: linear-gradient(135deg, #eef2ff, #ede9fe);
-            color: #6366f1;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            margin-top: 16px;
-        }
-        .divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
-            margin: 28px 0;
-        }
-        .buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .btn {
-            padding: 14px 28px;
-            border: none;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-family: 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-weight: 600;
-            transition: all 0.25s ease;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: white;
-            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
-        }
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #4b5563;
-            border: 1px solid #e5e7eb;
-        }
-        .btn-secondary:hover {
-            background: #e5e7eb;
-            transform: translateY(-2px);
-        }
-        .btn-secondary:active {
-            transform: translateY(0);
-        }
-
-        /* Mobile */
-        @media (max-width: 480px) {
-            .container {
-                padding: 36px 24px;
-                border-radius: 20px;
-            }
-            h1 {
-                font-size: 1.25rem;
-            }
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon-wrapper">
-            <div class="icon-ring"></div>
-            <div class="success-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path class="check-path" d="M5 13l4 4L19 7"/>
-                </svg>
-            </div>
+{% extends 'base.html' %}
+{% block title %}تایید ثبت درخواست - Kuker{% endblock %}
+{% block content %}
+<div style="max-width:520px; margin: 2.5rem auto; text-align: center;">
+    <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-top: 4px solid var(--accent-green); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); padding: 2.5rem 2rem;">
+        <div style="width:72px;height:72px;border-radius:50%;background:#ECFDF5;color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.85rem;margin:0 auto 1.25rem;">
+            <i class="fas fa-check"></i>
         </div>
-
-        <h1>درخواست شما با موفقیت ثبت شد!</h1>
-        <p class="subtitle">درخواست کالا شما در سیستم ثبت شد و مستقیماً برای مسئول انبار ارسال شد تا بررسی و تامین شود.</p>
-
-        <div class="highlight-text">📋 می‌توانید وضعیت درخواست خود را از داشبورد پیگیری کنید</div>
-
-        <div class="divider"></div>
-
-        <div class="buttons">
+        <h1 style="color: var(--text-primary); font-size: 1.25rem; font-weight: 800; margin-bottom: 0.6rem;">درخواست شما با موفقیت ثبت شد!</h1>
+        <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 1.5rem; line-height: 1.85;">
+            درخواست کالا در سیستم ثبت گردید و مستقیماً برای مسئول انبار ارسال شد تا بررسی و تامین شود.
+        </p>
+        <div style="background: #EEF2FF; border: 1px solid #E0E7FF; color: #4338CA; font-weight: 600; padding: 0.55rem 1rem; border-radius: 10px; font-size: 0.8rem; margin-bottom: 1.75rem;">
+            <i class="fas fa-clipboard-list"></i> می‌توانید وضعیت درخواست خود را از بخش «درخواست‌های من» پیگیری کنید
+        </div>
+        <div style="display: flex; gap: 0.65rem; justify-content: center; flex-wrap: wrap;">
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-primary">
-                <span>←</span>
-                بازگشت به داشبورد
+                <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
             </a>
             <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-secondary">
-                ✚ ثبت درخواست جدید
+                <i class="fas fa-plus"></i> ثبت درخواست جدید
             </a>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

@@ -130,7 +130,7 @@ class CeoQueueStabilityTests(TestCase):
         resp = self.client.get(reverse('manager_pending_requests', args=['testcafe']))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'بدون قلم')
-        self.assertContains(resp, f'#{req.id}')
+        self.assertContains(resp, req.request_number)
 
     def test_ceo_approve_empty_request_leaves_queue_by_ceo_action(self):
         """مدیرعامل می‌تواند درخواست خالی را رد کند — تنها راه خروج از صف، اقدام خودِ مدیرعامل است"""

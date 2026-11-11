@@ -348,8 +348,11 @@
     {% endfor %}
     {% endif %}
 
+    {% include 'partials/receipt_gate_banner.html' %}
+
     <form method="post" id="warehouseRequestForm">
         {% csrf_token %}
+        {{ submitted_items|json_script:"submittedItemsData" }}
 
         <!-- 1. Single entry form at the top -->
         <div class="entry-form-section">
@@ -416,8 +419,8 @@
 
         <!-- 4. Action buttons -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">ثبت نهایی</button>
-            <button type="submit" class="btn btn-secondary">ارسال</button>
+            <button type="submit" class="btn btn-primary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ثبت نهایی</button>
+            <button type="submit" class="btn btn-secondary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
         </div>
     </form>
@@ -458,8 +461,17 @@
 
 {% block extra_js %}
 <script>
+    // ردیف‌هایی که سرور در آخرین ارسال دیده — اگر ارسال رد شد، همان ردیف‌ها
+    // برمی‌گردند تا کاربر از صفر شروع نکند.
     let items = [];
-    let nextItemId = 1;
+    try {
+        const seedEl = document.getElementById('submittedItemsData');
+        const seed = seedEl ? JSON.parse(seedEl.textContent || '[]') : [];
+        items = (Array.isArray(seed) ? seed : []).map((row, i) => ({ ...row, id: i + 1 }));
+    } catch (err) {
+        items = [];
+    }
+    let nextItemId = items.length + 1;
     let editingId = null;
     let pendingProductItemId = null;
     let isCheckingStock = false; // جلوگیری از ثبت دوباره هنگام کلیک/اینتر مکرر در طول بررسی موجودی

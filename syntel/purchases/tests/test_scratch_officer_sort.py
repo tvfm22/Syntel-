@@ -77,6 +77,11 @@ class OfficerDashboardCardSortTest(TestCase):
         تعیین‌کنندهٔ روزِ صفحه نیست و فقط روی کارت نمایش داده می‌شود"""
         now = timezone.localtime(timezone.now())
         yest = now.date() - timedelta(days=1)
+        # نقطهای قطعاً در «امروز» و قطعاً قبل از الان: کمکردن یک بازهٔ ثابت
+        # (مثلاً ۳ ساعت) از الان، حوالی نیمهشب به دیروز میافتاد و تست قرمز
+        # میشد، بدون اینکه ایرادی در برنامه باشد.
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        earlier_today = today_midnight + (now - today_midnight) / 2
 
         # ثبت‌شدهٔ دیروز با تحویلِ درخواستیِ دور → باید روی صفحهٔ دیروز باشد نه امروز
         yesterday = PurchaseRequest.objects.create(
@@ -90,7 +95,7 @@ class OfficerDashboardCardSortTest(TestCase):
         today_immediate = PurchaseRequest.objects.create(
             user=self.ceo, cafe=self.cafe, status='pending', delivery_immediate=True)
         PurchaseRequest.objects.filter(pk=today_immediate.pk).update(
-            created_at=now - timedelta(hours=3))
+            created_at=earlier_today)
 
         for req, prod in ((yesterday, self.prod_new), (today_immediate, self.prod_new)):
             PurchaseItem.objects.create(request=req, product=prod,

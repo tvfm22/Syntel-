@@ -1,0 +1,54 @@
+{% comment %}
+هشدار مشترکِ «تایید دریافت قبل از درخواست جدید».
+منتظرِ متغیر receipt_gate (دیکشنری با pending_count و confirm_url) است؛
+اگر None باشد چیزی رندر نمیشود. هر دو فرم درخواست از همین یک نسخه استفاده
+میکنند تا متن و لینکشان جدا از هم تغییر نکند.
+{% endcomment %}
+{% if receipt_gate %}
+<style>
+.rg-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4, 1rem);
+    flex-wrap: wrap;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-right: 4px solid #f59e0b;
+    color: #92400e;
+    border-radius: var(--radius-lg, 12px);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+.rg-banner .rg-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.rg-banner .rg-text { flex: 1 1 320px; }
+.rg-banner .rg-title { display: block; font-weight: 700; margin-bottom: .25rem; }
+.rg-banner .rg-desc { margin: 0; font-size: .87rem; line-height: 1.8; opacity: .92; }
+.rg-banner .rg-count {
+    display: inline-block;
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0 .5rem;
+    font-size: .8rem;
+    font-weight: 700;
+}
+</style>
+<div class="rg-banner" role="alert">
+    <div class="rg-icon"><i class="fas fa-box-open"></i></div>
+    <div class="rg-text">
+        <span class="rg-title">قبل از درخواست جدید، دریافت کالاهای قبلی را تایید کنید</span>
+        <p class="rg-desc">
+            <span class="rg-count">{{ receipt_gate.pending_count }}</span>
+            قلم از کالاهای تحویلشدهٔ درخواستهای قبلیتان هنوز تایید دریافت نشده است.
+            تا وقتی وضعیت آنها را مشخص نکنید، نمیتوانید درخواست تازهای ثبت کنید.
+        </p>
+    </div>
+    <a href="{{ receipt_gate.confirm_url }}" class="btn btn-primary">
+        <i class="fas fa-circle-check"></i> تایید دریافت کالاها
+    </a>
+</div>
+{% endif %}

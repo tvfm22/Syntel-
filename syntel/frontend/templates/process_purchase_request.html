@@ -1,248 +1,116 @@
-﻿{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پردازش درخواست کالا</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Vazir, sans-serif;
-        }
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        body {
-            background: #f3f4f6;
-            min-height: 100vh;
-            padding: 16px;
-            padding-bottom: 100px;
-        }
+{% block title %}پردازش درخواست کالا {{ purchase_request.request_number }} - Kuker{% endblock %}
 
-        .header {
-            background: white;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+{% block extra_css %}
+<style>
+    .ppr-wrap { max-width: 880px; margin: 0 auto; }
+    .ppr-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
 
-        .back-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            background: white;
-            color: #374151;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-        }
+    .request-info {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        padding: 1rem 1.35rem; border-radius: var(--radius-xl);
+        margin-bottom: 1rem; box-shadow: var(--shadow-xs);
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 2px; }
+    .info-label { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+    .info-value { color: var(--text-primary); font-size: 0.88rem; font-weight: 700; }
 
-        .header-info {
-            flex: 1;
-        }
+    .item-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-inline-start: 4px solid var(--accent-indigo);
+        border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
+        margin-bottom: 0.85rem; box-shadow: var(--shadow-xs);
+    }
+    .item-header {
+        padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);
+        margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .item-name { font-size: 0.98rem; font-weight: 800; color: var(--text-primary); }
+    .item-requested {
+        font-size: 0.8rem; color: #4F46E5; background: #EEF2FF;
+        padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 700;
+    }
 
-        .header-info h1 {
-            font-size: 18px;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
+    .form-grid-item {
+        display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; align-items: start;
+    }
+    .form-label { display: block; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.4rem; font-weight: 700; }
+    .form-input {
+        width: 100%; height: 40px; padding: 0 0.85rem; border: 1px solid var(--border-default);
+        border-radius: 10px; font-size: 0.9rem; font-family: 'Vazir', sans-serif; background: var(--bg-input);
+    }
+    .form-input:focus { outline: none; border-color: var(--accent-indigo); background: #fff; box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
 
-        .header-info p {
-            font-size: 13px;
-            color: #6b7280;
-        }
+    .radio-group { display: flex; gap: 0.65rem; flex-wrap: wrap; }
+    .radio-option {
+        flex: 1; min-width: 130px; display: flex; align-items: center; height: 40px; padding: 0 0.85rem;
+        border: 1px solid var(--border-default); border-radius: 10px; cursor: pointer; transition: all 0.15s;
+        background: var(--bg-card);
+    }
+    .radio-option:has(input:checked) { background: #EEF2FF; border-color: var(--accent-indigo); }
+    .radio-option input[type="radio"] { margin-left: 8px; width: 16px; height: 16px; accent-color: var(--accent-indigo); }
+    .radio-label { font-size: 0.82rem; color: var(--text-primary); font-weight: 700; }
 
-        .request-info {
-            background: white;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
+    .submit-bar {
+        display: flex; justify-content: flex-end; background: var(--bg-card);
+        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); margin-top: 1rem;
+    }
 
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f3f4f6;
-        }
+    @media (max-width: 640px) {
+        .form-grid-item { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
 
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        .info-value {
-            color: #1f2937;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .items-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .item-card {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .item-header {
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f3f4f6;
-            margin-bottom: 16px;
-        }
-
-        .item-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
-
-        .item-requested {
-            font-size: 13px;
-            color: #6b7280;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            color: #374151;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: Vazir, sans-serif;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
-
-        .radio-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .radio-option {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .radio-option:has(input:checked) {
-            background: #eff6ff;
-            border-color: #3b82f6;
-        }
-
-        .radio-option input[type="radio"] {
-            margin-left: 10px;
-            width: 18px;
-            height: 18px;
-        }
-
-        .radio-label {
-            font-size: 14px;
-            color: #374151;
-        }
-
-        .submit-area {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            padding: 16px;
-            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 14px;
-            background: #10b981;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            font-family: Vazir, sans-serif;
-            cursor: pointer;
-        }
-
-        .submit-btn:active {
-            background: #059669;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <a href="javascript:history.back()" class="back-btn">←</a>
-        <div class="header-info">
-            <h1>پردازش درخواست کالا</h1>
-            <p>شماره درخواست: {{ purchase_request.id }}</p>
+{% block content %}
+<div class="ppr-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="ph-title">
+                <h1>پردازش درخواست کالا</h1>
+                <div class="page-sub">شماره درخواست: {{ purchase_request.request_number }}</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
         </div>
     </div>
 
     <div class="request-info">
         <div class="info-row">
-            <span class="info-label">درخواست کننده:</span>
+            <span class="info-label">درخواست‌کننده</span>
             <span class="info-value">{{ purchase_request.user.first_name }} {{ purchase_request.user.last_name }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">بخش:</span>
+            <span class="info-label">بخش</span>
             <span class="info-value">
                 {% if purchase_request.user.role == 'kitchen' %}آشپزخانه
                 {% elif purchase_request.user.role == 'bar' %}بار
                 {% elif purchase_request.user.role == 'counter' %}کانتر
                 {% elif purchase_request.user.role == 'cashier' %}صندوق
                 {% elif purchase_request.user.role == 'facilities' %}تاسیسات
-                {% endif %}
+                {% else %}{{ purchase_request.user.department_display }}{% endif %}
             </span>
         </div>
         <div class="info-row">
-            <span class="info-label">تاریخ:</span>
+            <span class="info-label">تاریخ ثبت</span>
             <span class="info-value">{{ purchase_request.created_at|jalali_date }}</span>
         </div>
     </div>
 
-    <form method="post" class="items-form">
+    <form method="post">
         {% csrf_token %}
-        
         {% for item in purchase_request.items.all %}
         <div class="item-card">
             <div class="item-header">
@@ -250,51 +118,53 @@
                 <div class="item-requested">مقدار درخواستی: {{ item.quantity|trim_decimal }} {{ item.unit }}</div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="purchased_qty_{{ item.id }}">
-                    مقدار خریداری شده
-                </label>
-                <input 
-                    type="number" 
-                    name="purchased_qty_{{ item.id }}" 
-                    id="purchased_qty_{{ item.id }}"
-                    class="form-input"
-                    min="0"
-                    value="{{ item.purchased_quantity|default:item.quantity|trim_decimal }}"
-                    placeholder="مقدار خریداری شده را وارد کنید"
-                >
-            </div>
+            <div class="form-grid-item">
+                <div>
+                    <label class="form-label" for="purchased_qty_{{ item.id }}">مقدار خریداری‌شده</label>
+                    <input
+                        type="number"
+                        name="purchased_qty_{{ item.id }}"
+                        id="purchased_qty_{{ item.id }}"
+                        class="form-input"
+                        min="0"
+                        step="any"
+                        value="{{ item.purchased_quantity|default:item.quantity|trim_decimal }}"
+                        placeholder="مقدار خریداری‌شده"
+                    >
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">وضعیت تامین</label>
-                <div class="radio-group">
-                    <label class="radio-option">
-                        <input
-                            type="radio"
-                            name="supply_status_{{ item.id }}"
-                            value="purchased"
-                            {% if item.supply_status == 'purchased' %}checked{% endif %}
-                        >
-                        <span class="radio-label">🛒 خرید</span>
-                    </label>
-                    <label class="radio-option">
-                        <input 
-                            type="radio" 
-                            name="supply_status_{{ item.id }}" 
-                            value="not_supplied"
-                            {% if item.supply_status == 'not_supplied' %}checked{% endif %}
-                        >
-                        <span class="radio-label">❌ تامین نشده</span>
-                    </label>
+                <div>
+                    <label class="form-label">وضعیت تامین</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input
+                                type="radio"
+                                name="supply_status_{{ item.id }}"
+                                value="purchased"
+                                {% if item.supply_status == 'purchased' %}checked{% endif %}
+                            >
+                            <span class="radio-label"><i class="fas fa-cart-shopping" style="color:#059669;margin-left:4px;"></i> خریداری شد</span>
+                        </label>
+                        <label class="radio-option">
+                            <input
+                                type="radio"
+                                name="supply_status_{{ item.id }}"
+                                value="not_supplied"
+                                {% if item.supply_status == 'not_supplied' %}checked{% endif %}
+                            >
+                            <span class="radio-label"><i class="fas fa-times-circle" style="color:#DC2626;margin-left:4px;"></i> تامین نشده</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
         {% endfor %}
 
-        <div class="submit-area">
-            <button type="submit" class="submit-btn">ثبت و تایید نهایی</button>
+        <div class="submit-bar">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-check"></i> ثبت و تایید نهایی
+            </button>
         </div>
     </form>
-</body>
-</html>
-
+</div>
+{% endblock %}

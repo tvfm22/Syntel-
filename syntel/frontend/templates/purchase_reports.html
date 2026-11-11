@@ -1,5 +1,5 @@
 ﻿{% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters humanize %}
 
 {% block title %}گزارشات خرید - Kuker{% endblock %}
 
@@ -581,7 +581,7 @@
                 <tbody>
                     {% for request in requests %}
                     <tr>
-                        <td>{{ request.id }}</td>
+                        <td>{{ request.request_number }}</td>
                         <td>{{ request.user.department_display }}</td>
                         <td>{{ request.created_at|date:"Y/m/d" }}</td>
                         <td><span class="status-badge status-{{ request.status }}">{{ request.get_status_display }}</span></td>
@@ -629,7 +629,7 @@
                     <tbody>
                         {% for stat in status_breakdown %}
                         <tr>
-                            <td><span class="status-badge status-{{ stat.status|lower|replace:' ':'_' }}">{{ stat.status }}</span></td>
+                            <td><span class="status-badge status-{{ stat.status|lower }}">{{ stat.status }}</span></td>
                             <td>{{ stat.count }}</td>
                         </tr>
                         {% endfor %}

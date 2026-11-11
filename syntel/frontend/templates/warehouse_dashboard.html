@@ -1,135 +1,69 @@
-{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد انبار - Kuker</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        :root {
-            --primary:#8B5CF6; --primary-dark:#7C3AED; --success:#22C55E; --warning:#F59E0B; --danger:#EF4444;
-            --dark:#0F172A; --muted:#94A3B8; --text-secondary:#64748B; --border:#E2E8F0; --border-light:#F1F5F9; --bg-subtle:#FAFAFA;
-            --shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);
-            --shadow-md:0 4px 24px rgba(15,23,42,0.05);
-        }
-        body { background: #EDEDF2; min-height: 100vh; color: var(--dark); }
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        /* ── layout ── */
-        .page-wrapper { max-width: 1280px; margin: 0 auto; padding: 20px 24px 100px; }
+{% block title %}داشبورد انبار - Kuker{% endblock %}
 
-        /* ── header ── */
-        .header {
-            background: white; padding: 16px 20px; border-radius: 16px;
-            margin-bottom: 22px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-        }
-        .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .ph-icon {
-            width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-            background: rgba(139,92,246,0.1); color: var(--primary);
-            display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-        }
-        .header-left h1 { font-size: 1.15rem; font-weight: 800; color: var(--dark); line-height: 1.4; }
-        .header-left p  { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+{% block extra_css %}
+<style>
+    .whd-wrap { max-width: 1180px; margin: 0 auto; }
+    .whd-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
+    .ph-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .ph-icon {
+        width: 42px; height: 42px; border-radius: var(--radius-md); flex-shrink: 0;
+        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .page-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
 
-        /* ── tabs ── */
-        .tab-row { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
-        .tab-btn {
-            padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700;
-            text-decoration: none; background: white; border: 1.5px solid var(--border); color: var(--text-secondary); transition: all .15s;
-        }
-        .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .tab-row { display: flex; gap: 0.5rem; margin-bottom: var(--space-4); flex-wrap: wrap; }
+    .tab-btn {
+        padding: 0.5rem 1.15rem; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 700;
+        text-decoration: none; background: var(--bg-card); border: 1px solid var(--border-default);
+        color: var(--text-secondary); transition: all var(--transition-fast);
+        display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .tab-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .tab-btn.active { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
 
-        /* ── section title ── */
-        .section-title { font-size: 1rem; font-weight: 800; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-        .section-title i.warn { color: var(--warning); }
-        .section-block  { margin-bottom: 32px; }
+    .section-title { font-size: 0.98rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-title i.warn { color: var(--warning); }
+    .section-block { margin-bottom: var(--space-5); }
 
-        /* ── responsive grid ── */
-        .departments-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-        @media (min-width: 560px)  { .departments-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 900px)  { .departments-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (min-width: 1200px) { .departments-grid { grid-template-columns: repeat(4, 1fr); } }
+    .low-stock-card {
+        background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border-default);
+        box-shadow: var(--shadow-sm); padding: 0.5rem 1.15rem;
+    }
+    .low-stock-item { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border-light); }
+    .low-stock-item:last-child { border-bottom: none; }
+    .stock-name { font-weight: 700; color: var(--text-primary); }
+    .stock-quantities { display: flex; gap: 0.75rem; align-items: center; }
+    .qty-current { color: #DC2626; font-weight: 800; background: #FEF2F2; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.78rem; }
+    .qty-min { color: var(--text-secondary); font-size: 0.76rem; }
 
-        .department-card {
-            background: white; border-radius: 16px; padding: 18px;
-            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
-            border-inline-start: 4px solid var(--primary);
-            transition: box-shadow .2s, transform .15s;
-        }
-        .department-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .see-all-link {
+        color: var(--accent-indigo); font-size: 0.8rem; text-decoration: none; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 0.35rem;
+    }
+    .see-all-link:hover { color: var(--primary-dark); }
+</style>
+{% endblock %}
 
-        .department-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-        .dept-icon {
-            width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
-            background: rgba(139,92,246,0.1); color: var(--primary);
-            display: flex; align-items: center; justify-content: center; font-size: 1rem;
-        }
-        .dept-name { font-size: 0.95rem; font-weight: 700; color: var(--dark); }
-        .dept-stats { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
-
-        .stat-badge { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-        .stat-total   { background: var(--bg-subtle); border: 1px solid var(--border-light); color: var(--text-secondary); }
-        .stat-pending { background: #fef3c7; color: #92400e; }
-
-        .dept-actions { display: flex; gap: 10px; }
-        .dept-btn {
-            flex: 1; padding: 9px; border: 1.5px solid var(--border); border-radius: 999px; background: white;
-            color: var(--text-secondary); font-size: 12.5px; font-weight: 600; text-decoration: none; text-align: center; transition: all .15s;
-            font-family: Vazir, sans-serif;
-        }
-        .dept-btn:hover    { border-color: var(--primary); color: var(--primary); }
-        .dept-btn-all      { border-color: rgba(139,92,246,0.4); color: var(--primary); }
-        .dept-btn-pending  { border-color: rgba(245,158,11,0.5); color: #b45309; }
-
-        /* ── low stock ── */
-        .low-stock-card {
-            background: white; border-radius: 16px; border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-sm); padding: 8px 18px; margin-bottom: 12px;
-        }
-        .low-stock-item { display: flex; justify-content: space-between; padding: 10px 0; font-size: 13.5px; border-bottom: 1px solid var(--border-light); }
-        .low-stock-item:last-child { border-bottom: none; }
-        .stock-name { font-weight: 700; color: var(--dark); }
-        .stock-quantities { display: flex; gap: 12px; align-items: center; }
-        .qty-current { color: var(--danger); font-weight: 700; }
-        .qty-min { color: var(--text-secondary); font-size: 12px; }
-
-        .see-all-link {
-            color: var(--primary); font-size: 12.5px; text-decoration: none; font-weight: 700;
-            display: inline-flex; align-items: center; gap: 4px;
-        }
-        .see-all-link:hover { color: var(--primary-dark); }
-
-        /* ── logout ── */
-        .logout-btn {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            padding: 10px 24px; background: white; border: 1.5px solid var(--border);
-            border-radius: 999px; color: var(--danger); text-decoration: none;
-            box-shadow: var(--shadow-md); font-size: 13px; font-weight: 700; z-index: 100;
-        }
-        .logout-btn:hover { background: #fef2f2; }
-    </style>
-</head>
-<body>
-<div class="page-wrapper">
-
-    <!-- Header -->
-    <div class="header">
-        <div class="header-left">
+{% block content %}
+<div class="whd-wrap">
+    <div class="page-header">
+        <div class="ph-main">
             <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
             <div>
-                <h1>داشبورد انبار</h1>
-                <p>{{ user.first_name }} {{ user.last_name }}</p>
+                <h1 class="page-title">داشبورد انبار</h1>
+                <div class="page-sub">{{ user.first_name }} {{ user.last_name }}</div>
             </div>
         </div>
     </div>
 
-    <!-- Role tabs -->
     {% if has_purchasing or has_warehouse %}
     <div class="tab-row">
         <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active"><i class="fas fa-warehouse"></i> انبار</a>
@@ -138,7 +72,6 @@
     </div>
     {% endif %}
 
-    <!-- Low stock -->
     {% if stock_items_low %}
     <div class="section-block">
         <div class="section-title"><i class="fas fa-triangle-exclamation warn"></i> موجودی‌های کمتر از حداقل</div>
@@ -152,7 +85,7 @@
                 </span>
             </div>
             {% endfor %}
-            <div style="margin-top: 12px; padding-bottom: 10px; text-align: left;">
+            <div style="margin-top: 10px; padding-bottom: 8px; text-align: left;">
                 <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="see-all-link">
                     مشاهده همهٔ موجودی‌ها <i class="fas fa-arrow-left"></i>
                 </a>
@@ -160,8 +93,5 @@
         </div>
     </div>
     {% endif %}
-
-</div><!-- /page-wrapper -->
-<a href="{% url 'logout' %}" class="logout-btn"><i class="fas fa-arrow-right-from-bracket"></i> خروج از سیستم</a>
-</body>
-</html>
+</div>
+{% endblock %}

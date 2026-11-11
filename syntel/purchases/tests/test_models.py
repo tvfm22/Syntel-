@@ -1,9 +1,10 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import transaction
 from datetime import timedelta
 from purchases.models import (
-    Category, Unit, Product, PaymentType, PaymentLocation,
+    Cafe, Category, Unit, Product, PaymentType, PaymentLocation,
     Supplier, SupplierEvaluation, PurchaseRequest, PurchaseItem,
     PurchaseOrder, PurchaseOrderItem, Invoice, InvoiceItem,
     Payment, ActivityLog, Notification
@@ -318,21 +319,45 @@ class ModelTests(TestCase):
         self.assertEqual(invoice.invoice_items.count(), 1)
 
     def test_data_integrity(self):
-        """Test data integrity constraints"""
-        # Test unique constraints
-        with self.assertRaises(Exception):
-            Product.objects.create(
-                name='Test Product',  # Duplicate name
-                category=self.category,
-                unit=self.unit
-            )
+        """Test data integrity constraints (cafe-scoped uniqueness).
 
+        Product and Supplier are unique per (name, cafe). With cafe=NULL the
+        SQLite backend does not enforce the constraint, so we pin an explicit
+        cafe on both the original and the duplicate row.
+        """
+        cafe = Cafe.objects.create(name='Test Cafe', code='TEST')
+
+        # تکرار (name, cafe) برای محصول باید خطا بدهد
+        Product.objects.create(
+            name='Unique Product',
+            category=self.category,
+            unit=self.unit,
+            cafe=cafe,
+        )
         with self.assertRaises(Exception):
-            Supplier.objects.create(
-                name='Test Supplier',  # Duplicate name
-                contact_person='Jane Doe',
-                email='jane@example.com'
-            )
+            with transaction.atomic():
+                Product.objects.create(
+                    name='Unique Product',
+                    category=self.category,
+                    unit=self.unit,
+                    cafe=cafe,
+                )
+
+        # تکرار (name, cafe) برای تأمین‌کننده باید خطا بدهد
+        Supplier.objects.create(
+            name='Unique Supplier',
+            contact_person='John Doe',
+            email='john@example.com',
+            cafe=cafe,
+        )
+        with self.assertRaises(Exception):
+            with transaction.atomic():
+                Supplier.objects.create(
+                    name='Unique Supplier',
+                    contact_person='Jane Doe',
+                    email='jane@example.com',
+                    cafe=cafe,
+                )
 
     def test_model_validation(self):
         """Test model field validation"""

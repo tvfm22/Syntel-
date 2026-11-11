@@ -6,214 +6,187 @@
 {% block extra_css %}
 <style>
     /* ═══ صفحه درخواست خرید مسئول انبار — هماهنگ با داشبورد انبار ═══ */
-    .officer-wrap { max-width: 1100px; margin: 0 auto; }
+    .officer-wrap { max-width: 1180px; margin: 0 auto; }
 
-    /* ── هدر صفحه — همان الگوی مینیمال داشبورد انبار ── */
     .officer-wrap .page-header {
-        display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+        display: flex; align-items: center; justify-content: space-between;
         height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); gap: var(--space-2) var(--space-4);
-        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-4); gap: var(--space-3); flex-wrap: wrap;
+        border-radius: var(--radius-xl); background: var(--bg-card);
+        border: 1px solid var(--border-default); box-shadow: var(--shadow-sm);
     }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; justify-self: start; }
+    .ph-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
     .ph-main .page-title { margin: 0; }
     .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
+        width: 42px; height: 42px; border-radius: var(--radius-md); flex-shrink: 0;
+        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
         display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     }
-    .header-corner { grid-column: 3; justify-self: end; }
-    @media (max-width: 900px) {
-        .officer-wrap .page-header { display: flex; flex-direction: column; align-items: center; }
-        .header-corner { justify-self: auto; }
-    }
+    .header-corner { display: flex; align-items: center; gap: 0.6rem; }
 
     /* ── کارت‌های بخش‌ها ── */
     .section-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
+        background: var(--bg-card); border: 1px solid var(--border-default);
         border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-5); margin-bottom: var(--space-5);
+        padding: var(--space-5); margin-bottom: var(--space-4);
         overflow: hidden;
     }
     .section-title {
-        display: flex; align-items: center; gap: 0.5rem;
-        font-size: 1rem; font-weight: 800; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+        font-size: 0.98rem; font-weight: 800; color: var(--text-primary);
         margin-bottom: var(--space-3);
     }
     .section-title i { color: var(--accent-indigo); }
-    .count-text { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+    .count-text {
+        font-size: 0.73rem; font-weight: 700; color: var(--text-secondary);
+        background: var(--bg-subtle); border: 1px solid var(--border-default);
+        padding: 0.15rem 0.6rem; border-radius: 999px;
+    }
 
-    /* ── جدول اقلام: ستون‌های صاف/جدا با سرستون ── */
-    .table-scroll { overflow-x: auto; }
+    /* ── فرم افزودن کالای جدید — چیدمان Grid منظم و استاندارد ── */
+    .add-form-row {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 1.3fr 0.7fr 0.8fr 1.4fr auto;
+        gap: 0.55rem; align-items: center;
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        padding: 0.75rem; border-radius: var(--radius-lg);
+    }
+    .add-form-row select, .add-form-row input[type="text"], .add-form-row input[type="number"] {
+        height: 38px; padding: 0 0.7rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+        font-family: inherit; font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
+        width: 100%; min-width: 0;
+    }
+    .add-form-row select:focus, .add-form-row input:focus {
+        outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    }
+    @media (max-width: 1024px) {
+        .add-form-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── جدول اقلام ── */
+    .table-scroll { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
     .officer-table {
         width: 100%; border-collapse: collapse; font-size: 0.82rem;
-        border: 1px solid var(--border-light); border-radius: var(--radius-lg);
     }
     .officer-table th, .officer-table td {
-        padding: 0.55rem 0.85rem; vertical-align: middle; text-align: right;
-        border-inline-end: 1px solid var(--border-light);
+        padding: 0.6rem 0.85rem; vertical-align: middle; text-align: right;
         border-bottom: 1px solid var(--border-light);
     }
-    .officer-table th:last-child, .officer-table td:last-child { border-inline-end: none; }
     .officer-table thead th {
-        background: rgba(139,92,246,0.07);
+        background: #F8FAFC;
         color: var(--text-secondary);
-        font-size: 0.72rem; font-weight: 800; white-space: nowrap;
-        border-bottom: 2px solid var(--border-default);
+        font-size: 0.73rem; font-weight: 700; white-space: nowrap;
+        border-bottom: 1px solid var(--border-default);
     }
     .officer-table tbody tr:last-child td { border-bottom: none; }
-    .officer-table tbody tr:hover td { background: rgba(139,92,246,0.035); }
+    .officer-table tbody tr:hover td { background: #FAFBFD; }
 
-    .col-name { font-weight: 700; color: var(--text-primary); min-width: 160px; }
+    .col-name { font-weight: 700; color: var(--text-primary); min-width: 150px; }
     .col-fix { white-space: nowrap; color: var(--text-secondary); }
     .col-note { min-width: 150px; color: var(--text-secondary); }
-    .cell-delivery { color: #6d28d9; font-weight: 700; white-space: nowrap; }
+    .cell-delivery { color: var(--primary-dark); font-weight: 700; white-space: nowrap; }
     .cell-actions { white-space: nowrap; text-align: center !important; }
-    .t-ok   { color: #047857; font-weight: 600; }
-    .t-bad  { color: #b91c1c; font-weight: 600; }
-    .t-warn { color: #92400e; font-weight: 600; }
-    .t-deliv { color: #6d28d9; font-weight: 700; white-space: nowrap; }
-    .dash { color: #d1d5db; }
+    .t-ok   { color: #047857; font-weight: 700; background: #ECFDF5; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.74rem; }
+    .t-bad  { color: #B91C1C; font-weight: 700; background: #FEF2F2; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.74rem; }
+    .t-warn { color: #92400E; font-weight: 700; background: #FEF3C7; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.74rem; }
+    .dash { color: var(--text-muted); }
 
     /* ── ویرایش درون جدول ── */
     .qty-edit {
-        padding: 0.3rem 0.4rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: inherit; font-size: 0.85rem; font-weight: 600;
+        height: 34px; padding: 0 0.4rem; border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm); font-family: inherit; font-size: 0.84rem; font-weight: 700;
         text-align: center; background: var(--bg-card); color: var(--text-primary);
     }
-    .officer-table input.qty-edit { width: 64px; }
+    .officer-table input.qty-edit { width: 72px; }
     .qty-edit:focus { outline: none; border-color: var(--accent-indigo); }
     .desc-edit {
-        padding: 0.3rem 0.5rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: inherit; font-size: 0.75rem;
+        height: 34px; padding: 0 0.55rem; border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm); font-family: inherit; font-size: 0.78rem;
         background: var(--bg-card); color: var(--text-primary);
     }
     .officer-table input.desc-edit { width: 100%; min-width: 130px; }
     .desc-edit:focus { outline: none; border-color: var(--accent-indigo); }
     .icon-btn {
-        border: none; cursor: pointer; width: 30px; height: 30px; border-radius: var(--radius-md);
+        border: none; cursor: pointer; width: 32px; height: 32px; border-radius: var(--radius-sm);
         display: inline-flex; align-items: center; justify-content: center;
         font-size: 0.8rem; transition: all var(--transition-fast);
     }
-    .icon-btn.save { background: rgba(16,185,129,0.12); color: #059669; }
-    .icon-btn.delete { background: rgba(239,68,68,0.1); color: #b91c1c; }
-    .icon-btn:hover { transform: scale(1.08); }
+    .icon-btn.save { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+    .icon-btn.delete { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .icon-btn:hover { transform: translateY(-1px); }
     .cell-actions .icon-btn + .icon-btn { margin-inline-start: 0.3rem; }
-
-    /* ── فرم افزودن ── */
-    .add-form-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-    .add-form-row select, .add-form-row input[type="text"], .add-form-row input[type="number"] {
-        padding: 0.45rem 0.7rem; border: 1.5px solid var(--border-default); border-radius: var(--radius-md);
-        font-family: inherit; font-size: 0.82rem; background: var(--bg-card); color: var(--text-primary);
-    }
-    .add-form-row input[name="new_name"] { flex: 1; min-width: 160px; }
-    .add-form-row input[name="new_qty"] { width: 80px; }
 
     /* ── دکمه‌ها ── */
     .btn {
-        border: none; border-radius: var(--radius-md); padding: 0.55rem 1.2rem; font-size: 0.82rem;
+        border: none; border-radius: var(--radius-sm); height: 38px; padding: 0 1.15rem; font-size: 0.82rem;
         font-weight: 700; cursor: pointer; font-family: inherit;
         display: inline-flex; align-items: center; gap: 0.4rem; transition: all var(--transition-fast);
     }
-    .btn:active { transform: scale(.98); }
-    .btn-green { background: var(--accent-green, #10b981); color: #fff; }
-    .btn-blue  { background: #3b82f6; color: #fff; }
-    .btn-ghost { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
-    .btn-red   { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1.5px solid rgba(239,68,68,0.3); }
-    .btn:hover { opacity: .9; }
+    .btn-green { background: #10B981; color: #fff; }
+    .btn-green:hover { background: #059669; }
+    .btn-blue  { background: var(--accent-indigo); color: #fff; }
+    .btn-blue:hover { background: var(--primary-dark); }
+    .btn-ghost { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-default); }
+    .btn-red   { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .btn-red:hover { background: #FEE2E2; }
 
     /* ── درخواست ارسال‌شده ── */
     .sent-card {
-        border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+        border: 1px solid var(--border-default); border-radius: var(--radius-lg);
         margin-bottom: var(--space-3); overflow: hidden;
     }
     .sent-head {
         display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-        padding: var(--space-3) var(--space-4); background: rgba(139,92,246,0.05);
-        border-bottom: 1px solid var(--border-light); flex-wrap: wrap;
+        padding: 0.7rem 1rem; background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-default); flex-wrap: wrap;
     }
     .req-title { font-size: 0.85rem; font-weight: 800; color: var(--text-primary); }
-    .req-date { font-size: 0.72rem; color: var(--text-muted); }
+    .req-date { font-size: 0.73rem; color: var(--text-muted); }
 
-    .empty-state { text-align: center; padding: var(--space-8) var(--space-4); color: var(--text-muted); }
-    .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: var(--space-3); opacity: .5; }
-
+    .empty-state { text-align: center; padding: var(--space-6) var(--space-4); color: var(--text-muted); }
     .sent-group-title {
         font-size: 0.85rem; font-weight: 700; color: var(--text-primary);
         display: flex; align-items: center; gap: var(--space-2);
         margin: var(--space-4) 0 var(--space-2);
     }
-    .sent-reason { font-size: 0.78rem; color: #b91c1c; margin-top: var(--space-1); line-height: 1.8; }
+    .sent-reason { font-size: 0.78rem; color: #B91C1C; margin-top: var(--space-1); line-height: 1.8; }
     .hint-box {
-        font-size: 0.78rem; color: var(--text-muted); background: var(--bg-page, #f9fafb);
-        border-radius: var(--radius-md); padding: 0.6rem 1rem; line-height: 1.9; margin-bottom: var(--space-4);
+        font-size: 0.78rem; color: var(--text-secondary); background: #EFF6FF;
+        border: 1px solid #BFDBFE; border-radius: var(--radius-lg);
+        padding: 0.65rem 1rem; line-height: 1.8; margin-bottom: var(--space-4);
+        display: flex; align-items: center; gap: 0.5rem;
     }
+    .hint-box i { color: #2563EB; font-size: 0.95rem; }
     .send-bar {
         display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-        flex-wrap: wrap; background: rgba(59,130,246,0.05); border: 1.5px dashed rgba(59,130,246,0.35);
-        border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); margin-top: var(--space-4);
+        flex-wrap: wrap; background: #F0FDF4; border: 1px solid #BBF7D0;
+        border-radius: var(--radius-lg); padding: 0.75rem 1rem; margin-top: var(--space-4);
     }
-    .send-note { font-size: 0.78rem; color: var(--text-muted); }
+    .send-bar-info { font-size: 0.8rem; font-weight: 600; color: #065F46; display: flex; align-items: center; gap: 0.45rem; }
 
-    /* ═══ گوشی (زیر ۷۶۰px) ═══
-       دسکتاپ دست‌نخورده می‌ماند؛ فقط در گوشی جدول‌ها به کارتِ هر قلم تبدیل
-       می‌شوند (هر سلول با برچسب خودش) و فرم‌ها تک‌ستونی و تمام‌عرض می‌شوند */
     @media (max-width: 760px) {
-        /* هدر و کارت‌ها */
-        .officer-wrap .page-header { padding: var(--space-3); gap: var(--space-2); }
-        .ph-icon { width: 38px; height: 38px; font-size: 1rem; }
-        .officer-wrap .page-title { font-size: 1.05rem; }
-        .section-card { padding: 0.9rem 0.75rem; border-radius: var(--radius-xl); margin-bottom: var(--space-4); }
-        .section-title { font-size: 0.9rem; margin-bottom: var(--space-2); }
-        .hint-box { padding: 0.6rem 0.8rem; }
-        .empty-state { padding: var(--space-5) var(--space-3); }
-
-        /* فرم افزودن: تک‌ستونی و تمام‌عرض — min-widthهای inline با !important خنثی می‌شوند */
-        .add-form-row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
-        .add-form-row > * { width: 100% !important; min-width: 0 !important; flex: 0 0 auto !important; box-sizing: border-box; }
-        .add-form-row select, .add-form-row input[type="text"], .add-form-row input[type="number"] { height: 42px; font-size: 0.85rem; }
-        .add-form-row .btn { justify-content: center; height: 44px; }
-
-        /* نوار ارسال: دکمه‌ها تمام‌عرض */
-        .send-bar { flex-direction: column; align-items: stretch; padding: var(--space-3); margin-top: var(--space-3); }
-        .send-bar > div { flex-direction: column; }
-        .send-bar .btn { width: 100%; justify-content: center; height: 44px; }
-
-        /* سرِ کارت درخواست ارسال‌شده */
-        .sent-head { flex-direction: column; align-items: flex-start; padding: var(--space-3); }
-
-        /* جدول‌ها → کارتِ هر قلم */
-        .table-scroll { overflow: visible; }
-        .officer-table { display: block; border: none; }
+        .officer-wrap .page-header { padding: var(--space-3); }
+        .section-card { padding: 0.9rem 0.75rem; }
+        .add-form-row { display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem; }
+        .add-form-row > * { width: 100% !important; min-width: 0 !important; }
+        .add-form-row .btn { justify-content: center; height: 42px; }
+        .send-bar { flex-direction: column; align-items: stretch; }
+        .send-bar > div { flex-direction: column; width: 100%; }
+        .send-bar .btn { width: 100%; justify-content: center; height: 42px; }
+        .table-scroll { overflow: visible; border: none; }
+        .officer-table, .officer-table tbody { display: block; border: none; }
         .officer-table thead { display: none; }
-        .officer-table tbody { display: block; }
         .officer-table tbody tr {
             display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-            column-gap: 0.6rem; row-gap: 0.1rem;
-            border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+            column-gap: 0.6rem; row-gap: 0.15rem;
+            border: 1px solid var(--border-default); border-radius: var(--radius-lg);
             background: var(--bg-card); padding: 0.65rem 0.7rem; margin-bottom: 0.55rem;
         }
-        .officer-table tbody tr:last-child { margin-bottom: 0; }
-        .officer-table th, .officer-table td {
-            display: block; padding: 0.2rem 0; border: none; text-align: right;
-        }
-        .officer-table tbody tr:hover td { background: transparent; }
-        .officer-table .col-name, .officer-table .col-note { min-width: 0; }
-        .officer-table .col-name { font-size: 0.9rem; }
-        .officer-table .cell-actions { text-align: center !important; margin-top: 0.3rem; }
-        /* برچسب هر سلول بالای مقدارش — سرجدول در گوشی پنهان است */
+        .officer-table th, .officer-table td { display: block; padding: 0.2rem 0; border: none; text-align: right; }
         .officer-table tbody td[data-label]::before {
             content: attr(data-label) ': '; display: block; margin-bottom: 0.1rem;
             font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
         }
-        /* ورودی‌ها: خواناتر و لمس‌پذیرتر */
-        .officer-table input.qty-edit { width: 84px; height: 38px; font-size: 0.9rem; }
-        .officer-table .desc-edit { width: 100%; height: 38px; font-size: 0.8rem; }
-        .icon-btn { width: 40px; height: 40px; font-size: 0.95rem; }
-        .cell-actions .icon-btn + .icon-btn { margin-inline-start: 0.5rem; }
-
-        /* اقلام آماده ارسال (۹ ستون):
-           [کالا | برند] [ماندگاری | موجودی] [مقدار | واحد] [زمان تحویل] [توضیحات] [عملیات] */
         .items-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
         .items-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
         .items-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
@@ -223,25 +196,17 @@
         .items-table tbody td:nth-child(7) { grid-column: 1 / -1; grid-row: 4; }
         .items-table tbody td:nth-child(8) { grid-column: 1 / -1; grid-row: 5; }
         .items-table tbody td:nth-child(9) { grid-column: 1 / -1; grid-row: 6; }
-
-        /* درخواست ارسال‌شدهٔ در انتظار تایید (۶ ستون، قابل ویرایش):
-           [کالا | برند] [مقدار | واحد] [توضیحات] [عملیات] */
         .sent-edit-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
         .sent-edit-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
         .sent-edit-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
         .sent-edit-table tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
         .sent-edit-table tbody td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
         .sent-edit-table tbody td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
-
-        /* درخواست تایید‌شده / رد‌شده (۵ ستون، فقط‌خواندنی):
-           [کالا | برند] [مقدار | واحد] [توضیحات] */
         .sent-view-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
         .sent-view-table tbody td:nth-child(2) { grid-column: 2; grid-row: 1; }
         .sent-view-table tbody td:nth-child(3) { grid-column: 1; grid-row: 2; }
         .sent-view-table tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
         .sent-view-table tbody td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
-
-        .sent-reason { display: block; }
     }
 </style>
 {% endblock %}
@@ -252,10 +217,16 @@
     <!-- هدر صفحه -->
     <div class="page-header">
         <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-file-invoice"></i></div>
-            <h1 class="page-title">درخواست خرید</h1>
+            <div class="ph-icon"><i class="fas fa-cart-shopping"></i></div>
+            <div>
+                <h1 class="page-title">درخواست خرید انبار</h1>
+                <div style="font-size:0.75rem;color:var(--text-muted);">تکمیل پیش‌نویس خرید و ارسال برای تایید مدیرعامل</div>
+            </div>
         </div>
         <div class="header-corner">
+            <a href="{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}" class="btn btn-ghost">
+                <i class="fas fa-arrow-right"></i> بازگشت به داشبورد انبار
+            </a>
             <div class="current-date">
                 <i class="fas fa-calendar-alt"></i>
                 <span id="persianDate"></span>
@@ -264,26 +235,26 @@
     </div>
 
     <!-- ── فرم افزودن کالای جدید — بالای صفحه ── -->
-    <div class="section-card" style="margin-bottom:var(--space-4);">
+    <div class="section-card">
         <div class="section-title">
-            <i class="fas fa-plus" style="color:#059669;"></i>
+            <i class="fas fa-plus-circle" style="color:#10B981;"></i>
             افزودن کالای جدید
         </div>
         <form method="post" class="add-form-row">
             {% csrf_token %}
-            <select name="product_id" id="product-select" style="min-width:200px;">
+            <select name="product_id" id="product-select">
                 <option value="">— انتخاب کالا از لیست —</option>
                 {% for p in products %}
                 <option value="{{ p.id }}">{{ p.name }}</option>
                 {% endfor %}
             </select>
-            <select name="brand_id" id="brand-select" style="min-width:140px;" disabled>
+            <select name="brand_id" id="brand-select" disabled>
                 <option value="">بدون برند</option>
             </select>
             <input type="text" name="new_name" placeholder="یا نام آزاد بنویسید">
             <input type="number" name="new_qty" min="0.01" step="0.01" placeholder="مقدار" required>
-            <input type="text" name="unit" placeholder="واحد (پیش‌فرض: عدد)" style="width:110px;">
-            <input type="text" name="description" placeholder="توضیحات (اختیاری)" style="flex:1;min-width:140px;">
+            <input type="text" name="unit" placeholder="واحد (عدد)">
+            <input type="text" name="description" placeholder="توضیحات (اختیاری)">
             <button type="submit" name="action" value="add_item" class="btn btn-blue">
                 <i class="fas fa-plus"></i> افزودن
             </button>
@@ -292,14 +263,13 @@
 
     <div class="hint-box">
         <i class="fas fa-circle-info"></i>
-        کالاهایی که در داشبورد با «ارجاع به خرید» علامت می‌زنید به همین صفحه می‌آیند.
-        لیست را ویرایش یا تکمیل کنید و در پایان «ارسال» را بزنید تا درخواست برای تایید به مدیرعامل ارسال شود.
+        <span>کالاهایی که در داشبورد با «ارجاع به خرید» علامت می‌زنید به این لیست اضافه می‌شوند. پس از بررسی مقادیر، دکمه «ارسال» را بزنید.</span>
     </div>
 
     <!-- ── پیش‌نویس جاری ── -->
     <div class="section-card">
         <div class="section-title">
-            <i class="fas fa-cart-shopping"></i>
+            <i class="fas fa-basket-shopping"></i>
             اقلام آماده ارسال
             {% if draft_items %}<span class="count-text">{{ draft_items|length }} قلم</span>{% endif %}
         </div>
@@ -362,9 +332,13 @@
             {% endfor %}
 
             <!-- نوار ارسال -->
-            <form method="post" style="margin-top:var(--space-4);">
+            <form method="post">
                 {% csrf_token %}
                 <div class="send-bar">
+                    <div class="send-bar-info">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{ draft_items|length }} قلم آماده ارسال برای تایید مدیرعامل</span>
+                    </div>
                     <div style="display:flex;gap:0.5rem;align-items:center;">
                         <button type="submit" name="action" value="discard_draft" class="btn btn-red"
                                 onclick="return confirm('کل پیش‌نویس حذف شود؟');">
@@ -372,15 +346,15 @@
                         </button>
                         <button type="submit" name="action" value="send" class="btn btn-green"
                                 onclick="return confirm('درخواست خرید با {{ draft_items|length }} قلم برای تایید مدیرعامل ارسال شود؟');">
-                            <i class="fas fa-paper-plane"></i> ارسال
+                            <i class="fas fa-paper-plane"></i> ارسال برای تایید مدیرعامل
                         </button>
                     </div>
                 </div>
             </form>
         {% else %}
-            <div class="empty-state" style="padding:var(--space-6);">
-                <div><i class="fas fa-inbox" style="font-size:2.2rem;opacity:.3;"></i></div>
-                <p style="margin-top:var(--space-2);">هنوز کالایی اضافه نشده — از فرم «افزودن کالای جدید» بالا استفاده کنید یا در داشبورد انبار «ارجاع به خرید» بزنید.</p>
+            <div class="empty-state">
+                <div><i class="fas fa-inbox" style="font-size:2.2rem;opacity:.35;color:var(--accent-indigo);"></i></div>
+                <p style="margin-top:var(--space-2);">هنوز کالایی در پیش‌نویس نیست — از فرم بالا کالا اضافه کنید یا در داشبورد انبار دکمه «ارجاع به خرید» را بزنید.</p>
             </div>
         {% endif %}
     </div>
@@ -389,24 +363,23 @@
     <div class="section-card">
         <div class="section-title">
             <i class="fas fa-paper-plane"></i>
-            درخواست‌های ارسال‌شده
-            <span class="count-text">(یک هفتهٔ گذشته)</span>
-            {% if sent_requests %}<span class="count-text">{{ sent_requests|length }} در انتظار تایید مدیرعامل</span>{% endif %}
-            {% if approved_sent_requests %}<span class="count-text" style="color:#059669;">{{ approved_sent_requests|length }} در انتظار ثبت سفارش خرید</span>{% endif %}
-            {% if rejected_sent_requests %}<span class="count-text" style="color:#b91c1c;">{{ rejected_sent_requests|length }} رد شده</span>{% endif %}
+            درخواست‌های ارسال‌شده (یک هفتهٔ گذشته)
+            {% if sent_requests %}<span class="count-text">{{ sent_requests|length }} در انتظار تایید</span>{% endif %}
+            {% if approved_sent_requests %}<span class="count-text" style="color:#047857;background:#ECFDF5;border-color:#A7F3D0;">{{ approved_sent_requests|length }} تایید شده</span>{% endif %}
+            {% if rejected_sent_requests %}<span class="count-text" style="color:#B91C1C;background:#FEF2F2;border-color:#FECACA;">{{ rejected_sent_requests|length }} رد شده</span>{% endif %}
         </div>
 
         {% if sent_requests %}
             {% for req in sent_requests %}
             <div class="sent-card">
                 <div class="sent-head">
-                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
-                        <b class="req-title">درخواست #{{ req.id }}</b>
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست {{ req.request_number }}</b>
                         <span class="req-date">ثبت: {{ req.created_at|jalali_datetime }}</span>
                         <span class="t-warn"><i class="fas fa-hourglass-half"></i> در انتظار تایید مدیرعامل</span>
                     </div>
                 </div>
-                <div class="table-scroll">
+                <div class="table-scroll" style="border:none;border-radius:0;">
                     <table class="officer-table sent-edit-table">
                         <thead>
                             <tr>
@@ -457,7 +430,7 @@
             </div>
             {% endfor %}
         {% else %}
-            <div class="empty-state" style="padding:var(--space-5);">
+            <div class="empty-state" style="padding:var(--space-4);">
                 <p>درخواستی در انتظار تایید مدیرعامل نیست — بعد از «ارسال» همین‌جا نمایش داده می‌شود و تا قبل از تایید مدیرعامل قابل ویرایش است.</p>
             </div>
         {% endif %}
@@ -470,13 +443,13 @@
             {% for req in approved_sent_requests %}
             <div class="sent-card">
                 <div class="sent-head">
-                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
-                        <b class="req-title">درخواست #{{ req.id }}</b>
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست {{ req.request_number }}</b>
                         <span class="req-date">ثبت: {{ req.created_at|jalali_datetime }}</span>
                         <span class="t-ok"><i class="fas fa-check"></i> تایید مدیرعامل{% if req.manager_confirmed_by %} — {{ req.manager_confirmed_by.get_full_name|default:req.manager_confirmed_by.username }}{% endif %}</span>
                     </div>
                 </div>
-                <div class="table-scroll">
+                <div class="table-scroll" style="border:none;border-radius:0;">
                     <table class="officer-table sent-view-table">
                         <thead>
                             <tr>
@@ -512,13 +485,13 @@
             {% for req in rejected_sent_requests %}
             <div class="sent-card">
                 <div class="sent-head">
-                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
-                        <b class="req-title">درخواست #{{ req.id }}</b>
+                    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                        <b class="req-title">درخواست {{ req.request_number }}</b>
                         <span class="req-date">ثبت: {{ req.created_at|jalali_datetime }}</span>
                         <span class="t-bad"><i class="fas fa-times-circle"></i> رد شده توسط مدیرعامل{% if req.manager_confirmed_by %} — {{ req.manager_confirmed_by.get_full_name|default:req.manager_confirmed_by.username }}{% endif %}</span>
                     </div>
                 </div>
-                <div class="table-scroll">
+                <div class="table-scroll" style="border:none;border-radius:0;">
                     <table class="officer-table sent-view-table">
                         <thead>
                             <tr>
@@ -557,7 +530,6 @@
 
 {% block extra_js %}
 <script>
-/* ── تاریخ امروز در هدر (همان الگوی چیپ .current-date داشبوردهای مالی) ── */
 function getPersianDate() {
     var d = new Date();
     return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
@@ -565,7 +537,6 @@ function getPersianDate() {
 var persianDateEl = document.getElementById('persianDate');
 if (persianDateEl) { persianDateEl.textContent = getPersianDate(); }
 
-/* ── برندهای هر محصول برای فرم افزودن ── */
 var PRODUCT_BRANDS = {
     {% for p in products %}"{{ p.id }}": [
         {% for b in product_brands|get_item:p.id %}{ id: "{{ b.id }}", name: "{{ b.brand_name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
@@ -584,12 +555,10 @@ document.getElementById('product-select').addEventListener('change', function() 
     brandSel.disabled = brands.length === 0;
 });
 
-/* اگر کالا از لیست انتخاب شد، نام آزاد لازم نیست */
 document.getElementById('product-select').addEventListener('change', function() {
     var nameInput = document.querySelector('input[name="new_name"]');
     if (this.value) { nameInput.placeholder = 'نام جایگزین (اختیاری)'; }
     else { nameInput.placeholder = 'یا نام آزاد بنویسید'; }
 });
-
 </script>
 {% endblock %}

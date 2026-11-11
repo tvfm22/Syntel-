@@ -1,0 +1,425 @@
+{% comment %}
+=============================================================================
+ویرایشگر رسپی — پارشیال مشترک صفحهٔ ۱ (لیست غذاها) و صفحهٔ ۲ (قیمت‌گذاری).
+
+استفاده در هر صفحه (دو include، هر کدام در بلوک خودش):
+
+    {% block extra_css %} ... {% include "partials/cogs_recipe_editor_css.html" %}{% endblock %}
+    {% block content %}   ... {% include "partials/cogs_recipe_editor.html" %}    {% endblock %}
+
+این فایل مارک‌آپ مودال `#recipeModal` و جاوااسکریپت ویرایشگر را می‌آورد؛
+استایلش در پارشیال جداگانه است چون بلوک extra_css بیرون از عنصر style قرار
+دارد و هر پارشیال باید style مستقل خودش را بیاورد.
+
+API عمومی:
+    CogsRecipe.open(itemId)   → بارگذاری و باز کردن رسپی یک قلم
+    CogsRecipe.close()        → بستن
+    CogsRecipe.onSaved(fn)    → بعد از ذخیرهٔ موفق (پیش‌فرض: reload صفحه)
+
+باز شدن خودکار: اگر در context متغیر `auto_open_item` (شناسهٔ قلم) باشد،
+بلافاصله بعد از بارگذاری صفحه باز می‌شود — مسیر «ساخت آیتم ← ویرایش رسپی».
+
+کلاس‌های مودال (cogs-modal / is-narrow / is-wide / is-medium) و `.btn-sm`
+در پارشیال CSS همین‌جا تعریف می‌شوند تا هر دو صفحه از یک منبع استفاده کنند.
+=============================================================================
+{% endcomment %}
+
+{{ unit_choices|json_script:"cogs-unit-choices" }}
+
+<!-- ═══════════ مودال ویرایش رسپی ═══════════ -->
+<div class="cogs-modal" id="recipeModal">
+    <div class="cogs-modal-box is-wide">
+        <div class="cogs-modal-head">
+            <div>
+                <h3 id="recipeTitle">ویرایش رسپی</h3>
+                <div class="modal-sub" id="recipeSub">—</div>
+            </div>
+            <button type="button" class="cogs-modal-close" data-close="recipeModal">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cogs-modal-body">
+            <div class="recipe-alert" id="recipeAlert"></div>
+
+            <div class="recipe-grid">
+                <div class="recipe-field">
+                    <label>نام</label>
+                    <input type="text" id="rName" maxlength="200">
+                </div>
+                <div class="recipe-field">
+                    <label>بخش</label>
+                    <select id="rSection"></select>
+                </div>
+                <div class="recipe-field">
+                    <label>مقدار خروجی بچ</label>
+                    <input type="text" id="rOutQty" inputmode="decimal">
+                </div>
+                <div class="recipe-field">
+                    <label>واحد خروجی</label>
+                    <select id="rOutUnit"></select>
+                </div>
+            </div>
+
+            <div class="recipe-lines-head">
+                <h4><i class="fas fa-list"></i> مواد اولیه و نیمه‌آماده‌های مصرفی</h4>
+                <button type="button" class="btn-sm is-primary" id="btnAddLine" style="margin-inline-start:auto;">
+                    <i class="fas fa-plus"></i> افزودن سطر
+                </button>
+            </div>
+            <div class="recipe-lines" id="recipeLines"></div>
+
+            <div class="recipe-total">
+                <span class="rt-label">بهای تمام شده هر واحد:</span>
+                <span class="rt-value" id="recipeTotal">۰</span>
+                <span class="rt-unit" id="recipeTotalUnit"></span>
+                <span class="rt-note">
+                    <i class="fas fa-circle-info"></i>
+                    بهای هر سطر = مقدار × بهای واحد همان ماده
+                </span>
+            </div>
+        </div>
+        <div class="cogs-modal-foot">
+            <button type="button" class="btn btn-secondary" data-close="recipeModal">انصراف</button>
+            <button type="button" class="btn btn-primary" id="btnSaveRecipe" style="margin-inline-start:auto;">
+                <i class="fas fa-floppy-disk"></i> ذخیره رسپی
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    /* اگر صفحهٔ دیگری قبلاً این ویرایشگر را ساخته باشد، دوباره نساز */
+    if (window.CogsRecipe) return;
+
+    const RECIPE_URL = "{% url 'cogs_recipe_api' cafe_code=cafe_code item_id=999999 %}";
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    const UNIT_CHOICES = JSON.parse(
+        document.getElementById('cogs-unit-choices').textContent);
+
+    const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const money = v => {
+        if (v === null || v === undefined || v === '') return '—';
+        const n = Number(v);
+        if (!isFinite(n)) return '—';
+        return fa(n.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+    };
+    const num = v => {
+        if (v === null || v === undefined || v === '') return 0;
+        const cleaned = String(v)
+            .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660))
+            .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0))
+            .replace(/[,،]/g, '');
+        const n = Number(cleaned);
+        return isFinite(n) ? n : 0;
+    };
+
+    /* ---------- مودال ---------- */
+    function openModal(id) {
+        document.getElementById(id).classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('is-open');
+        if (!document.querySelector('.cogs-modal.is-open')) document.body.style.overflow = '';
+    }
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.close));
+    });
+    document.querySelectorAll('.cogs-modal').forEach(modal => {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal(modal.id);
+        });
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.cogs-modal.is-open').forEach(m => closeModal(m.id));
+        }
+    });
+
+    /* ---------- وضعیت ---------- */
+    let currentItem = null;
+    let materials = [];
+    let materialMap = {};
+    let lineSeq = 0;
+    let onSaved = () => window.location.reload();
+
+    function badgeFor(kind) {
+        return kind === 'raw'
+            ? '<span class="line-badge is-raw">کالا / ماده اولیه</span>'
+            : '<span class="line-badge is-prep">نیمه‌آماده</span>';
+    }
+
+    function materialOptionsHtml(selectedId) {
+        const raw = materials.filter(m => m.kind === 'raw');
+        const prep = materials.filter(m => m.kind === 'prep');
+        let html = '<option value="">— انتخاب ماده —</option>';
+        if (raw.length) {
+            html += '<optgroup label="کالا / ماده اولیه">';
+            raw.forEach(m => {
+                html += `<option value="${m.id}"${String(m.id) === String(selectedId) ? ' selected' : ''}>${m.name}</option>`;
+            });
+            html += '</optgroup>';
+        }
+        if (prep.length) {
+            html += '<optgroup label="نیمه‌آماده">';
+            prep.forEach(m => {
+                html += `<option value="${m.id}"${String(m.id) === String(selectedId) ? ' selected' : ''}>${m.name}</option>`;
+            });
+            html += '</optgroup>';
+        }
+        return html;
+    }
+
+    function unitOptionsHtml(selected) {
+        // واحدهای خارج از فهرست استاندارد (مثل «پرس 330») باید حفظ شوند،
+        // وگرنه ذخیره‌کردن بی‌خبر واحد قلم را عوض می‌کند.
+        const units = UNIT_CHOICES.slice();
+        if (selected && units.indexOf(selected) === -1) units.unshift(selected);
+        return units.map(u =>
+            `<option value="${u}"${u === selected ? ' selected' : ''}>${u}</option>`
+        ).join('');
+    }
+
+    function unitListFor(selected) {
+        const units = UNIT_CHOICES.slice();
+        if (selected && units.indexOf(selected) === -1) units.unshift(selected);
+        return units.map(u => ({ id: u, name: u }));
+    }
+
+    /** هزینه یک سطر — دقیقاً همان قاعدهٔ سرور در computed_unit_cost */
+    function lineCost(line) {
+        const qty = num(line.qty);
+        if (!qty) return null;
+        const mat = materialMap[line.materialId];
+        if (!mat) return null;
+
+        if (mat.kind === 'raw') {
+            if (line.fee !== '' && line.fee !== null && line.fee !== undefined) {
+                return qty * num(line.fee);
+            }
+            const price = mat.cost === '' ? null : num(mat.cost);
+            if (price === null) return null;
+            let factor = 1;
+            if (line.unit === 'کیلوگرم' || line.unit === 'kg' || line.unit === 'کیلو') factor = 1000;
+            else if (line.unit === 'لیتر' || line.unit === 'L') factor = 1000;
+            return qty * factor * price;
+        }
+
+        const sub = mat.cost === '' ? null : num(mat.cost);
+        if (sub === null) return null;
+        return qty * sub;
+    }
+
+    function readLines() {
+        return Array.from(document.querySelectorAll('#recipeLines .recipe-line')).map(row => ({
+            seq: row.dataset.seq,
+            materialId: row.querySelector('.line-material').value,
+            qty: row.querySelector('.line-qty').value,
+            unit: row.querySelector('.line-unit').value,
+            fee: row.dataset.fee === '' ? '' : row.dataset.fee,
+        }));
+    }
+
+    function recalcTotal() {
+        const lines = readLines();
+        let total = 0;
+        lines.forEach(line => {
+            const c = lineCost(line);
+            if (c !== null) total += c;
+            const cell = document.querySelector(`[data-line-cost="${line.seq}"]`);
+            if (cell) {
+                cell.textContent = c === null ? '—' : money(c);
+                cell.classList.toggle('is-empty', c === null);
+            }
+        });
+        const outQty = num(document.getElementById('rOutQty').value) || 1;
+        const perUnit = total / outQty;
+        document.getElementById('recipeTotal').textContent = money(perUnit);
+        document.getElementById('recipeTotalUnit').textContent =
+            'تومان به ازای هر ۱ ' + (document.getElementById('rOutUnit').value || 'واحد');
+    }
+
+    function addLineRow(data) {
+        const line = {
+            seq: ++lineSeq,
+            materialId: data && data.material_id ? String(data.material_id) : '',
+            qty: data ? (data.qty || '') : '',
+            unit: data ? (data.unit || '') : '',
+            fee: data && data.fee !== undefined ? data.fee : '',
+        };
+        const wrap = document.getElementById('recipeLines');
+        const row = document.createElement('div');
+        row.className = 'recipe-line';
+        row.dataset.seq = line.seq;
+        row.innerHTML = `
+            <div style="display:flex;align-items:center;gap:4px;min-width:0;">
+                <select class="line-material">${materialOptionsHtml(line.materialId)}</select>
+                <span class="line-kind"></span>
+            </div>
+            <input type="text" class="line-qty" inputmode="decimal" placeholder="مقدار" value="${line.qty}">
+            <select class="line-unit">${unitOptionsHtml(line.unit)}</select>
+            <div class="line-cost is-empty" data-line-cost="${line.seq}">—</div>
+            <button type="button" class="line-del" title="حذف سطر"><i class="fas fa-trash"></i></button>
+        `;
+        wrap.appendChild(row);
+
+        const matSel = row.querySelector('.line-material');
+        const qtyInp = row.querySelector('.line-qty');
+        const unitSel = row.querySelector('.line-unit');
+
+        // مقدار اولیه: fee اکسل روی سطر باقی می‌ماند تا بهای ذخیره‌شده عوض نشود
+        row.dataset.fee = line.fee === null || line.fee === undefined ? '' : String(line.fee);
+
+        const syncBadge = () => {
+            const mat = materialMap[matSel.value];
+            const holder = row.querySelector('.line-kind');
+            holder.innerHTML = mat ? badgeFor(mat.kind) : '';
+            if (mat && !unitSel.value) unitSel.value = mat.unit || '';
+        };
+        syncBadge();
+        recalcTotal();
+
+        matSel.addEventListener('change', () => {
+            // با تغییر ماده، قیمت اعلامی اکسل دیگر معتبر نیست
+            row.dataset.fee = '';
+            syncBadge();
+            recalcTotal();
+        });
+        qtyInp.addEventListener('input', recalcTotal);
+        unitSel.addEventListener('change', recalcTotal);
+        row.querySelector('.line-del').addEventListener('click', () => {
+            row.remove();
+            recalcTotal();
+        });
+    }
+
+    function fillSelect(sel, items, selectedId, emptyLabel) {
+        let html = emptyLabel ? `<option value="">${emptyLabel}</option>` : '';
+        items.forEach(it => {
+            html += `<option value="${it.id}"${String(it.id) === String(selectedId) ? ' selected' : ''}>${it.name}</option>`;
+        });
+        sel.innerHTML = html;
+    }
+
+    function openRecipe(itemId) {
+        if (!itemId) return;
+        currentItem = itemId;
+        const url = RECIPE_URL.replace('999999', itemId);
+        document.getElementById('recipeAlert').classList.remove('is-open');
+        document.getElementById('recipeLines').innerHTML = '';
+        document.getElementById('recipeTitle').textContent = 'ویرایش رسپی';
+        document.getElementById('recipeSub').textContent = 'در حال بارگذاری...';
+        document.getElementById('recipeTotal').textContent = '۰';
+        // مودال فوراً باز می‌شود تا کاربر منتظر شبکه نماند
+        openModal('recipeModal');
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.error || 'خطا در دریافت رسپی');
+                const item = data.item;
+                materials = data.materials || [];
+                materialMap = {};
+                materials.forEach(m => { materialMap[String(m.id)] = m; });
+
+                document.getElementById('recipeTitle').textContent = 'ویرایش رسپی — ' + item.name;
+                document.getElementById('recipeSub').textContent =
+                    (item.kind === 'prep' ? 'نیمه‌آماده' : 'غذای منو') +
+                    (item.cost_per ? ' · بهای فعلی ' + money(item.cost_per) + ' تومان' : '');
+                document.getElementById('rName').value = item.name;
+                document.getElementById('rOutQty').value = item.out_qty;
+                fillSelect(document.getElementById('rOutUnit'),
+                    unitListFor(item.out_unit), item.out_unit, '');
+                fillSelect(document.getElementById('rSection'),
+                    (data.sections || []).map(s => ({ id: s.id, name: s.name })),
+                    item.section_id, '— بدون بخش —');
+
+                (data.lines || []).forEach(addLineRow);
+                recalcTotal();
+            })
+            .catch(err => {
+                const box = document.getElementById('recipeAlert');
+                box.textContent = (err instanceof TypeError)
+                    ? 'ارتباط با سرور برقرار نشد؛ صفحه را دوباره باز کنید.'
+                    : (err.message || 'خطا در دریافت رسپی');
+                box.classList.add('is-open');
+            });
+    }
+
+    document.getElementById('btnAddLine').addEventListener('click', () => addLineRow(null));
+    document.getElementById('rOutQty').addEventListener('input', recalcTotal);
+    document.getElementById('rOutUnit').addEventListener('change', recalcTotal);
+
+    document.getElementById('btnSaveRecipe').addEventListener('click', function () {
+        const btn = this;
+        const alertBox = document.getElementById('recipeAlert');
+        alertBox.classList.remove('is-open');
+
+        const payload = {
+            name: document.getElementById('rName').value.trim(),
+            section_id: document.getElementById('rSection').value || null,
+            out_qty: document.getElementById('rOutQty').value,
+            out_unit: document.getElementById('rOutUnit').value,
+            lines: readLines()
+                .filter(l => l.materialId && num(l.qty) > 0)
+                .map(l => ({
+                    material_id: l.materialId,
+                    qty: l.qty,
+                    unit: l.unit,
+                    fee: l.fee === '' ? null : l.fee,
+                })),
+        };
+
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ذخیره...';
+
+        fetch(RECIPE_URL.replace('999999', currentItem), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.error || 'ذخیره نشد');
+                onSaved(data);
+            })
+            .catch(err => {
+                alertBox.textContent = err.message || 'ذخیره نشد';
+                alertBox.classList.add('is-open');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+    });
+
+    /* ---------- API عمومی ---------- */
+    window.CogsRecipe = {
+        open: openRecipe,
+        close: () => closeModal('recipeModal'),
+        onSaved: fn => { if (typeof fn === 'function') onSaved = fn; },
+        isOpen: () => document.getElementById('recipeModal').classList.contains('is-open'),
+    };
+
+    {% if auto_open_item %}
+    // ساخت آیتم ← بلافاصله ویرایشگر رسپی همان قلم باز می‌شود
+    openRecipe({{ auto_open_item }});
+    // پارامتر recipe از نشانی برداشته می‌شود تا رفرش صفحه مودال را دوباره باز نکند
+    if (window.history && window.history.replaceState) {
+        const clean = new URL(window.location.href);
+        if (clean.searchParams.has('recipe')) {
+            clean.searchParams.delete('recipe');
+            window.history.replaceState({}, '', clean.toString());
+        }
+    }
+    {% endif %}
+})();
+</script>

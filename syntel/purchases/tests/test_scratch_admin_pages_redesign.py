@@ -207,4 +207,4 @@ class AdminPagesRedesignTests(TestCase):
         self.assertNotIn('class="filters-container"', content)
         self.assertNotIn('filter-pill', content)
         # کارت درخواستِ همان روز تحویل نمایش داده شود (عنوان با span جدا شده)
-        self.assertIn('درخواست <span class="req-no">#{}</span>'.format(req.id), content)
+        self.assertIn('درخواست <span class="req-no">{}</span>'.format(req.request_number), content)

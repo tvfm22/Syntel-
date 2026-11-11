@@ -8,6 +8,7 @@
 5. My Requests: last week's requests grouped in separate per-day lists.
 """
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
@@ -143,24 +144,28 @@ class FeatureVerifyTests(TestCase):
         return req
 
     def test_my_requests_day_groups(self):
-        self.login(self.requester)
-        today_req = self._make_request(self.requester, 0)
-        old_req = self._make_request(self.requester, 2)
-        very_old = self._make_request(self.requester, 10)
+        # فریزکردن ساعت: اگر تست دقیقاً روی مرز نیمهشب اجرا شود، «امروزِ» ویو
+        # با روزِ ساخت درخواست فرق میکند و برچسب «امروز» بدون تقصیر برنامه
+        # نمایش داده نمیشود.
+        with patch('django.utils.timezone.now', return_value=timezone.now()):
+            self.login(self.requester)
+            today_req = self._make_request(self.requester, 0)
+            old_req = self._make_request(self.requester, 2)
+            very_old = self._make_request(self.requester, 10)
 
-        resp = self.client.get(reverse('purchase_requests_list', kwargs={'cafe_code': 'main'}))
-        self.assertEqual(resp.status_code, 200)
-        day_groups = resp.context['day_groups']
-        older = resp.context['older_requests']
-        # two distinct days within the last 7 → 2 groups; 10-day-old request → older
-        self.assertEqual(len(day_groups), 2)
-        self.assertEqual([r.id for r in older], [very_old.id])
-        all_grouped = [r.id for _, _, reqs in day_groups for r in reqs]
-        self.assertEqual(sorted(all_grouped), sorted([today_req.id, old_req.id]))
-        # template renders per-day sections
-        self.assertContains(resp, 'day-section')
-        self.assertContains(resp, 'امروز')
-        self.assertContains(resp, 'درخواست‌های قبلی')
+            resp = self.client.get(reverse('purchase_requests_list', kwargs={'cafe_code': 'main'}))
+            self.assertEqual(resp.status_code, 200)
+            day_groups = resp.context['day_groups']
+            older = resp.context['older_requests']
+            # two distinct days within the last 7 → 2 groups; 10-day-old request → older
+            self.assertEqual(len(day_groups), 2)
+            self.assertEqual([r.id for r in older], [very_old.id])
+            all_grouped = [r.id for _, _, reqs in day_groups for r in reqs]
+            self.assertEqual(sorted(all_grouped), sorted([today_req.id, old_req.id]))
+            # template renders per-day sections
+            self.assertContains(resp, 'day-section')
+            self.assertContains(resp, 'امروز')
+            self.assertContains(resp, 'درخواست‌های قبلی')
 
     # ── Feature 4: cafe-change hidden for requesters ─────────────────
     def test_cafe_switch_hidden_for_requester(self):

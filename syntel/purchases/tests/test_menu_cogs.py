@@ -15,6 +15,11 @@ from purchases.services.menu_cogs import MenuGraph, compute_cogs
 
 MENU_PATH = str(settings.MENU_WORKBOOK_PATH)
 
+
+def ensure_cafe(code='baba_adam', name='بابا آدم'):
+    """Cafe used by the menu tests — created before the workbook is imported."""
+    return Cafe.objects.get_or_create(code=code, defaults={'name': name})[0]
+
 # هزینهی تولید غذا per serving, from the «بها» sheet of the workbook
 EXCEL_COSTS = {
     'چلوکباب کوبیده': Decimal('31442243.41'),
@@ -28,8 +33,9 @@ class MenuCogsEngineTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         from purchases.services.menu_cogs import import_menu
-        cls.summary = import_menu(MENU_PATH)
-        cls.graph = MenuGraph.from_db()
+        cls.cafe = ensure_cafe()
+        cls.summary = import_menu(MENU_PATH, cafe=cls.cafe)
+        cls.graph = MenuGraph.from_db(cafe=cls.cafe)
 
     def test_import_summary(self):
         self.assertTrue(self.summary['items'] > 400)
@@ -81,8 +87,8 @@ class CogsPageTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         from purchases.services.menu_cogs import import_menu
-        import_menu(MENU_PATH)
-        Cafe.objects.get_or_create(code='baba_adam', defaults={'name': 'بابا آدم'})
+        cls.cafe = ensure_cafe()
+        import_menu(MENU_PATH, cafe=cls.cafe)
         User = get_user_model()
         cls.admin = User.objects.filter(username='admin').first()
         if cls.admin is None:
@@ -93,24 +99,25 @@ class CogsPageTest(TestCase):
         self.client.force_login(self.admin)
 
     def test_page_get(self):
-        r = self.client.get('/baba_adam/cogs/')
+        # صفحهٔ محاسبهٔ مصرف، زیرصفحهٔ سوم ماژول بهای تمام شده است
+        r = self.client.get('/baba_adam/cogs/consumption/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'بهای تمام شده')
         self.assertContains(r, 'فروش غذاها در بازه')
 
     def test_post_saves_report_and_shows_consumption(self):
         from purchases.services.menu_cogs import MenuGraph
-        key = [k for k in MenuGraph.from_db().dishes()
-               if MenuGraph.from_db().items[k]['name'] == 'چلوکباب کوبیده'][0]
-        r = self.client.post('/baba_adam/cogs/', {
+        graph = MenuGraph.from_db(cafe=self.cafe)
+        key = [k for k in graph.dishes() if graph.items[k]['name'] == 'چلوکباب کوبیده'][0]
+        r = self.client.post('/baba_adam/cogs/consumption/', {
             'start_year': '1405', 'start_month': '7', 'start_day': '1',
             'end_year': '1405', 'end_month': '7', 'end_day': '30',
             f'qty__{key}': '50',
         })
         self.assertEqual(r.status_code, 302)
-        report = CogsReport.objects.first()
+        report = CogsReport.objects.filter(cafe=self.cafe).first()
         self.assertIsNotNone(report)
-        r = self.client.get(f'/baba_adam/cogs/?report={report.id}')
+        r = self.client.get(f'/baba_adam/cogs/consumption/?report={report.id}')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'مصرف مواد اولیه')
         self.assertContains(r, 'برنج هاشمی')
@@ -122,8 +129,8 @@ class CogsEditorTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         from purchases.services.menu_cogs import import_menu
-        import_menu(MENU_PATH)
-        Cafe.objects.get_or_create(code='baba_adam', defaults={'name': 'بابا آدم'})
+        cls.cafe = ensure_cafe()
+        import_menu(MENU_PATH, cafe=cls.cafe)
         User = get_user_model()
         cls.admin = User.objects.filter(username='admin').first()
         if cls.admin is None:
@@ -134,25 +141,31 @@ class CogsEditorTest(TestCase):
         self.client.force_login(self.admin)
 
     def test_menu_filter_tabs_rendered(self):
-        r = self.client.get('/baba_adam/cogs/')
-        self.assertContains(r, 'cogs-menu-tab')
+        r = self.client.get('/baba_adam/cogs/consumption/')
+        self.assertContains(r, 'menu-tab')
         self.assertContains(r, 'data-menu="سفره چی"')
         self.assertContains(r, 'همه منوها')
 
     def test_recipe_api_returns_recipe_and_cost(self):
+        from purchases.services.menu_cogs import MenuGraph
         item = KukerItem.objects.get(name='چلوکباب کوبیده', kind='dish')
         r = self.client.get(f'/baba_adam/cogs/recipe/{item.id}/')
         self.assertEqual(r.status_code, 200)
         data = r.json()
         self.assertTrue(data['ok'])
         self.assertGreaterEqual(len(data['lines']), 5)
-        self.assertAlmostEqual(float(data['item']['cost_per']), 31442243.41, delta=1000)
+        # بهای نمایش‌داده‌شده باید همان بهای محاسبه‌شده از رسپی باشد (نه عدد ثابت)
+        graph = MenuGraph.from_db(cafe=self.cafe)
+        expected = graph.computed_unit_cost(str(item.id), _cache={})
+        self.assertAlmostEqual(float(data['item']['cost_per']), float(expected), delta=1)
         self.assertTrue(data['materials'])
+        self.assertGreater(len(data['sections']), 0)
 
     def test_recipe_edit_recalculates_cost(self):
         import json
-        dish = KukerItem.objects.create(name='غذای آزمون', key='غذایازمون', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
+        dish = KukerItem.objects.create(cafe=self.cafe, name='غذای آزمون', key='غذایازمون',
+                                        kind='dish', out_qty=1, out_unit='پرس',
+                                        sheet='سفره چی', is_custom=True)
         rice = KukerItem.objects.get(name='برنج هاشمی')
         payload = {'out_qty': '1', 'out_unit': 'پرس', 'lines': [
             {'material_id': rice.id, 'qty': '200', 'unit': 'گرم', 'fee': '4200'},
@@ -165,8 +178,9 @@ class CogsEditorTest(TestCase):
 
     def test_recipe_edit_creates_missing_material(self):
         import json
-        dish = KukerItem.objects.create(name='غذای آزمون۲', key='غذایازمون2', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
+        dish = KukerItem.objects.create(cafe=self.cafe, name='غذای آزمون۲', key='غذایازمون2',
+                                        kind='dish', out_qty=1, out_unit='پرس',
+                                        sheet='سفره چی', is_custom=True)
         payload = {'out_qty': '1', 'out_unit': 'پرس', 'lines': [
             {'name': 'کالای کاملاً جدید', 'qty': '100', 'unit': 'گرم', 'fee': '500'},
         ]}
@@ -178,8 +192,9 @@ class CogsEditorTest(TestCase):
 
     def test_recipe_rejects_self_reference(self):
         import json
-        dish = KukerItem.objects.create(name='غذای خودارجاع', key='غذایخودارجاع', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
+        dish = KukerItem.objects.create(cafe=self.cafe, name='غذای خودارجاع', key='غذایخودارجاع',
+                                        kind='dish', out_qty=1, out_unit='پرس',
+                                        sheet='سفره چی', is_custom=True)
         payload = {'out_qty': '1', 'out_unit': 'پرس',
                    'lines': [{'material_id': dish.id, 'qty': '1', 'unit': 'پرس', 'fee': '1'}]}
         r = self.client.post(f'/baba_adam/cogs/recipe/{dish.id}/',
@@ -208,105 +223,7 @@ class CogsEditorTest(TestCase):
 
     def test_custom_items_survive_reimport(self):
         from purchases.services.menu_cogs import import_menu
-        KukerItem.objects.create(name='کالای ماندگار', key='کالایماندگار', kind='raw',
-                                 out_unit='گرم', price=100, is_custom=True)
-        import_menu(MENU_PATH)
-        self.assertTrue(KukerItem.objects.filter(name='کالای ماندگار', is_custom=True).exists())
-
-
-class CogsEditorTest(TestCase):
-    """فیلتر منو، ویرایش رسپی، افزودن کالا و آیتم منوی جدید."""
-
-    @classmethod
-    def setUpTestData(cls):
-        from purchases.services.menu_cogs import import_menu
-        import_menu(MENU_PATH)
-        Cafe.objects.get_or_create(code='baba_adam', defaults={'name': 'بابا آدم'})
-        User = get_user_model()
-        cls.admin = User.objects.filter(username='admin').first()
-        if cls.admin is None:
-            cls.admin = User.objects.create_superuser('admin2', 'a2@a.com', 'x', role='admin')
-
-    def setUp(self):
-        self.client = Client()
-        self.client.force_login(self.admin)
-
-    def test_menu_filter_tabs_rendered(self):
-        r = self.client.get('/baba_adam/cogs/')
-        self.assertContains(r, 'cogs-menu-tab')
-        self.assertContains(r, 'data-menu="سفره چی"')
-        self.assertContains(r, 'همه منوها')
-
-    def test_recipe_api_returns_recipe_and_cost(self):
-        item = KukerItem.objects.get(name='چلوکباب کوبیده', kind='dish')
-        r = self.client.get(f'/baba_adam/cogs/recipe/{item.id}/')
-        self.assertEqual(r.status_code, 200)
-        data = r.json()
-        self.assertTrue(data['ok'])
-        self.assertGreaterEqual(len(data['lines']), 5)
-        self.assertAlmostEqual(float(data['item']['cost_per']), 31442243.41, delta=1000)
-        self.assertTrue(data['materials'])
-
-    def test_recipe_edit_recalculates_cost(self):
-        import json
-        dish = KukerItem.objects.create(name='غذای آزمون', key='غذایازمون', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
-        rice = KukerItem.objects.get(name='برنج هاشمی')
-        payload = {'out_qty': '1', 'out_unit': 'پرس', 'lines': [
-            {'material_id': rice.id, 'qty': '200', 'unit': 'گرم', 'fee': '4200'},
-        ]}
-        r = self.client.post(f'/baba_adam/cogs/recipe/{dish.id}/',
-                             data=json.dumps(payload), content_type='application/json')
-        self.assertEqual(r.status_code, 200, r.content)
-        self.assertAlmostEqual(float(r.json()['cost_per']), 840000, delta=1)
-        self.assertEqual(dish.lines.count(), 1)
-
-    def test_recipe_edit_creates_missing_material(self):
-        import json
-        dish = KukerItem.objects.create(name='غذای آزمون۲', key='غذایازمون2', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
-        payload = {'out_qty': '1', 'out_unit': 'پرس', 'lines': [
-            {'name': 'کالای کاملاً جدید', 'qty': '100', 'unit': 'گرم', 'fee': '500'},
-        ]}
-        r = self.client.post(f'/baba_adam/cogs/recipe/{dish.id}/',
-                             data=json.dumps(payload), content_type='application/json')
-        self.assertEqual(r.status_code, 200, r.content)
-        self.assertTrue(KukerItem.objects.filter(name='کالای کاملاً جدید', is_custom=True).exists())
-        self.assertAlmostEqual(float(r.json()['cost_per']), 50000, delta=1)
-
-    def test_recipe_rejects_self_reference(self):
-        import json
-        dish = KukerItem.objects.create(name='غذای خودارجاع', key='غذایخودارجاع', kind='dish',
-                                        out_qty=1, out_unit='پرس', sheet='سفره چی', is_custom=True)
-        payload = {'out_qty': '1', 'out_unit': 'پرس',
-                   'lines': [{'material_id': dish.id, 'qty': '1', 'unit': 'پرس', 'fee': '1'}]}
-        r = self.client.post(f'/baba_adam/cogs/recipe/{dish.id}/',
-                             data=json.dumps(payload), content_type='application/json')
-        self.assertEqual(r.status_code, 400)
-        self.assertEqual(dish.lines.count(), 0)
-
-    def test_add_raw_item(self):
-        r = self.client.post('/baba_adam/cogs/item/add/', {
-            'name': 'کالای دستی', 'unit': 'گرم', 'price': '2500',
-            'code': '123', 'next': '/baba_adam/cogs/'})
-        self.assertEqual(r.status_code, 302)
-        item = KukerItem.objects.get(name='کالای دستی')
-        self.assertEqual(item.kind, 'raw')
-        self.assertTrue(item.is_custom)
-        self.assertEqual(float(item.price), 2500)
-
-    def test_add_menu_item_appears_in_sales_table(self):
-        r = self.client.post('/baba_adam/cogs/menu-item/add/', {
-            'name': 'غذای جدید منو', 'kind': 'dish', 'sheet': 'سفره چی',
-            'out_qty': '1', 'out_unit': 'پرس', 'next': '/baba_adam/cogs/'})
-        self.assertEqual(r.status_code, 302)
-        self.assertTrue(KukerItem.objects.filter(name='غذای جدید منو', kind='dish', is_custom=True).exists())
-        r = self.client.get('/baba_adam/cogs/')
-        self.assertContains(r, 'غذای جدید منو')
-
-    def test_custom_items_survive_reimport(self):
-        from purchases.services.menu_cogs import import_menu
-        KukerItem.objects.create(name='کالای ماندگار', key='کالایماندگار', kind='raw',
-                                 out_unit='گرم', price=100, is_custom=True)
+        KukerItem.objects.create(cafe=self.cafe, name='کالای ماندگار', key='کالایماندگار',
+                                 kind='raw', out_unit='گرم', price=100, is_custom=True)
         import_menu(MENU_PATH)
         self.assertTrue(KukerItem.objects.filter(name='کالای ماندگار', is_custom=True).exists())

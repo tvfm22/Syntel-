@@ -222,6 +222,7 @@ class ReceivedItemsTests(TestCase):
         self.assertIn(self.url(), content)  # لینک منو
         self.assertIn('class="menu-badge"', content)
         self.assertIn('1 قلم در انتظار تایید دریافت', content)
+        self.assertIn('ابتدا تایید کنید؛ تا آن زمان درخواست جدید ثبت نمیشود', content)
 
     def test_mobile_dashboard_badge_hidden_when_nothing_pending(self):
         c = self.login()

@@ -3,7 +3,7 @@
 1. category_products_api محصولات همان دسته را برمی‌گرداند (و زیردسته‌ها را).
 2. کالای ناقص (is_complete=False) در autocomplete و category_products_api نمی‌آید.
 3. quick_add_product بدون توضیحات رد می‌شود (هشدار «این کالای جدید را برای چه می‌خواهی؟»).
-4. quick_add_product با توضیحات کالای ناقص می‌سازد و دسته را وصل می‌کند.
+4. quick_add_product با توضیحات کالای ناقص می‌سازد و در دستهٔ «تحقیق و توسعه» می‌گذارد.
 5. product_update کالای ناقص را کامل می‌کند.
 """
 import json
@@ -74,7 +74,11 @@ class TestQuickAddProductRules(CategoryBrowseBase):
         self.assertFalse(data['success'])
         self.assertEqual(data['error_code'], 'description_required')
 
-    def test_creates_incomplete_with_category(self):
+    def test_creates_incomplete_in_rd_category(self):
+        """دستهٔ انتخابی کاربر نادیده گرفته می‌شود: کالای تازه همیشه در
+        «تحقیق و توسعه» ثبت می‌شود تا مدیریت بررسی و جابه‌جا کند."""
+        from purchases.services.recipe_gate import RD_CATEGORY_NAME
+
         cat = Category.objects.create(name='سرویس', cafe=self.cafe)
         url = reverse('quick_add_product', kwargs={'cafe_code': 'cb'})
         resp = self.client.post(url, data=json.dumps({
@@ -85,7 +89,8 @@ class TestQuickAddProductRules(CategoryBrowseBase):
         self.assertTrue(data['success'])
         p = Product.objects.get(id=data['product']['id'])
         self.assertFalse(p.is_complete)
-        self.assertEqual(p.category, cat)
+        self.assertEqual(p.category.name, RD_CATEGORY_NAME)
+        self.assertEqual(p.category.cafe, self.cafe)
         self.assertTrue(p.description)
 
     def test_incomplete_hidden_from_autocomplete(self):

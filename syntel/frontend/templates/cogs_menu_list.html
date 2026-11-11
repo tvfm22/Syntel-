@@ -1,0 +1,859 @@
+{% extends "base.html" %}
+{% load static custom_filters %}
+
+{% block title %}لیست غذاهای منو — بهای تمام شده{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ صفحه ۱ بهای تمام شده — لیست غذاهای منو و نیمه‌آماده‌ها ═══ */
+    .cogs-page { max-width: 1420px; margin: 0 auto; }
+    .cogs-head-note { font-size: 0.82rem; color: var(--text-secondary); margin-top: 3px; }
+
+    /* آمار بالای صفحه */
+    .cogs-stats {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+    .cogs-stat {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
+        display: flex; align-items: center; gap: var(--space-3);
+        box-shadow: var(--shadow-sm);
+    }
+    .cogs-stat-icon {
+        width: 38px; height: 38px; border-radius: var(--radius-md);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.95rem; flex-shrink: 0;
+        background: rgba(139,92,246,0.10); color: var(--accent-indigo);
+    }
+    .cogs-stat-icon.is-green { background: rgba(34,197,94,0.10); color: var(--accent-green); }
+    .cogs-stat-icon.is-orange { background: rgba(249,115,22,0.10); color: var(--accent-orange); }
+    .cogs-stat-icon.is-pink { background: rgba(236,72,153,0.10); color: var(--accent-pink); }
+    .cogs-stat-value { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .cogs-stat-label { font-size: 0.74rem; color: var(--text-secondary); font-weight: 600; }
+
+    /* تب‌های اصلی */
+    .cogs-main-tabs {
+        display: flex; gap: 4px; background: var(--gray-100);
+        padding: 4px; border-radius: var(--radius-lg);
+        margin-bottom: var(--space-4); width: fit-content;
+    }
+    .cogs-main-tab {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.55rem 1.15rem; border: none; cursor: pointer;
+        border-radius: var(--radius-md); background: transparent;
+        font-family: 'Vazir', sans-serif; font-size: 0.84rem; font-weight: 600;
+        color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .cogs-main-tab:hover { color: var(--primary); }
+    .cogs-main-tab.is-active {
+        background: var(--bg-card); color: var(--accent-indigo);
+        box-shadow: var(--shadow-sm);
+    }
+    .cogs-main-tab .tab-count {
+        font-size: 0.7rem; font-weight: 700; padding: 1px 7px;
+        border-radius: 999px; background: var(--gray-200); color: var(--text-secondary);
+    }
+    .cogs-main-tab.is-active .tab-count { background: rgba(139,92,246,0.14); color: var(--accent-indigo); }
+
+    /* بلوک هر بخش */
+    .cogs-section {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); margin-bottom: var(--space-4);
+        box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .cogs-section-head {
+        display: flex; align-items: center; gap: var(--space-3);
+        padding: var(--space-3) var(--space-5);
+        background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-light);
+    }
+    .cogs-section-title {
+        display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
+    }
+    .cogs-section-title i { color: var(--accent-indigo); font-size: 0.82rem; }
+    .cogs-section-title.is-fixed i { color: var(--accent-orange); }
+    .cogs-section-meta {
+        display: flex; align-items: center; gap: var(--space-3);
+        margin-inline-start: auto; font-size: 0.76rem; color: var(--text-secondary);
+    }
+    .cogs-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: 999px; padding: 2px 9px;
+        font-size: 0.72rem; font-weight: 700; color: var(--text-secondary);
+    }
+    .cogs-chip.is-cost { color: var(--accent-green); border-color: rgba(34,197,94,0.28); }
+
+    /* جدول */
+    .cogs-table { width: 100%; border-collapse: collapse; }
+    .cogs-table thead th {
+        text-align: right; padding: 0.55rem var(--space-5);
+        font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+        background: var(--bg-card); border-bottom: 1px solid var(--border-light);
+        white-space: nowrap;
+    }
+    .cogs-table tbody td {
+        padding: 0.62rem var(--space-5); border-bottom: 1px solid var(--border-light);
+        font-size: 0.83rem; color: var(--text-primary); vertical-align: middle;
+    }
+    .cogs-table tbody tr:last-child td { border-bottom: none; }
+    .cogs-table tbody tr:hover { background: rgba(139,92,246,0.03); }
+
+    .item-name {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: none; border: none; cursor: pointer; padding: 0;
+        font-family: 'Vazir', sans-serif; font-size: 0.86rem; font-weight: 600;
+        color: var(--text-primary); text-align: right;
+        transition: color var(--transition-fast);
+    }
+    .item-name:hover { color: var(--accent-indigo); }
+    .item-dot {
+        width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        background: var(--accent-indigo);
+    }
+    .item-dot.is-prep { background: var(--accent-orange); }
+    .tag-custom {
+        font-size: 0.64rem; font-weight: 700; padding: 1px 6px;
+        border-radius: 999px; background: rgba(59,130,246,0.10); color: var(--accent-blue);
+        margin-inline-start: 6px;
+    }
+    .cell-muted { color: var(--text-secondary); font-size: 0.79rem; }
+    .cell-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    .cost-btn {
+        background: none; border: none; cursor: pointer; padding: 2px 8px;
+        border-radius: var(--radius-sm); font-family: 'Vazir', sans-serif;
+        font-size: 0.88rem; font-weight: 800; color: var(--accent-green);
+        font-variant-numeric: tabular-nums;
+        border-bottom: 1px dashed rgba(34,197,94,0.45);
+        transition: all var(--transition-fast);
+    }
+    .cost-btn:hover { background: rgba(34,197,94,0.08); }
+    .cost-btn.is-empty { color: var(--text-muted); border-bottom-color: var(--gray-300); }
+
+    .btn-edit {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        color: var(--text-secondary); cursor: pointer;
+        padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
+        font-family: 'Vazir', sans-serif; font-size: 0.76rem; font-weight: 600;
+        transition: all var(--transition-fast);
+    }
+    .btn-edit:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); background: rgba(139,92,246,0.05); }
+
+    .cogs-empty {
+        padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: 0.85rem;
+    }
+    .cogs-empty i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+    /* ═══ مودال‌ها، فرم رسپی و دکمهٔ btn-sm در پارشیال مشترک
+       partials/cogs_recipe_editor.html تعریف شده‌اند ═══ */
+
+    /* نمودار تاریخچه */
+    .chart-summary {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+    .chart-sum-card {
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        border-radius: var(--radius-md); padding: 0.6rem 0.75rem;
+    }
+    .chart-sum-label { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); }
+    .chart-sum-value {
+        font-size: 0.98rem; font-weight: 800; color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+    .chart-sum-card.is-min .chart-sum-value { color: var(--accent-green); }
+    .chart-sum-card.is-max .chart-sum-value { color: var(--danger); }
+    .chart-sum-card.is-latest .chart-sum-value { color: var(--accent-indigo); }
+    .chart-wrap { position: relative; height: 300px; }
+    .chart-empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        height: 300px; color: var(--text-muted); font-size: 0.84rem; text-align: center;
+        gap: 0.6rem;
+    }
+    .chart-empty i { font-size: 1.6rem; opacity: 0.45; }
+
+    /* مدیریت بخش‌ها */
+    .section-row {
+        display: grid; grid-template-columns: minmax(0,1fr) auto;
+        gap: 6px; align-items: center; margin-bottom: 6px;
+    }
+    .section-row input {
+        height: 36px; padding: 0 0.6rem;
+        border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+        font-family: 'Vazir', sans-serif; font-size: 0.82rem;
+        background: var(--bg-card); color: var(--text-primary);
+    }
+    .section-row input:focus { outline: none; border-color: var(--accent-indigo); }
+    .section-group-title {
+        font-size: 0.76rem; font-weight: 800; color: var(--text-secondary);
+        margin: var(--space-4) 0 var(--space-2);
+    }
+    .section-group-title:first-child { margin-top: 0; }
+
+    @media (max-width: 900px) {
+        .cogs-stats { grid-template-columns: repeat(2, 1fr); }
+        .chart-summary { grid-template-columns: repeat(2, 1fr); }
+        .cogs-table thead th:nth-child(2), .cogs-table tbody td:nth-child(2) { display: none; }
+    }
+</style>
+{% include "partials/cogs_recipe_editor_css.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="cogs-page">
+
+    <div class="page-header">
+        <div>
+        <div class="ph-main"><div class="ph-icon"><i class="fas fa-utensils"></i></div><div><h1 class="ph-title">لیست غذاهای منو و نیمه‌آماده‌ها</h1><p class="page-sub">بهای هر غذا از روی رسپی‌اش محاسبه می‌شود؛ روی نام یا بهای هر قلم کلیک کنید تا رسپی و روند تغییر قیمتش را ببینید</p></div></div>
+            <div class="cogs-head-note" style="display:none;">
+                بهای هر غذا از روی رسپی‌اش محاسبه می‌شود. روی نام یا بهای هر قلم کلیک کنید تا رسپی و
+                روند تغییر قیمتش را ببینید.
+            </div>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn btn-secondary" id="btnSections">
+                <i class="fas fa-layer-group"></i> بخش‌ها
+            </button>
+            <button type="button" class="btn btn-primary" id="btnNewItem">
+                <i class="fas fa-plus"></i> آیتم جدید
+            </button>
+        </div>
+    </div>
+
+    {% include "cogs_nav.html" %}
+
+    <div class="cogs-stats">
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon"><i class="fas fa-utensils"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.dishes|number_format }}</div>
+                <div class="cogs-stat-label">غذای منو</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-orange"><i class="fas fa-layer-group"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.preps|number_format }}</div>
+                <div class="cogs-stat-label">نیمه‌آماده</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-green"><i class="fas fa-list-check"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.sections|number_format }}</div>
+                <div class="cogs-stat-label">بخش تعریف‌شده</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-pink"><i class="fas fa-triangle-exclamation"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.no_recipe|number_format }}</div>
+                <div class="cogs-stat-label">بدون رسپی</div>
+            </div>
+        </div>
+    </div>
+
+    {% if not has_menu %}
+    <div class="cogs-section">
+        <div class="cogs-empty">
+            <i class="fas fa-utensils"></i>
+            هنوز هیچ غذایی برای این کافه تعریف نشده است. از دکمهٔ «آیتم جدید» شروع کنید یا فایل منوی
+            کوکر را روی سرور ایمپورت کنید.
+        </div>
+    </div>
+    {% else %}
+
+    <div class="cogs-main-tabs" role="tablist">
+        <button type="button" class="cogs-main-tab is-active" data-view="dish">
+            <i class="fas fa-utensils"></i> غذاهای منو
+            <span class="tab-count">{{ stats.dishes|number_format }}</span>
+        </button>
+        <button type="button" class="cogs-main-tab" data-view="prep">
+            <i class="fas fa-layer-group"></i> نیمه‌آماده‌ها
+            <span class="tab-count">{{ stats.preps|number_format }}</span>
+        </button>
+    </div>
+
+    <!-- ═══ غذاهای منو ═══ -->
+    <div class="cogs-view" data-view="dish">
+        {% for g in dish_groups %}
+        <div class="cogs-section">
+            <div class="cogs-section-head">
+                <div class="cogs-section-title">
+                    <i class="fas fa-folder-open"></i>{{ g.name }}
+                </div>
+                <div class="cogs-section-meta">
+                    <span class="cogs-chip">{{ g.count|number_format }} قلم</span>
+                    {% if g.priced %}
+                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }}</span>
+                    {% endif %}
+                    {% if g.id %}
+                    <button type="button" class="btn-sm" data-rename-section="{{ g.id }}" data-name="{{ g.name }}">
+                        <i class="fas fa-pen"></i> تغییر نام
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% if g.items %}
+            <table class="cogs-table">
+                <thead>
+                    <tr>
+                        <th>نام</th>
+                        <th>بخش</th>
+                        <th>خروجی هر بچ</th>
+                        <th>تعداد مواد</th>
+                        <th>بهای تمام شده هر واحد</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in g.items %}
+                    <tr>
+                        <td>
+                            <button type="button" class="item-name" data-edit="{{ item.id }}">
+                                <span class="item-dot"></span><span>{{ item.name }}</span>
+                            </button>
+                            {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
+                        </td>
+                        <td class="cell-muted">{{ g.name }}</td>
+                        <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
+                        <td class="cell-num">{{ item.lines_count|number_format }}</td>
+                        <td>
+                            <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
+                                    data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
+                                {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn-edit" data-edit="{{ item.id }}">
+                                <i class="fas fa-pen"></i> ویرایش
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="cogs-empty">
+                <i class="fas fa-inbox"></i>
+                هنوز غذایی در این بخش نیست.
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="cogs-section">
+            <div class="cogs-empty">
+                <i class="fas fa-inbox"></i>
+                غذایی در منو نیست. با «آیتم جدید» اولین غذا را بسازید.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ═══ نیمه‌آماده‌ها ═══ -->
+    <div class="cogs-view" data-view="prep" style="display:none;">
+        {% for g in prep_groups %}
+        <div class="cogs-section">
+            <div class="cogs-section-head">
+                <div class="cogs-section-title{% if g.fixed %} is-fixed{% endif %}">
+                    <i class="fas fa-{% if g.fixed %}blender{% else %}folder-open{% endif %}"></i>{{ g.name }}
+                </div>
+                <div class="cogs-section-meta">
+                    <span class="cogs-chip">{{ g.count|number_format }} قلم</span>
+                    {% if g.priced %}
+                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }}</span>
+                    {% endif %}
+                    {% if g.id %}
+                    <button type="button" class="btn-sm" data-rename-section="{{ g.id }}" data-name="{{ g.name }}">
+                        <i class="fas fa-pen"></i> تغییر نام
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% if g.items %}
+            <table class="cogs-table">
+                <thead>
+                    <tr>
+                        <th>نام</th>
+                        <th>بخش</th>
+                        <th>خروجی هر بچ</th>
+                        <th>تعداد مواد</th>
+                        <th>بهای تمام شده هر واحد</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in g.items %}
+                    <tr>
+                        <td>
+                            <button type="button" class="item-name" data-edit="{{ item.id }}">
+                                <span class="item-dot is-prep"></span><span>{{ item.name }}</span>
+                            </button>
+                            {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
+                        </td>
+                        <td class="cell-muted">{{ g.name }}</td>
+                        <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
+                        <td class="cell-num">{{ item.lines_count|number_format }}</td>
+                        <td>
+                            <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
+                                    data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
+                                {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn-edit" data-edit="{{ item.id }}">
+                                <i class="fas fa-pen"></i> ویرایش
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="cogs-empty">
+                <i class="fas fa-inbox"></i>
+                هنوز نیمه‌آماده‌ای در این بخش نیست.
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% endif %}
+</div>
+
+<!-- ═══════════ ویرایشگر رسپی (پارشیال مشترک با صفحهٔ ۲) ═══════════ -->
+{% include "partials/cogs_recipe_editor.html" %}
+
+<!-- ═══════════ مودال تاریخچه بهای قلم ═══════════ -->
+<div class="cogs-modal" id="costModal">
+    <div class="cogs-modal-box">
+        <div class="cogs-modal-head">
+            <div>
+                <h3 id="costTitle">روند تغییر بها</h3>
+                <div class="modal-sub" id="costSub">—</div>
+            </div>
+            <button type="button" class="cogs-modal-close" data-close="costModal">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cogs-modal-body">
+            <div class="chart-summary">
+                <div class="chart-sum-card is-min">
+                    <div class="chart-sum-label">کمترین بها</div>
+                    <div class="chart-sum-value" id="costMin">—</div>
+                </div>
+                <div class="chart-sum-card is-max">
+                    <div class="chart-sum-label">بیشترین بها</div>
+                    <div class="chart-sum-value" id="costMax">—</div>
+                </div>
+                <div class="chart-sum-card is-latest">
+                    <div class="chart-sum-label">آخرین بها</div>
+                    <div class="chart-sum-value" id="costLatest">—</div>
+                </div>
+                <div class="chart-sum-card">
+                    <div class="chart-sum-label">تغییر از ابتدا</div>
+                    <div class="chart-sum-value" id="costDelta">—</div>
+                </div>
+            </div>
+            <div class="chart-wrap" id="chartWrap">
+                <canvas id="costChart"></canvas>
+            </div>
+            <div class="chart-empty" id="chartEmpty" style="display:none;">
+                <i class="fas fa-chart-line"></i>
+                <span>هنوز تغییری برای این قلم ثبت نشده است.<br>با ویرایش رسپی یا تغییر قیمت مواد اولیه، نمودار ساخته می‌شود.</span>
+            </div>
+        </div>
+        <div class="cogs-modal-foot">
+            <button type="button" class="btn btn-secondary" data-close="costModal">بستن</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ مودال بخش‌ها ═══════════ -->
+<div class="cogs-modal" id="sectionModal">
+    <div class="cogs-modal-box is-narrow">
+        <div class="cogs-modal-head">
+            <div>
+                <h3>بخش‌های منو</h3>
+                <div class="modal-sub">نام بخش را تغییر دهید یا بخش تازه بسازید</div>
+            </div>
+            <button type="button" class="cogs-modal-close" data-close="sectionModal">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cogs-modal-body">
+            <div class="recipe-alert" id="sectionAlert"></div>
+
+            <div class="section-group-title">بخش‌های غذای منو</div>
+            {% for s in sections %}{% if s.kind == 'dish' %}
+            <div class="section-row" data-section="{{ s.id }}">
+                <input type="text" value="{{ s.name }}" maxlength="120">
+                <button type="button" class="btn-sm" data-save-section="{{ s.id }}" data-kind="dish">ذخیره</button>
+            </div>
+            {% endif %}{% endfor %}
+            <div class="section-row">
+                <input type="text" id="newDishSection" placeholder="نام بخش جدید..." maxlength="120">
+                <button type="button" class="btn-sm is-primary" data-new-section="dish">افزودن</button>
+            </div>
+
+            <div class="section-group-title">بخش‌های نیمه‌آماده</div>
+            {% for s in sections %}{% if s.kind == 'prep' %}
+            <div class="section-row" data-section="{{ s.id }}">
+                <input type="text" value="{{ s.name }}" maxlength="120">
+                <button type="button" class="btn-sm" data-save-section="{{ s.id }}" data-kind="prep">ذخیره</button>
+            </div>
+            {% endif %}{% endfor %}
+            <div class="section-row">
+                <input type="text" id="newPrepSection" placeholder="نام بخش جدید..." maxlength="120">
+                <button type="button" class="btn-sm is-primary" data-new-section="prep">افزودن</button>
+            </div>
+        </div>
+        <div class="cogs-modal-foot">
+            <button type="button" class="btn btn-secondary" data-close="sectionModal">بستن</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ مودال آیتم جدید ═══════════ -->
+<div class="cogs-modal" id="newItemModal">
+    <div class="cogs-modal-box is-narrow">
+        <form method="post" action="{% url 'cogs_menu_item_add' cafe_code=cafe_code %}">
+            {% csrf_token %}
+            <div class="cogs-modal-head">
+                <div>
+                    <h3>آیتم جدید</h3>
+                    <div class="modal-sub">غذای منو یا نیمه‌آماده تازه بسازید</div>
+                </div>
+                <button type="button" class="cogs-modal-close" data-close="newItemModal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="cogs-modal-body">
+                <div class="recipe-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="recipe-field">
+                        <label>نام</label>
+                        <input type="text" name="name" required maxlength="200">
+                    </div>
+                    <div class="recipe-field">
+                        <label>نوع</label>
+                        <select name="kind">
+                            <option value="dish">غذای منو</option>
+                            <option value="prep">نیمه‌آماده</option>
+                        </select>
+                    </div>
+                    <div class="recipe-field">
+                        <label>بخش</label>
+                        <select name="section">
+                            <option value="">— خودکار از منو —</option>
+                            {% for s in sections %}
+                            <option value="{{ s.name }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="recipe-field">
+                        <label>برگه منو</label>
+                        <select name="sheet">
+                            {% for value, label in menu_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="recipe-field">
+                        <label>مقدار خروجی</label>
+                        <input type="text" name="out_qty" value="1" inputmode="decimal">
+                    </div>
+                    <div class="recipe-field">
+                        <label>واحد خروجی</label>
+                        <select name="out_unit">
+                            {% for u in unit_choices %}
+                            <option value="{{ u }}"{% if u == 'پرس' %} selected{% endif %}>{{ u }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="cogs-modal-foot">
+                <button type="button" class="btn btn-secondary" data-close="newItemModal">انصراف</button>
+                <button type="submit" class="btn btn-primary" style="margin-inline-start:auto;">
+                    <i class="fas fa-plus"></i> ساخت آیتم
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+    'use strict';
+
+    const HISTORY_URL = "{% url 'cogs_item_cost_history' cafe_code=cafe_code item_id=999999 %}";
+    const SECTION_URL = "{% url 'cogs_section_save' cafe_code=cafe_code %}";
+
+    const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const money = v => {
+        if (v === null || v === undefined || v === '') return '—';
+        const n = Number(v);
+        if (!isFinite(n)) return '—';
+        return fa(n.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+    };
+
+    /* ---------- مودال ---------- */
+    function openModal(id) {
+        document.getElementById(id).classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('is-open');
+        if (!document.querySelector('.cogs-modal.is-open')) document.body.style.overflow = '';
+    }
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.close));
+    });
+    document.querySelectorAll('.cogs-modal').forEach(modal => {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal(modal.id);
+        });
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.cogs-modal.is-open').forEach(m => closeModal(m.id));
+        }
+    });
+
+    /* ---------- تب‌ها ---------- */
+    document.querySelectorAll('.cogs-main-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.cogs-main-tab').forEach(t => t.classList.remove('is-active'));
+            tab.classList.add('is-active');
+            const view = tab.dataset.view;
+            document.querySelectorAll('.cogs-view').forEach(v => {
+                v.style.display = (v.dataset.view === view) ? '' : 'none';
+            });
+        });
+    });
+
+    /* ═══════════ ویرایش رسپی ═══════════
+       مارک‌آپ، استایل و منطق این مودال در پارشیال مشترک
+       partials/cogs_recipe_editor.html است؛ این‌جا فقط دکمه‌ها را به آن وصل می‌کنیم. */
+    document.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => window.CogsRecipe.open(btn.dataset.edit));
+    });
+
+    /* ═══════════ نمودار تاریخچه بها ═══════════ */
+    let costChart = null;
+
+    function drawChart(points) {
+        const canvas = document.getElementById('costChart');
+        const wrap = document.getElementById('chartWrap');
+        const empty = document.getElementById('chartEmpty');
+
+        if (costChart) { costChart.destroy(); costChart = null; }
+
+        if (!points.length) {
+            wrap.style.display = 'none';
+            empty.style.display = 'flex';
+            return;
+        }
+        wrap.style.display = '';
+        empty.style.display = 'none';
+
+        const labels = points.map(p => p.at);
+        const values = points.map(p => Number(p.cost));
+
+        costChart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'بهای هر واحد',
+                    data: values,
+                    borderColor: '#8B5CF6',
+                    backgroundColor: 'rgba(139,92,246,0.12)',
+                    borderWidth: 2.5,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#8B5CF6',
+                    pointBorderWidth: 2,
+                    tension: 0.32,
+                    fill: true,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,0.92)',
+                        titleFont: { family: 'Vazir', size: 12 },
+                        bodyFont: { family: 'Vazir', size: 12 },
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            title: items => points[items[0].dataIndex].at_full || items[0].label,
+                            label: item => 'بها: ' + money(item.parsed.y) + ' تومان',
+                            afterLabel: item => {
+                                const note = points[item.dataIndex].note;
+                                return note ? 'علت: ' + note : '';
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { family: 'Vazir', size: 10 },
+                            color: '#94A3B8',
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 8,
+                        },
+                    },
+                    y: {
+                        grid: { color: 'rgba(148,163,184,0.18)' },
+                        ticks: {
+                            font: { family: 'Vazir', size: 10 },
+                            color: '#94A3B8',
+                            callback: v => money(v),
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    function openCost(itemId) {
+        const url = HISTORY_URL.replace('999999', itemId);
+        document.getElementById('costTitle').textContent = 'روند تغییر بها';
+        document.getElementById('costSub').textContent = 'در حال بارگذاری...';
+        ['costMin', 'costMax', 'costLatest', 'costDelta'].forEach(id => {
+            document.getElementById(id).textContent = '—';
+        });
+        openModal('costModal');
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.error || 'خطا');
+                const item = data.item;
+                document.getElementById('costTitle').textContent = item.name;
+                document.getElementById('costSub').textContent =
+                    item.kind_label + (item.out_unit ? ' · به ازای هر ۱ ' + item.out_unit : '');
+
+                document.getElementById('costMin').textContent = data.min === '' ? '—' : money(data.min);
+                document.getElementById('costMax').textContent = data.max === '' ? '—' : money(data.max);
+                document.getElementById('costLatest').textContent =
+                    data.latest === '' ? money(data.current) : money(data.latest);
+
+                if (data.min !== '' && data.latest !== '') {
+                    const first = Number(data.points[0].cost);
+                    const last = Number(data.latest);
+                    const diff = last - first;
+                    const pct = first ? (diff / first) * 100 : 0;
+                    const sign = diff > 0 ? '+' : (diff < 0 ? '−' : '');
+                    document.getElementById('costDelta').textContent =
+                        (diff === 0 ? 'بدون تغییر' : sign + money(Math.abs(diff)) + ' (' + fa(Math.abs(pct).toFixed(1)) + '٪)');
+                }
+
+                drawChart(data.points || []);
+            })
+            .catch(err => {
+                document.getElementById('costSub').textContent = err.message || 'خطا در دریافت تاریخچه';
+                drawChart([]);
+            });
+    }
+
+    document.querySelectorAll('[data-cost]').forEach(btn => {
+        btn.addEventListener('click', () => openCost(btn.dataset.cost));
+    });
+
+    /* ═══════════ بخش‌ها ═══════════ */
+    document.getElementById('btnSections').addEventListener('click', () => {
+        document.getElementById('sectionAlert').classList.remove('is-open');
+        openModal('sectionModal');
+    });
+
+    function saveSection(sectionId, kind, name, row) {
+        const body = new URLSearchParams();
+        body.append('name', name);
+        body.append('kind', kind);
+        if (sectionId) body.append('section_id', sectionId);
+        body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        return fetch(SECTION_URL, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: body,
+        }).then(r => r.json());
+    }
+
+    document.querySelectorAll('[data-save-section]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = btn.closest('.section-row');
+            const name = row.querySelector('input').value.trim();
+            const alertBox = document.getElementById('sectionAlert');
+            alertBox.classList.remove('is-open');
+            saveSection(btn.dataset.saveSection, btn.dataset.kind, name, row)
+                .then(data => {
+                    if (!data.ok) throw new Error(data.error || 'ذخیره نشد');
+                    window.location.reload();
+                })
+                .catch(err => {
+                    alertBox.textContent = err.message;
+                    alertBox.classList.add('is-open');
+                });
+        });
+    });
+
+    document.querySelectorAll('[data-new-section]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const kind = btn.dataset.newSection;
+            const input = document.getElementById(kind === 'prep' ? 'newPrepSection' : 'newDishSection');
+            const name = input.value.trim();
+            const alertBox = document.getElementById('sectionAlert');
+            alertBox.classList.remove('is-open');
+            if (!name) {
+                alertBox.textContent = 'نام بخش را وارد کنید.';
+                alertBox.classList.add('is-open');
+                return;
+            }
+            saveSection(null, kind, name, null)
+                .then(data => {
+                    if (!data.ok) throw new Error(data.error || 'ساخته نشد');
+                    window.location.reload();
+                })
+                .catch(err => {
+                    alertBox.textContent = err.message;
+                    alertBox.classList.add('is-open');
+                });
+        });
+    });
+
+    document.querySelectorAll('[data-rename-section]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = document.querySelector(`.section-row[data-section="${btn.dataset.renameSection}"]`);
+            if (row) {
+                row.querySelector('input').focus();
+                row.querySelector('input').select();
+            }
+            document.getElementById('sectionAlert').classList.remove('is-open');
+            openModal('sectionModal');
+        });
+    });
+
+    /* ═══════════ آیتم جدید ═══════════ */
+    document.getElementById('btnNewItem').addEventListener('click', () => openModal('newItemModal'));
+})();
+</script>
+{% endblock %}

@@ -1,334 +1,299 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}مدیریت تأمین‌کنندگان{% endblock %}
+{% block title %}مدیریت تأمین‌کنندگان - Kuker{% endblock %}
 
 {% block content %}
 <style>
 .supplier-list-container {
-    max-width: 1200px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 20px;
-}
-
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}
-
-.btn-add {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-add:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .filters-section {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: var(--bg-card);
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-xs);
     margin-bottom: 20px;
 }
 
 .search-form {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
 }
 
 .search-input {
     flex: 1;
-    min-width: 200px;
-    padding: 10px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
+    min-width: 220px;
+    padding: 9px 14px;
+    border: 1px solid var(--border-medium);
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    background: var(--bg-input);
+    color: var(--text-primary);
 }
 
-.search-input:focus {
+.search-input:focus,
+.status-filter:focus,
+.type-filter:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent-indigo);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 .status-filter, .type-filter {
-    padding: 10px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 9px 14px;
+    border: 1px solid var(--border-medium);
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-family: inherit;
     min-width: 150px;
-}
-
-.btn-search {
-    background: #28a745;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background 0.3s ease;
-}
-
-.btn-search:hover {
-    background: #218838;
+    background: var(--bg-input);
+    color: var(--text-primary);
 }
 
 .suppliers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
 }
 
 .supplier-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-xs);
     overflow: hidden;
-    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .supplier-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #C7D2FE;
+    box-shadow: var(--shadow-md);
 }
 
 .supplier-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 15px;
-    position: relative;
+    padding: 16px 18px;
+    border-bottom: 1px solid #F1F5F9;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.supplier-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.supplier-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #EEF2FF;
+    color: #4F46E5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
 }
 
 .supplier-name {
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin: 0;
-    margin-bottom: 5px;
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 2px 0;
 }
 
 .supplier-type {
-    font-size: 0.9rem;
-    opacity: 0.9;
+    font-size: 0.78rem;
+    color: var(--text-muted);
     margin: 0;
-}
-
-.status-badge {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
     font-weight: 500;
 }
 
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .status-active {
-    background: rgba(40, 167, 69, 0.2);
-    color: #28a745;
+    background: #ECFDF5;
+    color: #059669;
+    border: 1px solid #A7F3D0;
 }
 
 .status-inactive {
-    background: rgba(220, 53, 69, 0.2);
-    color: #dc3545;
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
 }
 
 .supplier-body {
-    padding: 15px;
+    padding: 16px 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .supplier-info {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 10px 14px;
+    margin-bottom: 14px;
 }
 
 .info-item {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
 }
 
 .info-label {
-    font-size: 0.8rem;
-    color: #666;
+    font-size: 0.74rem;
+    color: var(--text-muted);
     margin-bottom: 2px;
 }
 
 .info-value {
-    font-weight: 500;
-    color: #333;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .supplier-contact {
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 8px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
 }
 
 .contact-item {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
 }
 
 .contact-label {
-    font-size: 0.9rem;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .contact-value {
-    font-weight: 500;
-    color: #333;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .supplier-actions {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #F1F5F9;
     display: flex;
-    gap: 10px;
+    gap: 6px;
     justify-content: flex-end;
     flex-wrap: wrap;
 }
 
-.btn-view, .btn-edit, .btn-delete, .btn-activate, .btn-deactivate {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    border-radius: 8px;
     text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
 }
 
 .btn-view {
-    background: #17a2b8;
-    color: white;
+    background: #EEF2FF;
+    color: #4F46E5;
+    border-color: #E0E7FF;
 }
-
-.btn-view:hover {
-    background: #138496;
-    transform: translateY(-1px);
-}
+.btn-view:hover { background: #E0E7FF; }
 
 .btn-edit {
-    background: #ffc107;
-    color: #212529;
+    background: #F8FAFC;
+    color: #334155;
+    border-color: #E2E8F0;
 }
-
-.btn-edit:hover {
-    background: #e0a800;
-    transform: translateY(-1px);
-}
-
-.btn-delete {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-delete:hover {
-    background: #c82333;
-    transform: translateY(-1px);
-}
+.btn-edit:hover { background: #F1F5F9; border-color: #CBD5E1; }
 
 .btn-activate {
-    background: #28a745;
-    color: white;
+    background: #ECFDF5;
+    color: #059669;
+    border-color: #A7F3D0;
 }
-
-.btn-activate:hover {
-    background: #218838;
-    transform: translateY(-1px);
-}
+.btn-activate:hover { background: #D1FAE5; }
 
 .btn-deactivate {
-    background: #6c757d;
-    color: white;
+    background: #FFFBEB;
+    color: #B45309;
+    border-color: #FDE68A;
 }
+.btn-deactivate:hover { background: #FEF3C7; }
 
-.btn-deactivate:hover {
-    background: #5a6268;
-    transform: translateY(-1px);
+.btn-delete {
+    background: #FEF2F2;
+    color: #DC2626;
+    border-color: #FECACA;
 }
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
-}
-
-.empty-state h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    color: #333;
-}
-
-.empty-state p {
-    font-size: 1rem;
-    margin-bottom: 20px;
-}
+.btn-delete:hover { background: #FEE2E2; }
 
 @media (max-width: 768px) {
-    .supplier-list-container {
-        padding: 15px;
-    }
-
-    .page-header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-    }
-
     .search-form {
         flex-direction: column;
         align-items: stretch;
     }
-
     .suppliers-grid {
         grid-template-columns: 1fr;
-    }
-
-    .supplier-info {
-        grid-template-columns: 1fr;
-    }
-
-    .supplier-actions {
-        justify-content: center;
     }
 }
 </style>
 
 <div class="supplier-list-container">
     <div class="page-header">
-        <h1 class="page-title">مدیریت تأمین‌کنندگان</h1>
-        <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn-add">
-            <i class="fas fa-plus"></i> تأمین‌کننده جدید
-        </a>
+        <h1 class="page-title">
+            <i class="fas fa-store"></i>
+            مدیریت تأمین‌کنندگان
+        </h1>
+        <div class="header-actions">
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> تأمین‌کننده جدید
+            </a>
+        </div>
     </div>
 
     <div class="filters-section">
         <form method="GET" class="search-form">
-            <input type="text" name="search" value="{{ current_filters.search }}" placeholder="جستجو در تأمین‌کنندگان..." class="search-input">
+            <input type="text" name="search" value="{{ current_filters.search }}" placeholder="جستجو در نام، تلفن، شهر یا کد تأمین‌کننده..." class="search-input">
             <select name="status" class="status-filter">
                 <option value="">همه وضعیت‌ها</option>
                 {% for status_value, status_label in status_choices %}
@@ -345,7 +310,7 @@
                 </option>
                 {% endfor %}
             </select>
-            <button type="submit" class="btn-search">
+            <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i> جستجو
             </button>
         </form>
@@ -356,8 +321,13 @@
         {% for supplier in suppliers %}
         <div class="supplier-card">
             <div class="supplier-header">
-                <h3 class="supplier-name">{{ supplier.name }}</h3>
-                <p class="supplier-type">{{ supplier.get_supplier_type_display }}</p>
+                <div class="supplier-title-group">
+                    <div class="supplier-avatar"><i class="fas fa-store"></i></div>
+                    <div>
+                        <h3 class="supplier-name">{{ supplier.name }}</h3>
+                        <p class="supplier-type">{{ supplier.get_supplier_type_display }}</p>
+                    </div>
+                </div>
                 <span class="status-badge status-{{ supplier.status }}">
                     {{ supplier.get_status_display }}
                 </span>
@@ -374,11 +344,7 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">تلفن</span>
-                        <span class="info-value">{{ supplier.phone|default:"-" }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">ایمیل</span>
-                        <span class="info-value">{{ supplier.email|default:"-" }}</span>
+                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.phone|default:"-" }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">نام بانک</span>
@@ -386,46 +352,46 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">شماره کارت</span>
-                        <span class="info-value" dir="ltr">{{ supplier.card_number|default:"-" }}</span>
+                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.card_number|default:"-" }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">شماره شبا</span>
-                        <span class="info-value" dir="ltr">{{ supplier.sheba_number|default:"-" }}</span>
+                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.sheba_number|default:"-" }}</span>
                     </div>
                 </div>
 
                 {% if supplier.contact_person %}
                 <div class="supplier-contact">
                     <div class="contact-item">
-                        <span class="contact-label">شخص تماس:</span>
+                        <span class="contact-label"><i class="fas fa-user"></i> شخص تماس:</span>
                         <span class="contact-value">{{ supplier.contact_person }}</span>
                     </div>
                     {% if supplier.mobile %}
                     <div class="contact-item">
-                        <span class="contact-label">موبایل:</span>
-                        <span class="contact-value">{{ supplier.mobile }}</span>
+                        <span class="contact-label"><i class="fas fa-mobile-alt"></i> موبایل:</span>
+                        <span class="contact-value" dir="ltr">{{ supplier.mobile }}</span>
                     </div>
                     {% endif %}
                 </div>
                 {% endif %}
 
                 <div class="supplier-actions">
-                    <a href="{% url 'supplier_detail' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-view">
+                    <a href="{% url 'supplier_detail' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-view">
                         <i class="fas fa-eye"></i> مشاهده
                     </a>
-                    <a href="{% url 'supplier_update' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-edit">
+                    <a href="{% url 'supplier_update' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-edit">
                         <i class="fas fa-edit"></i> ویرایش
                     </a>
                     {% if supplier.status == 'active' %}
-                    <a href="{% url 'supplier_deactivate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-deactivate">
+                    <a href="{% url 'supplier_deactivate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-deactivate">
                         <i class="fas fa-ban"></i> غیرفعال
                     </a>
                     {% else %}
-                    <a href="{% url 'supplier_activate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-activate">
+                    <a href="{% url 'supplier_activate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-activate">
                         <i class="fas fa-check"></i> فعال
                     </a>
                     {% endif %}
-                    <a href="{% url 'supplier_delete' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-delete">
+                    <a href="{% url 'supplier_delete' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-delete">
                         <i class="fas fa-trash"></i> حذف
                     </a>
                 </div>
@@ -434,12 +400,16 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state">
-        <h3>تأمین‌کننده‌ای یافت نشد</h3>
-        <p>هیچ تأمین‌کننده‌ای با معیارهای جستجوی شما یافت نشد.</p>
-        <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn-add">اولین تأمین‌کننده را اضافه کنید</a>
+    <div class="table-card">
+        <div class="empty-state">
+            <i class="fas fa-store-slash"></i>
+            <h3>تأمین‌کننده‌ای یافت نشد</h3>
+            <p>هیچ تأمین‌کننده‌ای با معیارهای جستجوی شما یافت نشد.</p>
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn btn-primary" style="margin-top: 12px;">
+                <i class="fas fa-plus"></i> اولین تأمین‌کننده را اضافه کنید
+            </a>
+        </div>
     </div>
     {% endif %}
 </div>
 {% endblock %}
-

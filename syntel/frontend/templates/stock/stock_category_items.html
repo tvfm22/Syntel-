@@ -1,149 +1,132 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>موجودی دسته‌بندی - {{ category.name|default:"بدون دسته‌بندی" }} - Kuker</title>
-{% load static %}
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{
-            --primary:#8B5CF6;--primary-dark:#7C3AED;
-            --success:#22C55E;--warning:#F59E0B;--danger:#EF4444;
-            --dark:#0F172A;--muted:#94A3B8;--light:#FAFAFA;--border:#E2E8F0;
-            --shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);
-            --shadow-md:0 4px 24px rgba(15,23,42,0.05);
-        }
-        body{font-family:'Vazir',-apple-system,sans-serif;background:#EDEDF2;min-height:100vh;color:var(--dark)}
-
-        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;gap:.75rem;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:100}
-        .back-btn{display:flex;align-items:center;gap:.4rem;padding:.45rem .9rem;background:var(--light);border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--dark);font-size:.82rem;font-weight:600;transition:all .2s}
-        .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .topbar-title{flex:1;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
-        .topbar-title i{color:var(--primary)}
-
-        .main{padding:1.75rem 1.5rem;max-width:1400px;margin:0 auto}
-
-        /* PAGE HEADER */
-        .page-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
-        .ph-main{display:flex;align-items:center;gap:.8rem;min-width:0}
-        .ph-icon{width:44px;height:44px;border-radius:12px;flex-shrink:0;background:rgba(139,92,246,0.1);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.1rem}
-        .page-header h1{font-size:1.15rem;font-weight:800;display:flex;align-items:center;gap:.5rem;line-height:1.4}
-        .page-header p{margin-top:.1rem;color:var(--muted);font-size:.76rem;font-weight:500;line-height:1.7}
-
-        /* FILTERS */
-        .filter-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1rem 1.25rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem}
-        .filter-form{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap}
-        .filter-group{display:flex;flex-direction:column;gap:.35rem;min-width:180px;flex:1}
-        .filter-label{font-size:.74rem;font-weight:700;color:var(--muted)}
-        .filter-input{height:36px;padding:0 .8rem;border:1.5px solid var(--border);border-radius:999px;font-family:'Vazir',sans-serif;font-size:.82rem;background:#fff;transition:all .2s}
-        .filter-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(139,92,246,.1)}
-
-        /* BUTTONS */
-        .btn{height:36px;padding:0 1rem;border:none;border-radius:999px;font-family:'Vazir',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;transition:all .2s;text-decoration:none}
-        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
-        .btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#16A34A}
-        .btn-secondary{background:rgba(239,68,68,.08);color:#b91c1c}
-        .btn-outline{background:#fff;color:var(--dark);border:1.5px solid var(--border)}.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-        .check-label{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;height:36px;padding:0 1rem;background:#fff;border:1.5px solid var(--border);border-radius:999px;font-weight:600;color:var(--dark);font-size:.78rem;white-space:nowrap;transition:all .2s}
-        .check-label:hover{border-color:var(--warning);color:#92400e}
-        .check-label input{width:15px;height:15px;accent-color:var(--warning)}
-
-        /* Warehouse pills */
-        .wh-pills{display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap}
-        .wh-pill{padding:.35rem 1rem;border-radius:999px;font-weight:700;text-decoration:none;font-size:.78rem;border:1.5px solid var(--border);background:#fff;color:var(--dark);transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
-        .wh-pill:hover{border-color:var(--primary);color:var(--primary)}
-        .wh-pill.active{background:var(--primary);border-color:var(--primary);color:#fff}
-
-        /* STOCK GRID */
-        .stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
-
-        /* STOCK CARD */
-        .stock-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.15rem 1.35rem;box-shadow:var(--shadow-sm);border-inline-start:4px solid var(--success);transition:all .2s;display:flex;flex-direction:column}
-        .stock-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
-        .stock-card.low{border-inline-start-color:var(--danger)}
-        .stock-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.75rem}
-        .stock-name{font-size:.95rem;font-weight:800;color:var(--dark)}
-        .stock-tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem}
-        .tag{display:inline-flex;align-items:center;gap:.25rem;padding:.12rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap}
-        .tag-cat{background:rgba(139,92,246,.08);color:#6d28d9}
-        .tag-wh{background:#d1fae5;color:#065f46}
-        .tag-low{background:#fee2e2;color:#b91c1c}
-        .qty-badge{text-align:center;flex-shrink:0;background:var(--light);border:1px solid var(--border);border-radius:12px;padding:.4rem .8rem;min-width:80px}
-        .qty-val{font-size:1.2rem;font-weight:800;color:var(--success)}
-        .stock-card.low .qty-val{color:var(--danger)}
-        .qty-unit{font-size:.68rem;color:var(--muted);font-weight:600}
-        .stock-meta{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem}
-        .meta-item{font-size:.72rem;color:var(--muted)}
-        .meta-item strong{color:var(--dark);display:block;font-size:.75rem;font-weight:700;margin-bottom:.1rem}
-        .stock-actions{margin-top:.85rem;display:flex;gap:.5rem}
-
-        /* PAGINATION */
-        .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap}
-        .page-link{padding:.4rem .875rem;border:1.5px solid var(--border);border-radius:999px;text-decoration:none;color:var(--dark);font-size:.8rem;font-weight:700;background:#fff;transition:all .2s}
-        .page-link:hover{border-color:var(--primary);color:var(--primary)}
-        .page-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .page-link.disabled{opacity:.4;pointer-events:none}
-
-        /* EMPTY */
-        .empty{text-align:center;padding:3.5rem 2rem;background:#fff;border-radius:20px;border:1px dashed var(--border-strong,#CBD5E1);box-shadow:var(--shadow-sm)}
-        .empty i{font-size:2.5rem;color:#d1d5db;display:block;margin-bottom:.8rem}
-        .empty h3{color:var(--dark);font-size:1.05rem;margin-bottom:.4rem}
-        .empty p{color:var(--muted);font-size:.82rem;margin-bottom:1.25rem}
-
-        @media(max-width:768px){.main{padding:1rem}.stock-grid{grid-template-columns:1fr}.filter-form{flex-direction:column;align-items:stretch}}
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
 {% load static %}
 
-<!-- Topbar -->
-<div class="topbar">
-    <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="back-btn">
-        <i class="fas fa-arrow-right"></i> دسته‌بندی‌ها
-    </a>
-    <div class="topbar-title">
-        <i class="fas fa-boxes"></i>
-        {% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}
-    </div>
-    <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-outline" style="font-size:.78rem">
-        <i class="fas fa-list"></i> لیست کامل
-    </a>
-    <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-success" style="font-size:.78rem">
-        <i class="fas fa-plus"></i> ثبت حواله ورود
-    </a>
-</div>
+{% block title %}موجودی دسته‌بندی - {{ category.name|default:"بدون دسته‌بندی" }} - Kuker{% endblock %}
 
-<!-- Main -->
-<div class="main">
+{% block extra_css %}
+<style>
+    .sci-wrap { max-width: 1360px; margin: 0 auto; }
+    .sci-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
 
-    <!-- Page Header -->
+    /* FILTERS */
+    .filter-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); padding: 0.9rem 1.25rem;
+        box-shadow: var(--shadow-xs); margin-bottom: 1.25rem;
+    }
+    .filter-form { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 0.35rem; min-width: 200px; flex: 1; }
+    .filter-label { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); }
+    .filter-input {
+        height: 38px; padding: 0 0.85rem; border: 1px solid var(--border-default);
+        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
+        font-size: 0.84rem; background: var(--bg-input); color: var(--text-primary);
+    }
+    .filter-input:focus {
+        outline: none; border-color: var(--accent-indigo); background: #FFFFFF;
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
+    }
+
+    .check-label {
+        display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+        height: 38px; padding: 0 1rem; background: var(--bg-card);
+        border: 1px solid var(--border-default); border-radius: var(--radius-md);
+        font-weight: 600; color: var(--text-primary); font-size: 0.8rem; white-space: nowrap;
+    }
+    .check-label:hover { border-color: var(--accent-orange); color: #92400E; }
+    .check-label input { width: 15px; height: 15px; accent-color: var(--accent-orange); }
+
+    /* Warehouse pills */
+    .wh-pills { display: flex; gap: 0.45rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .wh-pill {
+        padding: 0.4rem 1rem; border-radius: 999px; font-weight: 700; text-decoration: none;
+        font-size: 0.78rem; border: 1px solid var(--border-default); background: var(--bg-card);
+        color: var(--text-secondary); transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.35rem;
+    }
+    .wh-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .wh-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: #fff; }
+
+    /* STOCK GRID */
+    .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+
+    /* STOCK CARD */
+    .stock-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
+        box-shadow: var(--shadow-xs); border-inline-start: 4px solid var(--accent-green);
+        transition: all 0.2s; display: flex; flex-direction: column;
+    }
+    .stock-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stock-card.low { border-inline-start-color: #EF4444; }
+    .stock-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .stock-name { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
+    .stock-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.3rem; }
+    .tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.12rem 0.55rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+    .tag-cat { background: rgba(139,92,246,0.08); color: #6D28D9; }
+    .tag-wh { background: #ECFDF5; color: #065F46; }
+    .tag-low { background: #FEF2F2; color: #B91C1C; }
+    .qty-badge {
+        text-align: center; flex-shrink: 0; background: var(--bg-subtle);
+        border: 1px solid var(--border-light); border-radius: 12px; padding: 0.4rem 0.8rem; min-width: 80px;
+    }
+    .qty-val { font-size: 1.2rem; font-weight: 800; color: #059669; font-variant-numeric: tabular-nums; }
+    .stock-card.low .qty-val { color: #DC2626; }
+    .qty-unit { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; }
+    .stock-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem; }
+    .meta-item { font-size: 0.72rem; color: var(--text-muted); }
+    .meta-item strong { color: var(--text-primary); display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.1rem; }
+    .stock-actions { margin-top: 0.85rem; display: flex; gap: 0.5rem; }
+
+    /* PAGINATION */
+    .pagination { display: flex; justify-content: center; gap: 0.4rem; margin-top: 2rem; flex-wrap: wrap; }
+    .page-link {
+        padding: 0.4rem 0.85rem; border: 1px solid var(--border-default); border-radius: 999px;
+        text-decoration: none; color: var(--text-primary); font-size: 0.8rem; font-weight: 700;
+        background: var(--bg-card); transition: all 0.2s;
+    }
+    .page-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .page-link.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
+
+    @media(max-width:768px) {
+        .stock-grid { grid-template-columns: 1fr; }
+        .filter-form { flex-direction: column; align-items: stretch; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sci-wrap">
     <div class="page-header">
         <div class="ph-main">
             <div class="ph-icon"><i class="fas fa-{% if category %}tags{% else %}question-circle{% endif %}"></i></div>
-            <div>
-                <h1>
-                    {% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}
-                </h1>
-                <p>
+            <div class="ph-title">
+                <h1>{% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}</h1>
+                <div class="page-sub">
                     {% if category and category.description %}{{ category.description }}{% else %}
                     موجودی کالاهای {% if category %}دسته {{ category.name }}{% else %}فاقد دسته‌بندی{% endif %}
                     {% endif %}
-                </p>
+                </div>
             </div>
         </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <div class="header-actions">
+            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> دسته‌بندی‌ها
+            </a>
             {% if category %}
-            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn btn-outline">
+            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn btn-secondary">
                 <i class="fas fa-edit"></i> ویرایش دسته
             </a>
             {% endif %}
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> ثبت حواله ورود
+            </a>
         </div>
     </div>
 
-    <!-- Warehouse Tabs -->
     {% if warehouses %}
     <div class="wh-pills">
         <a href="?{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on{% endif %}"
@@ -159,40 +142,35 @@
     </div>
     {% endif %}
 
-    <!-- Filters -->
     <div class="filter-card">
         <form method="get" class="filter-form">
             {% if selected_warehouse %}
             <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
             {% endif %}
             <div class="filter-group">
-                <label class="filter-label">جستجو در محصولات</label>
+                <label class="filter-label">جستجو در محصولات این دسته</label>
                 <input type="text" name="search" value="{{ search_q|default:'' }}" placeholder="نام محصول..." class="filter-input">
             </div>
             <label class="check-label">
                 <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %}>
-                <i class="fas fa-triangle-exclamation"></i> فقط کم موجود
+                <i class="fas fa-triangle-exclamation" style="color: var(--accent-orange);"></i> فقط کم‌موجود
             </label>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" style="height: 38px;">
                 <i class="fas fa-magnifying-glass"></i> جستجو
             </button>
             {% if search_q or show_low_stock %}
-            <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}{% endif %}" class="btn btn-secondary">
+            <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}{% endif %}" class="btn btn-danger" style="height: 38px;">
                 <i class="fas fa-xmark"></i> پاک کردن
             </a>
             {% endif %}
         </form>
     </div>
 
-    <!-- Items Count Info -->
     {% if page_obj %}
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;font-weight:600">
+    <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.85rem;font-weight:700;">
         <i class="fas fa-boxes-stacked"></i> نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} قلم
     </div>
-    {% endif %}
 
-    <!-- Stock Grid -->
-    {% if page_obj %}
     <div class="stock-grid">
         {% for item in page_obj %}
         <div class="stock-card {% if item.is_low_stock %}low{% endif %}">
@@ -207,7 +185,7 @@
                         <span class="tag tag-wh"><i class="fas fa-warehouse"></i> {{ item.warehouse.name }}</span>
                         {% endif %}
                         {% if item.is_low_stock %}
-                        <span class="tag tag-low"><i class="fas fa-triangle-exclamation"></i> کم موجود</span>
+                        <span class="tag tag-low"><i class="fas fa-triangle-exclamation"></i> کم‌موجود</span>
                         {% endif %}
                     </div>
                 </div>
@@ -227,15 +205,14 @@
                 </div>
             </div>
             <div class="stock-actions">
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="btn btn-outline" style="font-size:.74rem;height:32px">
-                    <i class="fas fa-clock-rotate-left"></i> تاریخچه
+                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="btn btn-secondary" style="font-size:0.75rem;height:32px;padding:0 0.85rem;">
+                    <i class="fas fa-clock-rotate-left"></i> تاریخچه تراکنش‌ها
                 </a>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
     {% if page_obj.has_other_pages %}
     <div class="pagination">
         {% if page_obj.has_previous %}
@@ -259,17 +236,16 @@
     {% endif %}
 
     {% else %}
-    <!-- Empty State -->
-    <div class="empty">
-        <i class="fas fa-box-open"></i>
-        <h3>هیچ موجودی یافت نشد</h3>
-        <p>{% if search_q or show_low_stock %}فیلتر را تغییر دهید{% else %}هیچ کالایی در این دسته‌بندی موجود نیست{% endif %}</p>
-        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin:0 auto">
-            <i class="fas fa-plus"></i> ثبت حواله ورود
-        </a>
+    <div class="table-card">
+        <div class="empty-state">
+            <i class="fas fa-box-open"></i>
+            <h3>هیچ موجودی یافت نشد</h3>
+            <p>{% if search_q or show_low_stock %}فیلتر را تغییر دهید{% else %}هیچ کالایی در این دسته‌بندی موجود نیست{% endif %}</p>
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin-top:12px;">
+                <i class="fas fa-plus"></i> ثبت حواله ورود
+            </a>
+        </div>
     </div>
     {% endif %}
-
 </div>
-</body>
-</html>
+{% endblock %}

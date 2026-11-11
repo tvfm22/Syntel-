@@ -1,0 +1,1122 @@
+{% extends "base.html" %}
+{% load static custom_filters %}
+
+{% block title %}افزودن آیتم و قیمت‌گذاری کالاها — بهای تمام شده{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ═══ صفحه ۲ بهای تمام شده — افزودن آیتم و قیمت‌گذاری کالاها ═══ */
+    .cogs-page { max-width: 1420px; margin: 0 auto; }
+    .cogs-head-note { font-size: 0.82rem; color: var(--text-secondary); margin-top: 3px; }
+
+    .cogs-stats {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+    .cogs-stat {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
+        display: flex; align-items: center; gap: var(--space-3);
+        box-shadow: var(--shadow-sm);
+    }
+    .cogs-stat-icon {
+        width: 38px; height: 38px; border-radius: var(--radius-md);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.95rem; flex-shrink: 0;
+        background: rgba(139,92,246,0.10); color: var(--accent-indigo);
+    }
+    .cogs-stat-icon.is-green { background: rgba(34,197,94,0.10); color: var(--accent-green); }
+    .cogs-stat-icon.is-orange { background: rgba(249,115,22,0.10); color: var(--accent-orange); }
+    .cogs-stat-icon.is-pink { background: rgba(236,72,153,0.10); color: var(--accent-pink); }
+    .cogs-stat-value { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .cogs-stat-label { font-size: 0.74rem; color: var(--text-secondary); font-weight: 600; }
+
+    .cogs-card {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
+        margin-bottom: var(--space-4); overflow: hidden;
+    }
+    .cogs-card-head {
+        display: flex; align-items: center; gap: var(--space-3);
+        padding: var(--space-3) var(--space-5);
+        background: var(--bg-subtle); border-bottom: 1px solid var(--border-light);
+    }
+    .cogs-card-head h3 {
+        font-size: 0.9rem; font-weight: 800; margin: 0;
+        display: flex; align-items: center; gap: 0.45rem;
+    }
+    .cogs-card-head h3 i { color: var(--accent-indigo); font-size: 0.82rem; }
+    .cogs-card-head .head-meta {
+        margin-inline-start: auto; display: flex; align-items: center;
+        gap: var(--space-2); font-size: 0.74rem; color: var(--text-secondary);
+    }
+
+    .cogs-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: 999px; padding: 2px 9px;
+        font-size: 0.72rem; font-weight: 700; color: var(--text-secondary);
+    }
+
+    /* ═══ فرم ساخت آیتم ═══ */
+    .kind-switch {
+        display: flex; gap: 4px; background: var(--gray-100);
+        padding: 4px; border-radius: var(--radius-md); width: fit-content;
+        margin-bottom: var(--space-4);
+    }
+    .kind-tab {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.42rem 1rem; border: none; cursor: pointer;
+        border-radius: var(--radius-sm); background: transparent;
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 700;
+        color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .kind-tab:hover { color: var(--primary); }
+    .kind-tab.is-active {
+        background: var(--bg-card); color: var(--accent-indigo);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .item-form { padding: var(--space-4) var(--space-5); }
+    .item-form .grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 2fr) minmax(160px, 1.4fr)
+                               minmax(90px, 0.7fr) minmax(110px, 0.8fr) auto;
+        gap: var(--space-3); align-items: end;
+    }
+    .field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+    .field label { font-size: 0.73rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+    .field input, .field select {
+        height: 38px; padding: 0 0.6rem; width: 100%;
+        border: 1px solid var(--border-default); border-radius: var(--radius-md);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.82rem;
+    }
+    .field input:focus, .field select:focus {
+        outline: none; border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
+    }
+    .field .hint { font-size: 0.68rem; color: var(--text-muted); }
+
+    .inline-new-section {
+        display: none; align-items: end; gap: 6px; margin-top: var(--space-3);
+    }
+    .inline-new-section.is-open { display: flex; }
+    .inline-new-section .field { flex: 1 1 auto; }
+
+    .form-alert {
+        display: none; margin-top: var(--space-3); padding: 0.6rem 0.85rem;
+        border-radius: var(--radius-md); font-size: 0.79rem; font-weight: 600;
+        background: rgba(239,68,68,0.08); color: var(--danger);
+        border: 1px solid rgba(239,68,68,0.22);
+    }
+    .form-alert.is-open { display: block; }
+
+    /* ═══ نوار فیلتر ═══ */
+    .toolbar {
+        display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+        padding: var(--space-3) var(--space-5);
+        border-bottom: 1px solid var(--border-light);
+    }
+    .seg-tabs { display: flex; gap: 3px; background: var(--gray-100); padding: 3px; border-radius: var(--radius-md); }
+    .seg-tab {
+        padding: 0.35rem 0.8rem; border-radius: var(--radius-sm);
+        font-size: 0.76rem; font-weight: 700; color: var(--text-secondary);
+        text-decoration: none; transition: all var(--transition-fast);
+        white-space: nowrap;
+    }
+    .seg-tab:hover { color: var(--primary); }
+    .seg-tab.is-active { background: var(--bg-card); color: var(--accent-indigo); box-shadow: var(--shadow-sm); }
+    .search-box {
+        display: flex; align-items: center; gap: 0.4rem;
+        margin-inline-start: auto;
+        border: 1px solid var(--border-default); border-radius: var(--radius-md);
+        padding: 0 0.6rem; height: 36px; background: var(--bg-card);
+    }
+    .search-box i { color: var(--text-muted); font-size: 0.78rem; }
+    .search-box input {
+        border: none; outline: none; background: transparent;
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; color: var(--text-primary);
+        width: 190px;
+    }
+    .cat-tabs {
+        display: flex; gap: 6px; flex-wrap: wrap;
+        padding: 0 var(--space-5) var(--space-3);
+    }
+    .cat-tab {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.3rem 0.7rem; border-radius: 999px;
+        border: 1px solid var(--border-default); background: var(--bg-card);
+        font-size: 0.74rem; font-weight: 700; color: var(--text-secondary);
+        text-decoration: none; transition: all var(--transition-fast);
+    }
+    .cat-tab:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .cat-tab.is-active {
+        background: rgba(139,92,246,0.10); border-color: rgba(139,92,246,0.35);
+        color: var(--accent-indigo);
+    }
+    .cat-tab .cat-count {
+        font-size: 0.68rem; font-weight: 800; padding: 0 5px;
+        border-radius: 999px; background: var(--gray-100); color: var(--text-muted);
+    }
+    .cat-tab.is-active .cat-count { background: rgba(139,92,246,0.16); color: var(--accent-indigo); }
+
+    /* ═══ جدول ═══ */
+    .cogs-table { width: 100%; border-collapse: collapse; }
+    .cogs-table thead th {
+        text-align: right; padding: 0.55rem var(--space-5);
+        font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+        background: var(--bg-card); border-bottom: 1px solid var(--border-light);
+        white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    }
+    .cogs-table tbody td {
+        padding: 0.5rem var(--space-5); border-bottom: 1px solid var(--border-light);
+        font-size: 0.83rem; vertical-align: middle;
+    }
+    .cogs-table tbody tr:last-child td { border-bottom: none; }
+    .cogs-table tbody tr:hover { background: rgba(139,92,246,0.03); }
+    .name-cell { font-weight: 600; }
+    .name-cell .muted { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; }
+    .cell-muted { color: var(--text-secondary); font-size: 0.79rem; }
+    .cell-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .unit-tag {
+        display: inline-block; font-size: 0.7rem; font-weight: 700;
+        padding: 1px 7px; border-radius: var(--radius-sm);
+        background: var(--gray-100); color: var(--text-secondary);
+    }
+
+    .price-value {
+        font-size: 0.88rem; font-weight: 800; color: var(--accent-green);
+        font-variant-numeric: tabular-nums;
+    }
+    .price-unit { font-size: 0.7rem; color: var(--text-muted); margin-inline-start: 4px; }
+
+    .btn-edit {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        color: var(--text-secondary); cursor: pointer;
+        padding: 0.28rem 0.65rem; border-radius: var(--radius-sm);
+        font-family: 'Vazir', sans-serif; font-size: 0.74rem; font-weight: 600;
+        transition: all var(--transition-fast);
+    }
+    .btn-edit:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); background: rgba(139,92,246,0.05); }
+
+    .pill {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    }
+    .pill.is-used { background: rgba(34,197,94,0.10); color: var(--accent-green); }
+    .pill.is-idle { background: var(--gray-100); color: var(--text-muted); }
+    .pill.is-noprice { background: rgba(249,115,22,0.12); color: var(--accent-orange); }
+    .pill.is-unlinked { background: rgba(59,130,246,0.10); color: var(--accent-blue); }
+
+    .cogs-empty { padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+    .cogs-empty i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+    /* ═══ مودال‌ها (پوسته در پارشیال مشترک) ═══ */
+    .modal-grid {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-3);
+    }
+    .modal-grid .field.is-full { grid-column: 1 / -1; }
+    .modal-grid input, .modal-grid select {
+        height: 40px; padding: 0 0.65rem; width: 100%;
+        border: 1px solid var(--border-default); border-radius: var(--radius-md);
+        background: var(--bg-card); color: var(--text-primary);
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
+    }
+    .modal-grid input:focus, .modal-grid select:focus {
+        outline: none; border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
+    }
+    .modal-note {
+        font-size: 0.72rem; color: var(--text-muted); margin-top: 0.6rem;
+        display: flex; align-items: flex-start; gap: 0.35rem;
+    }
+
+    /* پیش‌نمایش زندهٔ قیمت */
+    .price-preview {
+        margin-top: var(--space-4); padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-lg);
+        background: rgba(139,92,246,0.05);
+        border: 1px dashed rgba(139,92,246,0.35);
+        font-size: 0.82rem; line-height: 1.9; color: var(--text-secondary);
+    }
+    .price-preview .pp-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+    .price-preview .pp-label { font-weight: 700; color: var(--text-muted); font-size: 0.74rem; }
+    .price-preview .pp-arrow { color: var(--accent-indigo); font-weight: 800; }
+    .price-preview .pp-value {
+        font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums;
+    }
+    .price-preview .pp-value.is-stored { color: var(--accent-green); font-size: 0.95rem; }
+    .price-preview.is-empty { display: none; }
+
+    .package-fields { display: none; gap: var(--space-3); margin-top: var(--space-3); }
+    .package-fields.is-open { display: grid; grid-template-columns: 1fr 1fr; }
+
+    @media (max-width: 1100px) {
+        .cogs-stats { grid-template-columns: repeat(2, 1fr); }
+        .item-form .grid { grid-template-columns: repeat(2, 1fr); }
+        .cogs-table thead th:nth-child(3), .cogs-table tbody td:nth-child(3) { display: none; }
+    }
+</style>
+{% include "partials/cogs_recipe_editor_css.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="cogs-page">
+
+    <div class="page-header">
+        <div>
+        <div class="ph-main"><div class="ph-icon"><i class="fas fa-tags"></i></div><div><h1 class="ph-title">افزودن آیتم و قیمت‌گذاری کالاها</h1><p class="page-sub">غذای منو و نیمه‌آماده بسازید و بهای مواد اولیه را وارد کنید؛ هر تغییر قیمت بهای غذاهای مصرف‌کننده را بروزرسانی می‌کند</p></div></div>
+            <div class="cogs-head-note" style="display:none;">
+                غذای منو و نیمه‌آماده بسازید و بهای مواد اولیه را وارد کنید. هر تغییر قیمت، بهای همهٔ
+                غذاهایی که آن ماده را مصرف می‌کنند دوباره حساب می‌شود و در تاریخچه ثبت می‌گردد.
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'cogs_menu_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-utensils"></i> لیست غذاهای منو
+            </a>
+        </div>
+    </div>
+
+    {% include "cogs_nav.html" %}
+
+    <div class="cogs-stats">
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon"><i class="fas fa-boxes-stacked"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.total|number_format }}</div>
+                <div class="cogs-stat-label">کل مواد اولیه</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-green"><i class="fas fa-check"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.priced|number_format }}</div>
+                <div class="cogs-stat-label">قیمت‌دار</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-orange"><i class="fas fa-circle-question"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.unpriced|number_format }}</div>
+                <div class="cogs-stat-label">بدون قیمت</div>
+            </div>
+        </div>
+        <div class="cogs-stat">
+            <div class="cogs-stat-icon is-pink"><i class="fas fa-diagram-project"></i></div>
+            <div>
+                <div class="cogs-stat-value">{{ stats.used|number_format }}</div>
+                <div class="cogs-stat-label">مصرف‌شده در رسپی</div>
+            </div>
+        </div>
+    </div>
+
+    {% comment %} ═══════════ الف) ساخت غذای منو / نیمه‌آماده ═══════════ {% endcomment %}
+    <div class="cogs-card">
+        <div class="cogs-card-head">
+            <h3><i class="fas fa-plus"></i> آیتم جدید</h3>
+            <div class="head-meta">
+                <span class="cogs-chip">
+                    <i class="fas fa-utensils"></i> {{ stats.dishes|number_format }} غذای منو
+                </span>
+                <span class="cogs-chip">
+                    <i class="fas fa-blender"></i> {{ stats.preps|number_format }} نیمه‌آماده
+                </span>
+                <span class="cogs-chip">
+                    <i class="fas fa-layer-group"></i> {{ stats.sections|number_format }} بخش
+                </span>
+            </div>
+        </div>
+
+        <div class="item-form">
+            <div class="kind-switch" role="tablist">
+                <button type="button" class="kind-tab is-active" data-kind="dish">
+                    <i class="fas fa-utensils"></i> غذای منو
+                </button>
+                <button type="button" class="kind-tab" data-kind="prep">
+                    <i class="fas fa-blender"></i> نیمه‌آماده
+                </button>
+            </div>
+
+            <form method="post" action="{% url 'cogs_manage_items' cafe_code=cafe_code %}" id="itemForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="item">
+                <input type="hidden" name="kind" id="itemKind" value="dish">
+
+                <div class="grid">
+                    <div class="field">
+                        <label>نام آیتم</label>
+                        <input type="text" name="name" required maxlength="200"
+                               placeholder="مثلاً پاستا آلفردو">
+                    </div>
+
+                    {% comment %} بخش غذای منو — بخش موجود یا ساخت درجا {% endcomment %}
+                    <div class="field" id="dishSectionWrap">
+                        <label>بخش منو</label>
+                        <select name="section_id" id="dishSectionSelect">
+                            <option value="">— بدون بخش —</option>
+                            {% for s in dish_sections %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                            <option value="__new__">➕ بخش جدید…</option>
+                        </select>
+                    </div>
+
+                    {% comment %} بخش نیمه‌آماده — فقط دو بخش ثابت {% endcomment %}
+                    <div class="field" id="prepSectionWrap" style="display:none;">
+                        <label>بخش آماده‌سازی</label>
+                        <select name="section_id" id="prepSectionSelect" disabled>
+                            {% for s in prep_sections %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label>مقدار خروجی بچ</label>
+                        <input type="text" name="out_qty" id="itemOutQty" value="1" inputmode="decimal">
+                    </div>
+                    <div class="field">
+                        <label>واحد خروجی</label>
+                        <select name="out_unit" id="itemOutUnit">
+                            {% for u in unit_choices %}
+                            <option value="{{ u }}"{% if u == 'پرس' %} selected{% endif %}>{{ u }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <button type="submit" class="btn btn-primary" style="height:38px;">
+                            <i class="fas fa-plus"></i> ساخت و ورود رسپی
+                        </button>
+                    </div>
+                </div>
+
+                {% comment %} ساخت بخش تازه — بعد از ساخته‌شدن، خودکار انتخاب می‌شود {% endcomment %}
+                <div class="inline-new-section" id="newSectionBox">
+                    <div class="field">
+                        <label>نام بخش جدید</label>
+                        <input type="text" id="newSectionName" maxlength="120"
+                               placeholder="مثلاً پیش‌غذاها">
+                    </div>
+                    <div class="field" style="flex:0 0 auto;">
+                        <button type="button" class="btn btn-secondary" id="btnNewSection"
+                                style="height:38px;">
+                            <i class="fas fa-layer-group"></i> ساخت بخش
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-alert" id="itemFormAlert"></div>
+
+                <div class="modal-note">
+                    <i class="fas fa-circle-info" style="margin-top:2px;"></i>
+                    <span>
+                        بعد از ساخت، ویرایشگر رسپی همان لحظه باز می‌شود تا مواد اولیه و
+                        نیمه‌آماده‌های مصرفی را وارد کنید.
+                        نیمه‌آماده‌ها فقط در «آماده سازی آشپزخانه» یا «آماده سازی بار» ساخته می‌شوند.
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% comment %} ═══════════ ب) مواد اولیه و بهای واحد ═══════════ {% endcomment %}
+    <div class="cogs-card">
+        <div class="cogs-card-head">
+            <h3><i class="fas fa-boxes-stacked"></i> مواد اولیه و بهای واحد</h3>
+            <div class="head-meta">
+                <span class="cogs-chip">{{ rows|length|number_format }} قلم</span>
+                <button type="button" class="btn btn-primary" id="btnNewRaw">
+                    <i class="fas fa-plus"></i> ماده اولیه جدید
+                </button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="seg-tabs">
+                <a href="?state=all{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&cat={{ category_filter }}{% endif %}"
+                   class="seg-tab{% if state == 'all' %} is-active{% endif %}">همه</a>
+                <a href="?state=priced{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&cat={{ category_filter }}{% endif %}"
+                   class="seg-tab{% if state == 'priced' %} is-active{% endif %}">قیمت‌دار</a>
+                <a href="?state=unpriced{% if query %}&q={{ query|urlencode }}{% endif %}{% if category_filter %}&cat={{ category_filter }}{% endif %}"
+                   class="seg-tab{% if state == 'unpriced' %} is-active{% endif %}">بدون قیمت</a>
+            </div>
+            <form method="get" class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" name="q" value="{{ query }}" placeholder="جستجوی کالا، دسته یا کد...">
+                <input type="hidden" name="state" value="{{ state }}">
+                <input type="hidden" name="cat" value="{{ category_filter }}">
+            </form>
+        </div>
+
+        {% if categories %}
+        <div class="cat-tabs">
+            <a href="?state={{ state }}{% if query %}&q={{ query|urlencode }}{% endif %}"
+               class="cat-tab{% if not category_filter %} is-active{% endif %}">
+                همهٔ دسته‌ها
+            </a>
+            {% for c in categories %}
+            <a href="?state={{ state }}&cat={{ c.id }}{% if query %}&q={{ query|urlencode }}{% endif %}"
+               class="cat-tab{% if category_filter == c.id|stringformat:'s' %} is-active{% endif %}">
+                {{ c.name }}<span class="cat-count">{{ c.count|number_format }}</span>
+            </a>
+            {% endfor %}
+            <a href="?state={{ state }}&cat=none{% if query %}&q={{ query|urlencode }}{% endif %}"
+               class="cat-tab{% if category_filter == 'none' %} is-active{% endif %}">بدون دسته</a>
+        </div>
+        {% endif %}
+
+        {% if rows %}
+        <div style="overflow-x:auto; max-height: 64vh; overflow-y:auto;">
+            <table class="cogs-table">
+                <thead>
+                    <tr>
+                        <th>کالا</th>
+                        <th>دسته</th>
+                        <th>محل استفاده</th>
+                        <th>واحد پایه</th>
+                        <th>قیمت هر واحد پایه (تومان)</th>
+                        <th>مصرف در رسپی</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="name-cell">
+                            {{ row.obj.name }}
+                            {% if row.obj.code %}<div class="muted">کد {{ row.obj.code }}</div>{% endif %}
+                        </td>
+                        <td class="cell-muted">
+                            {% if row.category %}
+                            {{ row.category }}
+                            {% else %}
+                            <span class="pill is-idle">بدون دسته</span>
+                            {% endif %}
+                        </td>
+                        <td class="cell-muted">{{ row.usage_label }}</td>
+                        <td><span class="unit-tag">{{ row.base_unit }}</span></td>
+                        <td>
+                            {% if row.price is not None %}
+                            <span class="price-value">{{ row.price|trim_decimal:4 }}</span>
+                            <span class="price-unit">هر ۱ {{ row.base_unit }}</span>
+                            {% else %}
+                            <span class="pill is-noprice"><i class="fas fa-circle-question"></i> بدون قیمت</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.used_in %}
+                            <span class="pill is-used">
+                                <i class="fas fa-diagram-project"></i> {{ row.used_in|number_format }} رسپی
+                            </span>
+                            {% else %}
+                            <span class="pill is-idle">استفاده نشده</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn-edit"
+                                    data-price-item="{{ row.obj.id }}"
+                                    data-name="{{ row.obj.name }}"
+                                    data-price="{% if row.price is not None %}{{ row.price|trim_decimal:4 }}{% endif %}"
+                                    data-unit="{{ row.base_unit }}">
+                                <i class="fas fa-pen"></i> وارد کردن قیمت
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="cogs-empty">
+            <i class="fas fa-inbox"></i>
+            {% if query %}
+            کالایی با «{{ query }}» پیدا نشد.
+            {% elif state == 'unpriced' %}
+            همهٔ کالاها قیمت دارند.
+            {% elif state == 'priced' %}
+            هنوز کالایی قیمت‌دار نیست.
+            {% elif category_filter %}
+            در این دسته کالایی نیست.
+            {% else %}
+            هنوز ماده اولیه‌ای تعریف نشده است. با دکمهٔ «ماده اولیه جدید» شروع کنید.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% comment %} ═══════════ مودال ماده اولیه جدید ═══════════ {% endcomment %}
+    <div class="cogs-modal" id="rawModal">
+        <div class="cogs-modal-box is-medium">
+            <form method="post" action="{% url 'cogs_manage_items' cafe_code=cafe_code %}" id="rawForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+                <div class="cogs-modal-head">
+                    <div>
+                        <h3>ماده اولیه جدید</h3>
+                        <div class="modal-sub">هم کالای انبار ساخته می‌شود، هم قلم بهای تمام شده</div>
+                    </div>
+                    <button type="button" class="cogs-modal-close" data-close="rawModal">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="cogs-modal-body">
+                    <div class="modal-grid">
+                        <div class="field is-full">
+                            <label>نام ماده اولیه</label>
+                            <input type="text" name="name" required maxlength="200"
+                                   placeholder="مثلاً زیره سبز">
+                        </div>
+                        <div class="field">
+                            <label>دسته‌بندی</label>
+                            <select name="category_id" id="rawCategory">
+                                <option value="">— بدون دسته —</option>
+                                {% for c in category_options %}
+                                <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% endfor %}
+                                <option value="__new__">➕ دستهٔ جدید…</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>محل استفاده / بخش</label>
+                            <select name="usage_location">
+                                {% for u in usage_locations %}
+                                <option value="{{ u.value }}">{{ u.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>واحد پایه</label>
+                            <select name="base_unit" id="rawBaseUnit">
+                                {% for u in base_unit_choices %}
+                                <option value="{{ u }}"{% if u == 'گرم' %} selected{% endif %}>{{ u }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="hint">قیمت همیشه به ازای همین واحد ذخیره می‌شود.</span>
+                        </div>
+                        <div class="field">
+                            <label>کد کالا (اختیاری)</label>
+                            <input type="text" name="code" maxlength="30" placeholder="اختیاری">
+                        </div>
+                        <div class="field is-full" id="newCategoryBox" style="display:none;">
+                            <label>نام دستهٔ جدید</label>
+                            <input type="text" name="category_name" maxlength="100"
+                                   placeholder="مثلاً ادویه‌ها">
+                        </div>
+                        <div class="field">
+                            <label>قیمت فعلی (اختیاری)</label>
+                            <input type="text" name="price" id="rawPrice" inputmode="decimal"
+                                   placeholder="مثلاً ۳۵۰۰۰۰">
+                        </div>
+                        <div class="field">
+                            <label>واحد خرید</label>
+                            <select name="price_unit" id="rawPriceUnit">
+                                {% for o in price_unit_options %}
+                                <option value="{{ o.value }}"{% if o.value == 'kg' %} selected{% endif %}>{{ o.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="field" id="rawPackageBox" style="display:none;">
+                            <label>وزن/حجم هر بسته</label>
+                            <input type="text" name="package_size" inputmode="decimal"
+                                   placeholder="مثلاً ۵">
+                        </div>
+                        <div class="field" id="rawPackageUnitBox" style="display:none;">
+                            <label>واحد بسته</label>
+                            <select name="package_unit">
+                                <option value="کیلوگرم">کیلوگرم</option>
+                                <option value="گرم">گرم</option>
+                                <option value="لیتر">لیتر</option>
+                                <option value="میل">میل</option>
+                                <option value="عدد">عدد</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-alert" id="rawFormAlert"></div>
+
+                    <div class="modal-note">
+                        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
+                        <span>
+                            اگر قیمت را برای «۱ کیلوگرم» یا «۱ لیتر» وارد کنید، سیستم خودش آن را به
+                            گرم یا میل تبدیل می‌کند تا بهای هر واحد غذا دقیق حساب شود.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="cogs-modal-foot">
+                    <button type="button" class="btn btn-secondary" data-close="rawModal">انصراف</button>
+                    <button type="submit" class="btn btn-primary" style="margin-inline-start:auto;">
+                        <i class="fas fa-plus"></i> ساخت ماده اولیه
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% comment %} ═══════════ مودال ورود قیمت با پیش‌نمایش زنده ═══════════ {% endcomment %}
+    <div class="cogs-modal" id="priceModal">
+        <div class="cogs-modal-box is-narrow">
+            <form method="post" action="{% url 'cogs_manage_items' cafe_code=cafe_code %}" id="priceForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="price">
+                <input type="hidden" name="item_id" id="pmItemId">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+                <div class="cogs-modal-head">
+                    <div>
+                        <h3 id="pmTitle">وارد کردن قیمت</h3>
+                        <div class="modal-sub">
+                            بهای واحد این کالا در محاسبهٔ همهٔ رسپی‌ها استفاده می‌شود
+                        </div>
+                    </div>
+                    <button type="button" class="cogs-modal-close" data-close="priceModal">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="cogs-modal-body">
+                    <div class="modal-grid">
+                        <div class="field">
+                            <label>مبلغ (تومان)</label>
+                            <input type="text" name="price" id="pmPrice" inputmode="decimal"
+                                   autocomplete="off" placeholder="مثلاً ۳۵۰۰۰۰">
+                        </div>
+                        <div class="field">
+                            <label>واحد خرید</label>
+                            <select name="unit" id="pmUnit">
+                                {% for o in price_unit_options %}
+                                <option value="{{ o.value }}">{{ o.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="package-fields" id="pmPackageFields">
+                        <div class="field">
+                            <label>وزن/حجم هر بسته</label>
+                            <input type="text" name="package_size" id="pmPackageSize"
+                                   inputmode="decimal" placeholder="مثلاً ۵">
+                        </div>
+                        <div class="field">
+                            <label>واحد بسته</label>
+                            <select name="package_unit" id="pmPackageUnit">
+                                <option value="کیلوگرم">کیلوگرم</option>
+                                <option value="گرم">گرم</option>
+                                <option value="لیتر">لیتر</option>
+                                <option value="میل">میل</option>
+                                <option value="عدد">عدد</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="price-preview is-empty" id="pmPreview">
+                        <div class="pp-row">
+                            <span class="pp-label">قیمت وارد شده:</span>
+                            <span class="pp-value" id="pmPreviewEntered">—</span>
+                        </div>
+                        <div class="pp-row">
+                            <span class="pp-label">ثبت می‌شود:</span>
+                            <span class="pp-arrow">←</span>
+                            <span class="pp-value is-stored" id="pmPreviewStored">—</span>
+                        </div>
+                    </div>
+
+                    <div class="form-alert" id="priceFormAlert"></div>
+                </div>
+
+                <div class="cogs-modal-foot">
+                    <button type="button" class="btn btn-secondary" data-close="priceModal">انصراف</button>
+                    <button type="submit" class="btn btn-primary" style="margin-inline-start:auto;">
+                        <i class="fas fa-floppy-disk"></i> ثبت قیمت
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% comment %} ویرایشگر رسپی — همان پارشیال مشترک صفحهٔ ۱؛ با auto_open_item خودکار باز می‌شود {% endcomment %}
+{% include "partials/cogs_recipe_editor.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    const PREVIEW_URL = "{% url 'cogs_price_preview' cafe_code=cafe_code %}";
+    const PRICE_URL = "{% url 'cogs_price_entry' cafe_code=cafe_code %}";
+    const RAW_URL = "{% url 'cogs_raw_material_create' cafe_code=cafe_code %}";
+    const SECTION_URL = "{% url 'cogs_section_save' cafe_code=cafe_code %}";
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const num = v => {
+        if (v === null || v === undefined || v === '') return NaN;
+        const cleaned = String(v)
+            .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660))
+            .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0))
+            .replace(/[,،]/g, '');
+        const n = Number(cleaned);
+        return isFinite(n) ? n : NaN;
+    };
+    const fmtNum = v => {
+        const n = Number(v);
+        if (!isFinite(n)) return '—';
+        return fa(n.toLocaleString('en-US', { maximumFractionDigits: 4 }));
+    };
+
+    /* ---------- مودال ---------- */
+    function openModal(id) {
+        document.getElementById(id).classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('is-open');
+        if (!document.querySelector('.cogs-modal.is-open')) document.body.style.overflow = '';
+    }
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.close));
+    });
+    document.querySelectorAll('.cogs-modal').forEach(modal => {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal(modal.id);
+        });
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.cogs-modal.is-open').forEach(m => closeModal(m.id));
+        }
+    });
+
+    function showAlert(id, text) {
+        const box = document.getElementById(id);
+        box.textContent = text;
+        box.classList.add('is-open');
+    }
+    function hideAlert(id) {
+        document.getElementById(id).classList.remove('is-open');
+    }
+
+    /* ---------- الف) نوع آیتم: غذای منو / نیمه‌آماده ---------- */
+    const kindInput = document.getElementById('itemKind');
+    const dishWrap = document.getElementById('dishSectionWrap');
+    const prepWrap = document.getElementById('prepSectionWrap');
+    const dishSelect = document.getElementById('dishSectionSelect');
+    const prepSelect = document.getElementById('prepSectionSelect');
+    const outUnit = document.getElementById('itemOutUnit');
+    const newSectionBox = document.getElementById('newSectionBox');
+
+    function applyKind(kind) {
+        kindInput.value = kind;
+        document.querySelectorAll('.kind-tab').forEach(t => {
+            t.classList.toggle('is-active', t.dataset.kind === kind);
+        });
+        const isPrep = kind === 'prep';
+        dishWrap.style.display = isPrep ? 'none' : '';
+        prepWrap.style.display = isPrep ? '' : 'none';
+        dishSelect.disabled = isPrep;
+        prepSelect.disabled = !isPrep;
+        // جعبهٔ «بخش جدید» فقط وقتی باز می‌ماند که گزینهٔ ساخت بخش انتخاب شده باشد
+        newSectionBox.classList.toggle('is-open', !isPrep && dishSelect.value === '__new__');
+        // واحد پیش‌فرض هر نوع
+        if (isPrep && outUnit.value === 'پرس') outUnit.value = 'گرم';
+        if (!isPrep && outUnit.value === 'گرم') outUnit.value = 'پرس';
+        hideAlert('itemFormAlert');
+    }
+    document.querySelectorAll('.kind-tab').forEach(tab => {
+        tab.addEventListener('click', () => applyKind(tab.dataset.kind));
+    });
+    applyKind('dish');
+
+    /* انتخاب «بخش جدید…» جعبهٔ نام را باز می‌کند */
+    dishSelect.addEventListener('change', () => {
+        newSectionBox.classList.toggle('is-open', dishSelect.value === '__new__');
+        if (dishSelect.value === '__new__') {
+            document.getElementById('newSectionName').focus();
+        }
+    });
+
+    /* ساخت بخش تازه — همان اندپوینت مدیریت بخش‌ها، سپس انتخاب خودکار */
+    document.getElementById('btnNewSection').addEventListener('click', function () {
+        const input = document.getElementById('newSectionName');
+        const name = input.value.trim();
+        hideAlert('itemFormAlert');
+        if (!name) {
+            showAlert('itemFormAlert', 'نام بخش را وارد کنید.');
+            return;
+        }
+        const btn = this;
+        btn.disabled = true;
+
+        const body = new URLSearchParams();
+        body.append('name', name);
+        body.append('kind', 'dish');
+        body.append('csrfmiddlewaretoken', CSRF_TOKEN);
+
+        fetch(SECTION_URL, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: body,
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.error || 'بخش ساخته نشد');
+                const section = data.section;
+                const opt = document.createElement('option');
+                opt.value = section.id;
+                opt.textContent = section.name;
+                // قبل از گزینهٔ «بخش جدید…»
+                const newOpt = Array.from(dishSelect.options)
+                    .find(o => o.value === '__new__');
+                dishSelect.insertBefore(opt, newOpt || null);
+                dishSelect.value = String(section.id);
+                newSectionBox.classList.remove('is-open');
+                input.value = '';
+            })
+            .catch(err => showAlert('itemFormAlert', err.message))
+            .finally(() => { btn.disabled = false; });
+    });
+
+    /* ارسال فرم آیتم: اگر خطا داشت، همان‌جا نشان بده و صفحه را نبر */
+    document.getElementById('itemForm').addEventListener('submit', function (e) {
+        hideAlert('itemFormAlert');
+        const name = this.querySelector('[name="name"]').value.trim();
+        if (!name) {
+            e.preventDefault();
+            showAlert('itemFormAlert', 'نام آیتم را وارد کنید.');
+            return;
+        }
+        if (dishSelect.value === '__new__') {
+            e.preventDefault();
+            showAlert('itemFormAlert',
+                'اول «ساخت بخش» را بزنید یا یک بخش موجود انتخاب کنید.');
+        }
+    });
+
+    /* ---------- ب) ماده اولیه جدید ---------- */
+    document.getElementById('btnNewRaw').addEventListener('click', () => {
+        hideAlert('rawFormAlert');
+        openModal('rawModal');
+    });
+
+    const rawCategory = document.getElementById('rawCategory');
+    rawCategory.addEventListener('change', () => {
+        document.getElementById('newCategoryBox').style.display =
+            rawCategory.value === '__new__' ? '' : 'none';
+    });
+
+    /* «بستهٔ دلخواه» در فرم ساخت، دو فیلد اندازه/واحد بسته را باز می‌کند */
+    const rawPriceUnit = document.getElementById('rawPriceUnit');
+    function toggleRawPackage() {
+        const isPackage = rawPriceUnit.value === 'package';
+        document.getElementById('rawPackageBox').style.display = isPackage ? '' : 'none';
+        document.getElementById('rawPackageUnitBox').style.display = isPackage ? '' : 'none';
+    }
+    rawPriceUnit.addEventListener('change', toggleRawPackage);
+    toggleRawPackage();
+
+    document.getElementById('rawForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const btn = this.querySelector('[type="submit"]');
+        const form = this;
+        hideAlert('rawFormAlert');
+
+        // «دستهٔ جدید» به‌صورت نام ارسال می‌شود، نه شناسه
+        if (rawCategory.value === '__new__') {
+            const name = form.querySelector('[name="category_name"]').value.trim();
+            if (!name) {
+                showAlert('rawFormAlert', 'نام دستهٔ جدید را وارد کنید.');
+                return;
+            }
+        }
+        const data = new FormData(form);
+        if (data.get('category_id') === '__new__') data.delete('category_id');
+
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ساخت...';
+
+        fetch(RAW_URL, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF_TOKEN },
+            body: data,
+        })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.ok) throw new Error(res.error || 'ساخته نشد');
+                window.location.reload();
+            })
+            .catch(err => showAlert('rawFormAlert', err.message))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+    });
+
+    /* ---------- ج) ورود قیمت + پیش‌نمایش زنده ---------- */
+    const pmPrice = document.getElementById('pmPrice');
+    const pmUnit = document.getElementById('pmUnit');
+    const pmPackageFields = document.getElementById('pmPackageFields');
+    const pmPackageSize = document.getElementById('pmPackageSize');
+    const pmPackageUnit = document.getElementById('pmPackageUnit');
+    const pmPreview = document.getElementById('pmPreview');
+    const pmPreviewEntered = document.getElementById('pmPreviewEntered');
+    const pmPreviewStored = document.getElementById('pmPreviewStored');
+    let previewTimer = null;
+    let previewSeq = 0;
+
+    function togglePackageFields() {
+        pmPackageFields.classList.toggle('is-open', pmUnit.value === 'package');
+    }
+
+    /** پیش‌نمایش سمت کلاینت — آینهٔ همان قاعدهٔ سرور (کilo→÷۱۰۰۰) */
+    function localPreview() {
+        const amount = num(pmPrice.value);
+        if (!isFinite(amount) || amount <= 0) return null;
+        let enteredUnit = '', stored = null, smallest = '';
+
+        if (pmUnit.value === 'package') {
+            const size = num(pmPackageSize.value);
+            const base = pmPackageUnit.value;
+            if (!isFinite(size) || size <= 0) return null;
+            const factor = (base === 'کیلوگرم' || base === 'لیتر') ? 1000 : 1;
+            smallest = (base === 'کیلوگرم') ? 'گرم'
+                     : (base === 'لیتر') ? 'میل' : base;
+            stored = amount / (size * factor);
+            enteredUnit = 'بستهٔ ' + fmtNum(size) + ' ' + base;
+        } else {
+            const map = {
+                kg: { label: 'کیلوگرم', factor: 1000, smallest: 'گرم' },
+                gram: { label: 'گرم', factor: 1, smallest: 'گرم' },
+                liter: { label: 'لیتر', factor: 1000, smallest: 'میل' },
+                mil: { label: 'میل', factor: 1, smallest: 'میل' },
+                piece: { label: 'عدد', factor: 1, smallest: 'عدد' },
+            };
+            const cfg = map[pmUnit.value];
+            if (!cfg) return null;
+            enteredUnit = cfg.label;
+            smallest = cfg.smallest;
+            stored = amount / cfg.factor;
+        }
+        return { amount, enteredUnit, stored, smallest };
+    }
+
+    function renderPreview() {
+        const p = localPreview();
+        if (!p) {
+            pmPreview.classList.add('is-empty');
+            return;
+        }
+        pmPreview.classList.remove('is-empty');
+        pmPreviewEntered.textContent = fmtNum(p.amount) + ' تومان برای ' +
+            (pmUnit.value === 'package' ? p.enteredUnit : '۱ ' + p.enteredUnit);
+        pmPreviewStored.textContent = fmtNum(p.stored) + ' تومان به ازای هر ۱ ' + p.smallest;
+    }
+
+    /** پیش‌نمایش معتبر سرور — برای اطمینان از اینکه UI و سرور یکی می‌گویند */
+    function serverPreview() {
+        const params = new URLSearchParams({
+            price: pmPrice.value,
+            unit: pmUnit.value,
+            package_size: pmPackageSize.value,
+            package_unit: pmPackageUnit.value,
+        });
+        const seq = ++previewSeq;
+        fetch(PREVIEW_URL + '?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (seq !== previewSeq || !data.ok) return;
+                pmPreviewEntered.textContent = data.entered_text;
+                pmPreviewStored.textContent = data.stored_text;
+                pmPreview.classList.remove('is-empty');
+            })
+            .catch(() => { /* پیش‌نمایش محلی کافی است */ });
+    }
+
+    function schedulePreview() {
+        renderPreview();
+        if (previewTimer) clearTimeout(previewTimer);
+        previewTimer = setTimeout(serverPreview, 320);
+    }
+
+    [pmPrice, pmPackageSize].forEach(el => el.addEventListener('input', schedulePreview));
+    [pmUnit, pmPackageUnit].forEach(el => el.addEventListener('change', () => {
+        togglePackageFields();
+        schedulePreview();
+    }));
+
+    document.querySelectorAll('[data-price-item]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            hideAlert('priceFormAlert');
+            document.getElementById('pmItemId').value = btn.dataset.priceItem;
+            document.getElementById('pmTitle').textContent = 'قیمت «' + btn.dataset.name + '»';
+
+            // قیمت فعلی بر حسب واحد پایه است؛ واحد پیش‌فرض = واحد پایه همان کالا
+            const baseUnit = btn.dataset.unit || 'گرم';
+            const unitMap = {
+                'گرم': 'gram', 'میل': 'mil', 'عدد': 'piece',
+                'کیلوگرم': 'kg', 'لیتر': 'liter',
+            };
+            pmUnit.value = unitMap[baseUnit] || 'gram';
+            pmPrice.value = btn.dataset.price || '';
+            pmPackageSize.value = '';
+            togglePackageFields();
+            pmPreview.classList.add('is-empty');
+            openModal('priceModal');
+            setTimeout(() => {
+                pmPrice.focus();
+                pmPrice.select();
+                schedulePreview();
+            }, 60);
+        });
+    });
+
+    document.getElementById('priceForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const btn = this.querySelector('[type="submit"]');
+        hideAlert('priceFormAlert');
+
+        if (!isFinite(num(pmPrice.value))) {
+            showAlert('priceFormAlert', 'مبلغ را وارد کنید.');
+            return;
+        }
+        if (pmUnit.value === 'package' &&
+            (!isFinite(num(pmPackageSize.value)) || num(pmPackageSize.value) <= 0)) {
+            showAlert('priceFormAlert', 'وزن یا حجم هر بسته را وارد کنید.');
+            return;
+        }
+
+        const data = new FormData(this);
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ثبت...';
+
+        fetch(PRICE_URL, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF_TOKEN },
+            body: data,
+        })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.ok) throw new Error(res.error || 'ثبت نشد');
+                window.location.reload();
+            })
+            .catch(err => showAlert('priceFormAlert', err.message))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+    });
+})();
+</script>
+{% endblock %}

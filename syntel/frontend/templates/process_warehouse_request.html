@@ -1,88 +1,100 @@
-﻿{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پردازش درخواست انبار</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        :root { --primary:#8B5CF6; --primary-dark:#7C3AED; --success:#22C55E; --warning:#F59E0B; --danger:#EF4444;
-                --dark:#0F172A; --muted:#94A3B8; --text-secondary:#64748B; --border:#E2E8F0; --border-light:#F1F5F9; --bg-subtle:#FAFAFA; }
-        body { background: #EDEDF2; min-height: 100vh; padding: 16px; padding-bottom: 120px; color: var(--dark); }
-        .header { background: white; padding: 16px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04); display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-light); }
-        .back-btn { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-secondary); font-size: 15px; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all .2s; }
-        .back-btn:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
-        .header-info { flex: 1; }
-        .header-info h1 { font-size: 17px; font-weight: 800; color: var(--dark); display: flex; align-items: center; gap: 8px; }
-        .header-info h1 i { color: var(--primary); }
-        .header-info p { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
-        .request-info { background: white; padding: 16px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04); border: 1px solid var(--border-light); }
-        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-light); }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { color: var(--text-secondary); font-size: 13.5px; }
-        .info-value { color: var(--dark); font-size: 13.5px; font-weight: 600; }
-        .item-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04); border: 1px solid var(--border-light); border-inline-start: 4px solid var(--primary); }
-        .item-name { font-size: 15.5px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
-        .item-requested { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
-        .form-group { margin-bottom: 14px; }
-        .form-label { display: block; font-size: 13.5px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 700; }
-        .form-input { width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 15px; font-family: Vazir, sans-serif; transition: border-color .2s, box-shadow .2s; }
-        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
-        .radio-group { display: flex; flex-direction: column; gap: 8px; }
-        .radio-option { display: flex; align-items: center; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; transition: all .2s; }
-        .radio-option:has(input:checked) { background: rgba(139,92,246,.06); border-color: var(--primary); }
-        .radio-option input[type=radio] { margin-left: 10px; width: 18px; height: 18px; accent-color: var(--primary); }
-        .radio-label { font-size: 14px; color: var(--dark); font-weight: 600; }
-        .stock-search-box { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 12px; display: none; }
-        .stock-search-box.visible { display: block; }
-        .stock-search-input { width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: Vazir, sans-serif; margin-bottom: 8px; }
-        .stock-search-input:focus { outline: none; border-color: var(--primary); }
-        .stock-results { max-height: 200px; overflow-y: auto; }
-        .stock-result-item { padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; margin-bottom: 4px; }
-        .stock-result-item:hover { background: rgba(139,92,246,.08); border-color: var(--primary); }
-        .stock-result-item.selected { background: rgba(139,92,246,.08); border-color: var(--primary); font-weight: 600; }
-        .stock-name { color: var(--dark); }
-        .stock-qty { color: var(--primary); font-weight: 700; font-size: 12px; }
-        .stock-warehouse { color: var(--text-secondary); font-size: 11px; }
-        .stock-warning { background: #fef3c7; color: #92400e; border-radius: 8px; padding: 6px 10px; font-size: 12px; margin-top: 6px; display: none; }
-        .selected-stock-info { background: rgba(139,92,246,.06); border: 1px solid var(--primary); border-radius: 10px; padding: 10px; margin-top: 8px; font-size: 13px; color: #5b21b6; display: none; }
-        .qty-input-wrapper { margin-top: 10px; display: none; }
-        .submit-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; box-shadow: 0 -2px 12px rgba(15,23,42,.06); }
-        .submit-btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 999px; font-size: 15px; font-weight: 700; font-family: Vazir, sans-serif; cursor: pointer; transition: background .2s; }
-        .submit-btn:active { background: var(--primary-dark); }
-        .alert-error { background: #fee2e2; color: #991b1b; border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <a href="javascript:history.back()" class="back-btn">←</a>
-        <div class="header-info">
-            <h1><i class="fas fa-clipboard-check"></i> پردازش درخواست انبار</h1>
-            <p>شماره درخواست: #{{ wh_request.id }}</p>
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}پردازش درخواست انبار {{ wh_request.request_number }} - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pwr-wrap { max-width: 920px; margin: 0 auto; }
+    .pwr-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
+
+    .request-info {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        padding: 1rem 1.35rem; border-radius: var(--radius-xl);
+        margin-bottom: 1rem; box-shadow: var(--shadow-xs);
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 2px; }
+    .info-label { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+    .info-value { color: var(--text-primary); font-size: 0.88rem; font-weight: 700; }
+
+    .item-card {
+        background: var(--bg-card); border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
+        margin-bottom: 0.85rem; box-shadow: var(--shadow-xs); border: 1px solid var(--border-light);
+        border-inline-start: 4px solid var(--accent-indigo);
+    }
+    .item-name { font-size: 0.98rem; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+    .item-requested { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.85rem; font-weight: 600; }
+    .form-group { margin-bottom: 0.85rem; }
+    .form-label { display: block; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.45rem; font-weight: 700; }
+    .form-input {
+        width: 100%; height: 40px; padding: 0 0.85rem; border: 1px solid var(--border-default);
+        border-radius: 10px; font-size: 0.88rem; font-family: 'Vazir', sans-serif; background: var(--bg-input);
+    }
+    .form-input:focus { outline: none; border-color: var(--accent-indigo); background: #fff; box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+
+    .radio-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem; }
+    .radio-option {
+        display: flex; align-items: center; height: 42px; padding: 0 0.85rem;
+        border: 1px solid var(--border-default); border-radius: 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .radio-option:has(input:checked) { background: rgba(139,92,246,0.08); border-color: var(--accent-indigo); }
+    .radio-option input[type=radio] { margin-left: 8px; width: 16px; height: 16px; accent-color: var(--accent-indigo); }
+    .radio-label { font-size: 0.84rem; color: var(--text-primary); font-weight: 700; }
+
+    .stock-search-box { background: var(--bg-subtle); border: 1px solid var(--border-default); border-radius: 12px; padding: 1rem; margin-top: 0.75rem; display: none; }
+    .stock-search-box.visible { display: block; }
+    .stock-search-input { width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid var(--border-default); border-radius: 8px; font-size: 0.85rem; font-family: 'Vazir', sans-serif; margin-bottom: 8px; background: #fff; }
+    .stock-results { max-height: 200px; overflow-y: auto; }
+    .stock-result-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; margin-bottom: 4px; background: #fff; }
+    .stock-result-item:hover { background: #EEF2FF; border-color: var(--accent-indigo); }
+    .stock-name { color: var(--text-primary); font-weight: 700; }
+    .stock-qty { color: var(--accent-indigo); font-weight: 800; font-size: 0.8rem; }
+    .stock-warehouse { color: var(--text-muted); font-size: 0.72rem; }
+    .stock-warning { background: #FEF3C7; color: #92400E; border-radius: 8px; padding: 6px 10px; font-size: 0.78rem; margin-top: 6px; display: none; font-weight: 600; }
+    .selected-stock-info { background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 10px; padding: 10px; margin-top: 8px; font-size: 0.82rem; color: #4338CA; display: none; }
+    .qty-input-wrapper { margin-top: 10px; display: none; }
+
+    .submit-bar {
+        display: flex; justify-content: flex-end; background: var(--bg-card);
+        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pwr-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="ph-title">
+                <h1>پردازش درخواست انبار</h1>
+                <div class="page-sub">شماره درخواست: {{ wh_request.request_number }}</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
         </div>
     </div>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div class="alert-error">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
-
     <div class="request-info">
         <div class="info-row">
-            <span class="info-label">درخواست‌دهنده:</span>
+            <span class="info-label">درخواست‌دهنده</span>
             <span class="info-value">{{ wh_request.user.first_name }} {{ wh_request.user.last_name }} ({{ wh_request.user.department_display }})</span>
         </div>
         <div class="info-row">
-            <span class="info-label">تاریخ ثبت:</span>
+            <span class="info-label">تاریخ ثبت</span>
             <span class="info-value">{{ wh_request.created_at|jalali_datetime }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">وضعیت:</span>
+            <span class="info-label">وضعیت</span>
             <span class="info-value">{{ wh_request.get_status_display }}</span>
         </div>
     </div>
@@ -95,7 +107,7 @@
             <div class="item-name">{{ item.name }}</div>
             <div class="item-requested">مقدار درخواستی: {{ item.quantity }} {{ item.unit }}</div>
             {% if item.description %}
-            <div style="font-size: 12px; color: #9ca3af; margin-bottom: 10px;">{{ item.description }}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">{{ item.description }}</div>
             {% endif %}
 
             <div class="form-group">
@@ -104,29 +116,26 @@
                     <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'from_stock')">
                         <input type="radio" name="supply_status_{{ item.id }}" value="from_stock"
                                {% if item.supply_status == 'from_stock' %}checked{% endif %}>
-                        <span class="radio-label"><i class="fas fa-warehouse" style="margin-left:6px;color:var(--success)"></i> تامین از انبار</span>
+                        <span class="radio-label"><i class="fas fa-warehouse" style="margin-left:6px;color:#059669"></i> تامین از انبار</span>
                     </label>
                     <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'to_purchase')">
                         <input type="radio" name="supply_status_{{ item.id }}" value="to_purchase"
                                {% if item.supply_status == 'to_purchase' %}checked{% endif %}>
-                        <span class="radio-label"><i class="fas fa-cart-shopping" style="margin-left:6px;color:var(--warning)"></i> اضافه به لیست خرید</span>
+                        <span class="radio-label"><i class="fas fa-cart-shopping" style="margin-left:6px;color:#EA580C"></i> اضافه به لیست خرید</span>
                     </label>
                     <label class="radio-option" onclick="onSupplyChange('{{ item.id }}', 'declined')">
                         <input type="radio" name="supply_status_{{ item.id }}" value="declined"
                                {% if item.supply_status == 'declined' %}checked{% endif %}>
-                        <span class="radio-label"><i class="fas fa-circle-xmark" style="margin-left:6px;color:var(--danger)"></i> عدم تامین</span>
+                        <span class="radio-label"><i class="fas fa-circle-xmark" style="margin-left:6px;color:#DC2626"></i> عدم تامین</span>
                     </label>
                 </div>
             </div>
 
-            <!-- جعبه جستجو در موجودی انبار (فقط وقتی "تامین از انبار" انتخاب شود) -->
             <div class="stock-search-box {% if item.supply_status == 'from_stock' %}visible{% endif %}" id="stock-box-{{ item.id }}">
-                <div class="form-label" style="margin-bottom: 8px;"><i class="fas fa-magnifying-glass" style="color:var(--primary)"></i> جستجو در موجودی انبار</div>
+                <div class="form-label"><i class="fas fa-magnifying-glass" style="color:var(--accent-indigo)"></i> جستجو در موجودی انبار</div>
                 <input type="text" class="stock-search-input" id="search-{{ item.id }}"
                     placeholder="نام محصول انبار را تایپ کنید..." oninput="searchStock('{{ item.id }}', this.value)">
-                <div class="stock-results" id="results-{{ item.id }}">
-                    <!-- نتایج جستجو اینجا نمایش می‌یابد -->
-                </div>
+                <div class="stock-results" id="results-{{ item.id }}"></div>
                 <div class="selected-stock-info" id="selected-info-{{ item.id }}">
                     <strong>محصول انتخابی:</strong> <span id="selected-name-{{ item.id }}"></span>
                     | <strong>موجودی:</strong> <span id="selected-qty-{{ item.id }}"></span>
@@ -147,111 +156,107 @@
         </div>
         {% endfor %}
 
-        <div class="submit-area">
-            <button type="submit" class="submit-btn"><i class="fas fa-check"></i> تایید نهایی</button>
+        <div class="submit-bar">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-check"></i> تایید نهایی
+            </button>
         </div>
     </form>
+</div>
 
-    <!-- Stock items data for search -->
-    <script>
-        const allStockItems = [
-            {% for si in stock_items %}
-            {
-                id: {{ si.id }},
-                product_name: "{{ si.product.name|escapejs }}",
-                quantity: {{ si.quantity }},
-                unit: "{{ si.unit.name|default:''|escapejs }}",
-                warehouse: "{{ si.warehouse.name|default:''|escapejs }}"
-            }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
+<script>
+    const allStockItems = [
+        {% for si in stock_items %}
+        {
+            id: {{ si.id }},
+            product_name: "{{ si.product.name|escapejs }}",
+            quantity: {{ si.quantity }},
+            unit: "{{ si.unit.name|default:''|escapejs }}",
+            warehouse: "{{ si.warehouse.name|default:''|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
 
-        const selectedStocks = {};  // item_id -> {id, quantity, unit}
+    const selectedStocks = {};
 
-        function onSupplyChange(itemId, value) {
-            const box = document.getElementById('stock-box-' + itemId);
-            if (value === 'from_stock') {
-                box.classList.add('visible');
-            } else {
-                box.classList.remove('visible');
-                // پاک کردن انتخاب
-                document.getElementById('stock-item-id-' + itemId).value = '';
-                document.getElementById('selected-info-' + itemId).style.display = 'none';
-                document.getElementById('qty-wrapper-' + itemId).style.display = 'none';
-                document.getElementById('warn-' + itemId).style.display = 'none';
-                delete selectedStocks[itemId];
-            }
+    function onSupplyChange(itemId, value) {
+        const box = document.getElementById('stock-box-' + itemId);
+        if (value === 'from_stock') {
+            box.classList.add('visible');
+        } else {
+            box.classList.remove('visible');
+            document.getElementById('stock-item-id-' + itemId).value = '';
+            document.getElementById('selected-info-' + itemId).style.display = 'none';
+            document.getElementById('qty-wrapper-' + itemId).style.display = 'none';
+            document.getElementById('warn-' + itemId).style.display = 'none';
+            delete selectedStocks[itemId];
         }
+    }
 
-        function searchStock(itemId, query) {
-            const resultsDiv = document.getElementById('results-' + itemId);
-            if (!query || query.length < 1) {
-                resultsDiv.innerHTML = '';
-                return;
-            }
-            const q = query.toLowerCase();
-            const filtered = allStockItems.filter(s => s.product_name.toLowerCase().includes(q));
-            if (filtered.length === 0) {
-                resultsDiv.innerHTML = '<div style="color:#9ca3af; font-size:13px; padding:8px;">محصولی یافت نشد</div>';
-                return;
-            }
-            resultsDiv.innerHTML = filtered.slice(0, 15).map(s => `
-                <div class="stock-result-item" id="result-${itemId}-${s.id}" onclick="selectStock('${itemId}', ${s.id}, '${s.product_name.replace(/'/g,"\\'")}', ${s.quantity}, '${s.unit}', '${s.warehouse}')">
-                    <span>
-                        <span class="stock-name">${s.product_name}</span><br>
-                        <span class="stock-warehouse">انبار: ${s.warehouse}</span>
-                    </span>
-                    <div style="text-align:left">
-                        <span class="stock-qty">${s.quantity}</span><br>
-                        <span class="stock-warehouse">${s.unit}</span>
-                    </div>
+    function searchStock(itemId, query) {
+        const resultsDiv = document.getElementById('results-' + itemId);
+        if (!query || query.length < 1) {
+            resultsDiv.innerHTML = '';
+            return;
+        }
+        const q = query.toLowerCase();
+        const filtered = allStockItems.filter(s => s.product_name.toLowerCase().includes(q));
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div style="color:var(--text-muted); font-size:13px; padding:8px;">محصولی یافت نشد</div>';
+            return;
+        }
+        resultsDiv.innerHTML = filtered.slice(0, 15).map(s => `
+            <div class="stock-result-item" id="result-${itemId}-${s.id}" onclick="selectStock('${itemId}', ${s.id}, '${s.product_name.replace(/'/g,"\\'")}', ${s.quantity}, '${s.unit}', '${s.warehouse}')">
+                <span>
+                    <span class="stock-name">${s.product_name}</span><br>
+                    <span class="stock-warehouse">انبار: ${s.warehouse}</span>
+                </span>
+                <div style="text-align:left">
+                    <span class="stock-qty">${s.quantity}</span><br>
+                    <span class="stock-warehouse">${s.unit}</span>
                 </div>
-            `).join('');
+            </div>
+        `).join('');
+    }
+
+    function selectStock(itemId, stockId, name, qty, unit, warehouse) {
+        selectedStocks[itemId] = {id: stockId, quantity: qty, unit: unit};
+        document.getElementById('stock-item-id-' + itemId).value = stockId;
+        document.getElementById('selected-info-' + itemId).style.display = 'block';
+        document.getElementById('selected-name-' + itemId).textContent = name;
+        document.getElementById('selected-qty-' + itemId).textContent = qty;
+        document.getElementById('selected-unit-' + itemId).textContent = unit;
+        document.getElementById('selected-warehouse-' + itemId).textContent = warehouse;
+        document.getElementById('qty-wrapper-' + itemId).style.display = 'block';
+        document.getElementById('results-' + itemId).innerHTML = '';
+        document.getElementById('search-' + itemId).value = name;
+        const qtyInput = document.getElementById('supplied-qty-' + itemId);
+        if (qtyInput.value) checkQty(itemId, qtyInput.value);
+    }
+
+    function checkQty(itemId, val) {
+        const warn = document.getElementById('warn-' + itemId);
+        const s = selectedStocks[itemId];
+        if (s && parseFloat(val) > s.quantity) {
+            warn.style.display = 'block';
+        } else {
+            warn.style.display = 'none';
         }
+    }
 
-        function selectStock(itemId, stockId, name, qty, unit, warehouse) {
-            selectedStocks[itemId] = {id: stockId, quantity: qty, unit: unit};
-            document.getElementById('stock-item-id-' + itemId).value = stockId;
-            document.getElementById('selected-info-' + itemId).style.display = 'block';
-            document.getElementById('selected-name-' + itemId).textContent = name;
-            document.getElementById('selected-qty-' + itemId).textContent = qty;
-            document.getElementById('selected-unit-' + itemId).textContent = unit;
-            document.getElementById('selected-warehouse-' + itemId).textContent = warehouse;
-            document.getElementById('qty-wrapper-' + itemId).style.display = 'block';
-            document.getElementById('results-' + itemId).innerHTML = '';
-            document.getElementById('search-' + itemId).value = name;
-            // نمایش هشدار اگر مقدار از قبل پر شده
-            const qtyInput = document.getElementById('supplied-qty-' + itemId);
-            if (qtyInput.value) checkQty(itemId, qtyInput.value);
-        }
-
-        function checkQty(itemId, val) {
-            const warn = document.getElementById('warn-' + itemId);
-            const s = selectedStocks[itemId];
-            if (s && parseFloat(val) > s.quantity) {
-                warn.style.display = 'block';
-            } else {
-                warn.style.display = 'none';
-            }
-        }
-
-        // آماده کردن حالت اولیه برای اقلامی که قبلاً تامین از انبار انتخاب شده
-        document.addEventListener('DOMContentLoaded', function() {
-            {% for item in wh_request.items.all %}
-            {% if item.supply_status == 'from_stock' %}
-            // نمایش جعبه جستجو
-            document.getElementById('stock-box-{{ item.id }}').classList.add('visible');
-            {% if item.stock_item %}
-            selectStock('{{ item.id }}', {{ item.stock_item.id }},
-                '{{ item.stock_item.product.name|escapejs }}',
-                {{ item.stock_item.quantity }},
-                '{{ item.stock_item.unit.name|default:""}}',
-                '{{ item.stock_item.warehouse.name|default:""}}');
-            {% endif %}
-            {% endif %}
-            {% endfor %}
-        });
-    </script>
-</body>
-</html>
-
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for item in wh_request.items.all %}
+        {% if item.supply_status == 'from_stock' %}
+        document.getElementById('stock-box-{{ item.id }}').classList.add('visible');
+        {% if item.stock_item %}
+        selectStock('{{ item.id }}', {{ item.stock_item.id }},
+            '{{ item.stock_item.product.name|escapejs }}',
+            {{ item.stock_item.quantity }},
+            '{{ item.stock_item.unit.name|default:""}}',
+            '{{ item.stock_item.warehouse.name|default:""}}');
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+    });
+</script>
+{% endblock %}

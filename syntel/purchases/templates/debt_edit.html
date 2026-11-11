@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}ویرایش بدهی — {{ debt.company }}{% endblock %}
+{% block title %}ویرایش بدهی — {{ debt.company }} - Kuker{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
@@ -12,7 +12,10 @@
         gap: 1rem;
     }
     .debt-form-grid .full { grid-column: 1 / -1; }
-    .page-note { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .page-note {
+        background: var(--primary-light); border: 1px solid #C4B5FD; color: var(--primary-dark);
+        padding: 0.8rem 1.1rem; border-radius: 12px; font-size: 0.84rem; margin-bottom: 1.25rem;
+    }
 
     /* picker انتخاب تأمین‌کننده */
     .sup-picker { position: relative; }
@@ -35,34 +38,34 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-edit"></i>
-        ویرایش بدهی
-    </h1>
-</div>
-
-<div class="page-note">
-    <i class="fas fa-info-circle"></i>
-    تغییرات بلافاصله برای مدیرعامل هم اعمال می‌شود.
-    {% if debt.paid_total > 0 %}
-    این بدهی پرداخت جزئی دارد ({{ debt.paid_total|number_format }} تومان) — باقی‌مانده با مبلغ جدید دوباره محاسبه می‌شود.
-    {% endif %}
-</div>
-
-<div class="card debt-form-card">
-    <div class="card-header">
-        <div class="card-title">
-            <i class="fas fa-money-bill-wave"></i>
-            {{ debt.company }}
+<div class="ui-form-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-pen-to-square"></i></div>
+            <div>
+                <h1 class="ph-title">ویرایش بدهی — {{ debt.company }}</h1>
+                <p class="page-sub">ویرایش مبلغ، تاریخ و اولویت بدهی تأمین‌کننده</p>
+            </div>
         </div>
+        <a href="{% url 'debt_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> بازگشت
+        </a>
     </div>
-    <div class="card-body">
+
+    <div class="page-note">
+        <i class="fas fa-info-circle"></i>
+        تغییرات بلافاصله برای مدیرعامل هم اعمال می‌شود.
+        {% if debt.paid_total > 0 %}
+        این بدهی پرداخت جزئی دارد ({{ debt.paid_total|number_format }} تومان) — باقی‌مانده با مبلغ جدید دوباره محاسبه می‌شود.
+        {% endif %}
+    </div>
+
+    <div class="ui-form-card">
         <form method="post" action="{% url 'debt_edit' cafe_code=cafe_code debt_id=debt.id %}">
             {% csrf_token %}
             <div class="debt-form-grid">
                 <div class="form-group sup-picker">
-                    <label for="company">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
+                    <label for="company" class="form-label">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
                     <input type="text" id="company" name="company" class="form-control sup-input" required
                            autocomplete="off" value="{{ debt.company }}"
                            placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
@@ -70,17 +73,17 @@
                     <div class="sup-dropdown"></div>
                 </div>
                 <div class="form-group">
-                    <label for="edit_amount">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
+                    <label for="edit_amount" class="form-label">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
                     <input type="text" id="edit_amount" name="amount" class="form-control" required
                            inputmode="numeric" value="{{ debt.amount|floatformat:'0' }}">
                 </div>
                 <div class="form-group">
-                    <label for="edit_date">تاریخ بدهی (شمسی)</label>
+                    <label for="edit_date" class="form-label">تاریخ بدهی (شمسی)</label>
                     <input type="text" id="edit_date" name="debt_date" class="form-control"
                            value="{{ debt_date_jalali|default:today_jalali }}">
                 </div>
                 <div class="form-group">
-                    <label for="priority">اولویت</label>
+                    <label for="priority" class="form-label">اولویت</label>
                     <select id="priority" name="priority" class="form-control">
                         {% for value, label in priority_choices %}
                         <option value="{{ value }}"{% if debt.priority == value %} selected{% endif %}>{{ label }}</option>
@@ -88,21 +91,19 @@
                     </select>
                 </div>
                 <div class="form-group full">
-                    <label for="description">توضیحات</label>
+                    <label for="description" class="form-label">توضیحات</label>
                     <textarea id="description" name="description" class="form-control" rows="2"
                               style="height:auto; min-height:60px; padding-top:0.6rem;"
                               placeholder="توضیحات اختیاری">{{ debt.description }}</textarea>
                 </div>
             </div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i>
-                    ذخیره تغییرات
-                </button>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--gray-100);">
                 <a href="{% url 'debt_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-right"></i>
                     انصراف
                 </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-check"></i> ذخیره تغییرات
+                </button>
             </div>
         </form>
     </div>
@@ -114,7 +115,6 @@
 <script src="{% static 'js/supplier_picker.js' %}"></script>
 <script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
 <script>
-    // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ — سرور کاماها را حذف می‌کند
     const amountInput = document.getElementById('edit_amount');
     if (amountInput) {
         const applyComma = function() {
@@ -122,10 +122,9 @@
             this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
         };
         amountInput.addEventListener('input', applyComma);
-        applyComma.call(amountInput);  // نمایش اولیه با کاما
+        applyComma.call(amountInput);
     }
 
-    // تقویم شمسی برای فیلد تاریخ — اگر اسکریپت تقویم لود نشده باشد بقیه صفحه کار می‌کند
     if (typeof persianDatepicker === 'function') {
         document.querySelectorAll('#edit_date').forEach(function(input) {
             new persianDatepicker(input, {
@@ -136,11 +135,7 @@
                 observer: true,
                 altField: input,
                 altFormat: 'YYYY/MM/DD',
-                calendar: {
-                    persian: {
-                        locale: 'fa'
-                    }
-                }
+                calendar: { persian: { locale: 'fa' } }
             });
         });
     }

@@ -272,6 +272,11 @@
         width: min(440px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.2);
     }
     .modal-box h3 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
+    .modal-hint {
+        font-size: 12.5px; line-height: 1.8; color: #92400E;
+        background: rgba(245, 158, 11, .10); border: 1px dashed rgba(245, 158, 11, .45);
+        border-radius: 8px; padding: 8px 11px; margin: -6px 0 14px;
+    }
     .modal-field { margin-bottom: 14px; }
     .modal-field label { display: block; font-size: 14px; color: #374151; margin-bottom: 6px; font-weight: 500; }
     .modal-field input, .modal-field select, .modal-field textarea {
@@ -408,8 +413,19 @@
 
 {% block content %}
 <div class="page-container">
+    <div class="page-header" style="text-align:right;margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-cart-plus"></i></div>
+            <div>
+                <h1 class="ph-title" style="margin:0;">ثبت درخواست کالا</h1>
+                <p class="page-sub">زمان تحویل و اقلام مورد نیاز بخش خود را مشخص کنید</p>
+            </div>
+        </div>
+    </div>
+    {% include 'partials/receipt_gate_banner.html' %}
     <form method="post" id="purchaseForm">
         {% csrf_token %}
+        {{ submitted_items|json_script:"submittedItemsData" }}
 
         <!-- 0. زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) -->
         <div class="delivery-section" id="deliverySection">
@@ -453,7 +469,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>دسته‌بندی</label>
+                    <label>دسته‌بندی (مرور کالاها)</label>
                     <div class="autocomplete-wrap">
                         <select id="entryCategorySelect" class="form-control" onchange="onEntryCategorySelect(this)">
                             <option value="">انتخاب دسته‌بندی...</option>
@@ -513,7 +529,7 @@
 
         <!-- 4. Action buttons -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">ارسال</button>
+            <button type="submit" class="btn btn-primary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
         </div>
     </form>
@@ -523,6 +539,7 @@
 <div class="modal-overlay" id="addProductModal">
     <div class="modal-box">
         <h3>➕ افزودن کالای جدید</h3>
+        <p class="modal-hint">کالای جدید در دستهٔ «تحقیق و توسعه» ثبت می‌شود تا مدیریت آن را بررسی و در صورت تایید به دستهٔ اصلی منتقل کند.</p>
         <div class="modal-field">
             <label>نام کالا *</label>
             <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
@@ -570,8 +587,17 @@
 
 {% block extra_js %}
 <script>
+    // ردیف‌هایی که سرور در آخرین ارسال دیده — اگر ارسال رد شد (مثلاً کالای
+    // بدون رسپی)، همان ردیف‌ها برمی‌گردند تا کاربر از صفر شروع نکند.
     let items = [];
-    let nextItemId = 1;
+    try {
+        const seedEl = document.getElementById('submittedItemsData');
+        const seed = seedEl ? JSON.parse(seedEl.textContent || '[]') : [];
+        items = (Array.isArray(seed) ? seed : []).map((row, i) => ({ ...row, id: i + 1 }));
+    } catch (err) {
+        items = [];
+    }
+    let nextItemId = items.length + 1;
     let editingId = null;
     let pendingProductItemId = null;
     let isCheckingStock = false; // جلوگیری از ثبت دوباره هنگام کلیک/اینتر مکرر در طول بررسی موجودی
@@ -1238,7 +1264,6 @@
         const name = document.getElementById('newProductName').value.trim();
         const unit = document.getElementById('newProductUnit').value;
         const description = document.getElementById('newProductDescription').value.trim();
-        const categoryId = document.getElementById('entryCategoryId').value;
         const errEl = document.getElementById('newProductErr');
         if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
         // توضیحات برای کالای جدید اجباری است
@@ -1252,7 +1277,7 @@
         fetch(QUICK_ADD_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-            body: JSON.stringify({ name, unit, description, category_id: categoryId })
+            body: JSON.stringify({ name, unit, description })
         }).then(r => r.json()).then(data => {
             btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
             if (data.success) {

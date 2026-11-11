@@ -1,5 +1,5 @@
 ﻿{% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}مدیریت محصولات{% endblock %}
 
@@ -132,6 +132,34 @@
 
     .p-num { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
 
+    /* ---------- قیمت واحد کوچک‌ترین واحد ---------- */
+    .p-price {
+        font-variant-numeric: tabular-nums;
+        font-weight: 700; font-size: 0.92rem;
+        color: var(--text-primary);
+        white-space: nowrap;
+    }
+
+    /* ---------- مصرف در رسپی ---------- */
+    .p-recipe {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.18rem 0.55rem; border-radius: var(--radius-xs);
+        font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    }
+    .p-recipe.is-used { background: rgba(16, 185, 129, 0.1); color: #059669; }
+    .p-recipe.is-idle { background: rgba(148, 163, 184, 0.14); color: #64748B; }
+    .p-recipe.is-blocked { background: rgba(239, 68, 68, 0.09); color: #B91C1C; }
+    .p-recipe.is-na { background: transparent; color: var(--text-muted); font-weight: 500; }
+
+    /* ---------- دستهٔ «تحقیق و توسعه»: کالای تعریف‌شده توسط درخواست‌کننده ---------- */
+    .p-chip-rd {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: rgba(245, 158, 11, 0.12); color: #B45309;
+        border: 1px dashed rgba(245, 158, 11, 0.5);
+        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
+        font-size: 0.78rem; font-weight: 700;
+    }
+
     /* ---------- نام‌های تجاری ---------- */
     .p-brands { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
 
@@ -244,11 +272,24 @@
                 <option value="false" {% if selected_status == 'false' %}selected{% endif %}>فقط غیرفعال</option>
             </select>
 
+            <select name="pricing" class="p-select" aria-label="فیلتر قیمت">
+                <option value="">همه قیمت‌ها</option>
+                <option value="priced" {% if selected_pricing == 'priced' %}selected{% endif %}>فقط قیمت‌دار</option>
+                <option value="unpriced" {% if selected_pricing == 'unpriced' %}selected{% endif %}>بدون قیمت</option>
+            </select>
+
+            <select name="recipe" class="p-select" aria-label="فیلتر وضعیت رسپی">
+                <option value="">همه وضعیت‌های رسپی</option>
+                <option value="used" {% if selected_recipe == 'used' %}selected{% endif %}>فقط در رسپی</option>
+                <option value="missing" {% if selected_recipe == 'missing' %}selected{% endif %}>فقط بدون رسپی (مخفی)</option>
+                <option value="free" {% if selected_recipe == 'free' %}selected{% endif %}>فقط بدون نیاز به رسپی</option>
+            </select>
+
             <button type="submit" class="p-btn-primary">
                 <i class="fas fa-search"></i> جستجو
             </button>
 
-            {% if search or selected_category or selected_status %}
+            {% if search or selected_category or selected_status or selected_pricing or selected_recipe %}
             <a href="{% url 'product_list' cafe_code=cafe_code %}" class="p-reset" title="حذف همه فیلترها">
                 <i class="fas fa-xmark"></i> پاک‌کردن
             </a>
@@ -270,9 +311,11 @@
                         <th>محصول</th>
                         <th>دسته‌بندی</th>
                         <th>واحد</th>
+                        <th>قیمت واحد</th>
                         <th>حداقل موجودی</th>
                         <th>عمر مفید</th>
                         <th>نام‌های تجاری</th>
+                        <th>رسپی و سفارش</th>
                         <th>وضعیت</th>
                         <th style="text-align:left;">عملیات</th>
                     </tr>
@@ -298,7 +341,13 @@
                         <!-- دسته‌بندی -->
                         <td>
                             {% if product.category %}
-                            <span class="p-chip">{{ product.category.name }}</span>
+                                {% if product.is_rd_category %}
+                                <span class="p-chip-rd" title="کالای تعریف‌شده توسط درخواست‌کننده — تا بررسی مدیریت در این دسته می‌ماند">
+                                    <i class="fas fa-flask" style="font-size:0.68rem;"></i> {{ product.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="p-chip">{{ product.category.name }}</span>
+                                {% endif %}
                             {% else %}
                             <span class="muted-dash">—</span>
                             {% endif %}
@@ -309,6 +358,16 @@
                             {% if product.unit %}
                             <span class="p-chip-accent">{{ product.unit.symbol|default:product.unit.name }}</span>
                             <div class="p-sub">{{ product.unit.name }}</div>
+                            {% else %}
+                            <span class="muted-dash">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- قیمت واحد کوچک‌ترین واحد -->
+                        <td>
+                            {% if product.base_unit_price is not None %}
+                            <div class="p-price">{{ product.base_unit_price|trim_decimal:4 }}</div>
+                            <div class="p-sub">به ازای هر ۱ {{ product.smallest_unit|default:"واحد" }}</div>
                             {% else %}
                             <span class="muted-dash">—</span>
                             {% endif %}
@@ -360,6 +419,29 @@
                             </div>
                             {% endif %}
                             {% endwith %}
+                        </td>
+
+                        <!-- مصرف در رسپی منو + قابلیت سفارش -->
+                        <td>
+                            {% if product.is_food_category %}
+                                {% if product.cogs_used_in_recipe %}
+                                <span class="p-recipe is-used" title="این کالا در رسپی منو مصرف می‌شود و برای درخواست‌کننده قابل انتخاب است">
+                                    <i class="fas fa-utensils"></i> در رسپی (فعال در سفارش)
+                                </span>
+                                {% else %}
+                                <span class="p-recipe is-blocked" title="کالای غذایی بدون رسپی؛ تا وقتی در رسپی منو مصرف نشود، در فرم درخواست دیده نمی‌شود">
+                                    <i class="fas fa-eye-slash"></i> بدون رسپی (مخفی در سفارش)
+                                </span>
+                                {% endif %}
+                            {% elif product.cogs_used_in_recipe %}
+                                <span class="p-recipe is-used" title="این کالا در رسپی منو مصرف می‌شود">
+                                    <i class="fas fa-utensils"></i> در رسپی
+                                </span>
+                            {% else %}
+                                <span class="p-recipe is-na" title="این دسته مواد غذایی نیست؛ بدون رسپی هم قابل سفارش است">
+                                    <i class="fas fa-check"></i> بدون نیاز به رسپی
+                                </span>
+                            {% endif %}
                         </td>
 
                         <!-- وضعیت -->

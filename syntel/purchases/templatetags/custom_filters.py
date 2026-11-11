@@ -1,11 +1,28 @@
 from django import template
+from django.utils import timezone
 import jdatetime
 import logging
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+
+from purchases.numbering import request_number as request_number_for
 
 logger = logging.getLogger(__name__)
 
 register = template.Library()
+
+
+def _as_local(value):
+    """Datetimes are stored in UTC; render them in the active timezone."""
+    if isinstance(value, datetime) and timezone.is_aware(value):
+        return timezone.localtime(value)
+    return value
+
+
+@register.filter(name='request_number')
+def request_number_filter(value):
+    """Render a raw request id as the human-facing request number."""
+    return request_number_for(value)
 
 @register.filter
 def abs_value(value):
@@ -61,6 +78,7 @@ def jalali_date(value, format_string='%Y/%m/%d'):
         return ''
     
     try:
+        value = _as_local(value)
         # Convert to jdatetime
         if hasattr(value, 'date'):
             # datetime object
@@ -102,6 +120,7 @@ def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
         return ''
     
     try:
+        value = _as_local(value)
         # Convert to jdatetime
         jalali = jdatetime.datetime.fromgregorian(datetime=value)
         
@@ -141,6 +160,7 @@ def jalali_time(value, format_string='%H:%M'):
         return ''
     
     try:
+        value = _as_local(value)
         if hasattr(value, 'hour'):
             # datetime or time object
             result = format_string

@@ -1,181 +1,136 @@
-{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>کالا های موجود در انبار - Kuker</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        :root {
-            --primary:#8B5CF6; --primary-dark:#7C3AED; --success:#22C55E; --warning:#F59E0B; --danger:#EF4444;
-            --dark:#0F172A; --muted:#94A3B8; --text-secondary:#64748B; --border:#E2E8F0; --border-light:#F1F5F9; --bg-subtle:#FAFAFA;
-            --shadow-sm:0 1px 2px 0 rgba(15,23,42,0.04);
-            --shadow-md:0 4px 24px rgba(15,23,42,0.05);
-        }
-        body { background: #EDEDF2; min-height: 100vh; padding: 16px 16px 120px; color: var(--dark); }
+{% extends 'base.html' %}
+{% load static custom_filters %}
 
-        .header {
-            background: white; padding: 14px 16px; border-radius: 16px; margin-bottom: 16px;
-            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
-            display: flex; align-items: center; gap: 12px;
-        }
-        .ph-icon {
-            width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
-            background: rgba(139,92,246,0.1); color: var(--primary);
-            display: flex; align-items: center; justify-content: center; font-size: 1rem;
-        }
-        .back-btn {
-            width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border);
-            background: var(--bg-subtle); color: var(--text-secondary); font-size: 15px; display: flex;
-            align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; transition: all .15s;
-        }
-        .back-btn:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
-        .header-info { flex: 1; }
-        .header-info h1 { font-size: 1.05rem; font-weight: 800; color: var(--dark); margin-bottom: 2px; line-height: 1.4; }
-        .header-info p { font-size: 12.5px; color: var(--text-secondary); }
+{% block title %}کالاهای موجود در انبار - Kuker{% endblock %}
 
-        .card {
-            background: white; border-radius: 16px; padding: 16px; margin-bottom: 14px;
-            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
-        }
-        .step-title { font-size: 0.92rem; font-weight: 700; color: var(--dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .step-badge {
-            min-width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: white;
-            display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
-        }
+{% block extra_css %}
+<style>
+    .wap-wrap { max-width: 1000px; margin: 0 auto; padding-bottom: 80px; }
+    .wap-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
 
-        /* ── product list ── */
-        .product-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px;
-            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
-        }
-        .product-item:hover { border-color: var(--primary); background: rgba(139,92,246,0.05); }
-        .product-item.active { border-color: var(--primary); background: rgba(139,92,246,0.06); }
-        .product-name { font-size: 14.5px; font-weight: 700; color: var(--dark); }
-        .product-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
-        .product-arrow { color: var(--muted); font-size: 14px; }
+    .step-card {
+        background: var(--bg-card); border-radius: var(--radius-xl); padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem; box-shadow: var(--shadow-xs); border: 1px solid var(--border-light);
+    }
+    .step-title {
+        font-size: 0.95rem; font-weight: 800; color: var(--text-primary);
+        margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .step-badge {
+        min-width: 26px; height: 26px; border-radius: 50%; background: var(--accent-indigo); color: white;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 0.76rem; font-weight: 800;
+    }
+    .hint { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.7; }
 
-        /* ── warehouse list ── */
-        .warehouse-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px;
-            background: white; cursor: pointer; transition: all .15s; font-family: Vazir, sans-serif; width: 100%; text-align: right;
-        }
-        .warehouse-item:hover { border-color: var(--primary); background: rgba(139,92,246,0.05); }
-        .warehouse-item.active { border-color: var(--primary); background: rgba(139,92,246,0.06); }
-        .warehouse-name { font-size: 14px; font-weight: 600; color: var(--dark); }
+    /* product & warehouse items */
+    .product-item, .warehouse-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 0.85rem 1rem; border: 1px solid var(--border-default); border-radius: 12px; margin-bottom: 0.6rem;
+        background: var(--bg-card); cursor: pointer; transition: all 0.15s; font-family: 'Vazir', sans-serif; width: 100%; text-align: right;
+    }
+    .product-item:hover, .warehouse-item:hover { border-color: var(--accent-indigo); background: #EEF2FF; }
+    .product-item.active, .warehouse-item.active { border-color: var(--accent-indigo); background: #EEF2FF; box-shadow: 0 0 0 2px rgba(139,92,246,0.12); }
+    .product-name, .warehouse-name { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+    .product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .product-arrow { color: var(--text-muted); font-size: 0.85rem; }
 
-        /* ── brand rows ── */
-        .brand-row {
-            padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px; background: white;
-        }
-        .brand-row.disabled { opacity: .55; background: var(--bg-subtle); }
-        .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .brand-badge {
-            background: rgba(139,92,246,0.12); color: #6d28d9; font-size: 12px; font-weight: 700;
-            padding: 4px 12px; border-radius: 999px;
-        }
-        .brand-badge.generic { background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); }
-        .brand-avail { font-size: 13px; color: var(--dark); font-weight: 700; margin-right: auto; }
-        .brand-rate { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
-        .brand-controls { display: flex; gap: 8px; align-items: center; }
-        .qty-input {
-            flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px;
-            font-size: 15px; font-family: Vazir, sans-serif; min-width: 0;
-        }
-        .qty-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-        .add-btn {
-            padding: 10px 18px; border: none; border-radius: 999px; background: var(--primary); color: white;
-            font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif; white-space: nowrap;
-        }
-        .add-btn:active { background: var(--primary-dark); }
-        .add-btn:disabled { background: #ddd6fe; cursor: not-allowed; }
-        .qty-warning { font-size: 12px; color: var(--danger); margin-top: 8px; display: none; }
+    /* brand rows */
+    .brand-row {
+        padding: 1rem; border: 1px solid var(--border-default); border-radius: 12px; margin-bottom: 0.65rem; background: var(--bg-card);
+    }
+    .brand-row.disabled { opacity: 0.55; background: var(--bg-subtle); }
+    .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .brand-badge {
+        background: rgba(139,92,246,0.12); color: #6D28D9; font-size: 0.75rem; font-weight: 700;
+        padding: 3px 10px; border-radius: 999px;
+    }
+    .brand-badge.generic { background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
+    .brand-avail { font-size: 0.82rem; color: var(--text-primary); font-weight: 700; margin-right: auto; }
+    .brand-rate { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; }
+    .brand-controls { display: flex; gap: 8px; align-items: center; }
+    .qty-input {
+        flex: 1; height: 38px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px;
+        font-size: 0.88rem; font-family: 'Vazir', sans-serif; min-width: 0; background: var(--bg-input);
+    }
+    .qty-input:focus { outline: none; border-color: var(--accent-indigo); background: #fff; box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+    .add-btn {
+        height: 38px; padding: 0 18px; border: none; border-radius: 10px; background: var(--accent-indigo); color: white;
+        font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif; white-space: nowrap;
+    }
+    .add-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
+    .qty-warning { font-size: 0.75rem; color: #DC2626; margin-top: 6px; display: none; font-weight: 600; }
 
-        .hint { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.8; }
+    /* review table */
+    .review-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .review-table th {
+        background: var(--bg-subtle); color: var(--text-secondary); padding: 0.65rem 0.75rem; font-weight: 700;
+        text-align: right; white-space: nowrap; font-size: 0.76rem; border-bottom: 1px solid var(--border-default);
+    }
+    .review-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .review-table tr:last-child td { border-bottom: none; }
+    .status-select {
+        height: 34px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: 8px;
+        font-size: 0.8rem; font-family: 'Vazir', sans-serif; background: white;
+    }
+    .remove-btn {
+        border: none; background: #FEF2F2; color: #DC2626; width: 30px; height: 30px;
+        border-radius: 8px; cursor: pointer; font-size: 0.8rem;
+    }
+    .empty-review { text-align: center; color: var(--text-muted); font-size: 0.84rem; padding: 1.5rem 0; }
 
-        /* ── review table ── */
-        .review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .review-table th {
-            background: var(--bg-subtle); color: var(--text-secondary); padding: 10px 8px; font-weight: 700;
-            text-align: right; white-space: nowrap; font-size: 11.5px; border-bottom: 2px solid var(--border-light);
-        }
-        .review-table td { padding: 10px 8px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-        .review-table tr:last-child td { border-bottom: none; }
-        .status-select {
-            padding: 8px; border: 1.5px solid var(--border); border-radius: 10px;
-            font-size: 12.5px; font-family: Vazir, sans-serif; background: white;
-        }
-        .remove-btn {
-            border: none; background: #fee2e2; color: #dc2626; width: 30px; height: 30px;
-            border-radius: 999px; cursor: pointer; font-size: 13px;
-        }
-        .empty-review { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+    .submit-bar-bottom {
+        display: flex; justify-content: flex-end; background: var(--bg-card);
+        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm);
+    }
+</style>
+{% endblock %}
 
-        /* ── submit ── */
-        .submit-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 14px 16px; box-shadow: 0 -2px 12px rgba(15,23,42,.06); }
-        .submit-btn {
-            width: 100%; padding: 14px; background: var(--primary); color: white; border: none;
-            border-radius: 999px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif;
-        }
-        .submit-btn:active { background: var(--primary-dark); }
-
-        /* ── messages ── */
-        .msg { padding: 12px 14px; border-radius: 12px; margin-bottom: 12px; font-size: 13.5px; }
-        .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-        .msg-success { background: #f0fdf4; color: #047857; border: 1px solid #bbf7d0; }
-        .msg-info { background: rgba(139,92,246,0.05); color: #5b21b6; border: 1px solid rgba(139,92,246,0.2); }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="back-btn"><i class="fas fa-arrow-right"></i></a>
-        <div class="ph-icon"><i class="fas fa-box-open"></i></div>
-        <div class="header-info">
-            <h1>کالاهای موجود در انبار</h1>
-            <p>انتخاب محصول، انبار و برند و ثبت درخواست تامین</p>
+{% block content %}
+<div class="wap-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-box-open"></i></div>
+            <div class="ph-title">
+                <h1>کالاهای موجود در انبار</h1>
+                <div class="page-sub">انتخاب محصول، انبار و برند و ثبت درخواست تامین از موجودی</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
         </div>
     </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'success' %}msg-success{% else %}msg-info{% endif %}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
 
     <form method="post" id="mainForm">
         {% csrf_token %}
 
-        <!-- Step 1: product -->
-        <div class="card">
+        <div class="step-card">
             <div class="step-title"><span class="step-badge">۱</span> محصول را انتخاب کنید</div>
             <div class="hint">فقط کالاهایی نمایش داده می‌شوند که هم‌اکنون در انبار موجودی دارند.</div>
             <div id="productList"></div>
         </div>
 
-        <!-- Step 2: warehouse -->
-        <div class="card" id="warehouseCard" style="display:none;">
+        <div class="step-card" id="warehouseCard" style="display:none;">
             <div class="step-title"><span class="step-badge">۲</span> انبار دارای موجودی را انتخاب کنید</div>
             <div id="warehouseList"></div>
         </div>
 
-        <!-- Step 3: brand + qty -->
-        <div class="card" id="brandCard" style="display:none;">
+        <div class="step-card" id="brandCard" style="display:none;">
             <div class="step-title"><span class="step-badge">۳</span> برند و مقدار را مشخص کنید</div>
-            <div class="hint">مقدار را بر حسب واحد تجاری برند وارد کنید و دکمه «افزودن» را بزنید. برای افزودن واریانت/برند دیگری از همین محصول، مراحل را تکرار کنید.</div>
+            <div class="hint">مقدار را بر حسب واحد تجاری برند وارد کنید و دکمه «افزودن» را بزنید.</div>
             <div id="brandList"></div>
         </div>
 
-        <!-- Review table -->
-        <div class="card">
+        <div class="step-card">
             <div class="step-title"><span class="step-badge"><i class="fas fa-check"></i></span> جدول بررسی اقلام</div>
             <div class="hint">برای هر قلم وضعیت نهایی را تعیین کنید: تامین از انبار (کسر موجودی)، ارسال به لیست خرید، یا تامین نشده.</div>
-            <div class="table-wrap" style="overflow-x:auto;">
+            <div style="overflow-x:auto;">
                 <table class="review-table" id="reviewTable">
                     <thead>
                         <tr>
@@ -215,10 +170,13 @@
             </div>
         </div>
 
-        <div class="submit-area">
-            <button type="submit" class="submit-btn" onclick="return confirmSubmit()"><i class="fas fa-check"></i> تایید نهایی</button>
+        <div class="submit-bar-bottom">
+            <button type="submit" class="btn btn-primary" onclick="return confirmSubmit()">
+                <i class="fas fa-check"></i> تایید نهایی و ثبت
+            </button>
         </div>
     </form>
+</div>
 
 <script>
 const PRODUCTS = {{ products_json|safe }};
@@ -226,7 +184,6 @@ let currentProduct = null;
 let currentWarehouse = null;
 let nextIdx = {{ submitted_rows|length }};
 
-/* ── رندر محصولات ── */
 function renderProducts() {
     const container = document.getElementById('productList');
     container.innerHTML = '';
@@ -247,7 +204,6 @@ function renderProducts() {
     });
 }
 
-/* ── انتخاب محصول → انبارها ── */
 function selectProduct(productId, btnEl) {
     currentProduct = PRODUCTS.find(p => p.id === productId);
     currentWarehouse = null;
@@ -262,7 +218,7 @@ function selectProduct(productId, btnEl) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'warehouse-item';
-        btn.innerHTML = `<span class="warehouse-name"><i class="fas fa-warehouse" style="margin-left:6px;color:var(--primary)"></i> ${w.name}</span><span class="product-arrow"><i class="fas fa-chevron-left"></i></span>`;
+        btn.innerHTML = `<span class="warehouse-name"><i class="fas fa-warehouse" style="margin-left:6px;color:var(--accent-indigo)"></i> ${w.name}</span><span class="product-arrow"><i class="fas fa-chevron-left"></i></span>`;
         btn.onclick = (e) => selectWarehouse(w.id, e.currentTarget);
         list.appendChild(btn);
     });
@@ -270,7 +226,6 @@ function selectProduct(productId, btnEl) {
     document.getElementById('brandCard').style.display = 'none';
 }
 
-/* ── انتخاب انبار → برندها ── */
 function selectWarehouse(warehouseId, btnEl) {
     currentWarehouse = currentProduct.warehouses.find(w => w.id === warehouseId);
     document.querySelectorAll('.warehouse-item').forEach(el => el.classList.remove('active'));
@@ -318,7 +273,6 @@ function selectWarehouse(warehouseId, btnEl) {
     document.getElementById('brandCard').style.display = '';
 }
 
-/* ── افزودن به جدول بررسی ── */
 function addRow(brand, qty) {
     const tbody = document.getElementById('reviewBody');
     const empty = document.getElementById('emptyReview');
@@ -348,7 +302,6 @@ function addRow(brand, qty) {
     nextIdx++;
 }
 
-/* ── حذف ردیف ── */
 function removeRow(btn) {
     const tr = btn.closest('tr');
     tr.remove();
@@ -358,7 +311,6 @@ function removeRow(btn) {
     }
 }
 
-/* ── تایید نهایی ── */
 function confirmSubmit() {
     const rows = document.querySelectorAll('#reviewBody tr');
     const hasReal = [...rows].some(tr => tr.querySelector('input[name="qty"]'));
@@ -371,5 +323,4 @@ function confirmSubmit() {
 
 renderProducts();
 </script>
-</body>
-</html>
+{% endblock %}

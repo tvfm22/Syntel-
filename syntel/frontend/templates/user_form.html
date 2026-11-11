@@ -1,223 +1,95 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}{% endblock %}
+{% block title %}{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %} - Kuker{% endblock %}
 
 {% block content %}
 <style>
-.user-form-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.form-header {
-    text-align: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.form-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}
-
-.form-subtitle {
-    color: #666;
-    margin-top: 5px;
-}
-
+.user-form-container { max-width: 720px; margin: 0 auto; }
 .user-form {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-xl);
+    padding: 1.75rem; box-shadow: var(--shadow-xs);
 }
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-}
-
+.form-group { margin-bottom: 1.25rem; }
+.form-label { display: block; font-weight: 700; color: var(--dark); margin-bottom: 0.45rem; font-size: 0.85rem; }
 .form-input, .form-select {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
-    box-sizing: border-box;
+    width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border-medium);
+    border-radius: 10px; font-size: 0.88rem; font-family: inherit;
+    background: var(--bg-input); color: var(--dark); transition: all 0.15s; box-sizing: border-box;
 }
-
 .form-input:focus, .form-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none; border-color: var(--primary); background: #fff;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .checkbox-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem;
+    background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px;
 }
-
-.checkbox-group input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-}
-
-.checkbox-group label {
-    margin: 0;
-    font-weight: normal;
-}
-
-.form-help {
-    color: #666;
-    font-size: 0.8rem;
-    margin-top: 5px;
-    font-style: italic;
-}
-
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+.checkbox-group label { margin: 0; font-weight: 600; font-size: 0.88rem; color: var(--dark); cursor: pointer; }
+.form-help { color: var(--gray-500); font-size: 0.78rem; margin-top: 0.35rem; line-height: 1.7; }
 .form-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: flex-end;
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid #e0e0e0;
+    display: flex; gap: 0.75rem; justify-content: flex-end;
+    margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
 }
-
 .btn-submit, .btn-cancel {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    cursor: pointer;
+    padding: 0.65rem 1.4rem; border-radius: 10px; text-decoration: none;
+    font-weight: 700; font-size: 0.86rem; font-family: inherit;
+    transition: all 0.15s; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
 }
-
-.btn-submit {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.btn-cancel {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-cancel:hover {
-    background: #5a6268;
-    transform: translateY(-2px);
-}
-
-.required {
-    color: #dc3545;
-}
-
-.error-message {
-    color: #dc3545;
-    font-size: 0.8rem;
-    margin-top: 5px;
-}
-
+.btn-submit { background: var(--primary); color: #fff; border: none; }
+.btn-submit:hover { background: var(--primary-dark); }
+.btn-cancel { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
+.btn-cancel:hover { background: var(--gray-200); color: var(--dark); }
+.required { color: var(--danger); }
+.error-message { color: var(--danger); font-size: 0.8rem; margin-top: 0.35rem; font-weight: 600; }
 .cafe-warning {
-    background: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    color: #92400e;
-    margin-top: 6px;
-    display: none;
+    background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px;
+    padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #92400E; margin-top: 0.5rem; display: none;
 }
-
 .cafe-info {
-    background: #eff6ff;
-    border: 1px solid #93c5fd;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    color: #1e40af;
-    margin-top: 6px;
-    display: none;
+    background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;
+    padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #1E40AF; margin-top: 0.5rem; display: none;
 }
-
-/* ── Add Department Modal ── */
 .modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 2000;
-    background: rgba(0,0,0,.4); align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, 0.45); align-items: center; justify-content: center;
 }
 .modal-overlay.open { display: flex; }
 .modal-box {
-    background: white; border-radius: 14px; padding: 24px;
-    width: min(440px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.2);
+    background: #fff; border-radius: var(--radius-xl); padding: 1.5rem;
+    width: min(440px, 94vw); box-shadow: var(--shadow-lg);
 }
-.modal-box h3 { font-size: 18px; margin-bottom: 16px; color: #1f2937; }
-.modal-field { margin-bottom: 14px; }
-
+.modal-box h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 1rem; color: var(--dark); }
+.modal-field { margin-bottom: 0.9rem; }
 @media (max-width: 768px) {
-    .user-form-container {
-        padding: 15px;
-    }
-
-    .user-form {
-        padding: 20px;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-
-    .form-actions {
-        flex-direction: column;
-    }
-
-    .btn-submit, .btn-cancel {
-        width: 100%;
-        text-align: center;
-    }
+    .user-form { padding: 1.25rem; }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .form-actions { flex-direction: column-reverse; }
+    .btn-submit, .btn-cancel { width: 100%; justify-content: center; }
 }
 </style>
 
 <div class="user-form-container">
-    <div class="form-header">
-        <h1 class="form-title">
-            {% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}
-        </h1>
-        <p class="form-subtitle">
-            {% if edit_user %}اطلاعات کاربر را ویرایش کنید{% else %}اطلاعات کاربر جدید را وارد کنید{% endif %}
-        </p>
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas {% if edit_user %}fa-user-pen{% else %}fa-user-plus{% endif %}"></i></div>
+            <div>
+                <h1 class="ph-title">{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}</h1>
+                <p class="page-sub">{% if edit_user %}اطلاعات حساب، نقش و دسترسی شعبه کاربر را ویرایش کنید{% else %}مشخصات کاربر جدید، نقش سازمانی و شعبه را تعیین کنید{% endif %}</p>
+            </div>
+        </div>
+        <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> بازگشت
+        </a>
     </div>
-{% if error %}
-<div class="form-group">
-    <div class="error-message">{{ error }}</div>
-</div>
-{% endif %}
+
+    {% if error %}
+    <div style="background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;padding:0.85rem 1.1rem;border-radius:12px;margin-bottom:1rem;font-size:0.86rem;font-weight:600;">
+        <i class="fas fa-circle-exclamation"></i> {{ error }}
+    </div>
+    {% endif %}
 
     <form method="POST" class="user-form">
         {% csrf_token %}
@@ -228,7 +100,7 @@
             </label>
             <input type="text" id="username" name="username" class="form-input"
                    value="{% if edit_user %}{{ edit_user.username }}{% elif form_data %}{{ form_data.username }}{% endif %}"
-                   {% if not edit_user %}required{% endif %}>>
+                   {% if not edit_user %}required{% endif %}>
             <div class="form-help">
                 {% if edit_user %}برای تغییر نام کاربری، مقدار جدید را وارد کنید{% else %}نام کاربری باید منحصر به فرد باشد{% endif %}
             </div>
@@ -236,17 +108,13 @@
 
         <div class="form-row">
             <div class="form-group">
-                <label for="first_name" class="form-label">
-                    نام
-                </label>
+                <label for="first_name" class="form-label">نام</label>
                 <input type="text" id="first_name" name="first_name" class="form-input"
                        value="{% if edit_user %}{{ edit_user.first_name }}{% elif form_data %}{{ form_data.first_name }}{% endif %}">
             </div>
 
             <div class="form-group">
-                <label for="last_name" class="form-label">
-                    نام خانوادگی
-                </label>
+                <label for="last_name" class="form-label">نام خانوادگی</label>
                 <input type="text" id="last_name" name="last_name" class="form-input"
                        value="{% if edit_user %}{{ edit_user.last_name }}{% elif form_data %}{{ form_data.last_name }}{% endif %}">
             </div>
@@ -307,11 +175,9 @@
                     </option>
                     {% endfor %}
                 </select>
-                <button type="button" class="btn-submit" style="padding:8px 16px;white-space:nowrap;font-size:13px;" onclick="openAddDepartmentModal()">+ جدید</button>
+                <button type="button" class="btn-submit" style="padding:0.5rem 1rem;white-space:nowrap;font-size:0.82rem;" onclick="openAddDepartmentModal()">+ جدید</button>
             </div>
-            <div class="form-help">
-                بخش یا واحدی که کاربر در آن فعالیت می‌کند.
-            </div>
+            <div class="form-help">بخش یا واحدی که کاربر در آن فعالیت می‌کند.</div>
         </div>
 
         <!-- انتخاب کافه -->
@@ -320,11 +186,11 @@
                 کافه / شعبه <span class="required">*</span>
             </label>
             <select id="cafe_id" name="cafe_id" class="form-select" required>
-        {% if edit_user and edit_user.cafe is None %}
-            <option value="all" selected>🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
-        {% else %}
-            <option value="all">🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
-        {% endif %}
+                {% if edit_user and edit_user.cafe is None %}
+                <option value="all" selected>🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+                {% else %}
+                <option value="all">🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+                {% endif %}
                 {% for cafe in cafes %}
                 <option value="{{ cafe.id }}"
                     {% if edit_user and edit_user.cafe and edit_user.cafe.id == cafe.id %}selected
@@ -346,12 +212,12 @@
                 ✅ این نقش می‌تواند به همه کافه‌ها دسترسی داشته باشد. هنگام ورود صفحه انتخاب شعبه نمایش داده می‌شود.
             </div>
             {% if edit_user %}
-            <div style="margin-top:6px; font-size:0.82rem; color:#6b7280;">
+            <div style="margin-top:6px; font-size:0.82rem; color:var(--gray-500);">
                 کافه فعلی:
                 {% if edit_user.cafe %}
                 <strong style="color:#059669">{{ edit_user.cafe.name }}</strong>
                 {% else %}
-                <strong style="color:#6366f1">همه کافه‌ها</strong>
+                <strong style="color:var(--primary)">همه کافه‌ها</strong>
                 {% endif %}
             </div>
             {% endif %}
@@ -384,8 +250,8 @@
         </div>
 
         <!-- بخش تغییر رمز عبور -->
-        <div style="border: 1px dashed #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 8px; background: #f8fafc;">
-            <div style="font-weight: 600; color: #4b5563; margin-bottom: 12px; font-size: 0.9rem;">🔑 تغییر رمز عبور <span style="font-weight:normal; color:#9ca3af;">(اختیاری – خالی بگذارید تا تغییر نکند)</span></div>
+        <div style="border: 1px dashed var(--border-medium); border-radius: 12px; padding: 1.15rem; margin-bottom: 0.5rem; background: var(--gray-50);">
+            <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.75rem; font-size: 0.88rem;">🔑 تغییر رمز عبور <span style="font-weight:normal; color:var(--gray-500);">(اختیاری – خالی بگذارید تا تغییر نکند)</span></div>
             <div class="form-row">
                 <div class="form-group" style="margin-bottom:0">
                     <label for="new_password" class="form-label">رمز عبور جدید</label>
@@ -404,13 +270,13 @@
             <div class="modal-box">
                 <h3>➕ افزودن بخش جدید</h3>
                 <div class="modal-field">
-                    <label>نام بخش *</label>
-                    <input type="text" id="newDepartmentName" placeholder="نام بخش را وارد کنید..." style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:Vazir,sans-serif;">
-                    <div class="modal-err" id="newDepartmentErr" style="color:#dc2626;font-size:13px;margin-top:6px;"></div>
+                    <label class="form-label">نام بخش *</label>
+                    <input type="text" id="newDepartmentName" class="form-input" placeholder="نام بخش را وارد کنید...">
+                    <div class="modal-err" id="newDepartmentErr" style="color:var(--danger);font-size:0.8rem;margin-top:6px;"></div>
                 </div>
-                <div class="modal-actions" style="display:flex;gap:10px;margin-top:20px;">
-                    <button class="modal-btn-save" onclick="submitNewDepartment()" style="flex:1;padding:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Vazir,sans-serif;">ذخیره</button>
-                    <button class="modal-btn-cancel" onclick="closeAddDepartmentModal()" style="padding:10px 20px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:Vazir,sans-serif;">انصراف</button>
+                <div class="modal-actions" style="display:flex;gap:10px;margin-top:1.25rem;">
+                    <button type="button" class="btn-submit" onclick="submitNewDepartment()" style="flex:1;justify-content:center;">ذخیره</button>
+                    <button type="button" class="btn-cancel" onclick="closeAddDepartmentModal()">انصراف</button>
                 </div>
             </div>
         </div>
@@ -418,24 +284,21 @@
         <div class="form-actions">
             <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
             <button type="submit" class="btn-submit">
-                {% if edit_user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
+                <i class="fas fa-check"></i> {% if edit_user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
             </button>
         </div>
     </form>
 </div>
 
 <script>
-// نقش‌هایی که می‌توانند «همه کافه‌ها» داشته باشند
 const CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo'];
 
 function onRoleChange(roleVal) {
     checkCafeWarning(roleVal, document.getElementById('cafe_id').value);
-    // نمایش نقش ثانویه فقط برای مسئول خرید یا مسئول انبار
     const srGroup = document.getElementById('secondaryRoleGroup');
     if (srGroup) {
         srGroup.style.display = (roleVal === 'purchasing' || roleVal === 'warehouse') ? 'block' : 'none';
     }
-    // نمایش انتخاب بخش فقط برای نقش درخواست‌دهنده
     const depGroup = document.getElementById('departmentGroup');
     if (depGroup) {
         depGroup.style.display = (roleVal === 'requester') ? 'block' : 'none';
@@ -463,7 +326,7 @@ function submitNewDepartment() {
     const name = document.getElementById('newDepartmentName').value.trim();
     const errEl = document.getElementById('newDepartmentErr');
     if (!name) { errEl.textContent = 'نام بخش الزامی است'; return; }
-    const btn = document.querySelector('#addDepartmentModal .modal-btn-save');
+    const btn = document.querySelector('#addDepartmentModal .btn-submit');
     btn.disabled = true; btn.textContent = 'در حال ذخیره...';
     fetch(QUICK_ADD_DEP_URL, {
         method: 'POST',
@@ -511,19 +374,15 @@ function checkCafeWarning(roleVal, cafeVal) {
     }
 }
 
-// Form validation
 document.addEventListener('DOMContentLoaded', function() {
-    // اضافه کردن onchange به select کافه
     const cafeSelect = document.getElementById('cafe_id');
     if (cafeSelect) {
         cafeSelect.addEventListener('change', function() { onCafeChange(this.value); });
-        // بررسی اولیه
         checkCafeWarning(
             document.getElementById('role').value,
             cafeSelect.value
         );
     }
-    // نمایش نقش ثانویه در صورت ویرایش
     const roleSelect = document.getElementById('role');
     if (roleSelect) {
         onRoleChange(roleSelect.value);
@@ -587,4 +446,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-

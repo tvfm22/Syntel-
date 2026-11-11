@@ -11,7 +11,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from purchases.models import (
-    Requester, Category, Product, Unit, 
+    Cafe, Requester, Category, Product, Unit,
     PurchaseRequest, Invoice, InvoiceItem
 )
 
@@ -34,73 +34,58 @@ class AnalyticsBubbleChartAPITests(TestCase):
         self.client = Client()
         self.client.login(username='testuser', password='testpass123')
         
+        # ایجاد کافه و استفاده از prefix کافه در URLها (مطابق رفتار واقعی برنامه)
+        cafe = Cafe.objects.create(name='Test Cafe', code='TEST')
+        self.cafe_code = cafe.code
+
         # ایجاد Requester (بخش)
-        self.requester1 = Requester.objects.create(name='انبار')
-        self.requester2 = Requester.objects.create(name='فروش')
-        
+        self.requester1 = Requester.objects.create(name='انبار', cafe=cafe)
+        self.requester2 = Requester.objects.create(name='فروش', cafe=cafe)
+
         # ایجاد Unit
         self.unit = Unit.objects.create(name='عدد')
-        
+
         # ایجاد Category
-        self.category1 = Category.objects.create(name='لوازم برقی')
-        self.category2 = Category.objects.create(name='لوازم اداری')
-        
+        self.category1 = Category.objects.create(name='لوازم برقی', cafe=cafe)
+        self.category2 = Category.objects.create(name='لوازم اداری', cafe=cafe)
+
         # ایجاد Product
         self.product1 = Product.objects.create(
             name='لامپ LED',
             category=self.category1,
-            unit=self.unit
+            unit=self.unit,
+            cafe=cafe,
         )
         self.product2 = Product.objects.create(
             name='خودکار',
             category=self.category2,
-            unit=self.unit
+            unit=self.unit,
+            cafe=cafe,
         )
-        
-        # ایجاد Purchase Request
-        self.request1 = PurchaseRequest.objects.create(
-            requester=self.requester1,
-            user=self.user,
-            description='تست'
-        )
-        
-        # ایجاد Invoice
+
+        # ایجاد Invoice (فاکتور پرداخت‌شده در بازه هفته جاری)
         now = timezone.now()
         self.invoice_current = Invoice.objects.create(
-            purchase_request=self.request1,
             invoice_number='INV-001',
             status='paid',
-            created_at=now
+            due_date=now.date(),
+            cafe=cafe,
         )
-        
-        self.invoice_previous = Invoice.objects.create(
-            purchase_request=self.request1,
-            invoice_number='INV-002',
-            status='paid',
-            created_at=now - timedelta(days=14)
-        )
-        
-        # ایجاد Invoice Items - دوره فعلی
+
+        # آیتم فاکتور - متعلق به بخش اول تا در نمودار حبابی نمایش داده شود
         InvoiceItem.objects.create(
             invoice=self.invoice_current,
             product=self.product1,
-            quantity=10,
+            requester=self.requester1,
+            description='لامپ LED',
+            quantity=Decimal('10'),
             unit_price=Decimal('50000'),
-            total_amount=Decimal('500000')
-        )
-        
-        # ایجاد Invoice Items - دوره قبل
-        InvoiceItem.objects.create(
-            invoice=self.invoice_previous,
-            product=self.product1,
-            quantity=5,
-            unit_price=Decimal('40000'),
-            total_amount=Decimal('200000')
+            line_total=Decimal('500000'),
         )
     
     def test_department_expenses_api(self):
         """تست API هزینه بخش‌ها"""
-        url = '/api/analytics/departments/expenses/'
+        url = f'/{self.cafe_code}/api/analytics/departments/expenses/'
         response = self.client.get(url, {'period': 'weekly'})
         
         self.assertEqual(response.status_code, 200)
@@ -120,7 +105,7 @@ class AnalyticsBubbleChartAPITests(TestCase):
     
     def test_department_categories_api(self):
         """تست API دسته‌بندی‌های یک بخش"""
-        url = f'/api/analytics/department/{self.requester1.id}/categories/'
+        url = f'/{self.cafe_code}/api/analytics/department/{self.requester1.id}/categories/'
         response = self.client.get(url, {'period': 'weekly'})
         
         self.assertEqual(response.status_code, 200)
@@ -132,7 +117,7 @@ class AnalyticsBubbleChartAPITests(TestCase):
     
     def test_category_products_api(self):
         """تست API محصولات یک دسته‌بندی"""
-        url = f'/api/analytics/category/{self.category1.id}/products/'
+        url = f'/{self.cafe_code}/api/analytics/category/{self.category1.id}/products/'
         response = self.client.get(url, {
             'period': 'weekly',
             'department_id': self.requester1.id
@@ -147,21 +132,21 @@ class AnalyticsBubbleChartAPITests(TestCase):
     
     def test_invalid_department_id(self):
         """تست با شناسه بخش نامعتبر"""
-        url = '/api/analytics/department/9999/categories/'
+        url = f'/{self.cafe_code}/api/analytics/department/9999/categories/'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 404)
     
     def test_invalid_category_id(self):
         """تست با شناسه دسته‌بندی نامعتبر"""
-        url = '/api/analytics/category/9999/products/'
+        url = f'/{self.cafe_code}/api/analytics/category/9999/products/'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 404)
     
     def test_different_periods(self):
         """تست دوره‌های زمانی مختلف"""
-        url = '/api/analytics/departments/expenses/'
+        url = f'/{self.cafe_code}/api/analytics/departments/expenses/'
         
         periods = ['weekly', 'monthly', 'quarterly', 'yearly']
         
@@ -175,7 +160,7 @@ class AnalyticsBubbleChartAPITests(TestCase):
         """تست دسترسی بدون احراز هویت"""
         self.client.logout()
         
-        url = '/api/analytics/departments/expenses/'
+        url = f'/{self.cafe_code}/api/analytics/departments/expenses/'
         response = self.client.get(url)
         
         # باید به صفحه login redirect شود یا 401/403 برگردد

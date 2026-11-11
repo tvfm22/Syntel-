@@ -2,211 +2,119 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}کالاهای دریافتی من{% endblock %}
+{% block title %}کالاهای دریافتی من - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    .rcv-page {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 1.25rem 1rem 3rem;
-    }
-
-    .rcv-header {
-        text-align: center;
-        margin-bottom: 1.25rem;
-    }
-    .rcv-header h1 {
-        font-size: 1.55rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 0.4rem;
-    }
-    .rcv-header p {
-        font-size: 0.82rem;
-        color: #6b7280;
-        line-height: 1.9;
-        max-width: 560px;
-        margin: 0 auto;
-    }
+    .rcv-page { max-width: 900px; margin: 0 auto; }
 
     .rcv-summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        background: #f5f3ff;
-        border: 1px solid #ddd6fe;
-        border-radius: 12px;
-        padding: 0.7rem 0.95rem;
-        margin-bottom: 1rem;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.75rem; flex-wrap: wrap;
+        background: var(--primary-light); border: 1px solid #C4B5FD;
+        border-radius: var(--radius-xl); padding: 0.85rem 1.15rem; margin-bottom: 1.25rem;
     }
     .rcv-summary-text {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #5b21b6;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
+        font-size: 0.88rem; font-weight: 700; color: var(--primary-dark);
+        display: inline-flex; align-items: center; gap: 0.45rem;
     }
 
     .rcv-section-title {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #374151;
-        margin: 1.25rem 0 0.6rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        font-size: 0.92rem; font-weight: 800; color: var(--dark);
+        margin: 1.35rem 0 0.7rem; display: flex; align-items: center; gap: 0.45rem;
     }
     .rcv-section-title .count {
-        background: #e5e7eb;
-        color: #4b5563;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        padding: 0.1rem 0.5rem;
+        background: var(--gray-100); color: var(--gray-500); border-radius: 999px;
+        font-size: 0.75rem; padding: 0.1rem 0.55rem; font-weight: 700;
     }
 
     .rcv-list { display: flex; flex-direction: column; gap: 0.8rem; }
 
     .rcv-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 0.9rem 1rem;
+        background: #ffffff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-xl); padding: 1rem 1.15rem;
+        box-shadow: var(--shadow-xs); transition: border-color 0.15s;
     }
-    .rcv-card.pending { border-color: #ddd6fe; box-shadow: 0 1px 6px rgba(99, 102, 241, 0.08); }
+    .rcv-card.pending { border-color: #C4B5FD; border-right: 4px solid var(--primary); }
+    .rcv-card.confirmed { background: #FBFDFC; border-right: 4px solid #10B981; }
 
     .rcv-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.6rem;
-        flex-wrap: wrap;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: 0.6rem; flex-wrap: wrap;
     }
     .rcv-name {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1f2937;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
+        font-size: 0.98rem; font-weight: 700; color: var(--dark);
+        display: inline-flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
     }
     .rcv-name .brand {
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #6d28d9;
-        background: #f5f3ff;
-        border-radius: 999px;
-        padding: 0.1rem 0.5rem;
+        font-size: 0.74rem; font-weight: 700; color: var(--primary-dark);
+        background: var(--primary-light); border-radius: 999px; padding: 0.12rem 0.55rem;
     }
     .rcv-req {
-        font-size: 0.75rem;
-        color: #6b7280;
-        text-decoration: none;
-        white-space: nowrap;
+        font-size: 0.78rem; font-weight: 600; color: var(--gray-500);
+        text-decoration: none; white-space: nowrap;
+        background: var(--gray-50); border: 1px solid var(--gray-200);
+        padding: 0.2rem 0.6rem; border-radius: 8px;
     }
-    .rcv-req:hover { color: #4f46e5; }
+    .rcv-req:hover { color: var(--primary); border-color: var(--primary); }
 
-    .rcv-meta {
-        font-size: 0.8rem;
-        color: #6b7280;
-        margin-top: 0.45rem;
-    }
-    .rcv-meta b { color: #374151; font-weight: 700; }
+    .rcv-meta { font-size: 0.82rem; color: var(--gray-500); margin-top: 0.45rem; }
+    .rcv-meta b { color: var(--dark); font-weight: 700; }
 
-    .rcv-deliveries {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        margin-top: 0.55rem;
-    }
+    .rcv-deliveries { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
     .rcv-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #065f46;
-        border-radius: 999px;
-        padding: 0.28rem 0.7rem;
-        font-size: 0.8rem;
-        font-weight: 700;
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46;
+        border-radius: 999px; padding: 0.28rem 0.75rem; font-size: 0.8rem; font-weight: 700;
     }
-    .rcv-chip .src {
-        font-weight: 500;
-        color: #047857;
-        font-size: 0.72rem;
-    }
+    .rcv-chip .src { font-weight: 500; color: #047857; font-size: 0.74rem; }
 
-    .rcv-actions { margin-top: 0.75rem; }
+    .rcv-actions { margin-top: 0.8rem; }
 
-    /* دکمه‌ها — بزرگ و مناسب لمس در موبایل */
     .rcv-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        min-height: 44px;
-        padding: 0.55rem 1.1rem;
-        border: none;
-        border-radius: 10px;
-        font-family: inherit;
-        font-size: 0.88rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
+        display: inline-flex; align-items: center; justify-content: center;
+        gap: 0.45rem; min-height: 42px; padding: 0.5rem 1.15rem;
+        border: none; border-radius: 10px; font-family: inherit;
+        font-size: 0.86rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
     }
-    .rcv-btn-confirm { background: #4f46e5; color: #fff; width: 100%; }
-    .rcv-btn-confirm:hover { background: #4338ca; }
+    .rcv-btn-confirm { background: var(--primary); color: #fff; width: 100%; }
+    .rcv-btn-confirm:hover { background: var(--primary-dark); }
     .rcv-btn-all {
-        background: #5b21b6; color: #fff; min-height: 40px; font-size: 0.82rem;
-        padding: 0.4rem 0.9rem;
+        background: var(--primary-dark); color: #fff; min-height: 38px; font-size: 0.82rem;
+        padding: 0.4rem 0.95rem;
     }
-    .rcv-btn-all:hover { background: #4c1d95; }
+    .rcv-btn-all:hover { background: #4C1D95; }
 
     .rcv-confirmed-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #065f46;
-        background: #d1fae5;
-        border-radius: 999px;
-        padding: 0.3rem 0.75rem;
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-size: 0.8rem; font-weight: 700; color: #065F46;
+        background: #D1FAE5; border-radius: 999px; padding: 0.3rem 0.8rem;
     }
-    .rcv-card.confirmed { background: #fbfdfc; }
 
     .rcv-empty {
-        text-align: center;
-        padding: 2.5rem 1rem;
-        color: #6b7280;
+        text-align: center; padding: 3rem 1.5rem; color: var(--gray-500);
+        background: #fff; border: 1px dashed var(--gray-300); border-radius: var(--radius-xl);
     }
-    .rcv-empty .icon { font-size: 2.6rem; margin-bottom: 0.6rem; }
-    .rcv-empty .text { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.3rem; }
-    .rcv-empty .hint { font-size: 0.8rem; color: #9ca3af; }
+    .rcv-empty .icon { font-size: 2.4rem; margin-bottom: 0.6rem; }
+    .rcv-empty .text { font-size: 0.95rem; font-weight: 700; color: var(--dark); }
 
     @media (max-width: 480px) {
-        .rcv-page { padding: 1rem 0.75rem 3rem; }
-        .rcv-header h1 { font-size: 1.3rem; }
-        .rcv-card { padding: 0.85rem 0.85rem; }
-        .rcv-summary { padding: 0.6rem 0.75rem; }
-        .rcv-btn-confirm { font-size: 0.92rem; }
+        .rcv-card { padding: 0.85rem; }
+        .rcv-summary { padding: 0.7rem 0.85rem; }
+        .rcv-btn-confirm { font-size: 0.9rem; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="rcv-page">
-    <div class="rcv-header">
-        <h1>کالاهای دریافتی من</h1>
-        <p>
-            اقلامی که از انبار تحویل گرفته‌اید. با «تایید دریافت» وصولِ کالا را اعلام می‌کنید؛
-            این تایید فقط اطلاع‌رسانی است و روی موجودی انبار اثری ندارد (موجودی همان هنگام تحویل کسر شده است).
-        </p>
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-box-open"></i></div>
+            <div>
+                <h1 class="ph-title">کالاهای دریافتی من</h1>
+            </div>
+        </div>
     </div>
 
     {% if pending_rows or confirmed_rows %}
@@ -228,12 +136,17 @@
             </button>
         </form>
         {% endif %}
+        {% if not pending_count %}
+        <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="rcv-btn rcv-btn-all">
+            <i class="fas fa-plus"></i> ثبت درخواست جدید
+        </a>
+        {% endif %}
     </div>
     {% endif %}
 
     {% if pending_rows %}
     <div class="rcv-section-title">
-        <i class="fas fa-hourglass-half"></i> در انتظار تایید دریافت
+        <i class="fas fa-hourglass-half" style="color:var(--primary);"></i> در انتظار تایید دریافت
         <span class="count">{{ pending_count }}</span>
     </div>
     <div class="rcv-list">
@@ -245,7 +158,7 @@
                     {% if row.brand %}<span class="brand">{{ row.brand }}</span>{% endif %}
                 </span>
                 <a class="rcv-req" href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=row.request.id %}">
-                    درخواست #{{ row.request.id }}
+                    درخواست {{ row.request.request_number }}
                 </a>
             </div>
             <div class="rcv-meta">
@@ -277,7 +190,7 @@
 
     {% if confirmed_rows %}
     <div class="rcv-section-title">
-        <i class="fas fa-circle-check"></i> تاییدشده
+        <i class="fas fa-circle-check" style="color:#10B981;"></i> تاییدشده
         <span class="count">{{ confirmed_rows|length }}</span>
     </div>
     <div class="rcv-list">
@@ -289,7 +202,7 @@
                     {% if row.brand %}<span class="brand">{{ row.brand }}</span>{% endif %}
                 </span>
                 <a class="rcv-req" href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=row.request.id %}">
-                    درخواست #{{ row.request.id }}
+                    درخواست {{ row.request.request_number }}
                 </a>
             </div>
             <div class="rcv-deliveries">
@@ -316,7 +229,6 @@
     <div class="rcv-empty">
         <div class="icon">📦</div>
         <div class="text">هنوز کالایی تحویل نگرفته‌اید</div>
-        <div class="hint">اقلامی که انبار تحویل‌تان بدهد، همین‌جا برای تایید نمایش داده می‌شوند.</div>
     </div>
     {% endif %}
 </div>

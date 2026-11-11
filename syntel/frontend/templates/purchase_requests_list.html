@@ -10,6 +10,26 @@
         margin: 0 auto;
     }
 
+    /* ---------- هدر صفحه ---------- */
+    .req-header-title {
+        display: flex; align-items: center; gap: 1rem; min-width: 0;
+    }
+    .req-brand {
+        display: flex; align-items: center; justify-content: center;
+        gap: 0.5rem; direction: ltr; flex-shrink: 0;
+    }
+    .requests-page .table-meta {
+        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        padding: 0.25rem 0.75rem; border-radius: 999px; white-space: nowrap;
+    }
+
+    /* جدولِ نمای مسئول خرید در عرض کم نباید بریده شود */
+    .requests-page .table-scroll {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .requests-page .table-scroll .data-table { min-width: 660px; }
+
     /* ---------- تولبار: جستجو/فیلتر ---------- */
     .req-toolbar-row {
         display: flex;
@@ -165,7 +185,35 @@
     }
     .action-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
 
+    .req-scroll-hint {
+        display: none;
+        padding: 0 var(--space-5) 0.5rem;
+        font-size: 0.74rem; font-weight: 500; color: var(--text-muted);
+        text-align: center;
+    }
+
     /* ---------- ریسپانسیو ---------- */
+    @media (max-width: 1023px) {
+        /* لوگوی برند در نوار بالای موبایل و سایدبار هست؛ نسخهٔ داخل هدر تکراری است */
+        .req-brand { display: none; }
+        .req-header-title { justify-content: center; }
+
+        .requests-page .page-header {
+            gap: 0.6rem; padding-top: 0.9rem; padding-bottom: 0.9rem;
+        }
+        .requests-page .page-title { justify-content: center; font-size: 1.05rem; }
+        .requests-page .header-actions {
+            flex-direction: column; align-items: stretch; gap: 0.5rem;
+        }
+        .requests-page .header-actions .btn {
+            width: 100%; justify-content: center;
+        }
+        .requests-page .header-actions .table-meta { align-self: center; }
+
+        .requests-page .table-scroll .data-table { min-width: 620px; }
+        .req-scroll-hint { display: block; }
+    }
+
     @media (max-width: 768px) {
         .req-card { flex-direction: column; padding: 0.6rem 0.85rem; }
         .req-main { padding: 0; gap: 0.45rem; }
@@ -180,8 +228,8 @@
 
     <!-- هدر صفحه -->
     <div class="page-header">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; direction: ltr;">
+        <div class="req-header-title">
+            <div class="req-brand">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient-req)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <defs>
                         <linearGradient id="k-gradient-req" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -249,7 +297,7 @@
                     {% for req in reqs %}
                     <article class="req-card">
                         <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="req-main">
-                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست #{{ req.id }}</span>
+                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست {{ req.request_number }}</span>
                             <span class="status-pill st-{{ req.status }}">
                                 <span class="dot"></span> {{ req.get_status_display }}
                             </span>
@@ -290,7 +338,7 @@
                     {% for req in older_requests %}
                     <article class="req-card">
                         <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="req-main">
-                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست #{{ req.id }}</span>
+                            <span class="req-id"><i class="fas fa-box-open"></i> درخواست {{ req.request_number }}</span>
                             <span class="status-pill st-{{ req.status }}">
                                 <span class="dot"></span> {{ req.get_status_display }}
                             </span>
@@ -339,6 +387,9 @@
                 <div class="table-title"><i class="fas fa-clipboard-list"></i> همهٔ درخواست‌ها</div>
                 <span class="table-meta">{{ requests|length }} درخواست</span>
             </div>
+            <div class="req-scroll-hint">
+                <i class="fas fa-arrows-left-right"></i> برای دیدن بقیهٔ ستون‌ها جدول را به چپ و راست بکشید
+            </div>
             <div class="table-scroll">
                 <table class="data-table">
                     <thead>
@@ -354,7 +405,7 @@
                     <tbody id="requests-container">
                         {% for req in requests %}
                         <tr>
-                            <td><strong>#{{ req.id }}</strong></td>
+                            <td><strong>{{ req.request_number }}</strong></td>
                             <td>{{ req.user.department_display }}</td>
                             <td>{{ req.user.first_name }} {{ req.user.last_name|default:req.user.username }}</td>
                             <td>{{ req.created_at|jalali_date }} — {{ req.created_at|jalali_time }}</td>

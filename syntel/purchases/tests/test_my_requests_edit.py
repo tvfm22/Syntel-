@@ -2,6 +2,7 @@
 from django.contrib.messages import get_messages
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.utils import timezone
 
 from purchases.models import (
     User, Cafe, PurchaseRequest, PurchaseItem, OfficerAssignment, ActivityLog,
@@ -171,6 +172,11 @@ class EditMyRequestTests(TestCase):
             request=self.req, user=self.requester, action='updated').exists())
 
     def test_edit_adds_new_item_routed_to_warehouse(self):
+        # فیکسچر این کلاس یک تحویل تامینشدهٔ تاییدنشده دارد؛ تا تایید نشود،
+        # قفل «دریافت قبل از درخواست جدید» اجازهٔ افزودن قلم نمیدهد.
+        PurchaseItem.objects.filter(pk=self.item_locked.pk).update(
+            received_confirmed_at=timezone.now(),
+            received_confirmed_by=self.requester)
         c = self.login_as(self.requester)
         r = c.post(self.url(self.req), {
             'item_id': [str(self.item_a.id), str(self.item_b.id), ''],

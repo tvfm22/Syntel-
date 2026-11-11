@@ -236,9 +236,9 @@ class WarehousePurchaseDraftTests(TestCase):
             request=recent_approved, product=self.product, name='قلم تازه ۲', quantity=3, unit='kg')
 
         resp = self.client.get(reverse('warehouse_purchase_draft', args=['testcafe']))
-        self.assertContains(resp, f'درخواست #{recent_awaiting.id}')
-        self.assertContains(resp, f'درخواست #{recent_approved.id}')
-        self.assertNotContains(resp, f'درخواست #{old_awaiting.id}')  # قدیمی‌تر از یک هفته — نمایش داده نشد
+        self.assertContains(resp, f'درخواست {recent_awaiting.request_number}')
+        self.assertContains(resp, f'درخواست {recent_approved.request_number}')
+        self.assertNotContains(resp, f'درخواست {old_awaiting.request_number}')  # قدیمی‌تر از یک هفته — نمایش داده نشد
 
     def test_ceo_approval_sends_request_to_purchase_order_queue(self):
         """تایید مدیرعامل: درخواست خریدِ انبار در فهرست «ثبت سفارش خرید» واحد خرید ظاهر می‌شود"""

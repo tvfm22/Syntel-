@@ -2,7 +2,7 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}ویرایش درخواست #{{ purchase_request.id }}{% endblock %}
+{% block title %}ویرایش درخواست {{ purchase_request.request_number }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -179,7 +179,7 @@
                title="بازگشت به درخواست‌های من">
                 <i class="fas fa-arrow-right"></i>
             </a>
-            <h1 class="page-title"><i class="fas fa-pen-to-square"></i> ویرایش درخواست #{{ purchase_request.id }}</h1>
+            <h1 class="page-title"><i class="fas fa-pen-to-square"></i> ویرایش درخواست {{ purchase_request.request_number }}</h1>
         </div>
     </div>
 
@@ -200,6 +200,8 @@
         تا وقتی مسئول انبار برای اقلامِ این درخواست وضعیتی ثبت نکرده، می‌توانید آن را ویرایش کنید؛ پس از تعیین وضعیت، درخواست قفل می‌شود.
     </div>
 
+    {% include 'partials/receipt_gate_banner.html' %}
+
     <form method="post" id="editRequestForm">
         {% csrf_token %}
 
@@ -207,7 +209,7 @@
         <div class="items-card">
             <div class="items-head">
                 <div class="items-title"><i class="fas fa-layer-group"></i> اقلام درخواست</div>
-                <button type="button" class="add-row-btn" onclick="addRow()">
+                <button type="button" class="add-row-btn" onclick="addRow()" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>
                     <i class="fas fa-plus"></i> افزودن قلم
                 </button>
             </div>

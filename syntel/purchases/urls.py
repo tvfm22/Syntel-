@@ -106,6 +106,7 @@ cafe_urlpatterns = [
     path('units/<int:unit_id>/delete/', cv(views.unit_delete), name='unit_delete'),
     # Category Management URLs
     path('categories/', cv(views.category_list), name='category_list'),
+    path('categories/create/', cv(views.category_create), name='category_create'),
     path('categories/<int:category_id>/update/', cv(views.category_update), name='category_update'),
     path('categories/<int:category_id>/delete/', cv(views.category_delete), name='category_delete'),
     # Payment Type Management URLs
@@ -216,10 +217,28 @@ cafe_urlpatterns = [
     path('payment-analytics/', cv(views.payment_analytics), name='payment_analytics'),
     path('inventory-reports/', cv(views.inventory_reports), name='inventory_reports'),
     path('reports/consumption/', cv(views.consumption_report), name='consumption_report'),
+    path('reports/consumption/product/<int:product_id>/history/',
+         cv(views.consumption_product_history_api), name='consumption_product_history_api'),
 
     # بهای تمام شده (کالاهای مصرفی منو بر اساس فروش)
-    path('cogs/', cv(views_cogs.cogs_dashboard), name='cogs_dashboard'),
+    # سه زیرصفحه ماژول: لیست منو ← قیمت‌گذاری اقلام ← محاسبه مصرف
+    path('cogs/', cv(views_cogs.cogs_menu_list), name='cogs_menu_list'),
+    path('cogs/items/', cv(views_cogs.cogs_manage_items), name='cogs_manage_items'),
+    path('cogs/consumption/', cv(views_cogs.cogs_consumption_calc), name='cogs_consumption_calc'),
+    # نام قدیمی «cogs_dashboard» → همان صفحهٔ محاسبهٔ مصرف (لینک‌های قدیمی نمی‌شکنند)
+    path('cogs/report/', cv(views_cogs.cogs_consumption_calc), name='cogs_dashboard'),
     path('cogs/recipe/<int:item_id>/', cv(views_cogs.cogs_recipe_api), name='cogs_recipe_api'),
+    path('cogs/item/<int:item_id>/cost-history/',
+         cv(views_cogs.cogs_item_cost_history), name='cogs_item_cost_history'),
+    path('cogs/section/save/', cv(views_cogs.cogs_section_save), name='cogs_section_save'),
+    path('cogs/item/price/', cv(views_cogs.cogs_item_price_update), name='cogs_item_price_update'),
+    # صفحهٔ ۲ — اندپوینت‌های JSON: پیش‌نمایش قیمت، تعریف ماده اولیه، ورود قیمت، ساخت آیتم
+    path('cogs/price/preview/', cv(views_cogs.cogs_price_preview), name='cogs_price_preview'),
+    path('cogs/price/entry/', cv(views_cogs.cogs_price_entry), name='cogs_price_entry'),
+    path('cogs/raw-material/create/', cv(views_cogs.cogs_raw_material_create),
+         name='cogs_raw_material_create'),
+    path('cogs/menu-item/create/', cv(views_cogs.cogs_menu_item_create),
+         name='cogs_menu_item_create'),
     path('cogs/item/add/', cv(views_cogs.cogs_item_add), name='cogs_item_add'),
     path('cogs/menu-item/add/', cv(views_cogs.cogs_menu_item_add), name='cogs_menu_item_add'),
     # Advanced Analytics URLs

@@ -1,71 +1,89 @@
-{% load static %}
-{% load custom_filters %}
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لیست خرید - تامین از انبار</title>
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet" type="text/css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Vazir, sans-serif; }
-        body { background: #f3f4f6; min-height: 100vh; padding: 16px; padding-bottom: 120px; }
-        .header { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center; gap: 12px; }
-        .back-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #374151; font-size: 18px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
-        .info-box { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #1e40af; }
-        .item-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border: 2px solid transparent; }
-        .item-card.selected { border-color: #10b981; }
-        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .item-name { font-size: 15px; font-weight: 600; color: #1f2937; }
-        .item-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
-        .item-qty { font-size: 13px; font-weight: 600; color: #374151; }
-        .form-label { display: block; font-size: 13px; color: #374151; margin-bottom: 6px; font-weight: 500; }
-        .form-input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: Vazir, sans-serif; }
-        .form-input:focus { outline: none; border-color: #10b981; }
-        .stock-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-top: 10px; }
-        .stock-row { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
-        .stock-row:last-child { margin-bottom: 0; }
-        .brand-name { font-size: 13px; font-weight: 700; color: #6b21a8; }
-        .stock-wh { font-size: 11px; color: #6b7280; margin-right: 8px; }
-        .stock-avail { font-size: 12px; color: #374151; margin-top: 4px; }
-        .stock-avail strong { color: #10b981; }
-        .stock-conv { font-size: 11px; color: #a78bfa; margin-top: 2px; }
-        .stock-qty-line { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-        .stock-qty-line input { flex: 1; }
-        .stock-max { font-size: 11px; color: #6b7280; white-space: nowrap; }
-        .warning { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-top: 6px; display: none; }
-        .no-stock { color: #9ca3af; font-size: 13px; padding: 6px; }
-        .item-checkbox { display: flex; align-items: center; gap: 8px; }
-        .item-checkbox input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
-        .select-label { font-size: 13px; color: #374151; }
-        .submit-area { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; box-shadow: 0 -2px 8px rgba(0,0,0,.1); }
-        .submit-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: Vazir, sans-serif; cursor: pointer; }
-        .alert-msg { border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 14px; }
-        .alert-success { background: #d1fae5; color: #065f46; }
-        .alert-error { background: #fee2e2; color: #991b1b; }
-        .empty-state { text-align: center; padding: 4rem 1rem; color: #6b7280; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="back-btn">←</a>
-        <div style="flex:1">
-            <h1 style="font-size:18px; color:#1f2937;">🛒 لیست خرید - تامین از انبار</h1>
-            <p style="font-size:13px; color:#6b7280;">اقلامی که می‌توانند از انبار تامین شوند</p>
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}لیست خرید — تامین از انبار - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .plss-wrap { max-width: 960px; margin: 0 auto; }
+    .plss-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
+
+    .info-box {
+        background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-lg);
+        padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: #1E40AF;
+        display: flex; align-items: center; gap: 0.5rem; line-height: 1.7;
+    }
+
+    .item-card {
+        background: var(--bg-card); border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
+        margin-bottom: 0.85rem; box-shadow: var(--shadow-xs); border: 1.5px solid var(--border-light);
+        transition: border-color 0.15s;
+    }
+    .item-card.selected { border-color: #10B981; }
+    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .item-name { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
+    .item-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .item-qty {
+        font-size: 0.82rem; font-weight: 800; color: #4F46E5;
+        background: #EEF2FF; padding: 0.2rem 0.65rem; border-radius: 999px;
+    }
+
+    .form-label { display: block; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; }
+    .form-input {
+        width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid var(--border-default);
+        border-radius: 8px; font-size: 0.85rem; font-family: 'Vazir', sans-serif;
+    }
+    .form-input:focus { outline: none; border-color: #10B981; }
+
+    .stock-box { background: var(--bg-subtle); border: 1px solid var(--border-default); border-radius: 10px; padding: 0.85rem; margin-top: 0.75rem; }
+    .stock-row { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 10px; padding: 0.75rem; margin-bottom: 8px; }
+    .stock-row:last-child { margin-bottom: 0; }
+    .brand-name { font-size: 0.82rem; font-weight: 700; color: #6B21A8; }
+    .stock-wh { font-size: 0.72rem; color: var(--text-muted); margin-right: 8px; }
+    .stock-avail { font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px; }
+    .stock-avail strong { color: #059669; }
+    .stock-conv { font-size: 0.72rem; color: #7C3AED; margin-top: 2px; }
+    .stock-qty-line { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+    .stock-qty-line input { flex: 1; }
+    .stock-max { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+    .warning { background: #FEF3C7; color: #92400E; border-radius: 6px; padding: 6px 10px; font-size: 0.76rem; margin-top: 6px; display: none; font-weight: 600; }
+    .no-stock { color: var(--text-muted); font-size: 0.82rem; padding: 6px; }
+    .item-checkbox { display: flex; align-items: center; gap: 8px; }
+    .item-checkbox input[type=checkbox] { width: 17px; height: 17px; cursor: pointer; accent-color: #10B981; }
+    .select-label { font-size: 0.84rem; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+
+    .submit-bar {
+        display: flex; justify-content: flex-end; background: var(--bg-card);
+        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
+        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="plss-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon green"><i class="fas fa-boxes-packing"></i></div>
+            <div class="ph-title">
+                <h1>لیست خرید — تامین از انبار</h1>
+                <div class="page-sub">اقلامی که می‌توانند از موجودی فعلی انبار تامین شوند</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
         </div>
     </div>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div class="alert-msg {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
-        {{ message }}
-    </div>
-    {% endfor %}
-    {% endif %}
-
     <div class="info-box">
-        💡 با تیک زدن هر قلم، برندهایی که از آن محصول در انبار موجود است نمایش داده می‌شود.
-        می‌توانید از یک یا چند برند مقدار تامین کنید. اگر محصولی در انبار موجود نبود، آن قلم برای خرید باقی می‌ماند.
+        <i class="fas fa-circle-info"></i>
+        <span>با تیک زدن هر قلم، برندهایی که از آن محصول در انبار موجود است نمایش داده می‌شود. می‌توانید از یک یا چند برند مقدار تامین کنید.</span>
     </div>
 
     {% if pending_items %}
@@ -95,17 +113,17 @@
             <div class="stock-box" id="stock-box-{{ item.id }}" style="display:none">
                 {% with stocks=item_stock_options|get_item:item.id %}
                 {% if stocks %}
-                <label class="form-label">📦 موجودی‌های این محصول در انبار:</label>
+                <label class="form-label"><i class="fas fa-box"></i> موجودی‌های این محصول در انبار:</label>
                 {% for si in stocks %}
                 <div class="stock-row">
                     <div>
                         {% if si.product_brand %}
-                        <span class="brand-name">🏷️ {{ si.product_brand.brand_name }}</span>
+                        <span class="brand-name"><i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}</span>
                         {% else %}
-                        <span class="brand-name" style="color:#64748b;">📦 بدون برند</span>
+                        <span class="brand-name" style="color:var(--text-secondary);"><i class="fas fa-box"></i> بدون برند</span>
                         {% endif %}
                         {% if si.warehouse %}
-                        <span class="stock-wh">🏬 {{ si.warehouse.name }}</span>
+                        <span class="stock-wh"><i class="fas fa-warehouse"></i> {{ si.warehouse.name }}</span>
                         {% endif %}
                     </div>
                     <div class="stock-avail">
@@ -135,7 +153,7 @@
                             {% endif %}
                         </span>
                     </div>
-                    <div class="warning" id="warn-{{ item.id }}-{{ si.id }}">⚠️ مقدار بیشتر از موجودی است!</div>
+                    <div class="warning" id="warn-{{ item.id }}-{{ si.id }}"><i class="fas fa-triangle-exclamation"></i> مقدار بیشتر از موجودی است!</div>
                 </div>
                 {% endfor %}
                 {% else %}
@@ -146,59 +164,63 @@
         </div>
         {% endfor %}
 
-        <div class="submit-area">
-            <button type="submit" class="submit-btn" onclick="prepareSubmit()">✅ تایید تامین از انبار</button>
+        <div class="submit-bar">
+            <button type="submit" class="btn btn-success" onclick="return prepareSubmit()">
+                <i class="fas fa-check"></i> تایید تامین از انبار
+            </button>
         </div>
     </form>
     {% else %}
-    <div class="empty-state">
-        <div style="font-size:3rem; margin-bottom:1rem;">⚡</div>
-        <p>هیچ قلم در انتظار خریدی وجود ندارد</p>
+    <div class="table-card">
+        <div class="empty-state">
+            <i class="fas fa-check-circle" style="color:var(--accent-green);"></i>
+            <p>هیچ قلم در انتظار خریدی وجود ندارد</p>
+        </div>
     </div>
     {% endif %}
+</div>
 
-    <script>
-        function toggleCard(itemId, checked) {
-            const box = document.getElementById('stock-box-' + itemId);
-            const card = document.getElementById('card-' + itemId);
-            const actionInput = document.getElementById('action-' + itemId);
-            box.style.display = checked ? 'block' : 'none';
-            card.classList.toggle('selected', checked);
-            actionInput.value = checked ? 'from_stock' : '';
-        }
+<script>
+    function toggleCard(itemId, checked) {
+        const box = document.getElementById('stock-box-' + itemId);
+        const card = document.getElementById('card-' + itemId);
+        const actionInput = document.getElementById('action-' + itemId);
+        box.style.display = checked ? 'block' : 'none';
+        card.classList.toggle('selected', checked);
+        actionInput.value = checked ? 'from_stock' : '';
+    }
 
-        function checkRowQty(input) {
-            const warn = document.getElementById(input.dataset.warn);
-            const entered = parseFloat(input.value) || 0;
-            const baseNeeded = entered * parseFloat(input.dataset.rate);
-            warn.style.display = (baseNeeded > parseFloat(input.dataset.max)) ? 'block' : 'none';
-        }
+    function checkRowQty(input) {
+        const warn = document.getElementById(input.dataset.warn);
+        const entered = parseFloat(input.value) || 0;
+        const baseNeeded = entered * parseFloat(input.dataset.rate);
+        warn.style.display = (baseNeeded > parseFloat(input.dataset.max)) ? 'block' : 'none';
+    }
 
-        function prepareSubmit() {
-            const checked = document.querySelectorAll('input[name="item_ids"]:checked');
-            let valid = true;
-            checked.forEach(cb => {
-                const id = cb.value;
-                const qtyInputs = document.querySelectorAll('input[name="stock_qty_' + id + '"]');
-                const name = document.querySelector('#card-' + id + ' .item-name').textContent;
-                let hasAny = false;
-                qtyInputs.forEach(inp => {
-                    const v = parseFloat(inp.value);
-                    if (!isNaN(v) && v > 0) {
-                        hasAny = true;
-                        if (v * parseFloat(inp.dataset.rate) > parseFloat(inp.dataset.max)) {
-                            alert('⚠️ مقدار وارد شده برای «' + name + '» بیشتر از موجودی انبار است!');
-                            valid = false;
-                        }
+    function prepareSubmit() {
+        const checked = document.querySelectorAll('input[name="item_ids"]:checked');
+        let valid = true;
+        checked.forEach(cb => {
+            const id = cb.value;
+            const qtyInputs = document.querySelectorAll('input[name="stock_qty_' + id + '"]');
+            const name = document.querySelector('#card-' + id + ' .item-name').textContent;
+            let hasAny = false;
+            qtyInputs.forEach(inp => {
+                const v = parseFloat(inp.value);
+                if (!isNaN(v) && v > 0) {
+                    hasAny = true;
+                    if (v * parseFloat(inp.dataset.rate) > parseFloat(inp.dataset.max)) {
+                        alert('مقدار وارد شده برای «' + name + '» بیشتر از موجودی انبار است!');
+                        valid = false;
                     }
-                });
-                if (!hasAny) {
-                    alert('لطفاً حداقل برای یک برند از «' + name + '» مقدار تامین وارد کنید');
-                    valid = false;
                 }
             });
-            return valid;
-        }
-    </script>
-</body>
-</html>
+            if (!hasAny) {
+                alert('لطفاً حداقل برای یک برند از «' + name + '» مقدار تامین وارد کنید');
+                valid = false;
+            }
+        });
+        return valid;
+    }
+</script>
+{% endblock %}

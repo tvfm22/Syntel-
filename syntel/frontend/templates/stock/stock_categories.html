@@ -1,316 +1,186 @@
-﻿<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>موجودی انبار - دسته‌بندی - Kuker</title>
-{% load static %}
-    <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --primary: #8B5CF6;
-            --primary-dark: #7C3AED;
-            --success: #22C55E;
-            --danger: #EF4444;
-            --dark: #0F172A;
-            --muted: #94A3B8;
-            --text-secondary: #64748B;
-            --light: #FAFAFA;
-            --border: #E2E8F0;
-            --border-light: #F1F5F9;
-            --shadow-sm: 0 1px 2px 0 rgba(15,23,42,0.04);
-            --shadow-md: 0 4px 24px rgba(15,23,42,0.05);
-            --r: 12px;
-        }
-
-        body {
-            font-family: 'Vazir', -apple-system, sans-serif;
-            background: #EDEDF2;
-            min-height: 100vh;
-            color: var(--dark);
-        }
-
-        /* TOPBAR */
-        .topbar {
-            background: #fff;
-            border-bottom: 1px solid var(--border);
-            padding: .75rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: .75rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-sm);
-        }
-        .back-btn {
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-            padding: .45rem .9rem;
-            background: var(--light);
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            text-decoration: none;
-            color: var(--dark);
-            font-size: .82rem;
-            font-weight: 600;
-            transition: all .2s;
-        }
-        .back-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .topbar-title {
-            flex: 1;
-            font-size: 1rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-        }
-        .topbar-title i { color: var(--primary); }
-        @media (max-width: 640px) { .ph-icon { width: 38px; height: 38px; font-size: 0.95rem; } .page-header h1 { font-size: 1.02rem; } }
-
-        /* BUTTONS */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: .4rem;
-            padding: .45rem 1rem;
-            border: none;
-            border-radius: 999px;
-            font-family: 'Vazir', sans-serif;
-            font-size: .82rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all .2s;
-        }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-success { background: var(--success); color: #fff; }
-        .btn-success:hover { background: #16A34A; }
-        .btn-outline { background: #fff; color: var(--text-secondary); border: 1.5px solid var(--border); }
-        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-
-        /* MAIN */
-        .main { padding: 1.75rem 1.5rem; max-width: 1300px; margin: 0 auto; }
-
-        /* PAGE HEADER */
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-        }
-        .ph-main { display: flex; align-items: center; gap: .8rem; min-width: 0; }
-        .ph-icon {
-            width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-            background: rgba(139,92,246,0.1); color: var(--primary);
-            display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-        }
-        .page-header h1 {
-            font-size: 1.15rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: .5rem;
-            line-height: 1.4;
-        }
-        .page-header p { font-size: .76rem; color: var(--muted); margin-top: .1rem; line-height: 1.7; font-weight: 500; }
-
-        /* SEARCH BAR */
-        .search-wrap {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            padding: .75rem 1.1rem;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow-sm);
-            display: flex;
-            align-items: center;
-            gap: .65rem;
-        }
-        .search-wrap i { color: var(--muted); font-size: .9rem; flex-shrink: 0; }
-        .search-wrap input {
-            flex: 1;
-            border: none;
-            outline: none;
-            font-family: 'Vazir', sans-serif;
-            font-size: .9rem;
-            color: var(--dark);
-            background: transparent;
-        }
-        .search-wrap input::placeholder { color: var(--muted); }
-        .search-count { font-size: .75rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
-
-        /* GRID */
-        .cat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: .875rem;
-        }
-
-        /* MINIMAL CARD */
-        .cat-card {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1rem 1.1rem;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            align-items: center;
-            gap: .8rem;
-            transition: all .18s;
-            box-shadow: var(--shadow-sm);
-            position: relative;
-        }
-        .cat-card::after {
-            content: '';
-            position: absolute;
-            inset-inline-start: 0; top: 12px; bottom: 12px;
-            width: 3px;
-            background: var(--primary);
-            border-radius: 0 3px 3px 0;
-            opacity: 0;
-            transition: opacity .18s;
-        }
-        .cat-card.no-cat::after { background: var(--muted); }
-        .cat-card:hover { border-color: var(--primary); }
-        .cat-card:hover::after { opacity: 1; }
-        .cat-card.no-cat:hover { border-color: var(--muted); }
-        .cat-card.hidden { display: none !important; }
-
-        .cat-icon-wrap {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: rgba(139,92,246,0.08);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: .95rem;
-            color: var(--primary);
-        }
-        .cat-card.no-cat .cat-icon-wrap { background: var(--light); border: 1px solid var(--border-light); color: var(--muted); }
-
-        .cat-info { flex: 1; min-width: 0; }
-        .cat-name {
-            font-size: .875rem;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .cat-meta {
-            font-size: .72rem;
-            color: var(--muted);
-            margin-top: .18rem;
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-        }
-        .cat-count {
-            font-size: .82rem;
-            font-weight: 800;
-            color: var(--primary);
-            background: rgba(139,92,246,0.08);
-            padding: .18rem .6rem;
-            border-radius: 999px;
-            flex-shrink: 0;
-        }
-        .cat-card.no-cat .cat-count { color: var(--muted); background: var(--light); border: 1px solid var(--border-light); }
-
-        .low-dot {
-            display: inline-flex;
-            align-items: center;
-            gap: .2rem;
-            font-size: .68rem;
-            font-weight: 700;
-            color: #b91c1c;
-            background: #fee2e2;
-            padding: .12rem .45rem;
-            border-radius: 999px;
-        }
-
-        /* NO RESULTS */
-        #noResults {
-            display: none;
-            text-align: center;
-            padding: 2.5rem;
-            color: var(--muted);
-            font-size: .9rem;
-        }
-        #noResults i { display: block; font-size: 2rem; margin-bottom: .5rem; color: var(--border-strong, #CBD5E1); }
-
-        /* EMPTY */
-        .empty {
-            text-align: center;
-            padding: 3.5rem 2rem;
-            background: #fff;
-            border-radius: 20px;
-            border: 1px dashed var(--border-strong, #CBD5E1);
-            box-shadow: var(--shadow-sm);
-        }
-        .empty i { font-size: 2.5rem; color: var(--border-strong, #CBD5E1); display: block; margin-bottom: .75rem; }
-        .empty h3 { font-size: 1rem; color: var(--dark); margin-bottom: .4rem; }
-        .empty p { font-size: .82rem; color: var(--muted); margin-bottom: 1.25rem; }
-
-        @media (max-width: 640px) {
-            .main { padding: 1rem; }
-            .cat-grid { grid-template-columns: 1fr; }
-            .page-header { flex-direction: column; align-items: flex-start; }
-        }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
 {% load static %}
 
-<!-- Topbar -->
-<div class="topbar">
-    <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="back-btn">
-        <i class="fas fa-arrow-right"></i> بازگشت
-    </a>
-    <div class="topbar-title">
-        <i class="fas fa-tags"></i>
-        موجودی انبار — دسته‌بندی
-    </div>
-</div>
+{% block title %}موجودی انبار — دسته‌بندی - Kuker{% endblock %}
 
-<!-- Main -->
-<div class="main">
+{% block extra_css %}
+<style>
+    .sc-wrap { max-width: 1300px; margin: 0 auto; }
+    .sc-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
 
-    <!-- Page header -->
+    /* SEARCH BAR */
+    .search-wrap {
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        padding: 0.65rem 1rem;
+        margin-bottom: 1.25rem;
+        box-shadow: var(--shadow-xs);
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+    }
+    .search-wrap:focus-within {
+        border-color: var(--accent-indigo);
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
+    }
+    .search-wrap i { color: var(--text-muted); font-size: 0.9rem; flex-shrink: 0; }
+    .search-wrap input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        background: transparent;
+    }
+    .search-wrap input::placeholder { color: var(--text-muted); }
+    .search-count {
+        font-size: 0.75rem; color: var(--text-secondary);
+        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        padding: 2px 10px; border-radius: 999px;
+        font-weight: 700; white-space: nowrap;
+    }
+
+    /* GRID */
+    .cat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 0.875rem;
+    }
+
+    /* CARD */
+    .cat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl);
+        padding: 1rem 1.15rem;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        transition: all 0.18s ease;
+        box-shadow: var(--shadow-xs);
+        position: relative;
+    }
+    .cat-card:hover {
+        border-color: #C7D2FE;
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+    .cat-card.hidden { display: none !important; }
+
+    .cat-icon-wrap {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: rgba(139,92,246,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 0.95rem;
+        color: var(--accent-indigo);
+    }
+    .cat-card.no-cat .cat-icon-wrap {
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-light);
+        color: var(--text-muted);
+    }
+
+    .cat-info { flex: 1; min-width: 0; }
+    .cat-name {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cat-meta {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        margin-top: 0.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .cat-count {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: var(--accent-indigo);
+        background: rgba(139,92,246,0.08);
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        flex-shrink: 0;
+    }
+    .cat-card.no-cat .cat-count {
+        color: var(--text-secondary);
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-light);
+    }
+
+    .low-dot {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #DC2626;
+        background: #FEF2F2;
+        border: 1px solid #FECACA;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+    }
+
+    #noResults {
+        display: none;
+        text-align: center;
+        padding: 2.5rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        background: var(--bg-card);
+        border-radius: var(--radius-xl);
+        border: 1px dashed var(--border-strong);
+    }
+    #noResults i { display: block; font-size: 2rem; margin-bottom: 0.5rem; color: var(--border-strong); }
+
+    @media (max-width: 640px) {
+        .cat-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sc-wrap">
     <div class="page-header">
         <div class="ph-main">
             <div class="ph-icon"><i class="fas fa-tags"></i></div>
-            <div>
-                <h1>دسته‌بندی‌های انبار</h1>
-                <p>برای مشاهده موجودی هر دسته روی آن کلیک کنید</p>
+            <div class="ph-title">
+                <h1>موجودی انبار به تفکیک دسته‌بندی</h1>
+                <div class="page-sub">برای مشاهده اقلام و موجودی هر دسته روی کارت آن کلیک کنید</div>
             </div>
         </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-outline">
-                <i class="fas fa-list"></i> لیست کامل
+        <div class="header-actions">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> لیست کامل موجودی
             </a>
-            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn btn-outline">
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn btn-primary">
                 <i class="fas fa-cog"></i> مدیریت دسته‌بندی‌ها
             </a>
         </div>
     </div>
 
     {% if category_data or no_cat_count > 0 %}
-
-    <!-- Search -->
     <div class="search-wrap">
         <i class="fas fa-search"></i>
         <input type="text" id="searchInput"
-               placeholder="جستجو در دسته‌بندی‌ها..."
+               placeholder="جستجو در دسته‌بندی‌های انبار (فشردن کلید /)..."
                oninput="filterCards(this.value)"
                autocomplete="off">
         <span class="search-count" id="searchCount">
@@ -318,9 +188,7 @@
         </span>
     </div>
 
-    <!-- Grid -->
     <div class="cat-grid" id="catGrid">
-
         {% for cat in category_data %}
         <a href="{% url 'stock_category_items' cafe_code=cafe_code category_id=cat.id %}"
            class="cat-card"
@@ -332,7 +200,7 @@
                 <div class="cat-name">{{ cat.name }}</div>
                 <div class="cat-meta">
                     {% if cat.low_stock > 0 %}
-                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i>{{ cat.low_stock }} کم موجود</span>
+                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i> {{ cat.low_stock }} کم‌موجود</span>
                     {% else %}
                     <span>{{ cat.total_items }} قلم کالا</span>
                     {% endif %}
@@ -353,7 +221,7 @@
                 <div class="cat-name">بدون دسته‌بندی</div>
                 <div class="cat-meta">
                     {% if no_cat_low > 0 %}
-                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i>{{ no_cat_low }} کم موجود</span>
+                    <span class="low-dot"><i class="fas fa-exclamation-circle"></i> {{ no_cat_low }} کم‌موجود</span>
                     {% else %}
                     <span>{{ no_cat_count }} قلم کالا</span>
                     {% endif %}
@@ -362,25 +230,24 @@
             <div class="cat-count">{{ no_cat_count }}</div>
         </a>
         {% endif %}
-
     </div>
 
     <div id="noResults">
         <i class="fas fa-search"></i>
         نتیجه‌ای پیدا نشد
     </div>
-
     {% else %}
-    <div class="empty">
-        <i class="fas fa-boxes"></i>
-        <h3>هیچ موجودی در انبار ثبت نشده</h3>
-        <p>برای ثبت اولین موجودی، یک حواله ورود ثبت کنید</p>
-        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> ثبت حواله ورود
-        </a>
+    <div class="table-card">
+        <div class="empty-state">
+            <i class="fas fa-boxes"></i>
+            <h3>هیچ موجودی در انبار ثبت نشده</h3>
+            <p>برای ثبت اولین موجودی، یک حواله ورود ثبت کنید</p>
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin-top: 12px;">
+                <i class="fas fa-plus"></i> ثبت حواله ورود
+            </a>
+        </div>
     </div>
     {% endif %}
-
 </div>
 
 <script>
@@ -402,7 +269,6 @@ function filterCards(query) {
     if (noRes)   noRes.style.display  = visible === 0 ? 'block' : 'none';
 }
 
-// Shortcut: press "/" to focus search
 document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
         e.preventDefault();
@@ -410,7 +276,4 @@ document.addEventListener('keydown', e => {
     }
 });
 </script>
-
-</body>
-</html>
-
+{% endblock %}
