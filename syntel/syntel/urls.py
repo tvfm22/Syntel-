@@ -20,8 +20,6 @@ from django.http import JsonResponse, HttpResponse
 from django.db import connection
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-import redis
-import os
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 @csrf_exempt
@@ -68,8 +66,13 @@ urlpatterns = [
 ]
 
 # Serving uploaded media (receipt photos for debt payments, etc.) from MEDIA_ROOT.
-# Works in dev and production (gunicorn behind Liara) alike.
+# Works in dev and production (gunicorn behind Liara) alike regardless of DEBUG setting.
 from django.conf import settings
-from django.conf.urls.static import static
+from django.urls import re_path
+from django.views.static import serve
 
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if settings.MEDIA_URL and settings.MEDIA_ROOT:
+    media_prefix = settings.MEDIA_URL.lstrip('/')
+    urlpatterns += [
+        re_path(rf'^{media_prefix}(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

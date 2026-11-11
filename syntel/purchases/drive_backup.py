@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
@@ -26,12 +27,17 @@ UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
 DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
 
+def _data_path():
+    path = getattr(settings, 'DATA_PATH', None)
+    return Path(path) if path else Path('/app/data')
+
+
 def token_path():
-    return settings.DATA_PATH / TOKEN_FILENAME
+    return _data_path() / TOKEN_FILENAME
 
 
 def _config_path():
-    return settings.DATA_PATH / CONFIG_FILENAME
+    return _data_path() / CONFIG_FILENAME
 
 
 def load_config() -> dict:
@@ -44,15 +50,15 @@ def load_config() -> dict:
         except (json.JSONDecodeError, OSError):
             file_config = {}
     return {
-        'client_id': file_config.get('client_id') or settings.GOOGLE_DRIVE_CLIENT_ID or '',
-        'client_secret': file_config.get('client_secret') or settings.GOOGLE_DRIVE_CLIENT_SECRET or '',
-        'folder_id': file_config.get('folder_id') or settings.GOOGLE_DRIVE_FOLDER_ID or '',
+        'client_id': file_config.get('client_id') or getattr(settings, 'GOOGLE_DRIVE_CLIENT_ID', None) or '',
+        'client_secret': file_config.get('client_secret') or getattr(settings, 'GOOGLE_DRIVE_CLIENT_SECRET', None) or '',
+        'folder_id': file_config.get('folder_id') or getattr(settings, 'GOOGLE_DRIVE_FOLDER_ID', None) or '',
     }
 
 
 def save_config(client_id: str, client_secret: str, folder_id: str = '') -> None:
     """Persist runtime config so it takes effect without a restart."""
-    os.makedirs(settings.DATA_PATH, exist_ok=True)
+    os.makedirs(_data_path(), exist_ok=True)
     with open(_config_path(), 'w', encoding='utf-8') as f:
         json.dump({
             'client_id': client_id.strip(),
@@ -87,7 +93,7 @@ def is_configured() -> bool:
 
 
 def auto_state_path():
-    return settings.DATA_PATH / AUTO_STATE_FILENAME
+    return _data_path() / AUTO_STATE_FILENAME
 
 
 def get_auto_state() -> dict:
@@ -103,7 +109,7 @@ def get_auto_state() -> dict:
 def set_auto_state(**kwargs) -> None:
     state = get_auto_state()
     state.update(kwargs)
-    os.makedirs(settings.DATA_PATH, exist_ok=True)
+    os.makedirs(_data_path(), exist_ok=True)
     with open(auto_state_path(), 'w', encoding='utf-8') as f:
         json.dump(state, f)
 
@@ -120,7 +126,7 @@ def is_connected() -> bool:
 
 
 def save_token(data: dict) -> None:
-    os.makedirs(settings.DATA_PATH, exist_ok=True)
+    os.makedirs(_data_path(), exist_ok=True)
     with open(token_path(), 'w', encoding='utf-8') as f:
         json.dump(data, f)
 

@@ -15,10 +15,12 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-from dotenv import load_dotenv
-
 # لود کردن فایل متغیرهای محیطی
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -123,6 +125,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'purchases',
+    'rest_framework',
     'drf_spectacular',
 ]
 

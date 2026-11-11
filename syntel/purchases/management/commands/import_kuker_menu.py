@@ -17,7 +17,9 @@ from django.core.management.base import BaseCommand
 from purchases.models import Cafe
 from purchases.services.menu_cogs import import_menu
 
-DEFAULT_PATH = str(settings.MENU_WORKBOOK_PATH)
+_fallback_root = getattr(settings, 'PROJECT_ROOT', None) or (getattr(settings, 'BASE_DIR', None) and getattr(settings, 'BASE_DIR').parent)
+_fallback_path = (_fallback_root / 'reference' / 'menu' / 'منو کوکر.xlsx') if _fallback_root else ''
+DEFAULT_PATH = str(getattr(settings, 'MENU_WORKBOOK_PATH', None) or _fallback_path or '')
 
 
 class Command(BaseCommand):

@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from purchases.models import Cafe, KukerItem, CogsReport
 from purchases.services.menu_cogs import MenuGraph, compute_cogs
 
-MENU_PATH = str(settings.MENU_WORKBOOK_PATH)
+MENU_PATH = str(getattr(settings, 'MENU_WORKBOOK_PATH', '') or '')
 
 
 def ensure_cafe(code='baba_adam', name='بابا آدم'):

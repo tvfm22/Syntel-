@@ -59,10 +59,12 @@ def add_to_stock_on_store_invoice(sender, instance, created, **kwargs):
     if instance.status != 'approved' or not instance.approved_at:
         return
 
-    try:
-        store_requester = Requester.objects.get(name='store')
-    except Requester.DoesNotExist:
-        return  # اگر درخواست‌کننده انبار وجود نداشت، کاری نکن
+    store_req_qs = Requester.objects.filter(name='store')
+    if instance.cafe:
+        store_req_qs = store_req_qs.filter(cafe=instance.cafe)
+    store_requester = store_req_qs.first()
+    if not store_requester:
+        return
 
     # اقلامی که درخواست‌کنندهٔ «انبار» دارند
     store_items = [

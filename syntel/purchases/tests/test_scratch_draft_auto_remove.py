@@ -112,3 +112,54 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
 
         self.assertEqual(PurchaseDraftItem.objects.filter(source_item=self.item).count(), 0)
         self.assertFalse(PurchaseDraft.objects.filter(id=draft.id).exists())
+
+    def test_reopen_without_reason_succeeds_for_referred_item(self):
+        """بازگشایی قلم ارجاع به خرید بدون وارد کردن دلیل موفقیت‌آمیز است و کالا به لیست برمی‌گردد"""
+        draft = self._refer_and_open()
+        resp = self.client.post(
+            self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id),
+                            'reason': ''})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(PurchaseDraftItem.objects.filter(source_item=self.item).count(), 0)
+        self.assertFalse(PurchaseDraft.objects.filter(id=draft.id).exists())
+        assignment = self.item.officer_assignments.get()
+        self.assertEqual(assignment.status, 'reopened')
+
+    def test_delete_draft_item_reopens_source_item(self):
+        """حذف قلم ارجاعی از پیش‌نویس خرید، آن را به لیست انبار بازمی‌گرداند بدون نیاز به دلیل"""
+        draft = self._refer_and_open()
+        d_item = draft.items.first()
+        draft_url = reverse('warehouse_purchase_draft', kwargs={'cafe_code': self.cafe.code})
+        resp = self.client.post(draft_url, {'action': 'delete_item', 'item_id': str(d_item.id)})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(PurchaseDraftItem.objects.count(), 0)
+        self.assertFalse(PurchaseDraft.objects.filter(id=draft.id).exists())
+        assignment = self.item.officer_assignments.get()
+        self.assertEqual(assignment.status, 'reopened')
+
+    def test_warehouse_dashboard_tag_text_no_ceo_mention_for_referral(self):
+        """در جدول کالاهای پردازش‌شده، برای ارجاع به خرید نباید 'برگشت به مدیرعامل' نوشته شود"""
+        self._refer_and_open()
+        resp = self.client.get(self.dash_url, follow=True)
+        content = resp.content.decode('utf-8')
+        self.assertIn('ارجاع به خرید', content)
+        self.assertNotIn('ارجاع به خرید — برگشت به مدیرعامل', content)
+
+    def test_reopen_not_in_stock_without_reason_succeeds(self):
+        """بازگشت از عدم تامین به لیست انبار بدون نیاز به درج دلیل موفقیت‌آمیز است"""
+        self.client.post(self.dash_url, {'action': 'not_in_stock', 'item_id': str(self.item.id)})
+        resp = self.client.post(self.dash_url, {'action': 'reopen', 'item_id': str(self.item.id), 'reason': ''})
+        self.assertEqual(resp.status_code, 302)
+        assignment = self.item.officer_assignments.order_by('-id').first()
+        self.assertEqual(assignment.status, 'reopened')
+
+    def test_warehouse_dashboard_tag_text_no_ceo_mention_for_not_in_stock(self):
+        """برای دکمه و برچسب عدم تامین نباید عبارت 'برگشت به مدیرعامل' نمایش داده شود"""
+        self.client.post(self.dash_url, {'action': 'not_in_stock', 'item_id': str(self.item.id)})
+        resp = self.client.get(self.dash_url, follow=True)
+        content = resp.content.decode('utf-8')
+        self.assertIn('عدم تامین', content)
+        self.assertNotIn('عدم تامین — برگشت به مدیرعامل', content)
+        self.assertNotIn('عدم موجودی — برگشت به مدیرعامل', content)
+
+

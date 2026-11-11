@@ -501,7 +501,7 @@
                                 <button type="submit" form="supply-form-{{ v.item.id }}" name="action" value="to_purchase" class="link-action link-blue"
                                         onclick="return confirm('این کالا به صفحه «درخواست خرید» منتقل شود؟ آنجا می‌توانید لیست را تکمیل و ارسال کنید.');" title="انتقال به پیش‌نویس خرید"><i class="fas fa-cart-shopping"></i> ارجاع به خرید</button>
                                 <button type="submit" form="supply-form-{{ v.item.id }}" name="action" value="not_in_stock" class="link-action link-red"
-                                        onclick="return confirm('عدم امکان تأمین ثبت شود؟ این کالا به لیست مدیرعامل برمی‌گردد.');" title="برگشت به مدیرعامل"><i class="fas fa-xmark"></i> عدم تأمین</button>
+                                        onclick="return confirm('عدم امکان تأمین ثبت شود؟');" title="عدم تأمین"><i class="fas fa-xmark"></i> عدم تأمین</button>
                             </div>
                         </td>
                     </tr>
@@ -510,7 +510,7 @@
                     {% for d in card.done %}
                     <tr class="done-row{% if d.locked %} done-row-locked{% endif %}"
                         {% if d.locked %}title="این کالا در لیست خرید ثبت و برای مدیرعامل ارسال شده است"
-                        {% else %}onclick="reopenItem({{ d.item.id }})" title="کلیک برای ثبت مجدد"{% endif %}>
+                        {% else %}onclick="reopenItem({{ d.item.id }}, '{{ d.assignment.status }}')" title="{% if d.assignment.status == 'returned' or d.assignment.status == 'not_in_stock' %}کلیک برای بازگشت به لیست{% else %}کلیک برای ثبت مجدد{% endif %}"{% endif %}>
                         <td>
                             <div class="item-prod-wrap">
                                 <div class="item-avatar"><i class="fas fa-check" style="font-size:0.72rem;"></i></div>
@@ -535,10 +535,10 @@
                             {% else %}
                             <span class="status-tag status-{{ d.assignment.status }}">
                                 {% if d.assignment.status == 'fulfilled' %}<i class="fas fa-check-circle"></i> تأمین شده
-                                {% elif d.assignment.status == 'not_in_stock' %}<i class="fas fa-times-circle"></i> عدم تامین — برگشت به مدیرعامل
-                                {% else %}<i class="fas fa-share"></i> ارجاع به خرید — برگشت به مدیرعامل{% endif %}
+                                {% elif d.assignment.status == 'not_in_stock' %}<i class="fas fa-times-circle"></i> عدم تامین
+                                {% else %}<i class="fas fa-share"></i> ارجاع به خرید{% endif %}
                             </span>
-                            <div class="reopen-hint"><i class="fas fa-rotate-left"></i> کلیک برای ثبت مجدد</div>
+                            <div class="reopen-hint"><i class="fas fa-rotate-left"></i> {% if d.assignment.status == 'returned' or d.assignment.status == 'not_in_stock' %}کلیک برای بازگشت به لیست{% else %}کلیک برای ثبت مجدد{% endif %}</div>
                             <form method="post" id="reopen-form-{{ d.item.id }}" style="display:none;" data-lock-submit>
                                 {% csrf_token %}
                                 <input type="hidden" name="item_id" value="{{ d.item.id }}">
@@ -568,16 +568,22 @@
 {% block extra_js %}
 <script>
 /* ── بازگشایی کالای ثبت‌شده برای ثبت مجدد (موجودی قبلی برگردانده می‌شود) ── */
-function reopenItem(id) {
-    if (!confirm('این کالا بازگشایی شود؟ موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.')) return;
-    var reason = prompt('دلیل بازگشایی را وارد کنید (الزامی):');
-    if (reason === null) return;
-    reason = reason.trim();
-    if (!reason) {
-        alert('برای بازگشایی، وارد کردن دلیل الزامی است.');
+function reopenItem(id, status) {
+    var rInput = document.getElementById('reopen-reason-' + id);
+    if (status === 'returned') {
+        if (!confirm('این کالا از لیست خرید حذف و به لیست فعال بازگردانده شود؟')) return;
+        if (rInput) rInput.value = 'حذف از لیست خرید و بازگشت به لیست انبار';
+        document.getElementById('reopen-form-' + id).submit();
         return;
     }
-    document.getElementById('reopen-reason-' + id).value = reason;
+    if (status === 'not_in_stock') {
+        if (!confirm('این کالا از حالت عدم تأمین خارج و به لیست فعال بازگردانده شود؟')) return;
+        if (rInput) rInput.value = 'بازگشت از عدم تأمین به لیست انبار';
+        document.getElementById('reopen-form-' + id).submit();
+        return;
+    }
+    if (!confirm('این کالا بازگشایی شود؟ موجودی قبلی به انبار برمی‌گردد و کالا دوباره در لیست فعال قرار می‌گیرد.')) return;
+    if (rInput) rInput.value = 'بازگشایی تأمین توسط مسئول انبار';
     document.getElementById('reopen-form-' + id).submit();
 }
 

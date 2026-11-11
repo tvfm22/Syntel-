@@ -182,21 +182,20 @@ def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
         )
 
 
-def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason):
+def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason=''):
     """بازگشایی تخصیص‌های تامین‌شدهٔ مسئول انبار با ردیف ممیزی جبرانی.
 
     - هیچ StockTransaction حذف نمی‌شود؛ برای هر خروج اصلی یک ورود جبرانی با
       reference_type='officer_assignment_reopen' ساخته می‌شود.
     - تخصیص‌ها حذف نمی‌شوند؛ وضعیتشان به 'reopened' می‌رود تا سابقه بماند.
-    - دلیل اجباری است و در description تراکنش جبرانی ثبت می‌شود.
+    - برای اقلام دارای خروج انبار، دلیل اجباری است و در description تراکنش جبرانی ثبت می‌شود.
+      برای اقلام بدون خروج انبار (مانند ارجاع به خرید)، دلیل اختیاری است.
     - اگر دریافت توسط درخواست‌دهنده تأیید شده باشد، بازگشایی ممنوع است.
     - فقط خروج‌های همین قلم و همین کافه برمی‌گردند؛ هر خروج حداکثر یک‌بار.
 
     باید داخل transaction.atomic() صدا زده شود (خودش هم atomic تودرتو دارد).
     """
     reason = (reason or '').strip()
-    if not reason:
-        raise ReopenNotAllowedError('دلیل بازگشایی الزامی است.')
     if cafe is None:
         raise StockScopeError('کافهٔ فعال یافت نشد؛ بازگشایی مجاز نیست.')
 
@@ -225,22 +224,38 @@ def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason):
             raise ReopenNotAllowedError(
                 'این کالا قبلاً بازگشایی شده یا برای بازگشایی آماده نیست.')
 
-        already_reopened = StockTransaction.objects.filter(
-            reference_type='officer_assignment_reopen',
-            reference_id=locked_item.id,
-            stock_item__warehouse__cafe=cafe,
-        ).exists()
-        if already_reopened:
-            raise ReopenNotAllowedError('این کالا قبلاً بازگشایی شده است.')
-
-        original_txs = list(
-            StockTransaction.objects.select_for_update().filter(
-                reference_type='officer_assignment',
+        has_fulfilled = any(a.status == 'fulfilled' for a in assignments)
+        original_txs = []
+        if has_fulfilled:
+            all_out_txs = list(
+                StockTransaction.objects.select_for_update().filter(
+                    reference_type='officer_assignment',
+                    reference_id=locked_item.id,
+                    transaction_type='out',
+                    stock_item__warehouse__cafe=cafe,
+                ).select_related('stock_item').order_by('id')
+            )
+            reopened_txs_count = StockTransaction.objects.filter(
+                reference_type='officer_assignment_reopen',
                 reference_id=locked_item.id,
-                transaction_type='out',
                 stock_item__warehouse__cafe=cafe,
-            ).select_related('stock_item')
-        )
+            ).count()
+
+            uncompensated_txs = all_out_txs[reopened_txs_count:]
+            if not uncompensated_txs and all_out_txs:
+                raise ReopenNotAllowedError('این کالا قبلاً بازگشایی شده است.')
+            original_txs = uncompensated_txs
+
+        if original_txs and not reason:
+            raise ReopenNotAllowedError('دلیل بازگشایی الزامی است.')
+
+        if not reason:
+            if any(a.status == 'returned' for a in assignments):
+                reason = 'حذف از لیست خرید و بازگشت به لیست انبار'
+            elif any(a.status == 'not_in_stock' for a in assignments):
+                reason = 'بازگشت از عدم تأمین به لیست انبار'
+            else:
+                reason = 'بازگشایی و بازگشت به لیست فعال انبار'
 
         for tx in original_txs:
             apply_stock_delta(

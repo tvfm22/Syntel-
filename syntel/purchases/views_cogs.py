@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlencode
 
 import jdatetime
+from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Q
@@ -26,6 +27,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+
+# Fallback-safe references for COGS menu workbook
+MENU_WORKBOOK_PATH = getattr(settings, 'MENU_WORKBOOK_PATH', None)
+PROJECT_ROOT = getattr(settings, 'PROJECT_ROOT', None)
 
 from .models import (
     Category, CogsReport, CogsReportLine, Department, KukerItem, KukerRecipeLine,

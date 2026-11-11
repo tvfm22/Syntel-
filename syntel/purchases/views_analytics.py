@@ -134,11 +134,14 @@ def department_expenses_api(request) -> Response:
 
 		change_percent = calculate_change_percent(current_expense, previous_expense)
 
-		requested_items_count = PurchaseItem.objects.filter(
+		req_items_qs = PurchaseItem.objects.filter(
 			request__user__role=requester.name,
 			request__created_at__gte=current_start,
 			request__created_at__lte=current_end,
-		).aggregate(total=Coalesce(Sum('quantity'), Value(0)))['total'] or 0
+		)
+		if cafe:
+			req_items_qs = req_items_qs.filter(request__cafe=cafe)
+		requested_items_count = req_items_qs.aggregate(total=Coalesce(Sum('quantity'), Value(0)))['total'] or 0
 
 		purchased_items_count = current_items_qs.aggregate(
 			total=Coalesce(Sum('quantity'), Value(0), output_field=DecimalField())
@@ -177,7 +180,10 @@ def category_expenses_api(request, department_id):
 	cafe = get_cafe_from_request(request)
 
 	try:
-		requester = Requester.objects.get(id=department_id)
+		requester_qs = Requester.objects.filter(id=department_id)
+		if cafe:
+			requester_qs = requester_qs.filter(cafe=cafe)
+		requester = requester_qs.get()
 	except Requester.DoesNotExist:
 		return Response({'error': 'Department not found'}, status=404)
 
@@ -216,12 +222,15 @@ def category_expenses_api(request, department_id):
 			total=Coalesce(Sum('quantity'), Value(0), output_field=DecimalField())
 		)['total'] or Decimal('0.00')
 
-		request_count = PurchaseItem.objects.filter(
+		pi_qs = PurchaseItem.objects.filter(
 			request__user__role=requester.name,
 			request__created_at__gte=current_start,
 			request__created_at__lte=current_end,
 			product__category=category,
-		).aggregate(total=Coalesce(Sum('quantity'), Value(0)))['total'] or 0
+		)
+		if cafe:
+			pi_qs = pi_qs.filter(request__cafe=cafe)
+		request_count = pi_qs.aggregate(total=Coalesce(Sum('quantity'), Value(0)))['total'] or 0
 
 		if current_expense > 0 or previous_expense > 0 or request_count > 0 or item_count > 0:
 			bubbles_data.append({
@@ -258,8 +267,13 @@ def product_list_api(request, department_id, category_id):
 	cafe = get_cafe_from_request(request)
 
 	try:
-		requester = Requester.objects.get(id=department_id)
-		category = Category.objects.get(id=category_id)
+		req_qs = Requester.objects.filter(id=department_id)
+		cat_qs = Category.objects.filter(id=category_id)
+		if cafe:
+			req_qs = req_qs.filter(cafe=cafe)
+			cat_qs = cat_qs.filter(cafe=cafe)
+		requester = req_qs.get()
+		category = cat_qs.get()
 	except (Requester.DoesNotExist, Category.DoesNotExist):
 		return Response({'error': 'Department or Category not found'}, status=404)
 
@@ -470,15 +484,19 @@ def api_department_categories(request, dept_id):
 	API برگرداندن هزینه‌های دسته‌بندی‌های اصلی (بدون والد) برای یک بخش خاص
 	با پشتیبانی از Cache
 	"""
+	cafe = get_cafe_from_request(request)
 	try:
-		department = Requester.objects.get(id=dept_id)
+		dept_qs = Requester.objects.filter(id=dept_id)
+		if cafe:
+			dept_qs = dept_qs.filter(cafe=cafe)
+		department = dept_qs.get()
 	except Requester.DoesNotExist:
 		return Response({'error': 'بخش یافت نشد'}, status=404)
 	
 	period = request.GET.get('period', 'weekly')
 	
 	# بررسی cache
-	cache_key = get_cache_key('dept_main_categories', dept_id=dept_id, period=period)
+	cache_key = get_cache_key('dept_main_categories', dept_id=dept_id, period=period, cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
@@ -487,7 +505,6 @@ def api_department_categories(request, dept_id):
 	start, end, prev_start, prev_end = get_date_range(period)
 	
 	# فقط دسته‌بندی‌های اصلی (بدون والد)
-	cafe = get_cafe_from_request(request)
 	main_categories = Category.objects.filter(parent__isnull=True, is_active=True)
 	if cafe:
 		main_categories = main_categories.filter(cafe=cafe)
@@ -537,8 +554,12 @@ def api_category_subcategories(request, cat_id):
 	"""
 	API برگرداندن زیردسته‌های یک دسته‌بندی اصلی
 	"""
+	cafe = get_cafe_from_request(request)
 	try:
-		parent_category = Category.objects.get(id=cat_id)
+		cat_qs = Category.objects.filter(id=cat_id)
+		if cafe:
+			cat_qs = cat_qs.filter(cafe=cafe)
+		parent_category = cat_qs.get()
 	except Category.DoesNotExist:
 		return Response({'error': 'دسته‌بندی یافت نشد'}, status=404)
 	
@@ -546,14 +567,13 @@ def api_category_subcategories(request, cat_id):
 	department_id = request.GET.get('department_id')
 	
 	# بررسی cache
-	cache_key = get_cache_key('cat_subcategories', cat_id=cat_id, period=period, dept_id=department_id or 'all')
+	cache_key = get_cache_key('cat_subcategories', cat_id=cat_id, period=period, dept_id=department_id or 'all', cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
-	cafe = get_cafe_from_request(request)
 	
 	# گرفتن زیردسته‌ها
 	subcategories = parent_category.subcategories.filter(is_active=True).order_by('name')
@@ -562,7 +582,10 @@ def api_category_subcategories(request, cat_id):
 	department = None
 	if department_id:
 		try:
-			department = Requester.objects.get(id=department_id)
+			dept_qs = Requester.objects.filter(id=department_id)
+			if cafe:
+				dept_qs = dept_qs.filter(cafe=cafe)
+			department = dept_qs.get()
 		except Requester.DoesNotExist:
 			pass
 	
@@ -637,8 +660,12 @@ def api_category_products(request, cat_id):
 	API برگرداندن لیست محصولات یک دسته‌بندی
 	با پشتیبانی از Cache
 	"""
+	cafe = get_cafe_from_request(request)
 	try:
-		category = Category.objects.get(id=cat_id)
+		cat_qs = Category.objects.filter(id=cat_id)
+		if cafe:
+			cat_qs = cat_qs.filter(cafe=cafe)
+		category = cat_qs.get()
 	except Category.DoesNotExist:
 		return Response({'error': 'دسته‌بندی یافت نشد'}, status=404)
 	
@@ -646,10 +673,12 @@ def api_category_products(request, cat_id):
 	department_id = request.GET.get('department_id')
 	
 	# تولید cache_key
-	cache_key = get_cache_key('cat_products', cat_id=cat_id, period=period, dept_id=department_id or 'all')
+	cache_key = get_cache_key('cat_products', cat_id=cat_id, period=period, dept_id=department_id or 'all', cafe_id=cafe.id if cafe else None)
+	cached_data = cache.get(cache_key)
+	if cached_data is not None:
+		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
-	cafe = get_cafe_from_request(request)
 	
 	# فیلتر بر اساس دسته‌بندی
 	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(
@@ -659,7 +688,10 @@ def api_category_products(request, cat_id):
 	# اگر بخش مشخص شده، فیلتر کن
 	if department_id:
 		try:
-			department = Requester.objects.get(id=department_id)
+			dept_qs = Requester.objects.filter(id=department_id)
+			if cafe:
+				dept_qs = dept_qs.filter(cafe=cafe)
+			department = dept_qs.get()
 			items_qs = items_qs.filter(
 				Q(requester=department) | 
 				Q(invoice__purchase_order__request__user__role=department.name)
@@ -767,20 +799,20 @@ def api_expense_trend(request):
 	- category_id: فیلتر بر اساس دسته‌بندی (اختیاری)
 	- granularity: دقت زمانی (daily, weekly, monthly)
 	"""
+	cafe = get_cafe_from_request(request)
 	period = request.GET.get('period', 'monthly')
 	department_id = request.GET.get('department_id')
 	category_id = request.GET.get('category_id')
 	granularity = request.GET.get('granularity', 'daily')
 	
 	# تولید cache_key
-	cache_key = get_cache_key('expense_trend', period=period, dept=department_id or 'all', cat=category_id or 'all', granularity=granularity)
+	cache_key = get_cache_key('expense_trend', period=period, dept=department_id or 'all', cat=category_id or 'all', granularity=granularity, cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
-	cafe = get_cafe_from_request(request)
 	
 	# فیلتر پایه
 	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe)
@@ -789,7 +821,10 @@ def api_expense_trend(request):
 	department = None
 	if department_id:
 		try:
-			department = Requester.objects.get(id=department_id)
+			dept_qs = Requester.objects.filter(id=department_id)
+			if cafe:
+				dept_qs = dept_qs.filter(cafe=cafe)
+			department = dept_qs.get()
 			items_qs = items_qs.filter(
 				Q(requester=department) | 
 				Q(invoice__purchase_order__request__user__role=department.name)
@@ -801,7 +836,10 @@ def api_expense_trend(request):
 	category = None
 	if category_id:
 		try:
-			category = Category.objects.get(id=category_id)
+			cat_qs = Category.objects.filter(id=category_id)
+			if cafe:
+				cat_qs = cat_qs.filter(cafe=cafe)
+			category = cat_qs.get()
 			items_qs = items_qs.filter(product__category=category)
 		except Category.DoesNotExist:
 			pass
@@ -886,22 +924,25 @@ def api_department_trend(request, dept_id):
 	"""
 	API برگرداندن روند هزینه‌های یک بخش خاص
 	"""
+	cafe = get_cafe_from_request(request)
 	try:
-		department = Requester.objects.get(id=dept_id)
+		dept_qs = Requester.objects.filter(id=dept_id)
+		if cafe:
+			dept_qs = dept_qs.filter(cafe=cafe)
+		department = dept_qs.get()
 	except Requester.DoesNotExist:
 		return Response({'error': 'بخش یافت نشد'}, status=404)
 	
 	period = request.GET.get('period', 'monthly')
 	granularity = request.GET.get('granularity', 'daily')
 	
-	cache_key = get_cache_key('dept_trend', dept_id=dept_id, period=period, granularity=granularity)
+	cache_key = get_cache_key('dept_trend', dept_id=dept_id, period=period, granularity=granularity, cafe_id=cafe.id if cafe else None)
 	cached_data = cache.get(cache_key)
 	
 	if cached_data is not None:
 		return Response(cached_data)
 	
 	start, end, prev_start, prev_end = get_date_range(period)
-	cafe = get_cafe_from_request(request)
 	
 	items_qs = _invoice_items_for_period(start=start, end=end, cafe=cafe).filter(
 		Q(requester=department) | 
@@ -1059,8 +1100,12 @@ def api_invoice_subcategories(request):
 	if not category_id:
 		return Response({'error': 'category_id is required'}, status=400)
 	
+	cafe = get_cafe_from_request(request)
 	try:
-		parent_category = Category.objects.get(id=category_id, is_active=True)
+		cat_qs = Category.objects.filter(id=category_id, is_active=True)
+		if cafe:
+			cat_qs = cat_qs.filter(cafe=cafe)
+		parent_category = cat_qs.get()
 	except Category.DoesNotExist:
 		return Response({'error': 'Category not found'}, status=404)
 	
@@ -1098,11 +1143,14 @@ def api_invoice_suppliers(request):
 	if not subcategory_id:
 		return Response({'error': 'subcategory_id is required'}, status=400)
 	
+	cafe = get_cafe_from_request(request)
 	# فیلتر اولیه: فاکتورهایی که محصولاتشان در این زیردسته هستند
 	invoice_items_qs = InvoiceItem.objects.filter(
 		product__category_id=subcategory_id,
 		invoice__status__in=INVOICE_STATUS_INCLUDED
 	)
+	if cafe:
+		invoice_items_qs = invoice_items_qs.filter(invoice__cafe=cafe)
 	
 	# اعمال فیلتر تاریخ
 	if start_date:
@@ -1147,11 +1195,14 @@ def api_product_purchase_history(request):
 	if not product_id:
 		return Response({'error': 'product_id is required'}, status=400)
 	
+	cafe = get_cafe_from_request(request)
 	# فیلتر اولیه
 	history_qs = InvoiceItem.objects.filter(
 		product_id=product_id,
 		invoice__status__in=INVOICE_STATUS_INCLUDED
 	).select_related('invoice', 'invoice__supplier')
+	if cafe:
+		history_qs = history_qs.filter(invoice__cafe=cafe)
 	
 	# فیلتر براساس فروشنده (اگر ارسال شده باشد)
 	if supplier_id:

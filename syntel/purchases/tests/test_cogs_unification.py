@@ -287,11 +287,12 @@ class CafeIsolationTest(CogsBaseTest):
     def test_importing_one_cafe_keeps_the_other_menu(self):
         from django.conf import settings
         from purchases.services.menu_cogs import import_menu
-        import_menu(str(settings.MENU_WORKBOOK_PATH), cafe=self.cafe)
+        menu_path = str(getattr(settings, 'MENU_WORKBOOK_PATH', '') or '')
+        import_menu(menu_path, cafe=self.cafe)
         other_count = KukerItem.objects.filter(cafe=self.cafe).count()
         self.assertGreater(other_count, 0)
 
-        import_menu(str(settings.MENU_WORKBOOK_PATH), cafe=self.other_cafe)
+        import_menu(menu_path, cafe=self.other_cafe)
         self.assertEqual(KukerItem.objects.filter(cafe=self.cafe).count(), other_count)
         self.assertGreater(KukerItem.objects.filter(cafe=self.other_cafe).count(), 0)
 
@@ -407,13 +408,14 @@ class CostHistoryTest(CogsBaseTest):
         """ایمپورت مجدد نباید شناسه اقلام و تاریخچه بهایشان را از بین ببرد."""
         from django.conf import settings
         from purchases.services.menu_cogs import import_menu
-        import_menu(str(settings.MENU_WORKBOOK_PATH), cafe=self.cafe)
+        menu_path = str(getattr(settings, 'MENU_WORKBOOK_PATH', '') or '')
+        import_menu(menu_path, cafe=self.cafe)
         item = KukerItem.objects.get(cafe=self.cafe, name='چلوکباب کوبیده', kind='dish')
         item_pk = item.pk
         history_before = KukerItemCostHistory.objects.filter(item_id=item_pk).count()
         self.assertGreater(history_before, 0)
 
-        import_menu(str(settings.MENU_WORKBOOK_PATH), cafe=self.cafe)
+        import_menu(menu_path, cafe=self.cafe)
 
         self.assertTrue(KukerItem.objects.filter(pk=item_pk).exists())
         self.assertEqual(

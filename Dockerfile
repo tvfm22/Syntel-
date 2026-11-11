@@ -35,11 +35,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application
 COPY . .
 
-# Keep the shipped database (tracked in git) as a seed: a Liara disk mounted
+# Keep any shipped database as seed data if present: a Liara disk mounted
 # at /app/data shadows this path at runtime, so the entrypoint copies the
-# seed to DATA_PATH on first boot instead.
-RUN mkdir -p /app/seed/db \
+# seed to DATA_PATH on first boot instead. Resilient to clean git builds where data/db is gitignored.
+RUN mkdir -p /app/seed/db /app/seed_data \
     && { [ -f /app/data/db/db.sqlite3 ] && cp /app/data/db/db.sqlite3 /app/seed/db/ || true; } \
+    && { [ -d /app/data ] && cp -r /app/data/* /app/seed_data/ 2>/dev/null || true; } \
     && rm -rf /app/data/logs /app/data/cache /app/data/tmp /app/data/sessions /app/data/backups /app/data/uploads \
     && find . -type d -name __pycache__ -exec rm -rf {} + \
     && chmod +x /app/entrypoint.sh

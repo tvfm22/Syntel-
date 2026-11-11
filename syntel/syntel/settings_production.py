@@ -11,15 +11,26 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 import os
 from pathlib import Path
 
+# لود کردن فایل متغیرهای محیطی
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+
+# Source workbooks are reference inputs, not writable runtime data.
+MENU_WORKBOOK_PATH = Path(os.environ.get('MENU_WORKBOOK_PATH', str(PROJECT_ROOT / 'reference' / 'menu' / 'منو کوکر.xlsx')))
 
 # =============================================================================
 # DATA PATH — all writable data (database, uploads, logs, cache, temp files,
 # sessions, backups) is centralized under a single base directory.
 # Default: /app/data — override per environment via the DATA_PATH env var.
 # =============================================================================
-DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data'))
+DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data')).resolve()
 
 DATA_SUBDIRS = {
     'logs': DATA_PATH / 'logs',
@@ -37,6 +48,12 @@ CACHE_DIR = DATA_SUBDIRS['cache']
 TMP_DIR = DATA_SUBDIRS['tmp']
 SESSIONS_DIR = DATA_SUBDIRS['sessions']
 BACKUPS_DIR = DATA_SUBDIRS['backups']
+
+# Google Drive backup (پشتیبان‌گیری گوگل‌درایو) — configured via env vars
+GOOGLE_DRIVE_CLIENT_ID = os.environ.get('GOOGLE_DRIVE_CLIENT_ID', '')
+GOOGLE_DRIVE_CLIENT_SECRET = os.environ.get('GOOGLE_DRIVE_CLIENT_SECRET', '')
+# Optional: upload backups into a specific Drive folder instead of root
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
 
 
 def ensure_data_dirs():
@@ -115,9 +132,25 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'purchases',
+    'rest_framework',
+    'drf_spectacular',
 ]
 
 AUTH_USER_MODEL = 'purchases.User'
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Syntel API',
+    'DESCRIPTION': 'API documentation for Syntel Finance Management System',
+    'VERSION': 'v1',
+    'CONTACT': {'email': 'support@syntel.com'},
+    'LICENSE': {'name': 'MIT License'},
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

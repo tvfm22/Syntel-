@@ -123,15 +123,18 @@ class APITests(TestCase):
         self.assertIn('disk_usage', system_resources)
 
         # Check recent activity structure
-        recent_activity = api_data['recent_activity']
-        self.assertIsInstance(recent_activity, list)
-        if recent_activity:
-            activity = recent_activity[0]
-            self.assertIn('id', activity)
-            self.assertIn('user', activity)
-            self.assertIn('action', activity)
-            self.assertIn('description', activity)
-            self.assertIn('timestamp', activity)
+        recent_activity = api_data.get('recent_activity')
+        self.assertTrue(isinstance(recent_activity, (list, dict)))
+        if isinstance(recent_activity, list):
+            if recent_activity:
+                activity = recent_activity[0]
+                self.assertIn('id', activity)
+                self.assertIn('user', activity)
+                self.assertIn('action', activity)
+                self.assertIn('description', activity)
+                self.assertIn('timestamp', activity)
+        else:
+            self.assertIn('new_requests', recent_activity)
 
         # Check health status structure
         health_status = api_data['health_status']

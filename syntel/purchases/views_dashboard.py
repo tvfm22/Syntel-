@@ -149,7 +149,11 @@ class PriceHistoryAPIView(generics.ListAPIView):
     serializer_class = PriceHistorySerializer
 
     def get_queryset(self):
+        cafe = get_cafe_from_request(self.request)
         product_id = self.kwargs['pk']
+        if cafe:
+            if not Product.objects.filter(pk=product_id, cafe=cafe).exists():
+                return PriceHistory.objects.none()
         return PriceHistory.objects.filter(product_id=product_id).order_by('date')
 
 from django.core.cache import cache
@@ -189,7 +193,14 @@ class DashboardStatsAPIView(APIView):
             products = products.filter(category_id=category_id)
         
         if supplier_id:
-            products = products.filter(supplier_name=Supplier.objects.get(id=supplier_id).name)
+            supplier = Supplier.objects.filter(id=supplier_id)
+            if cafe:
+                supplier = supplier.filter(cafe=cafe)
+            supplier_obj = supplier.first()
+            if supplier_obj:
+                products = products.filter(supplier_name=supplier_obj.name)
+            else:
+                products = products.none()
         
         if days:
             start_date = timezone.now() - timedelta(days=int(days))
@@ -270,18 +281,23 @@ def price_dashboard_view(request):
 def price_test_view(request):
     """صفحه تست برای بررسی داده‌های قیمت"""
     from django.db.models import Subquery, OuterRef
+    cafe = get_cafe_from_request(request)
     
     latest_history = PriceHistory.objects.filter(
         product=OuterRef('pk')
     ).order_by('-date')
     
-    products = Product.objects.annotate(
+    products_qs = Product.objects.all()
+    if cafe:
+        products_qs = products_qs.filter(cafe=cafe)
+    
+    products = products_qs.annotate(
         current_price=Subquery(latest_history.values('price')[:1]),
         percent_change=Subquery(latest_history.values('percent_change')[:1]),
         last_update=Subquery(latest_history.values('date')[:1])
     ).filter(current_price__isnull=False).order_by('-percent_change')[:10]
     
-    all_products = Product.objects.annotate(
+    all_products = products_qs.annotate(
         percent_change=Subquery(latest_history.values('percent_change')[:1])
     ).filter(percent_change__isnull=False)
     
