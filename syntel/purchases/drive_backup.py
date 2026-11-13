@@ -29,7 +29,10 @@ DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
 def _data_path():
     path = getattr(settings, 'DATA_PATH', None)
-    return Path(path) if path else Path('/app/data')
+    if path:
+        return Path(path)
+    project_root = getattr(settings, 'PROJECT_ROOT', Path(settings.BASE_DIR).parent)
+    return Path(project_root) / 'data'
 
 
 def token_path():

@@ -28,9 +28,9 @@ MENU_WORKBOOK_PATH = Path(os.environ.get('MENU_WORKBOOK_PATH', str(PROJECT_ROOT 
 # =============================================================================
 # DATA PATH — all writable data (database, uploads, logs, cache, temp files,
 # sessions, backups) is centralized under a single base directory.
-# Default: /app/data — override per environment via the DATA_PATH env var.
+# Default: <PROJECT_ROOT>/data — override per environment via the DATA_PATH env var.
 # =============================================================================
-DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data')).resolve()
+DATA_PATH = Path(os.environ.get('DATA_PATH') or (PROJECT_ROOT / 'data')).resolve()
 
 DATA_SUBDIRS = {
     'logs': DATA_PATH / 'logs',

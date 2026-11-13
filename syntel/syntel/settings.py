@@ -13,8 +13,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-from django.core.exceptions import ImproperlyConfigured
-
 # لود کردن فایل متغیرهای محیطی
 try:
     from dotenv import load_dotenv
@@ -28,14 +26,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 
 # Source workbooks are reference inputs, not writable runtime data.
-MENU_WORKBOOK_PATH = PROJECT_ROOT / 'reference' / 'menu' / 'منو کوکر.xlsx'
+MENU_WORKBOOK_PATH = Path(
+    os.environ.get('MENU_WORKBOOK_PATH', str(PROJECT_ROOT / 'reference' / 'menu' / 'منو کوکر.xlsx'))
+)
 
 # =============================================================================
 # DATA PATH — all writable data (database, uploads, logs, cache, temp files,
 # sessions, backups) is centralized under a single base directory.
-# Default: /app/data — override per environment via the DATA_PATH env var.
+# Default: <PROJECT_ROOT>/data — override per environment via the DATA_PATH env var.
 # =============================================================================
-DATA_PATH = Path(os.environ.get('DATA_PATH', '/app/data'))
+DATA_PATH = Path(os.environ.get('DATA_PATH') or (PROJECT_ROOT / 'data')).resolve()
 
 DATA_SUBDIRS = {
     'logs': DATA_PATH / 'logs',
@@ -74,17 +74,24 @@ ensure_data_dirs()
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
-if not SECRET_KEY:
-    raise ImproperlyConfigured(
-        'DJANGO_SECRET_KEY environment variable is required. '
-        'Set it to a long, random value (e.g., output of `python -c "import secrets; print(secrets.token_urlsafe(50))"`).'
-    )
+SECRET_KEY = (
+    os.environ.get('DJANGO_SECRET_KEY')
+    or os.environ.get('SECRET_KEY')
+    or 'django-insecure-syntel-default-change-in-production'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = (
+    [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
+    if os.environ.get('DJANGO_ALLOWED_HOSTS')
+    else ['localhost', '127.0.0.1', '*']
+)
+
+# Reverse proxy SSL support (for PaaS deployments behind HTTPS reverse proxies)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 # CSRF Settings
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
@@ -99,10 +106,17 @@ CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1',
     'https://localhost:8000',
     'https://127.0.0.1:8000',
+    'https://*.liara.run',
+    'http://*.liara.run',
     'https://bug-free-space-parakeet-p5w6gxpvxvp356p-8000.app.github.dev',
     'https://studious-fiesta-9g5xqpjp6j9c7vjg-8000.app.github.dev',
     'https://*.app.github.dev',
 ]
+_extra_csrf_origins = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
+if _extra_csrf_origins:
+    CSRF_TRUSTED_ORIGINS.extend(_extra_csrf_origins)
 
 # Session Settings
 SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
@@ -147,6 +161,7 @@ SPECTACULAR_SETTINGS = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -181,12 +196,25 @@ WSGI_APPLICATION = 'syntel.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DB_DIR / 'db.sqlite3',
+if os.environ.get('DB_HOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'syntel_prod'),
+            'USER': os.environ.get('DB_USER', 'syntel_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 60,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.environ.get('DATABASE_PATH', str(DB_DIR / 'db.sqlite3')),
+        }
+    }
 
 
 # Password validation
@@ -225,11 +253,11 @@ LOGOUT_REDIRECT_URL = '/login/'
 # NOTE: STATIC_ROOT stays at BASE_DIR/staticfiles — it is build output of
 # `collectstatic`, not runtime writable data.
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
 
 # Media files — stored under DATA_PATH/uploads
 MEDIA_URL = '/media/'
-MEDIA_ROOT = str(UPLOADS_DIR)
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(UPLOADS_DIR))
 
 # Large uploads spill to DATA_PATH/tmp while streaming
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
