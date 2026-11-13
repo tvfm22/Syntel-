@@ -39,6 +39,15 @@ def build_data_subdirs(data_path: Path) -> dict[str, Path]:
     return {name: data_path / name for name in SUBDIR_NAMES}
 
 
+def _find_seed_root(project_root: Path, data_path: Path) -> Path | None:
+    """Locate a non-shadowed seed directory containing db/db.sqlite3."""
+    for candidate in (project_root / 'seed_data', project_root / 'data'):
+        resolved = candidate.resolve()
+        if resolved != data_path and (resolved / 'db' / 'db.sqlite3').exists():
+            return resolved
+    return None
+
+
 def ensure_data_dirs(
     data_subdirs: dict[str, Path],
     project_root: Path | None = None,
@@ -51,14 +60,15 @@ def ensure_data_dirs(
     if project_root is None or data_path is None:
         return
 
-    shipped_data = (project_root / 'data').resolve()
-    if data_path == shipped_data:
+    target_db = data_subdirs['db'] / 'db.sqlite3'
+    if target_db.exists():
         return
 
-    target_db = data_subdirs['db'] / 'db.sqlite3'
-    shipped_db = shipped_data / 'db' / 'db.sqlite3'
-    if not target_db.exists() and shipped_db.exists():
-        shutil.copy2(shipped_db, target_db)
-        shipped_uploads = shipped_data / 'uploads'
-        if shipped_uploads.exists():
-            shutil.copytree(shipped_uploads, data_subdirs['uploads'], dirs_exist_ok=True)
+    seed_root = _find_seed_root(project_root, data_path)
+    if seed_root is None:
+        return
+
+    shutil.copy2(seed_root / 'db' / 'db.sqlite3', target_db)
+    seed_uploads = seed_root / 'uploads'
+    if seed_uploads.exists():
+        shutil.copytree(seed_uploads, data_subdirs['uploads'], dirs_exist_ok=True)
