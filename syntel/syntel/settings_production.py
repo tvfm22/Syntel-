@@ -30,17 +30,14 @@ MENU_WORKBOOK_PATH = Path(os.environ.get('MENU_WORKBOOK_PATH', str(PROJECT_ROOT 
 # sessions, backups) is centralized under a single base directory.
 # Default: <PROJECT_ROOT>/data — override per environment via the DATA_PATH env var.
 # =============================================================================
-DATA_PATH = Path(os.environ.get('DATA_PATH') or (PROJECT_ROOT / 'data')).resolve()
+from syntel.data_paths import (
+    build_data_subdirs,
+    ensure_data_dirs as _ensure_data_dirs,
+    resolve_data_path,
+)
 
-DATA_SUBDIRS = {
-    'logs': DATA_PATH / 'logs',
-    'db': DATA_PATH / 'db',
-    'uploads': DATA_PATH / 'uploads',
-    'cache': DATA_PATH / 'cache',
-    'tmp': DATA_PATH / 'tmp',
-    'sessions': DATA_PATH / 'sessions',
-    'backups': DATA_PATH / 'backups',
-}
+DATA_PATH = resolve_data_path(PROJECT_ROOT)
+DATA_SUBDIRS = build_data_subdirs(DATA_PATH)
 LOGS_DIR = DATA_SUBDIRS['logs']
 DB_DIR = DATA_SUBDIRS['db']
 UPLOADS_DIR = DATA_SUBDIRS['uploads']
@@ -58,8 +55,7 @@ GOOGLE_DRIVE_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
 
 def ensure_data_dirs():
     """Create every writable data directory at startup (idempotent)."""
-    for path in DATA_SUBDIRS.values():
-        path.mkdir(parents=True, exist_ok=True)
+    _ensure_data_dirs(DATA_SUBDIRS, PROJECT_ROOT, DATA_PATH)
 
 
 ensure_data_dirs()
