@@ -86,6 +86,9 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.envi
 CSRF_TRUSTED_ORIGINS = [
     'https://syntel.liara.run',
     'http://syntel.liara.run',
+    'https://*.abrhapaas.com',
+    'http://*.abrhapaas.com',
+    'https://syntel.apps.teh11.abrhapaas.com',
     'http://45.159.150.199',
     'http://localhost',
     'http://127.0.0.1',
