@@ -20,7 +20,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from purchases.models import (
-    Cafe, Department, Product, ProductBrand, StockItem, StockTransaction, Unit,
+    Cafe, Department, Product, StockItem, StockTransaction, Unit,
     Warehouse, WarehouseVoucher, WarehouseVoucherItem,
 )
 from purchases.services.inventory import (
@@ -63,9 +63,6 @@ class _VoucherFactoryMixin:
         self.product_other = Product.objects.create(
             name='Tea', unit=self.unit_other, cafe=self.other_cafe, min_stock=1)
 
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='BrandX', conversion_rate=D('2'))
-
         self.stock_a = StockItem.objects.create(
             product=self.product, warehouse=self.wh_a, quantity=D('10'),
             unit=self.unit)
@@ -87,16 +84,13 @@ class _VoucherFactoryMixin:
             department=department, created_by=self.user, **extra)
 
     def _item(self, voucher, *, product=_UNSET, unit=_UNSET, stock_item=None,
-              brand=None, base='5', trade=None, rate=None):
+              base='5'):
         return WarehouseVoucherItem.objects.create(
             voucher=voucher,
             product=self.product if product is _UNSET else product,
-            product_brand=brand,
             stock_item=stock_item,
             unit=self.unit if unit is _UNSET else unit,
             base_quantity=D(base),
-            trade_quantity=None if trade is None else D(trade),
-            conversion_rate=None if rate is None else D(rate),
             unit_price=D('1000'),
             description='قلم آزمایشی',
         )
@@ -259,37 +253,6 @@ class FinalizeValidationTests(_VoucherFactoryMixin, TestCase):
         with self.assertRaises(VoucherValidationError):
             finalize_voucher(v, finalized_by=self.user)
 
-    def test_conversion_rate_mismatch_rejected(self):
-        """مقدار پایه باید دقیقاً «تجاری × نرخ» باشد — ۵ ≠ ۳×۲"""
-        v = self._voucher('receipt', dest=self.wh_a)
-        self._item(v, stock_item=self.stock_a, base='5', trade='3', rate='2')
-        with self.assertRaises(VoucherValidationError):
-            finalize_voucher(v, finalized_by=self.user)
-        self._assert_no_effect(self.stock_a, '10')
-
-    def test_trade_without_rate_must_equal_base(self):
-        """بدون نرخ تبدیل، مقدار پایه و تجاری باید یکی باشند"""
-        v = self._voucher('receipt', dest=self.wh_a)
-        self._item(v, stock_item=self.stock_a, base='5', trade='3', rate=None)
-        with self.assertRaises(VoucherValidationError):
-            finalize_voucher(v, finalized_by=self.user)
-        self._assert_no_effect(self.stock_a, '10')
-
-    def test_matching_trade_and_rate_accepted(self):
-        """کنترل: ۶ = ۳×۲ پذیرفته می‌شود"""
-        v = self._voucher('receipt', dest=self.wh_a)
-        self._item(v, stock_item=self.stock_a, base='6', trade='3', rate='2')
-        result = finalize_voucher(v, finalized_by=self.user)
-        self.assertTrue(result.applied)
-        self.stock_a.refresh_from_db()
-        self.assertEqual(self.stock_a.quantity, D('16'))
-
-    def test_zero_rate_rejected(self):
-        v = self._voucher('receipt', dest=self.wh_a)
-        self._item(v, stock_item=self.stock_a, base='5', trade='5', rate='0')
-        with self.assertRaises(VoucherValidationError):
-            finalize_voucher(v, finalized_by=self.user)
-
     def test_nonpositive_quantity_rejected_for_routine_type(self):
         v = self._voucher('issue', source=self.wh_a)
         self._item(v, stock_item=self.stock_a, base='0')
@@ -333,14 +296,6 @@ class FinalizeValidationTests(_VoucherFactoryMixin, TestCase):
             name='Liter', symbol='L', cafe=self.cafe)
         v = self._voucher('issue', source=self.wh_a)
         self._item(v, stock_item=self.stock_a, unit=alt_unit)
-        with self.assertRaises(VoucherValidationError):
-            finalize_voucher(v, finalized_by=self.user)
-        self._assert_no_effect(self.stock_a, '10')
-
-    def test_brand_mismatch_with_stock_item_rejected(self):
-        """موجودیِ بدون برند را نمی‌توان با قلمِ برنددار خروج زد"""
-        v = self._voucher('issue', source=self.wh_a)
-        self._item(v, stock_item=self.stock_a, brand=self.brand)
         with self.assertRaises(VoucherValidationError):
             finalize_voucher(v, finalized_by=self.user)
         self._assert_no_effect(self.stock_a, '10')

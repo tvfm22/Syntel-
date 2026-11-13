@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from purchases.models import (
     Cafe, Category, Unit, Product, PurchaseRequest,
-    PurchaseItem, OfficerAssignment, Warehouse, StockItem, ProductBrand,
+    PurchaseItem, OfficerAssignment, Warehouse, StockItem,
 )
 
 User = get_user_model()
@@ -75,18 +75,16 @@ class RequestManagementTests(TestCase):
         # ── داده‌های لیست انبار ──
         self.warehouse = Warehouse.objects.create(
             cafe=self.cafe, code='wh', name='انبار اصلی', is_active=True)
-        self.brand1 = ProductBrand.objects.create(
-            product=self.product, brand_name='دمس', conversion_rate=1)
-        self.brand2 = ProductBrand.objects.create(
-            product=self.product, brand_name='لادن', conversion_rate=1)
+        self.warehouse2 = Warehouse.objects.create(
+            cafe=self.cafe, code='wh2', name='انبار فرعی', is_active=True)
         self.stock1 = StockItem.objects.create(
-            product=self.product, product_brand=self.brand1,
+            product=self.product,
             warehouse=self.warehouse, quantity=10, unit=self.unit)
         self.stock2 = StockItem.objects.create(
-            product=self.product, product_brand=self.brand2,
-            warehouse=self.warehouse, quantity=10, unit=self.unit)
+            product=self.product,
+            warehouse=self.warehouse2, quantity=10, unit=self.unit)
 
-        # قلم انبار: امروز با دو برند تجاری تامین شده (3 + 4 = 7 تحویلی)
+        # قلم انبار: امروز از دو انبار تامین شده (3 + 4 = 7 تحویلی)
         # بدون product تا نام خودِ قلم نمایش داده شود
         self.wh_item = PurchaseItem.objects.create(
             request=self.request, name='WH Product',
@@ -148,9 +146,7 @@ class RequestManagementTests(TestCase):
         response = self.client.get(self._dashboard_url(tab='warehouse', date=self.today.isoformat()))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'WH Product')
-        self.assertContains(response, 'دمس')   # نام تجاری برند اول
-        self.assertContains(response, 'لادن')  # نام تجاری برند دوم
-        self.assertContains(response, '7 kg')  # مجموع تحویلی دو برند (3 + 4)
+        self.assertContains(response, '7 kg')  # مجموع تحویلی دو انبار (3 + 4)
         self.assertContains(response, 'توضیح تست')
         self.assertNotContains(response, 'WH Pending')  # قلم در انتظار نمایش داده نمی‌شود
 

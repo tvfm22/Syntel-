@@ -319,18 +319,7 @@
         .modal-btn-cancel { background: #f9fafb; }
     }
 
-    /* ── brand chip + stock hint ── */
-    .brand-chip {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca;
-        border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 600;
-        margin-top: 6px;
-    }
-    .brand-chip .chip-clear {
-        background: none; border: none; color: #6366f1; cursor: pointer;
-        font-size: 14px; line-height: 1; padding: 0;
-    }
-    .brand-chip .chip-clear:hover { color: #dc2626; }
+    /* ── stock hint ── */
     .entry-stock-hint { margin-top: 8px; font-size: 13px; }
     .entry-stock-hint.ok { color: #047857; }
     .entry-stock-hint.warn { color: #b45309; }
@@ -413,15 +402,6 @@
 
 {% block content %}
 <div class="page-container">
-    <div class="page-header" style="text-align:right;margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-cart-plus"></i></div>
-            <div>
-                <h1 class="ph-title" style="margin:0;">ثبت درخواست کالا</h1>
-                <p class="page-sub">زمان تحویل و اقلام مورد نیاز بخش خود را مشخص کنید</p>
-            </div>
-        </div>
-    </div>
     {% include 'partials/receipt_gate_banner.html' %}
     <form method="post" id="purchaseForm">
         {% csrf_token %}
@@ -463,9 +443,7 @@
                                onfocus="onProductFocus(this)"
                                onkeydown="onAcKeydown(event)">
                         <input type="hidden" id="entryProductId" value="">
-                        <input type="hidden" id="entryBrandId" value="">
                         <div class="autocomplete-dropdown" id="entryAcDrop"></div>
-                        <div id="entryBrandChip" class="brand-chip" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -539,7 +517,6 @@
 <div class="modal-overlay" id="addProductModal">
     <div class="modal-box">
         <h3>➕ افزودن کالای جدید</h3>
-        <p class="modal-hint">کالای جدید در دستهٔ «تحقیق و توسعه» ثبت می‌شود تا مدیریت آن را بررسی و در صورت تایید به دستهٔ اصلی منتقل کند.</p>
         <div class="modal-field">
             <label>نام کالا *</label>
             <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
@@ -601,6 +578,7 @@
     let editingId = null;
     let pendingProductItemId = null;
     let isCheckingStock = false; // جلوگیری از ثبت دوباره هنگام کلیک/اینتر مکرر در طول بررسی موجودی
+    let selectedProductName = ''; // نام کالایی که کاربر از فهرست انتخاب یا جدید ثبت کرده است
 
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
@@ -608,7 +586,6 @@
     const CSRF_TOKEN       = "{{ csrf_token }}";
     // کاربران درخواست‌دهنده نباید هنگام ثبت درخواست، خطا یا پیامی درباره موجودی کالا ببینند
     const IS_REQUESTER = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
-    let entryBrandName = '';  // نام برند انتخاب‌شده در فرم ورود
 
     // ── زمان تحویل: باکس کشویی — ۷ روز آینده فقط یکشنبه تا پنجشنبه (بدون جمعه و شنبه) ──
     let selectedDeliveryDate = '';
@@ -632,7 +609,10 @@
 
     function buildUnitOptions(selected) {
         const units = ['عدد','کیلوگرم','گرم','لیتر','بسته','کارتن','جعبه','شیشه','قوطی','بطری','پاکت','متر','دست','جفت'];
-        return units.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
+        if (selected && !units.includes(selected)) {
+            units.unshift(selected);
+        }
+        return units.map(u => `<option value="${escapeHtml(u)}" ${u === selected ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('');
     }
 
     // Init entry unit select
@@ -686,13 +666,18 @@
         const unit = document.getElementById('entryUnit').value;
         const description = document.getElementById('entryDescription').value.trim();
         const productId = document.getElementById('entryProductId').value;
-        const brandId = document.getElementById('entryBrandId').value;
 
         // Validation
         if (!name) {
             nameInput.style.borderColor = '#ef4444';
             nameInput.focus();
             alert('⚠️ لطفاً نام کالا را وارد کنید');
+            return;
+        }
+        if (IS_REQUESTER && (!productId || name !== selectedProductName)) {
+            nameInput.style.borderColor = '#ef4444';
+            nameInput.focus();
+            alert('⚠️ لطفاً کالا را از لیست انتخاب کنید یا به عنوان کالای جدید ثبت نمایید.');
             return;
         }
         if (!quantity || parseFloat(quantity) <= 0) {
@@ -706,7 +691,7 @@
         nameInput.style.borderColor = '';
         qtyInput.style.borderColor = '';
 
-        // بررسی موجودی انبار برای محصول/برند انتخاب‌شده
+        // بررسی موجودی انبار برای محصول انتخاب‌شده
         // (فقط وقتی محصول از لیست پیشنهادها انتخاب شده باشد — برای درخواست‌دهندگان انجام نمی‌شود)
         let stockInfo = null;
         if (productId && !IS_REQUESTER) {
@@ -714,26 +699,25 @@
             isCheckingStock = true;
             try {
                 const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(productId) +
-                                 '&brand_id=' + encodeURIComponent(brandId) +
                                  '&qty=' + encodeURIComponent(quantity);
                 try {
                     const resp = await fetch(checkUrl);
                     if (resp.ok) stockInfo = await resp.json();
                 } catch (e) { /* خطای شبکه: بررسی موجودی نادیده گرفته می‌شود */ }
-                showEntryStockHint(stockInfo, entryBrandName);
+                showEntryStockHint(stockInfo);
             } finally {
                 isCheckingStock = false;
             }
         }
 
-        const record = { name, quantity, unit, description, productId, brandId, brandName: entryBrandName, stockInfo };
+        const record = { name, quantity, unit, description, productId, stockInfo };
 
         // اگر موجودی انبار به اندازه درخواست نبود، مسدود می‌شویم و انتخاب می‌دهیم:
-        // برند جایگزین / سفارش به اندازه موجودی + بقیه برای خرید / افزودن به لیست خرید
+        // سفارش به اندازه موجودی + بقیه برای خرید / افزودن به لیست خرید
         if (stockInfo && !stockInfo.available) {
             pendingAdd = record;
             pendingAddEditId = editingId;
-            openAvailabilityModal(stockInfo, entryBrandName);
+            openAvailabilityModal(stockInfo);
             return;
         }
 
@@ -748,29 +732,17 @@
         pendingAddEditId = null;
     }
 
-    function openAvailabilityModal(stockInfo, brandName) {
+    function openAvailabilityModal(stockInfo) {
         const body = document.getElementById('availModalBody');
         const actions = document.getElementById('availModalActions');
-        const who = brandName ? ' با برند «' + brandName + '»' : '';
-        const alts = stockInfo.alternatives || [];
 
-        let html = '<div class="avail-modal-msg">کالای «' + escapeHtml(pendingAdd.name) + '»' + who +
+        let html = '<div class="avail-modal-msg">کالای «' + escapeHtml(pendingAdd.name) + '»' +
             ' به مقدار <strong>' + escapeHtml(pendingAdd.quantity) + '</strong> ' + escapeHtml(pendingAdd.unit) +
             ' درخواست شده است اما موجودی انبار فقط <strong>' + stockInfo.stock_trade + ' ' + stockInfo.unit_label + '</strong> است.</div>';
 
         actions.innerHTML = '';
-        if (alts.length) {
-            html += '<div class="avail-modal-box">این محصول با برندهای دیگری هم در انبار موجود است — می‌توانید از آن‌ها سفارش بدهید:</div>';
-            alts.forEach(alt => {
-                const b = document.createElement('button');
-                b.type = 'button';
-                b.className = 'modal-btn-save avail-alt-btn';
-                b.textContent = '🏷️ سفارش از برند «' + alt.brand_name + '» (موجودی: ' + alt.available + ' ' + alt.unit + ')';
-                b.onclick = () => confirmAltAdd(alt);
-                actions.appendChild(b);
-            });
-        } else {
-            html += '<div class="avail-modal-box err">برند دیگری از این کالا در انبار موجود نیست.</div>';
+        const stockNum = parseFloat(stockInfo.stock_trade);
+        if (stockNum > 0) {
             const splitBtn = document.createElement('button');
             splitBtn.type = 'button';
             splitBtn.className = 'modal-btn-save avail-alt-btn';
@@ -785,7 +757,7 @@
         buyBtn.type = 'button';
         buyBtn.className = 'modal-btn-save avail-alt-btn';
         buyBtn.style.background = '#3b82f6';
-        buyBtn.textContent = '🛒 افزودن به لیست خرید (همین برند)';
+        buyBtn.textContent = '🛒 افزودن به لیست خرید';
         buyBtn.onclick = () => confirmAsIsAdd();
         actions.appendChild(buyBtn);
 
@@ -796,22 +768,6 @@
     function confirmAsIsAdd() {
         closeAvailabilityModal();
         const rec = { ...pendingAdd };
-        commitItem(rec);
-    }
-
-    async function confirmAltAdd(alt) {
-        const rec = { ...pendingAdd, brandId: alt.brand_id, brandName: alt.brand_name, stockInfo: null };
-        closeAvailabilityModal();
-        // بررسی مجدد موجودی برای برند جایگزین
-        if (rec.productId) {
-            const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(rec.productId) +
-                             '&brand_id=' + encodeURIComponent(alt.brand_id) +
-                             '&qty=' + encodeURIComponent(rec.quantity);
-            try {
-                const resp = await fetch(checkUrl);
-                if (resp.ok) rec.stockInfo = await resp.json();
-            } catch (e) {}
-        }
         commitItem(rec);
     }
 
@@ -836,65 +792,23 @@
         commitItems([partA, partB]);
     }
 
-    // ── برند انتخاب‌شده + بررسی موجودی انبار ───────────────────────────────
+    // ── بررسی موجودی انبار ───────────────────────────────
 
-    function setEntryBrand(brandId, brandName) {
-        entryBrandName = brandName || '';
-        document.getElementById('entryBrandId').value = brandId || '';
-        const chip = document.getElementById('entryBrandChip');
-        if (!chip) return;
-        if (brandId && brandName) {
-            chip.innerHTML = '🏷️ برند: ' + escapeHtml(brandName) +
-                ' <button type="button" class="chip-clear" onclick="clearEntryBrand()" title="حذف برند">&times;</button>';
-            chip.style.display = 'inline-flex';
-        } else {
-            chip.style.display = 'none';
-            chip.innerHTML = '';
-        }
-    }
-
-    function clearEntryBrand() {
-        setEntryBrand('', '');
-    }
-
-    function showEntryStockHint(stockInfo, brandName) {
+    function showEntryStockHint(stockInfo) {
         const hint = document.getElementById('entryStockHint');
         if (!hint) return;
         hint.className = 'entry-stock-hint';
         hint.style.display = 'none';
         if (!stockInfo) return;
-        const who = brandName ? 'برند «' + brandName + '»' : 'این کالا';
         if (stockInfo.available) {
             hint.className = 'entry-stock-hint ok';
             hint.textContent = '✅ موجودی انبار: ' + stockInfo.stock_trade + ' ' + stockInfo.unit_label +
                 (stockInfo.warehouses && stockInfo.warehouses.length ? ' (' + stockInfo.warehouses.join('، ') + ')' : '');
-        } else if (stockInfo.alternatives && stockInfo.alternatives.length) {
-            const alt = stockInfo.alternatives[0];
-            hint.className = 'entry-stock-hint warn';
-            hint.textContent = '⚠️ ' + who + ' در انبار موجود نیست. پیشنهاد برند جایگزین: «' + alt.brand_name + '» (' + alt.available + ' ' + alt.unit + ')';
         } else {
             hint.className = 'entry-stock-hint err';
-            hint.textContent = '⚠️ ' + who + ' در انبار موجود نیست.';
+            hint.textContent = '⚠️ این کالا در انبار موجود نیست.';
         }
         hint.style.display = 'block';
-    }
-
-    async function useAlternative(itemId, brandId, brandName) {
-        const item = items.find(it => it.id === itemId);
-        if (!item) return;
-        item.brandId = brandId;
-        item.brandName = brandName;
-        // بررسی مجدد موجودی برای برند جایگزین
-        if (item.productId) {
-            const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(item.productId) +
-                             '&brand_id=' + encodeURIComponent(brandId) +
-                             '&qty=' + encodeURIComponent(item.quantity);
-            try {
-                const resp = await fetch(checkUrl);
-                if (resp.ok) item.stockInfo = await resp.json();
-            } catch (e) {}
-        }
-        renderItemsTable();
     }
 
     function editItem(id) {
@@ -904,7 +818,7 @@
         // Fill entry form with item data
         document.getElementById('entryProductName').value = item.name;
         document.getElementById('entryProductId').value = item.productId || '';
-        setEntryBrand(item.brandId || '', item.brandName || '');
+        selectedProductName = item.productId ? item.name : '';
         document.getElementById('entryQuantity').value = item.quantity;
         document.getElementById('entryUnit').innerHTML = buildUnitOptions(item.unit);
         document.getElementById('entryDescription').value = item.description || '';
@@ -942,7 +856,7 @@
     function clearEntryForm() {
         document.getElementById('entryProductName').value = '';
         document.getElementById('entryProductId').value = '';
-        setEntryBrand('', '');
+        selectedProductName = '';
         document.getElementById('entryCategoryName').value = '';
         document.getElementById('entryCategoryId').value = '';
         const catSel = document.getElementById('entryCategorySelect');
@@ -973,16 +887,11 @@
 
         items.forEach((item, idx) => {
             const tr = document.createElement('tr');
-            // نمایش محصول با برند: اگر برند انتخاب شده باشد «نام محصول - برند» نشان داده می‌شود
-            const displayName = item.brandName ? item.name + ' - ' + item.brandName : item.name;
+            const displayName = item.name;
             let stockHtml = '';
             if (item.stockInfo) {
                 if (item.stockInfo.available) {
                     stockHtml = `<div class="row-stock-line ok">✅ موجودی انبار: ${item.stockInfo.stock_trade} ${item.stockInfo.unit_label}</div>`;
-                } else if (item.stockInfo.alternatives && item.stockInfo.alternatives.length) {
-                    const alt = item.stockInfo.alternatives[0];
-                    stockHtml = `<div class="row-stock-line warn">⚠️ برند «${escapeHtml(item.brandName || item.name)}» موجود نیست. پیشنهاد: «${escapeHtml(alt.brand_name)}» (${alt.available} ${alt.unit})` +
-                        `<button type="button" class="alt-btn" onclick="useAlternative(${item.id}, ${alt.brand_id}, '${escapeJs(alt.brand_name)}')">استفاده از «${escapeHtml(alt.brand_name)}»</button></div>`;
                 } else {
                     stockHtml = '<div class="row-stock-line warn">⚠️ این کالا در انبار موجود نیست.</div>';
                 }
@@ -1010,6 +919,9 @@
 
     function onAcInput(input) {
         const q = input.value.trim();
+        document.getElementById('entryProductId').value = '';
+        selectedProductName = '';
+        showEntryStockHint(null);
         clearTimeout(acTimer);
         // اگر دسته انتخاب شده باشد، تایپ در فیلد نام کالا = سرچ درون کالاهای همان دسته
         if (document.getElementById('entryCategoryId').value) {
@@ -1059,15 +971,10 @@
         if (!p) return;
         document.getElementById('entryProductName').value = p.name;
         document.getElementById('entryProductId').value = p.id || '';
-        // برند انتخاب‌شده: اگر محصول برند دارد نام تجاری به صورت «محصول - برند» نمایش داده می‌شود
-        setEntryBrand(p.product_brand_id || '', p.brand || '');
-        // دسته‌بندی خودکار از محصول پر می‌شود (کاربر می‌تواند بعداً تغییرش دهد)
-        if (p.category_id) {
-            setEntryCategory(p.category_id, p.category || '', { silent: true });
-        }
-        if (p.unit) {
-            document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
-        }
+        selectedProductName = p.name || '';
+        // دسته‌بندی خودکار از محصول پر می‌شود
+        setEntryCategory(p.category_id || '', p.category || '', { silent: true });
+        document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit || 'عدد');
         closeDropdown();
         document.getElementById('entryQuantity').focus();
     }
@@ -1134,28 +1041,37 @@
     function setEntryCategory(catId, catName, opts) {
         opts = opts || {};
         const sel = document.getElementById('entryCategorySelect');
-        if (sel) sel.value = catId || '';
-        document.getElementById('entryCategoryId').value = catId || '';
-        document.getElementById('entryCategoryName').value = catName || '';
+        let effectiveId = catId ? String(catId) : '';
+        let effectiveName = catName || '';
+        if (sel) {
+            sel.value = effectiveId;
+            if (effectiveId && sel.value !== effectiveId) {
+                effectiveId = '';
+                effectiveName = '';
+            }
+        }
+        document.getElementById('entryCategoryId').value = effectiveId;
+        document.getElementById('entryCategoryName').value = effectiveName;
         // سرچ درون dropdown دسته ریست شود
         catBrowseSearch = '';
-        if (catId && !opts.silent) {
+        if (effectiveId && !opts.silent) {
             document.getElementById('entryProductName').focus();
         }
     }
 
     // تغییر دسته‌بندی توسط کاربر: اگر کالایی در فرم وارد/انتخاب شده باشد پاک می‌شود
-    // (چون کالای انتخاب‌شده به دسته قبلی تعلق داشت)
     function onEntryCategorySelect(sel) {
         const prevCatId = document.getElementById('entryCategoryId').value;
         const newCatId = sel.value || '';
         const nameInput = document.getElementById('entryProductName');
         const hasProduct = nameInput.value.trim() || document.getElementById('entryProductId').value;
-        if (hasProduct && prevCatId && newCatId !== prevCatId) {
-            // پاک کردن کالای واردشده چون دسته عوض شد
+        if (hasProduct && newCatId !== prevCatId) {
+            // پاک کردن کالای واردشده چون دسته‌بندی تغییر کرد
             nameInput.value = '';
             document.getElementById('entryProductId').value = '';
-            setEntryBrand('', '');
+            selectedProductName = '';
+            document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
+            showEntryStockHint(null);
             catBrowseSearch = '';
         }
         setEntryCategory(newCatId, sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : '');
@@ -1205,7 +1121,7 @@
             html += '<div class="cat-empty">کالایی در این دسته' + (q ? ' با این عبارت' : '') + ' یافت نشد.</div>';
             if (q) {
                 html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
-                    ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید در «${escapeHtml(catName)}»
+                    ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
                 </div>`;
             }
         } else {
@@ -1232,14 +1148,12 @@
         if (!p) return;
         document.getElementById('entryProductName').value = p.name;
         document.getElementById('entryProductId').value = p.id || '';
-        setEntryBrand(p.product_brand_id || '', p.brand || '');
+        selectedProductName = p.name || '';
         // دسته همان دسته انتخابی می‌ماند (کالای دسته است) — فقط همگام‌سازی نمایش
         if (p.category_id) {
-            setEntryCategory(p.category_id, document.getElementById('entryCategoryName').value, { silent: true });
+            setEntryCategory(p.category_id, p.category || document.getElementById('entryCategoryName').value, { silent: true });
         }
-        if (p.unit) {
-            document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
-        }
+        document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit || 'عدد');
         closeDropdown();
         document.getElementById('entryQuantity').focus();
     }
@@ -1283,7 +1197,9 @@
             if (data.success) {
                 document.getElementById('entryProductName').value = data.product.name;
                 document.getElementById('entryProductId').value = data.product.id;
-                setEntryBrand('', '');
+                selectedProductName = data.product.name || '';
+                // دسته قبلی نباید انتخاب‌مانده بماند
+                setEntryCategory('', '', { silent: true });
                 if (data.product.unit) {
                     document.getElementById('entryUnit').innerHTML = buildUnitOptions(data.product.unit);
                 }
@@ -1323,7 +1239,6 @@
             const fields = [
                 { name: 'product_name', value: item.name },
                 { name: 'item_product_id', value: item.productId || '' },
-                { name: 'item_brand_id', value: item.brandId || '' },
                 { name: 'item_quantity', value: item.quantity },
                 { name: 'item_unit', value: item.unit },
                 { name: 'item_description', value: item.description || '' },

@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, PurchaseDraft,
+    Cafe, Unit, Product, PurchaseDraft,
     User, Warehouse, StockItem,
 )
 
@@ -17,26 +17,29 @@ from purchases.models import (
 class DecimalStockDisplayTest(TestCase):
     def setUp(self):
         self.cafe = Cafe.objects.create(code='dec', name='کافه اعشار', is_active=True)
-        self.unit = Unit.objects.create(name='کیلوگرم', symbol='kg')
+        self.unit_kg = Unit.objects.create(name='کیلوگرم', symbol='kg')
+        self.unit_bottle = Unit.objects.create(name='بطری', symbol='btl')
+        self.unit_box = Unit.objects.create(name='کارتن', symbol='box')
         self.officer = User.objects.create_user(
             username='dec_wh', password='x', role='warehouse', cafe=self.cafe)
 
-        # محصول با سه برند: نرخ کسری (۳)، نیمه (۲) و صحیح (۱)
-        self.product = Product.objects.create(
-            name='شیر', cafe=self.cafe, unit=self.unit,
+        # سه محصول با موجودی‌های اعشاری، نیمه و صحیح
+        self.product_third = Product.objects.create(
+            name='شیر دامداران', cafe=self.cafe, unit=self.unit_bottle,
             shelf_life_days=90, is_active=True, is_complete=True)
-        self.brand_third = ProductBrand.objects.create(
-            product=self.product, brand_name='دامداران', trade_unit='بطری', conversion_rate=3)
-        self.brand_half = ProductBrand.objects.create(
-            product=self.product, brand_name='پگاه', trade_unit='بطری', conversion_rate=2)
-        self.brand_one = ProductBrand.objects.create(
-            product=self.product, brand_name='مهر', trade_unit='کارتن', conversion_rate=1)
+        self.product_half = Product.objects.create(
+            name='شیر پگاه', cafe=self.cafe, unit=self.unit_bottle,
+            shelf_life_days=90, is_active=True, is_complete=True)
+        self.product_one = Product.objects.create(
+            name='شیر مهر', cafe=self.cafe, unit=self.unit_box,
+            shelf_life_days=90, is_active=True, is_complete=True)
         wh = Warehouse.objects.create(name='انبار اصلی', code='DEC-WH1', cafe=self.cafe)
-        # واحد پایه ۲۵ → واحد تجاری ۲۵/۳ = 8.333… ، ۲۵/۲ = 12.5 ، ۲۵/۱ = 25
-        for brand in (self.brand_third, self.brand_half, self.brand_one):
-            StockItem.objects.create(
-                product=self.product, product_brand=brand,
-                warehouse=wh, quantity=25, unit=self.unit)
+        StockItem.objects.create(
+            product=self.product_third, warehouse=wh, quantity=Decimal('8.3333'), unit=self.unit_bottle)
+        StockItem.objects.create(
+            product=self.product_half, warehouse=wh, quantity=Decimal('12.50'), unit=self.unit_bottle)
+        StockItem.objects.create(
+            product=self.product_one, warehouse=wh, quantity=Decimal('25.00'), unit=self.unit_box)
 
         session = self.client.session
         session['selected_cafe_id'] = self.cafe.id
@@ -45,66 +48,57 @@ class DecimalStockDisplayTest(TestCase):
 
         self.draft_url = reverse('warehouse_purchase_draft', kwargs={'cafe_code': self.cafe.code})
 
-    def _add_item(self, brand):
+    def _add_item(self, product):
         return self.client.post(self.draft_url, data={
             'action': 'add_item',
-            'product_id': str(self.product.id),
-            'brand_id': str(brand.id),
+            'product_id': str(product.id),
             'quantity': '1',
-            'unit': 'کیلوگرم',
+            'unit': product.unit.name,
             'description': '',
             'new_name': '',
         })
 
-    def _draft_content(self, brands):
-        for b in brands:
-            self.assertEqual(self._add_item(b).status_code, 302)
+    def _draft_content(self, products):
+        for p in products:
+            self.assertEqual(self._add_item(p).status_code, 302)
         draft = PurchaseDraft.objects.filter(cafe=self.cafe, created_by=self.officer).first()
         self.assertIsNotNone(draft)
         return self.client.get(self.draft_url).content.decode('utf-8')
 
-    def test_draft_chips_fraction_and_whole_trade_units(self):
-        """ستون موجودی جدول پیش‌نویس: ۲۵/۳ → «8.33 بطری»، ۲۵/۲ → «12.5 بطری»، ۲۵/۱ → «25 کارتن»"""
-        content = self._draft_content([self.brand_third, self.brand_half, self.brand_one])
+    def test_draft_chips_fraction_and_whole_units(self):
+        """ستون موجودی جدول پیش‌نویس: 8.3333 → «8.33»، 12.50 → «12.5»، 25.00 → «25»"""
+        content = self._draft_content([self.product_third, self.product_half, self.product_one])
         self.assertIn('8.33 بطری', content)
         self.assertIn('12.5 بطری', content)
         self.assertIn('25 کارتن', content)
-        # دم‌های اعشاریِ تقسیم (28 رقم) و صفرهای بی‌مورد نباید دیده شوند
-        self.assertNotIn('8.333333333333', content)
+        # دم‌های اعشاری و صفرهای بی‌مورد نباید دیده شوند
+        self.assertNotIn('8.3333', content)
         self.assertNotIn('12.50', content)
         self.assertNotIn('25.00', content)
 
     def test_check_availability_json_trimmed(self):
         """API بررسی موجودی: stock_trade کوتاه (۸.۳۳) و qty صحیح بدون اعشار (۱۰) برگردد"""
         url = reverse('check_product_availability', kwargs={'cafe_code': self.cafe.code})
-        r = self.client.get(url, {'product_id': self.product.id,
-                                  'brand_id': self.brand_third.id,
-                                  'qty': '10'})
+        r = self.client.get(url, {'product_id': self.product_third.id, 'qty': '10'})
         self.assertEqual(r.status_code, 200)
         data = r.json()
         self.assertEqual(data['stock_trade'], '8.33')
         self.assertEqual(data['qty'], '10')
-        # درخواست ۱۰ بطری > موجودی ۸.۳۳ → موجود نیست؛ برندهای جایگزین با موجودی‌های کوتاه‌شده پیشنهاد شوند
+        # درخواست ۱۰ > موجودی ۸.۳۳ → موجود نیست
         self.assertFalse(data['available'])
-        self.assertEqual(sorted(a['available'] for a in data['alternatives']), ['12.5', '25'])
         # درخواست کمتر از موجودی (۵ ≤ ۸.۳۳) → موجود است
-        r1 = self.client.get(url, {'product_id': self.product.id,
-                                   'brand_id': self.brand_third.id,
-                                   'qty': '5'})
+        r1 = self.client.get(url, {'product_id': self.product_third.id, 'qty': '5'})
         self.assertTrue(r1.json()['available'])
         self.assertEqual(r1.json()['stock_trade'], '8.33')
         # قلم اعشاریِ درخواستی هم بدون صفر اضافه برگردد
-        r2 = self.client.get(url, {'product_id': self.product.id,
-                                   'brand_id': self.brand_third.id,
-                                   'qty': '3.5'})
+        r2 = self.client.get(url, {'product_id': self.product_third.id, 'qty': '3.5'})
         self.assertEqual(r2.json()['qty'], '3.5')
 
     def test_warehouse_dashboard_low_stock_decimal(self):
         """داشبورد انبار (کمبود): موجودی ۴.۷۵ و حداقل صحیح، بدون صفر زائد"""
         wh = Warehouse.objects.create(name='انبار دوم', code='DEC-WH2', cafe=self.cafe)
-        unit_box = Unit.objects.create(name='کارتن', symbol='box')
         StockItem.objects.create(
-            product=self.product, warehouse=wh, unit=unit_box,
+            product=self.product_one, warehouse=wh, unit=self.unit_box,
             quantity=Decimal('4.75'), min_quantity=Decimal('10'))
 
         content = self.client.get(

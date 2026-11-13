@@ -175,9 +175,6 @@
                 <h1>تاریخچه تراکنش‌ها</h1>
                 <div class="tx-subject">
                     <span class="tx-product">{{ stock_item.product.name }}</span>
-                    {% if stock_item.product_brand %}
-                    <span class="tx-brand"><i class="fas fa-tag"></i> {{ stock_item.product_brand.brand_name }}</span>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -225,20 +222,6 @@
                     </span><span class="unit">{{ transaction.unit.name }}</span>
                 </div>
             </div>
-
-            {% if transaction.conversion_rate %}
-            <div class="tx-convert">
-                {% if transaction.transaction_type == 'out' and transaction.stock_item.product_brand %}
-                <b><i class="fas fa-tag"></i> {{ transaction.stock_item.product_brand.brand_name }}</b>
-                <span>•</span>
-                {% endif %}
-                <span>نرخ تبدیل: هر {{ transaction.stock_item.product_brand.trade_unit|default:'واحد' }} = {{ transaction.conversion_rate|trim_decimal }}{% if transaction.unit %} {{ transaction.unit.name }}{% endif %}</span>
-                {% if transaction.transaction_type == 'out' %}
-                <span>•</span>
-                <span>معادل تجاری: {{ transaction.quantity|div:transaction.conversion_rate|trim_decimal }} {{ transaction.stock_item.product_brand.trade_unit|default:transaction.unit.name|default:'' }}</span>
-                {% endif %}
-            </div>
-            {% endif %}
 
             <div class="tx-flow">
                 <div class="tx-flow-cell">

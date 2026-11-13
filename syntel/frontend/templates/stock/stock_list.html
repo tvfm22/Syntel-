@@ -314,7 +314,7 @@
         <div class="stk-search-box">
             <i class="fas fa-search"></i>
             <input type="text" name="search" value="{{ search_query|default:'' }}"
-                   placeholder="نام محصول، برند یا دسته‌بندی...">
+                   placeholder="نام محصول یا دسته‌بندی...">
         </div>
 
         <label class="stk-toggle {% if show_low_stock %}active{% endif %}">
@@ -369,7 +369,6 @@
                         <th class="stk-th-num">انبار</th>
                         <th class="stk-th-num">موجودی کل</th>
                         <th class="stk-th-num">حداقل موجودی</th>
-                        <th class="stk-th-brand">برندها</th>
                         <th class="stk-th-num">وضعیت</th>
                         <th class="stk-th-date">آخرین بروزرسانی</th>
                         <th class="stk-th-act">عملیات</th>
@@ -389,9 +388,6 @@
                                     <div class="stk-prod-sub">
                                         {% if group.product.unit %}
                                         <span><i class="fas fa-ruler"></i> {{ group.product.unit.name }}</span>
-                                        {% endif %}
-                                        {% if group.brand_items %}
-                                        <span>• {{ group.brand_items|length }} برند</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -437,39 +433,6 @@
                             {% else %}
                             <span class="stk-min dash">تعیین نشده</span>
                             {% endif %}
-                        </td>
-
-                        <!-- برندها -->
-                        <td>
-                            <div class="stk-brand-cell">
-                                {% for si in group.brand_items|slice:":3" %}
-                                <span class="stk-brand-chip" title="{{ si.product_brand.brand_name }}">
-                                    <i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}
-                                    {% if si.product_brand.trade_unit and si.product_brand.conversion_rate %}
-                                    — {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
-                                    {% else %}
-                                    — {{ si.quantity|trim_decimal }}
-                                    {% endif %}
-                                </span>
-                                {% endfor %}
-
-                                {% if group.brand_items|length > 3 %}
-                                <span class="stk-brand-more">+{{ group.brand_items|length|add:"-3" }}</span>
-                                {% endif %}
-
-                                {% if group.unbranded_items %}
-                                <span class="stk-brand-chip" style="background:var(--bg-subtle);border-color:var(--border-light);color:var(--text-secondary)">
-                                    <i class="fas fa-box"></i> موجودی عمومی —
-                                    {% for si in group.unbranded_items %}
-                                        {{ si.quantity|trim_decimal }}{% if not forloop.last %} + {% endif %}
-                                    {% endfor %}
-                                </span>
-                                {% endif %}
-
-                                {% if not group.brand_items and not group.unbranded_items %}
-                                <span class="stk-brand-none">—</span>
-                                {% endif %}
-                            </div>
                         </td>
 
                         <!-- وضعیت -->

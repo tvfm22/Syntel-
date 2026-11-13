@@ -10,7 +10,7 @@ from django.test import Client
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, Warehouse, StockItem,
+    Cafe, Unit, Product, Warehouse, StockItem,
     PurchaseRequest, PurchaseItem, OfficerAssignment, StockTransaction,
 )
 
@@ -26,7 +26,6 @@ PurchaseItem.objects.filter(name__startswith='پیشنمایش').delete()
 PurchaseRequest.objects.filter(cafe=cafe, items__isnull=True).delete()
 for p in Product.objects.filter(cafe=cafe, name__startswith='پیشنمایش'):
     StockItem.objects.filter(product=p).delete()
-    ProductBrand.objects.filter(product=p).delete()
     p.delete()
 
 names = ['شکر', 'روغن', 'برنج', 'چای', 'قهوه', 'ماکارونی', 'رب گوجه', 'پنیر', 'کره', 'تخممرغ', 'نمک', 'ادویه']
@@ -35,19 +34,10 @@ for n in names:
     p, _ = Product.objects.get_or_create(name=f'پیشنمایش {n}', cafe=cafe, defaults={'unit': unit_kg})
     products.append(p)
 
-# برندها: محصول ۲ (روغن) سه برند، بقیه تکبرند
 for idx, p in enumerate(products):
-    if idx == 1:
-        for bname in ['برند دمس', 'برند لادن', 'برند غنچه']:
-            b, _ = ProductBrand.objects.get_or_create(product=p, brand_name=bname)
-            si, _ = StockItem.objects.get_or_create(
-                product=p, product_brand=b, warehouse=wh, defaults={'quantity': Decimal('50'), 'unit': unit_kg})
-            si.quantity = Decimal('50'); si.save()
-    else:
-        b, _ = ProductBrand.objects.get_or_create(product=p, brand_name=f'برند {n}')
-        si, _ = StockItem.objects.get_or_create(
-            product=p, product_brand=b, warehouse=wh, defaults={'quantity': Decimal('30'), 'unit': unit_kg})
-        si.quantity = Decimal('30'); si.save()
+    si, _ = StockItem.objects.get_or_create(
+        product=p, warehouse=wh, defaults={'quantity': Decimal('50' if idx == 1 else '30'), 'unit': unit_kg})
+    si.quantity = Decimal('50' if idx == 1 else '30'); si.save()
 
 req = PurchaseRequest.objects.create(cafe=cafe, user=User.objects.first(), status='pending')
 from purchases.models import OfficerAssignment, StockTransaction
@@ -59,29 +49,15 @@ for idx, p in enumerate(products):
     si = StockItem.objects.filter(product=p, warehouse=wh).first()
     if not si:
         continue
-    brand = si.product_brand
-    # تأمین: روغن از ۳ برند (۲+۳+۵)، بقیه از یک برند
-    if idx == 1:
-        for i, si2 in enumerate(StockItem.objects.filter(product=p, warehouse=wh)):
-            a = OfficerAssignment.objects.create(
-                item=it, target_role='warehouse', status='fulfilled',
-                assigned_to=officer, assigned_by=officer, stock_item=si2,
-                supplied_quantity=Decimal(str([2, 3, 5][i])))
-            StockTransaction.objects.create(
-                stock_item=si2, transaction_type='out', quantity=Decimal(str([2, 3, 5][i])),
-                unit=unit_kg, reference_type='officer_assignment', reference_id=it.id,
-                description=f'تامین - {it.name}',
-                previous_quantity=Decimal('50'), new_quantity=Decimal('50'))
-    else:
-        a = OfficerAssignment.objects.create(
-            item=it, target_role='warehouse', status='fulfilled',
-            assigned_to=officer, assigned_by=officer, stock_item=si,
-            supplied_quantity=Decimal('10'))
-        StockTransaction.objects.create(
-            stock_item=si, transaction_type='out', quantity=Decimal('10'),
-            unit=unit_kg, reference_type='officer_assignment', reference_id=it.id,
-            description=f'تامین - {it.name}',
-            previous_quantity=Decimal('30'), new_quantity=Decimal('30'))
+    OfficerAssignment.objects.create(
+        item=it, target_role='warehouse', status='fulfilled',
+        assigned_to=officer, assigned_by=officer, stock_item=si,
+        supplied_quantity=Decimal('10'))
+    StockTransaction.objects.create(
+        stock_item=si, transaction_type='out', quantity=Decimal('10'),
+        unit=unit_kg, reference_type='officer_assignment', reference_id=it.id,
+        description=f'تامین - {it.name}',
+        previous_quantity=Decimal('30'), new_quantity=Decimal('30'))
 
 admin, _ = User.objects.get_or_create(username='test_admin_pv')
 admin.role = 'admin'; admin.is_staff = True; admin.save()

@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from purchases.models import (
     User, Cafe, Category, Product, Unit, Supplier,
-    Warehouse, StockItem, StockTransaction, ProductBrand,
+    Warehouse, StockItem, StockTransaction,
 )
 
 
@@ -20,14 +20,10 @@ class AdminPagesRedesignTests(TestCase):
         # دسته‌بندی
         cls.cat = Category.objects.create(name='لبنیات', cafe=cls.cafe, description='محصولات لبنی')
         cls.child = Category.objects.create(name='پنیر', parent=cls.cat, cafe=cls.cafe)
-        # محصول + برند
+        # محصول
         cls.product = Product.objects.create(
             name='شیر', category=cls.cat, unit=cls.unit,
             min_stock=10, cafe=cls.cafe,
-        )
-        cls.brand = ProductBrand.objects.create(
-            product=cls.product, brand_name='پگاه', trade_unit='بطری',
-            conversion_rate=2, is_active=True,
         )
         # تأمین‌کننده
         cls.supplier = Supplier.objects.create(
@@ -40,7 +36,7 @@ class AdminPagesRedesignTests(TestCase):
         )
         cls.stock = StockItem.objects.create(
             product=cls.product, warehouse=cls.warehouse, unit=cls.unit,
-            quantity=50, min_quantity=10, product_brand=cls.brand,
+            quantity=50, min_quantity=10,
         )
         cls.tx = StockTransaction.objects.create(
             stock_item=cls.stock, transaction_type='in', quantity=20,
@@ -66,7 +62,6 @@ class AdminPagesRedesignTests(TestCase):
         r = c.get(reverse('product_list', args=[self.cafe.code]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'شیر')
-        self.assertContains(r, 'پگاه')
 
     def test_supplier_list_renders(self):
         c = self.login()
@@ -104,7 +99,6 @@ class AdminPagesRedesignTests(TestCase):
         r = c.get(reverse('stock_list', args=[self.cafe.code]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'شیر')
-        self.assertContains(r, 'پگاه')
         self.assertContains(r, 'انبار اصلی')
 
     def test_stock_transactions_renders(self):
@@ -125,10 +119,12 @@ class AdminPagesRedesignTests(TestCase):
 
     def test_stock_list_null_unit_legacy(self):
         """آیتم قدیمی بدون واحد نباید صفحه موجودی را بترکاند (unit=None)"""
-        from django.db import connection
+        p_legacy = Product.objects.create(
+            name='خامه قدیمی', category=self.cat, cafe=self.cafe,
+        )
         # آیتم بدون واحد — شبیه دیتای legacy
         StockItem.objects.create(
-            product=self.product, warehouse=self.warehouse,
+            product=p_legacy, warehouse=self.warehouse,
             unit=None, quantity=5, min_quantity=0,
         )
         c = self.login()
@@ -141,7 +137,8 @@ class AdminPagesRedesignTests(TestCase):
         r = c.get(reverse('stock_list', args=[self.cafe.code]), {'low_stock': 'on'})
         self.assertEqual(r.status_code, 200)
         # موجودی ۵۰ > حداقل ۱۰ پس نباید در نتایج باشد
-        self.assertNotContains(r, 'پگاه')
+        self.assertEqual(len(r.context['page_obj'].object_list), 0)
+        self.assertNotContains(r, 'شیر')
 
     def test_user_list_header_and_toolbar(self):
         """صفحه کاربران (طرح فعلی): عنوان «مدیریت کاربران» + دکمه‌ها در page-header،

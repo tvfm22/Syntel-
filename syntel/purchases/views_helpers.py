@@ -48,7 +48,6 @@ CAFE_LOOKUP_PATHS = {
     'StockTransaction':     'stock_item__warehouse__cafe',
     'Warehouse':            'cafe',
     'Product':              'cafe',
-    'ProductBrand':         'product__cafe',
     'Unit':                 'cafe',
     'Category':             'cafe',
     'Department':           'cafe',

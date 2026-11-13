@@ -1,8 +1,7 @@
 """Scratch verification tests for the 5 requested features (2026-08-27).
 
 1. No stock error/message for requesters on the request page (JS gate + no server block).
-2. Product.show_sub_products: default shows product by main name to requesters;
-   when checked, brand names appear as separate selectable rows.
+2. Product autocomplete returns products directly without brand sub-items.
 3. Delivery date: collapsible box; next 7 days showing only Sun-Thu (no Fri/Sat); default tomorrow.
 4. Cafe-change section hidden for requester users in the layout.
 5. My Requests: last week's requests grouped in separate per-day lists.
@@ -15,7 +14,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
-from purchases.models import Cafe, Category, Unit, Product, ProductBrand, PurchaseRequest, PurchaseItem
+from purchases.models import Cafe, Category, Unit, Product, PurchaseRequest, PurchaseItem
 from purchases import views
 
 User = get_user_model()
@@ -34,7 +33,6 @@ class FeatureVerifyTests(TestCase):
         self.product = Product.objects.create(
             name='روغن', category=self.category, unit=self.unit, cafe=self.cafe,
             usage_location='general')
-        self.brand = ProductBrand.objects.create(product=self.product, brand_name='دمس')
         # middleware context
         for u in (self.requester, self.purchasing):
             session = self.client.session
@@ -77,61 +75,15 @@ class FeatureVerifyTests(TestCase):
         self.assertNotIn('delivery_immediate', html)
         self.assertNotIn('allow_immediate', html)
 
-    # ── Feature 2: show_sub_products in autocomplete ─────────────────
-    def test_autocomplete_requester_flag_off_shows_main_name(self):
+    # ── Feature 2: product-only autocomplete ──────────────────────────
+    def test_autocomplete_returns_product_only(self):
         self.login(self.requester)
         resp = self.client.get(reverse('products_autocomplete', kwargs={'cafe_code': 'main'}), {'q': 'روغن'})
         results = resp.json()['results']
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['name'], 'روغن')
         self.assertEqual(results[0]['label'], 'روغن')
-        self.assertIsNone(results[0]['product_brand_id'])
-
-    def test_autocomplete_requester_flag_on_shows_brands(self):
-        self.product.show_sub_products = True
-        self.product.save()
-        self.login(self.requester)
-        resp = self.client.get(reverse('products_autocomplete', kwargs={'cafe_code': 'main'}), {'q': 'روغن'})
-        results = resp.json()['results']
-        self.assertEqual(len(results), 1)  # 1 active brand
-        self.assertEqual(results[0]['label'], 'روغن - دمس')
-        self.assertEqual(results[0]['product_brand_id'], self.brand.id)
-
-    def test_autocomplete_purchasing_always_sees_brands(self):
-        # flag off, but purchasing user still gets brand rows (unchanged behavior)
-        self.login(self.purchasing)
-        resp = self.client.get(reverse('products_autocomplete', kwargs={'cafe_code': 'main'}), {'q': 'روغن'})
-        results = resp.json()['results']
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['product_brand_id'], self.brand.id)
-
-    # ── Feature 2 (form side): product_create saves the flag ─────────
-    def test_product_create_saves_show_sub_products(self):
-        self.login(self.purchasing)
-        resp = self.client.post(reverse('product_create', kwargs={'cafe_code': 'main'}), {
-            'name': 'شیر',
-            'category': self.category.id,
-            'unit': self.unit.id,
-            'usage_location': 'general',
-            'show_sub_products': 'on',
-        })
-        self.assertEqual(resp.status_code, 302)
-        p = Product.objects.get(name='شیر')
-        self.assertTrue(p.show_sub_products)
-
-    def test_product_update_saves_show_sub_products(self):
-        self.login(self.purchasing)
-        resp = self.client.post(reverse('product_update', kwargs={'cafe_code': 'main', 'product_id': self.product.id}), {
-            'name': 'روغن',
-            'category': self.category.id,
-            'unit': self.unit.id,
-            'usage_location': 'general',
-            'min_stock': '0',
-            'show_sub_products': 'on',
-        })
-        self.assertEqual(resp.status_code, 302)
-        self.product.refresh_from_db()
-        self.assertTrue(self.product.show_sub_products)
+        self.assertEqual(results[0]['id'], self.product.id)
 
     # ── Feature 5: My Requests grouped per day ───────────────────────
     def _make_request(self, user, days_ago, status='pending_manager_approval'):

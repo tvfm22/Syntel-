@@ -121,6 +121,13 @@ def filter_requestable_products(queryset, cafe=None):
     )
 
 
+def inactive_product_error(product):
+    """پیام خطای فارسی اگر کالا در سفارش‌گذاری غیرفعال شده باشد؛ در غیر این صورت None."""
+    if product is not None and not getattr(product, 'is_active', True):
+        return f'کالای «{product.name}» در سفارش‌گذاری غیرفعال است و قابل درخواست نیست.'
+    return None
+
+
 def recipe_gate_error(product, cafe=None):
     """پیام خطای فارسی اگر این کالا نباید سفارش داده شود؛ در غیر این صورت None.
 

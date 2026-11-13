@@ -2,10 +2,7 @@
 {% load static custom_filters %}
 
 {% block title %}
-{% if mode == 'edit_product' %}ویرایش محصول
-{% elif mode == 'add_brand' %}افزودن نام تجاری
-{% elif mode == 'edit_brand' %}ویرایش نام تجاری
-{% else %}ایجاد محصول جدید{% endif %} - Kuker
+{% if mode == 'edit_product' %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %} - Kuker
 {% endblock %}
 
 {% block content %}
@@ -89,16 +86,10 @@
             <div class="ph-icon"><i class="fas fa-box"></i></div>
             <div>
                 <h1 class="ph-title">
-                    {% if mode == 'edit_product' %}ویرایش محصول
-                    {% elif mode == 'add_brand' %}افزودن نام تجاری
-                    {% elif mode == 'edit_brand' %}ویرایش نام تجاری
-                    {% else %}ایجاد محصول جدید{% endif %}
+                    {% if mode == 'edit_product' %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %}
                 </h1>
                 <p class="page-sub">
-                    {% if mode == 'edit_product' %}اطلاعات پایه محصول را ویرایش کنید
-                    {% elif mode == 'add_brand' %}یک نام تجاری جدید به محصول اضافه کنید
-                    {% elif mode == 'edit_brand' %}اطلاعات نام تجاری را ویرایش کنید
-                    {% else %}یک محصول جدید تعریف کنید (نام تجاری اختیاری است){% endif %}
+                    {% if mode == 'edit_product' %}اطلاعات محصول را ویرایش کنید{% else %}اطلاعات محصول جدید را وارد کنید{% endif %}
                 </p>
             </div>
         </div>
@@ -129,47 +120,9 @@
         </div>
         {% endif %}
 
-        {% if mode == 'add_brand' or mode == 'edit_brand' or form_data.selected_product_id %}
-        <!-- بنر محصول انتخاب‌شده -->
-        <div class="selected-product-banner" id="selected_product_banner" style="display:block;">
-            <button type="button" class="banner-clear" id="banner_clear_btn" title="لغو انتخاب">&times;</button>
-            <div class="banner-title">🏷️ افزودن نام تجاری به محصول «{{ product.name }}»</div>
-            <div class="banner-detail">
-                دسته‌بندی: {{ product.category.name|default:'—' }} |
-                واحد پایه: {{ product.unit.name|default:'—' }}{% if product.unit.symbol %} ({{ product.unit.symbol }}){% endif %}
-            </div>
-        </div>
-        <input type="hidden" id="selected_product_id" name="selected_product_id" value="{{ product.id }}">
-        {% else %}
-        <div class="selected-product-banner" id="selected_product_banner" style="display:none;">
-            <button type="button" class="banner-clear" id="banner_clear_btn" title="لغو انتخاب">&times;</button>
-            <div class="banner-title"></div>
-            <div class="banner-detail"></div>
-        </div>
-        <input type="hidden" id="selected_product_id" name="selected_product_id" value="">
-        {% endif %}
-
-        {% if mode != 'add_brand' and mode != 'edit_brand' %}
-        <!-- بخش نام محصول (برای محصول جدید یا ویرایش محصول) -->
-        <div id="product_base_section" {% if form_data.selected_product_id %}style="display:none;"{% endif %}>
-            {% if mode != 'edit_product' %}
-            <div class="form-section-title">محصول</div>
-            <div class="form-group">
-                <label for="name" class="form-label">
-                    نام محصول <span class="required">*</span>
-                </label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="name" name="name" class="form-input" autocomplete="off"
-                           placeholder="تایپ کنید... محصولات قبلی جستجو می‌شوند"
-                           value="{% if form_data %}{{ form_data.name }}{% endif %}">
-                    <div class="autocomplete-list" id="autocomplete_list"></div>
-                </div>
-                <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                    هنگام تایپ، محصولات قبلی جستجو می‌شوند — اگر محصولی پیدا شد آن را انتخاب کنید تا نام تجاری جدید به آن اضافه شود.
-                </small>
-            </div>
-            {% else %}
-            <div class="form-section-title">اطلاعات پایه محصول</div>
+        <!-- بخش اطلاعات محصول -->
+        <div id="product_base_section">
+            <div class="form-section-title">اطلاعات محصول</div>
             <div class="form-group">
                 <label for="name" class="form-label">
                     نام محصول <span class="required">*</span>
@@ -178,7 +131,6 @@
                        value="{% if product %}{{ product.name }}{% elif form_data %}{{ form_data.name }}{% endif %}" required>
                 <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">نام محصول باید یکتا باشد (در هر کافه)</small>
             </div>
-            {% endif %}
 
             <div class="form-row">
                 <div class="form-group">
@@ -297,18 +249,6 @@
                 </div>
             </div>
 
-            <div class="form-group" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:0.9rem 1rem;">
-                <label for="show_sub_products" class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
-                    <input type="checkbox" id="show_sub_products" name="show_sub_products"
-                           style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);"
-                           {% if product and product.show_sub_products %}checked{% elif form_data and form_data.show_sub_products %}checked{% endif %}>
-                    نمایش زیر محصولات
-                </label>
-                <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                    اگر این تیک فعال باشد، هنگام نمایش این کالا به درخواست‌دهندگان، نام‌های تجاری آن به‌صورت جداگانه نمایش داده می‌شود.
-                </small>
-            </div>
-
             {% if mode == 'edit_product' %}
             <div class="form-group">
                 <label for="description" class="form-label">توضیحات</label>
@@ -316,186 +256,32 @@
                           placeholder="توضیحات محصول را وارد کنید...">{% if product %}{{ product.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
             </div>
             {% endif %}
-        </div>
-        {% endif %}
 
-        {% if mode != 'edit_product' %}
-        <!-- بخش نام تجاری (واریانت تجاری) -->
-        <div id="brand_section" {% if mode == 'create' and not form_data.selected_product_id %}style="display:none;"{% endif %}>
-            <div class="form-section-title">نام تجاری (واریانت تجاری)</div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="brand_name" class="form-label">
-                        نام تجاری <span class="required">*</span>
-                    </label>
-                    <input type="text" id="brand_name" name="brand_name" class="form-input"
-                           placeholder="مثال: دمس، کاله، لادن..."
-                           value="{% if brand %}{{ brand.brand_name }}{% elif form_data %}{{ form_data.brand_name }}{% endif %}">
-                </div>
-
-                <div class="form-group">
-                    <label for="trade_unit" class="form-label">واحد تجاری</label>
-                    <input type="text" id="trade_unit" name="trade_unit" class="form-input"
-                           placeholder="مثال: قوطی، بطری، کارتن، پاکت..."
-                           value="{% if brand %}{{ brand.trade_unit }}{% elif form_data %}{{ form_data.trade_unit }}{% endif %}">
-                </div>
-            </div>
-
-            <div class="form-group" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:0.9rem 1rem;">
-                <label for="has_unit_conversion" class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
-                    <input type="checkbox" id="has_unit_conversion" name="has_unit_conversion"
+            <input type="hidden" name="is_active_present" value="1">
+            <div class="form-group" style="background:var(--bg-subtle, #f8fafc);border:1px solid var(--gray-200);border-radius:10px;padding:0.9rem 1rem;">
+                <label for="is_active" class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+                    <input type="checkbox" id="is_active" name="is_active"
                            style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);"
-                           {% if brand and brand.conversion_rate %}checked{% elif form_data and form_data.has_unit_conversion %}checked{% endif %}>
-                    تبدیل نرخ واحد
+                           {% if mode == 'edit_product' %}{% if form_data %}{% if form_data.is_active %}checked{% endif %}{% elif product and product.is_active %}checked{% endif %}{% elif form_data and form_data.is_active %}checked{% endif %}>
+                    فعال در سفارش‌گذاری
                 </label>
-                <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                    اگر این محصول به صورت بسته‌بندی عرضه می‌شود، میزان محتوای هر بسته را بر اساس واحد پایه وارد کنید.
-                </small>
-
-                <div id="conversion_rate_group" style="display:none;margin-top:12px;">
-                    <label for="conversion_rate" class="form-label">میزان بسته‌بندی (بر اساس واحد پایه)</label>
-                    <div style="display:flex;gap:10px;align-items:center;">
-                        <input type="number" id="conversion_rate" name="conversion_rate" class="form-input"
-                               step="0.0001" min="0"
-                               placeholder="مثال: 5 برای قوطی ۵ لیتری روغن"
-                               value="{% if brand and brand.conversion_rate %}{{ brand.conversion_rate }}{% elif form_data %}{{ form_data.conversion_rate }}{% endif %}">
-                        <span id="conversion_rate_unit" style="font-weight:700;color:var(--dark);white-space:nowrap;font-size:0.88rem;">—</span>
-                    </div>
-                    <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                        مثال: روغن در قوطی ۵ لیتری با واحد پایه «لیتر» → 5 را وارد کنید.
-                    </small>
+                <div style="color:var(--gray-500);margin-top:6px;font-size:0.78rem;">
+                    اگر غیرفعال باشد، این کالا در فرم‌های درخواست خرید و انبار نمایش داده نمی‌شود و قابل سفارش نخواهد بود. کالاهایی که در رسپی منو نیستند به‌صورت پیش‌فرض غیرفعال ثبت می‌شوند.
                 </div>
             </div>
         </div>
-        {% endif %}
 
         <div class="form-actions">
             <a href="{% url 'product_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
             <button type="submit" class="btn-submit">
                 <i class="fas fa-check"></i>
-                {% if mode == 'edit_product' %}ذخیره تغییرات
-                {% elif mode == 'edit_brand' %}ذخیره نام تجاری
-                {% else %}ثبت{% endif %}
+                {% if mode == 'edit_product' %}ذخیره تغییرات{% else %}ایجاد محصول{% endif %}
             </button>
         </div>
     </form>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const convCheckbox = document.getElementById('has_unit_conversion');
-    const convGroup = document.getElementById('conversion_rate_group');
-    const unitLabel = document.getElementById('conversion_rate_unit');
-    const unitSelect = document.getElementById('unit');
-
-    if (convCheckbox && convGroup) {
-        function updateUnitLabel() {
-            if (unitSelect && unitSelect.selectedOptions.length && unitSelect.value) {
-                unitLabel.textContent = unitSelect.selectedOptions[0].text;
-            } else {
-                const bannerDetail = document.querySelector('.selected-product-banner .banner-detail');
-                if (bannerDetail) {
-                    const m = bannerDetail.textContent.match(/واحد پایه:\s*([^|]+)/);
-                    if (m) unitLabel.textContent = m[1].trim();
-                }
-            }
-        }
-        function toggleConversion() {
-            convGroup.style.display = convCheckbox.checked ? 'block' : 'none';
-            if (convCheckbox.checked) updateUnitLabel();
-        }
-        convCheckbox.addEventListener('change', toggleConversion);
-        if (unitSelect) unitSelect.addEventListener('change', updateUnitLabel);
-        toggleConversion();
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    const nameInput = document.getElementById('name');
-    if (!nameInput) return;
-
-    const autocompleteList = document.getElementById('autocomplete_list');
-    const selectedIdInput = document.getElementById('selected_product_id');
-    const baseSection = document.getElementById('product_base_section');
-    const banner = document.getElementById('selected_product_banner');
-    const bannerClearBtn = document.getElementById('banner_clear_btn');
-    let debounceTimer = null;
-
-    function selectProduct(item) {
-        selectedIdInput.value = item.id;
-        if (banner) {
-            const title = banner.querySelector('.banner-title');
-            if (title) title.textContent = '🏷️ افزودن نام تجاری به محصول «' + item.name + '»';
-            const detail = banner.querySelector('.banner-detail');
-            if (detail) {
-                detail.textContent = 'واحد پایه: ' + (item.unit || '—');
-            }
-            banner.style.display = 'block';
-        }
-        if (baseSection) baseSection.style.display = 'none';
-        const brandSection = document.getElementById('brand_section');
-        if (brandSection) brandSection.style.display = 'block';
-        autocompleteList.style.display = 'none';
-        autocompleteList.innerHTML = '';
-        nameInput.value = item.name;
-    }
-
-    function clearSelection() {
-        selectedIdInput.value = '';
-        if (banner) banner.style.display = 'none';
-        if (baseSection) baseSection.style.display = '';
-        const brandSection = document.getElementById('brand_section');
-        if (brandSection && nameInput) brandSection.style.display = 'none';
-        nameInput.value = '';
-        nameInput.focus();
-    }
-
-    if (bannerClearBtn) bannerClearBtn.addEventListener('click', clearSelection);
-
-    nameInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        const query = nameInput.value.trim();
-
-        if (query.length < 2) {
-            autocompleteList.style.display = 'none';
-            autocompleteList.innerHTML = '';
-            return;
-        }
-
-        debounceTimer = setTimeout(function() {
-            fetch('{% url "products_autocomplete" cafe_code=cafe_code %}?q=' + encodeURIComponent(query), {
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
-            })
-            .then(r => r.json())
-            .then(data => {
-                autocompleteList.innerHTML = '';
-                if (!data.results || data.results.length === 0) {
-                    autocompleteList.innerHTML = '<div class="autocomplete-empty">محصولی یافت نشد — با این نام محصول جدید ساخته می‌شود</div>';
-                } else {
-                    data.results.forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = 'autocomplete-item';
-                        div.innerHTML = '<div class="item-name">' + item.name + '</div>' +
-                                        '<div class="item-meta">' + (item.category ? item.category : '') +
-                                        (item.unit ? ' | ' + item.unit : '') + '</div>';
-                        div.addEventListener('click', function() { selectProduct(item); });
-                        autocompleteList.appendChild(div);
-                    });
-                }
-                autocompleteList.style.display = 'block';
-            })
-            .catch(() => { autocompleteList.style.display = 'none'; });
-        }, 300);
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.autocomplete-wrapper')) {
-            autocompleteList.style.display = 'none';
-        }
-    });
-});
-
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('.product-form');
     if (!form) return;
@@ -504,35 +290,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let isValid = true;
         document.querySelectorAll('.error-message').forEach(el => el.remove());
 
-        function showError(fieldId, message) {
-            const field = document.getElementById(fieldId);
-            if (!field) return;
+        const nameInput = document.getElementById('name');
+        if (nameInput && !nameInput.value.trim()) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            field.parentNode.appendChild(errorDiv);
+            errorDiv.textContent = 'نام محصول الزامی است';
+            nameInput.parentNode.appendChild(errorDiv);
             isValid = false;
-        }
-
-        const nameInput = document.getElementById('name');
-        if (nameInput) {
-            const selectedId = document.getElementById('selected_product_id');
-            if (!selectedId || !selectedId.value) {
-                if (!nameInput.value.trim()) showError('name', 'نام محصول الزامی است');
-            }
-        }
-
-        const brandSection = document.getElementById('brand_section');
-        const brandNameInput = document.getElementById('brand_name');
-        if (brandSection && brandSection.style.display !== 'none'
-            && brandNameInput && !brandNameInput.value.trim()) {
-            showError('brand_name', 'نام تجاری الزامی است');
-        }
-
-        const convCheckbox = document.getElementById('has_unit_conversion');
-        const convRate = document.getElementById('conversion_rate');
-        if (convCheckbox && convCheckbox.checked && (!convRate || !convRate.value.trim())) {
-            showError('conversion_rate', 'وارد کردن میزان بسته‌بندی الزامی است');
         }
 
         if (!isValid) e.preventDefault();

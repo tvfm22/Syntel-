@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, PurchaseDraft, PurchaseDraftItem,
+    Cafe, Unit, Product, PurchaseDraft, PurchaseDraftItem,
     PurchaseItem, PurchaseRequest,
     User, Warehouse, StockItem,
 )
@@ -27,15 +27,13 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.officer = User.objects.create_user(
             username='wh_pd', password='x', role='warehouse', cafe=self.cafe)
 
-        # محصولی که هنگام تعریفش عمر مفید (ماندگاری) ثبت شده + برند دارای موجودی
+        # محصولی که هنگام تعریفش عمر مفید (ماندگاری) ثبت شده + دارای موجودی
         self.product = Product.objects.create(
             name='شیر', cafe=self.cafe, unit=self.unit,
             shelf_life_days=180, is_active=True, is_complete=True)
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='پگاه', trade_unit='بطری', conversion_rate=1)
         wh = Warehouse.objects.create(name='انبار اصلی', code='PD-WH1', cafe=self.cafe)
         self.stock = StockItem.objects.create(
-            product=self.product, product_brand=self.brand,
+            product=self.product,
             warehouse=wh, quantity=25, unit=self.unit)
 
         self.url = reverse('warehouse_purchase_draft', kwargs={'cafe_code': self.cafe.code})
@@ -45,11 +43,10 @@ class WarehousePurchaseDraftPageTest(TestCase):
         session.save()
         self.client.force_login(self.officer)
 
-    def _add_item(self, brand_id):
+    def _add_item(self):
         return self.client.post(self.url, data={
             'action': 'add_item',
             'product_id': str(self.product.id),
-            'brand_id': str(brand_id or ''),
             'quantity': '3',
             'unit': 'کیلوگرم',
             'description': '',
@@ -65,7 +62,7 @@ class WarehousePurchaseDraftPageTest(TestCase):
 
     def test_add_form_on_top_then_table_with_headers(self):
         # افزودن کالا → رفتن به ردیف پیش‌نویس
-        resp = self._add_item(self.brand.id)
+        resp = self._add_item()
         self.assertEqual(resp.status_code, 302)
         draft = PurchaseDraft.objects.filter(cafe=self.cafe, created_by=self.officer).first()
         self.assertIsNotNone(draft)
@@ -91,7 +88,7 @@ class WarehousePurchaseDraftPageTest(TestCase):
         self.assertIn('>زمان درخواستی تحویل<', content)
         self.assertIn('>ماندگاری<', content)
         self.assertIn('180 روز', content)
-        self.assertIn('25 بطری', content)
+        self.assertIn('25 کیلوگرم', content)
         self.assertNotIn('ارجاعی', content)
 
         # ردیفِ دستی (بدون درخواست منبع): خانهٔ تحویل «—» است
@@ -114,7 +111,7 @@ class WarehousePurchaseDraftPageTest(TestCase):
 
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.officer)
         PurchaseDraftItem.objects.create(
-            draft=draft, product=self.product, product_brand=self.brand,
+            draft=draft, product=self.product,
             name='شیر', quantity=3, unit='کیلوگرم',
             source_item=src_item)
 
@@ -129,7 +126,6 @@ class WarehousePurchaseDraftPageTest(TestCase):
         resp = self.client.post(self.url, data={
             'action': 'add_item',
             'product_id': '',
-            'brand_id': '',
             'new_name': 'دستمال کاغذی',
             'quantity': '2',
             'unit': 'بسته',

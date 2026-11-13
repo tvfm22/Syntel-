@@ -248,9 +248,6 @@
                 <option value="{{ p.id }}">{{ p.name }}</option>
                 {% endfor %}
             </select>
-            <select name="brand_id" id="brand-select" disabled>
-                <option value="">بدون برند</option>
-            </select>
             <input type="text" name="new_name" placeholder="یا نام آزاد بنویسید">
             <input type="number" name="new_qty" min="0.01" step="0.01" placeholder="مقدار" required>
             <input type="text" name="unit" placeholder="واحد (عدد)">
@@ -280,9 +277,8 @@
                     <thead>
                         <tr>
                             <th>کالا</th>
-                            <th>برند</th>
                             <th title="عمر مفید تعریف‌شده هنگام ثبت کالا">ماندگاری</th>
-                            <th title="مجموع موجودی این کالا در انبارها (واحد تجاری)">موجودی</th>
+                            <th title="مجموع موجودی این کالا در انبارها">موجودی</th>
                             <th>مقدار</th>
                             <th>واحد</th>
                             <th title="زمان تحویلی که کاربرِ درخواستِ اصلی برای این کالا خواسته بود">زمان درخواستی تحویل</th>
@@ -295,7 +291,6 @@
                         {% with info=draft_item_infos|get_item:d.id %}
                         <tr>
                             <td class="col-name">{{ d.product.name|default:d.name }}</td>
-                            <td class="col-fix" data-label="برند">{% if d.product_brand %}{{ d.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                             <td class="col-fix" data-label="ماندگاری">{% if info.shelf_life %}{{ info.shelf_life }} روز{% else %}<span class="dash">—</span>{% endif %}</td>
                             <td class="col-fix" data-label="موجودی">{% if info.has_stock %}<span class="t-ok">{{ info.stock_total|trim_decimal }} {{ info.stock_unit }}</span>{% elif d.product_id %}<span class="t-bad">ناموجود</span>{% else %}<span class="dash">—</span>{% endif %}</td>
                             <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="0.01" step="0.01"
@@ -384,7 +379,6 @@
                         <thead>
                             <tr>
                                 <th>کالا</th>
-                                <th>برند</th>
                                 <th>مقدار</th>
                                 <th>واحد</th>
                                 <th>توضیحات</th>
@@ -395,7 +389,6 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                                 <td data-label="مقدار"><input type="number" name="quantity" class="qty-edit" min="0.01" step="0.01"
                                            value="{{ item.quantity|trim_decimal }}" required title="مقدار"
                                            form="sent-edit-{{ req.id }}-{{ item.id }}"></td>
@@ -454,7 +447,6 @@
                         <thead>
                             <tr>
                                 <th>کالا</th>
-                                <th>برند</th>
                                 <th>مقدار</th>
                                 <th>واحد</th>
                                 <th>توضیحات</th>
@@ -464,7 +456,6 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                                 <td data-label="مقدار">{{ item.quantity|trim_decimal }}</td>
                                 <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
                                 <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
@@ -496,7 +487,6 @@
                         <thead>
                             <tr>
                                 <th>کالا</th>
-                                <th>برند</th>
                                 <th>مقدار</th>
                                 <th>واحد</th>
                                 <th>توضیحات</th>
@@ -506,7 +496,6 @@
                         {% for item in req.items.all %}
                             <tr>
                                 <td class="col-name">{{ item.product.name|default:item.name }}</td>
-                                <td class="col-fix" data-label="برند">{% if item.product_brand %}{{ item.product_brand.brand_name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                                 <td data-label="مقدار">{{ item.quantity|trim_decimal }}</td>
                                 <td class="col-fix" data-label="واحد">{{ item.unit|default:'—' }}</td>
                                 <td class="col-note" data-label="توضیحات">{{ item.description|default:'—' }}</td>
@@ -536,24 +525,6 @@ function getPersianDate() {
 }
 var persianDateEl = document.getElementById('persianDate');
 if (persianDateEl) { persianDateEl.textContent = getPersianDate(); }
-
-var PRODUCT_BRANDS = {
-    {% for p in products %}"{{ p.id }}": [
-        {% for b in product_brands|get_item:p.id %}{ id: "{{ b.id }}", name: "{{ b.brand_name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
-    ]{% if not forloop.last %},{% endif %}{% endfor %}
-};
-
-document.getElementById('product-select').addEventListener('change', function() {
-    var brandSel = document.querySelector('select[name="brand_id"]');
-    var brands = PRODUCT_BRANDS[this.value] || [];
-    brandSel.innerHTML = '<option value="">بدون برند</option>';
-    brands.forEach(function(b) {
-        var opt = document.createElement('option');
-        opt.value = b.id; opt.textContent = b.name;
-        brandSel.appendChild(opt);
-    });
-    brandSel.disabled = brands.length === 0;
-});
 
 document.getElementById('product-select').addEventListener('change', function() {
     var nameInput = document.querySelector('input[name="new_name"]');

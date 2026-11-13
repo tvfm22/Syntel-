@@ -118,7 +118,7 @@ class ScopedLookupHelperTests(TestCase):
         """هر مدل حواله/انبار باید مسیر کافه داشته باشد"""
         for model_name in ('WarehouseVoucher', 'WarehouseVoucherItem',
                            'StockItem', 'StockTransaction', 'Warehouse',
-                           'Product', 'ProductBrand', 'Unit', 'Category',
+                           'Product', 'Unit', 'Category',
                            'Department', 'Supplier', 'Requester'):
             self.assertIn(model_name, CAFE_LOOKUP_PATHS,
                           f'{model_name} باید در CAFE_LOOKUP_PATHS باشد')

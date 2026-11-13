@@ -203,8 +203,6 @@ class PurchaseItem(models.Model):
     
     request = models.ForeignKey(PurchaseRequest, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
-    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
-                                      related_name='purchase_items', verbose_name='برند')
     name = models.CharField(max_length=100)
     quantity = models.DecimalField(max_digits=12, decimal_places=4, default=0, verbose_name='مقدار')
     unit = models.CharField(max_length=20)
@@ -286,8 +284,6 @@ class WarehouseRequestItem(models.Model):
 
     warehouse_request = models.ForeignKey(WarehouseRequest, on_delete=models.CASCADE, related_name='items', verbose_name='درخواست انبار')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='محصول')
-    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
-                                      related_name='warehouse_request_items', verbose_name='برند')
     name = models.CharField(max_length=100, verbose_name='نام کالا')
     quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='مقدار درخواستی')
     unit = models.CharField(max_length=20, verbose_name='واحد')
@@ -404,12 +400,6 @@ class Product(models.Model):
     shelf_life_days = models.PositiveIntegerField(null=True, blank=True, verbose_name='عمر مفید (روز)',
                                                   help_text='مدت زمان ماندگاری محصول به روز؛ مثال: 180')
     usage_location = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default='general', verbose_name='محل استفاده')
-    # نمایش زیر محصولات: اگر فعال باشد، هنگام نمایش کالا به درخواست‌دهندگان، نام‌های تجاری آن
-    # به‌صورت جداگانه نمایش داده می‌شود؛ اگر فعال نباشد کالا با نام اصلی خودش نمایش داده می‌شود.
-    show_sub_products = models.BooleanField(
-        default=False, verbose_name='نمایش زیر محصولات',
-        help_text='اگر فعال باشد، هنگام نمایش کالا به درخواست‌دهندگان، نام‌های تجاری آن به‌صورت جداگانه نمایش داده می‌شود.',
-    )
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     # --- قیمت واحد کوچک‌ترین واحد (همگام با KukerItem مواد اولیه) -------------
@@ -435,45 +425,11 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-    @property
-    def total_converted_amount(self):
-        """مقدار تبدیل‌شده محصول = جمع نرخ‌های تبدیل همه برندهای فعال
-        (مثلاً روغن با دو برند قوطی ۵ لیتری → ۵ + ۵ = ۱۰)"""
-        total = self.brands.filter(is_active=True, conversion_rate__isnull=False).aggregate(
-            total=models.Sum('conversion_rate'))['total']
-        return total or Decimal('0')
-
-    @property
-    def active_brands(self):
-        return self.brands.filter(is_active=True)
-
     class Meta:
         verbose_name = 'محصول'
         verbose_name_plural = 'محصولات'
         ordering = ['name']
         unique_together = [['name', 'cafe']]
-
-
-class ProductBrand(models.Model):
-    """واریانت تجاری محصول - هر محصول می‌تواند چند نام تجاری داشته باشد.
-    مثال: روغن (محصول) با برندهای دمس و لادن، هر کدام قوطی ۵ لیتری"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='brands', verbose_name='محصول')
-    brand_name = models.CharField(max_length=200, verbose_name='نام تجاری')
-    trade_unit = models.CharField(max_length=50, blank=True, verbose_name='واحد تجاری')
-    # میزان محتوای بسته‌بندی بر اساس واحد پایه (مثلاً 5 لیتر برای قوطی روغن)
-    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='میزان بسته‌بندی (واحد پایه)')
-    is_active = models.BooleanField(default=True, verbose_name='فعال')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
-
-    def __str__(self):
-        return f"{self.product.name} - {self.brand_name}"
-
-    class Meta:
-        verbose_name = 'واریانت تجاری'
-        verbose_name_plural = 'واریانت‌های تجاری'
-        ordering = ['brand_name']
-        unique_together = [['product', 'brand_name']]
 
 # Department model for user departments
 class Department(models.Model):
@@ -1685,7 +1641,6 @@ class Warehouse(models.Model):
 # Stock Item model - موجودی انبار
 class StockItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_items', verbose_name='محصول')
-    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True, related_name='stock_items', verbose_name='برند')
     warehouse = models.ForeignKey('Warehouse', on_delete=models.CASCADE, related_name='stock_items', verbose_name='انبار', null=True, blank=True)
     quantity = models.DecimalField(max_digits=10, decimal_places=4, default=0, verbose_name='موجودی (واحد پایه)')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
@@ -1695,25 +1650,17 @@ class StockItem(models.Model):
 
     def __str__(self):
         warehouse_name = self.warehouse.name if self.warehouse else 'نامشخص'
-        brand_part = f" - {self.product_brand.brand_name}" if self.product_brand else ''
-        return f"{self.product.name}{brand_part} [{warehouse_name}] - موجودی: {self.quantity} {self.unit}"
+        return f"{self.product.name} [{warehouse_name}] - موجودی: {self.quantity} {self.unit}"
 
     @property
     def is_low_stock(self):
         """بررسی اینکه موجودی کمتر از حداقل است"""
         return self.quantity <= self.min_quantity
 
-    @property
-    def trade_quantity(self):
-        """مقدار موجودی بر حسب واحد تجاری برند (ذخیره ÷ نرخ تبدیل)"""
-        if self.product_brand and self.product_brand.conversion_rate:
-            return self.quantity / self.product_brand.conversion_rate
-        return None
-
     class Meta:
         verbose_name = 'موجودی انبار'
         verbose_name_plural = 'موجودی‌های انبار'
-        unique_together = [['product', 'product_brand', 'warehouse']]
+        unique_together = [['product', 'warehouse']]
         indexes = [
             models.Index(fields=['product']),
             models.Index(fields=['warehouse']),
@@ -1733,7 +1680,6 @@ class StockTransaction(models.Model):
     stock_item = models.ForeignKey(StockItem, on_delete=models.CASCADE, related_name='transactions', verbose_name='موجودی')
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES, verbose_name='نوع تراکنش')
     quantity = models.DecimalField(max_digits=10, decimal_places=4, verbose_name='مقدار')
-    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='نرخ تبدیل برند')
     unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='واحد')
     reference_type = models.CharField(max_length=50, blank=True, verbose_name='نوع مرجع')  # 'invoice', 'stock_request', 'initial', 'warehouse_voucher'
     reference_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='شناسه مرجع')
@@ -1843,8 +1789,6 @@ class PurchaseDraftItem(models.Model):
 
     draft = models.ForeignKey(PurchaseDraft, on_delete=models.CASCADE, related_name='items', verbose_name='پیش‌نویس')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_draft_items', verbose_name='محصول')
-    product_brand = models.ForeignKey('ProductBrand', on_delete=models.SET_NULL, null=True, blank=True,
-                                      related_name='purchase_draft_items', verbose_name='برند')
     name = models.CharField(max_length=100, verbose_name='نام کالا')
     quantity = models.DecimalField(max_digits=12, decimal_places=4, default=1, verbose_name='مقدار')
     unit = models.CharField(max_length=20, default='عدد', verbose_name='واحد')
@@ -2027,25 +1971,21 @@ class WarehouseVoucher(models.Model):
 
 
 class WarehouseVoucherItem(models.Model):
-    """قلم (ردیف) حواله انبار — محصول/برند یا موجودی انبار + مقادیر پایه و تجاری"""
+    """قلم (ردیف) حواله انبار — محصول یا موجودی انبار + مقدار و قیمت"""
 
     voucher = models.ForeignKey(WarehouseVoucher, on_delete=models.CASCADE, related_name='items', verbose_name='حواله')
-    # هر قلم باید به محصول (با برند احتمالی) یا موجودی انبار متصل باشد (در clean بررسی می‌شود)
+    # هر قلم باید به محصول یا موجودی انبار متصل باشد (در clean بررسی می‌شود)
     product         = models.ForeignKey('Product', null=True, blank=True, on_delete=models.SET_NULL, verbose_name='محصول')
-    product_brand   = models.ForeignKey('ProductBrand', null=True, blank=True, on_delete=models.SET_NULL, related_name='warehouse_voucher_items', verbose_name='برند')
     stock_item      = models.ForeignKey('StockItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='warehouse_voucher_items', verbose_name='موجودی انبار')
     unit            = models.ForeignKey('Unit', null=True, blank=True, on_delete=models.SET_NULL, verbose_name='واحد')
     # همه مقادیر اعشاری هستند؛ هیچ truncation صحیحی انجام نمی‌شود
     base_quantity   = models.DecimalField(max_digits=10, decimal_places=4, default=0, verbose_name='مقدار (واحد پایه)')
-    trade_quantity  = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='مقدار (واحد تجاری)')
-    conversion_rate = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name='نرخ تبدیل برند')
     unit_price      = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='قیمت واحد (ریال)')
     description     = models.TextField(blank=True, verbose_name='توضیحات')
 
     @property
     def total_price(self):
-        qty = self.trade_quantity if self.trade_quantity is not None else self.base_quantity
-        return qty * self.unit_price
+        return self.base_quantity * self.unit_price
 
     def __str__(self):
         if self.product:
@@ -2054,11 +1994,10 @@ class WarehouseVoucherItem(models.Model):
             name = self.stock_item.product.name
         else:
             name = '—'
-        qty = self.trade_quantity if self.trade_quantity is not None else self.base_quantity
-        return f"{name} - {qty}"
+        return f"{name} - {self.base_quantity}"
 
     def clean(self):
-        """هر قلم باید به محصول/برند یا موجودی انبار متصل باشد"""
+        """هر قلم باید به محصول یا موجودی انبار متصل باشد"""
         super().clean()
         if not (self.stock_item_id or self.product_id):
             raise ValidationError('هر قلم حواله باید به محصول یا موجودی انبار متصل باشد.')

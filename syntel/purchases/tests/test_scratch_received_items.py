@@ -10,7 +10,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 
 from purchases.models import (
-    User, Cafe, Category, Product, Unit, ProductBrand,
+    User, Cafe, Category, Product, Unit,
     Warehouse, StockItem, StockTransaction,
     PurchaseRequest, PurchaseItem, OfficerAssignment,
 )
@@ -25,15 +25,10 @@ class ReceivedItemsTests(TestCase):
         cls.product = Product.objects.create(
             name='شیر', category=cls.cat, unit=cls.unit, min_stock=0, cafe=cls.cafe,
         )
-        # نرخ تبدیل ۲: هر «بطری» = ۲ واحد پایه
-        cls.brand = ProductBrand.objects.create(
-            product=cls.product, brand_name='پگاه', trade_unit='بطری',
-            conversion_rate=2, is_active=True,
-        )
         cls.warehouse = Warehouse.objects.create(name='انبار اصلی', code='WH1', cafe=cls.cafe)
         cls.stock = StockItem.objects.create(
             product=cls.product, warehouse=cls.warehouse, unit=cls.unit,
-            quantity=100, min_quantity=0, product_brand=cls.brand,
+            quantity=100, min_quantity=0,
         )
 
         cls.requester = User.objects.create_user(
@@ -54,7 +49,7 @@ class ReceivedItemsTests(TestCase):
         req = PurchaseRequest.objects.create(user=user, cafe=self.cafe)
         return PurchaseItem.objects.create(
             request=req, product=self.product, name=name,
-            quantity=qty, unit='کیلوگرم', product_brand=self.brand,
+            quantity=qty, unit='کیلوگرم',
         )
 
     def _fulfill(self, item, base_qty=Decimal('5'), status='fulfilled'):
@@ -76,7 +71,7 @@ class ReceivedItemsTests(TestCase):
     # ── نمایش ────────────────────────────────────────────────────────────────
     def test_fulfilled_item_shown_with_delivered_qty(self):
         item = self._item(self.requester, qty=3)
-        self._fulfill(item, base_qty=Decimal('5'))  # ۵ واحد پایه ÷ ۲ = ۲.۵ بطری
+        self._fulfill(item, base_qty=Decimal('5'))
         c = self.login()
         r = c.get(self.url())
         self.assertEqual(r.status_code, 200)
@@ -84,8 +79,7 @@ class ReceivedItemsTests(TestCase):
         self.assertIn('کالاهای دریافتی من', content)
         self.assertIn('شیر', content)
         self.assertIn('درخواستی: <b>3 کیلوگرم</b>', content)
-        # مقدار تحویل‌شده به واحد تجاری برند برگردانده می‌شود (۵ ÷ ۲ = ۲.۵ بطری)
-        self.assertIn('تحویل‌شده: 2.5 بطری', content)
+        self.assertIn('تحویل‌شده: 5 کیلوگرم', content)
         self.assertIn('انبار اصلی', content)
         self.assertIn('تایید دریافت', content)
         self.assertIn(f'value="{item.id}"', content)
@@ -116,12 +110,12 @@ class ReceivedItemsTests(TestCase):
     def test_multiple_deliveries_all_shown(self):
         """یک قلم که در چند نوبت تحویل شده — همهٔ مقادیر نمایش داده می‌شوند."""
         item = self._item(self.requester)
-        self._fulfill(item, base_qty=Decimal('4'))  # ۲ بطری
-        self._fulfill(item, base_qty=Decimal('3'))  # ۱.۵ بطری
+        self._fulfill(item, base_qty=Decimal('4'))
+        self._fulfill(item, base_qty=Decimal('3'))
         c = self.login()
         content = c.get(self.url()).content.decode('utf-8')
-        self.assertIn('تحویل‌شده: 2 بطری', content)
-        self.assertIn('تحویل‌شده: 1.5 بطری', content)
+        self.assertIn('تحویل‌شده: 4 کیلوگرم', content)
+        self.assertIn('تحویل‌شده: 3 کیلوگرم', content)
 
     # ── تایید دریافت ─────────────────────────────────────────────────────────
     def test_confirm_single_item(self):

@@ -38,20 +38,17 @@
     .product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
     .product-arrow { color: var(--text-muted); font-size: 0.85rem; }
 
-    /* brand rows */
-    .brand-row {
+    /* warehouse supply rows */
+    .wh-row {
         padding: 1rem; border: 1px solid var(--border-default); border-radius: 12px; margin-bottom: 0.65rem; background: var(--bg-card);
     }
-    .brand-row.disabled { opacity: 0.55; background: var(--bg-subtle); }
-    .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .brand-badge {
-        background: rgba(139,92,246,0.12); color: #6D28D9; font-size: 0.75rem; font-weight: 700;
+    .wh-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .wh-badge {
+        background: rgba(139,92,246,0.12); color: #6D28D9; font-size: 0.78rem; font-weight: 700;
         padding: 3px 10px; border-radius: 999px;
     }
-    .brand-badge.generic { background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
-    .brand-avail { font-size: 0.82rem; color: var(--text-primary); font-weight: 700; margin-right: auto; }
-    .brand-rate { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; }
-    .brand-controls { display: flex; gap: 8px; align-items: center; }
+    .wh-avail { font-size: 0.82rem; color: var(--text-primary); font-weight: 700; margin-right: auto; }
+    .wh-controls { display: flex; gap: 8px; align-items: center; }
     .qty-input {
         flex: 1; height: 38px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px;
         font-size: 0.88rem; font-family: 'Vazir', sans-serif; min-width: 0; background: var(--bg-input);
@@ -97,7 +94,7 @@
             <div class="ph-icon"><i class="fas fa-box-open"></i></div>
             <div class="ph-title">
                 <h1>کالاهای موجود در انبار</h1>
-                <div class="page-sub">انتخاب محصول، انبار و برند و ثبت درخواست تامین از موجودی</div>
+                <div class="page-sub">انتخاب محصول و انبار و ثبت درخواست تامین از موجودی</div>
             </div>
         </div>
         <div class="header-actions">
@@ -117,14 +114,9 @@
         </div>
 
         <div class="step-card" id="warehouseCard" style="display:none;">
-            <div class="step-title"><span class="step-badge">۲</span> انبار دارای موجودی را انتخاب کنید</div>
+            <div class="step-title"><span class="step-badge">۲</span> انبار و مقدار را مشخص کنید</div>
+            <div class="hint">انبار دارای موجودی را انتخاب کرده، مقدار مورد نیاز را وارد کنید و دکمه «افزودن» را بزنید.</div>
             <div id="warehouseList"></div>
-        </div>
-
-        <div class="step-card" id="brandCard" style="display:none;">
-            <div class="step-title"><span class="step-badge">۳</span> برند و مقدار را مشخص کنید</div>
-            <div class="hint">مقدار را بر حسب واحد تجاری برند وارد کنید و دکمه «افزودن» را بزنید.</div>
-            <div id="brandList"></div>
         </div>
 
         <div class="step-card">
@@ -135,7 +127,6 @@
                     <thead>
                         <tr>
                             <th>کالا</th>
-                            <th>برند</th>
                             <th>انبار</th>
                             <th>مقدار</th>
                             <th>وضعیت</th>
@@ -146,9 +137,8 @@
                         {% for row in submitted_rows %}
                         <tr data-row-idx="{{ forloop.counter0 }}">
                             <td>{{ row.product.name }}</td>
-                            <td>{% if row.brand %}{{ row.brand.brand_name }}{% else %}بدون برند{% endif %}</td>
                             <td>{{ row.warehouse.name }}</td>
-                            <td>{{ row.qty|trim_decimal }}{% if row.brand and row.brand.trade_unit %} {{ row.brand.trade_unit }}{% endif %}</td>
+                            <td>{{ row.qty|trim_decimal }}{% if row.product.unit %} {{ row.product.unit.name }}{% endif %}</td>
                             <td>
                                 <select name="status" class="status-select">
                                     <option value="from_stock" {% if row.status == 'from_stock' %}selected{% endif %}>تامین از انبار</option>
@@ -159,11 +149,10 @@
                             <td><button type="button" class="remove-btn" onclick="removeRow(this)"><i class="fas fa-xmark"></i></button></td>
                             <input type="hidden" name="product_id" value="{{ row.product.id }}">
                             <input type="hidden" name="warehouse_id" value="{{ row.warehouse.id }}">
-                            <input type="hidden" name="brand_id" value="{% if row.brand %}{{ row.brand.id }}{% endif %}">
                             <input type="hidden" name="qty" value="{{ row.qty }}">
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6"><div class="empty-review" id="emptyReview">هنوز قلمی افزوده نشده است</div></td></tr>
+                        <tr><td colspan="5"><div class="empty-review" id="emptyReview">هنوز قلمی افزوده نشده است</div></td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -215,76 +204,52 @@ function selectProduct(productId, btnEl) {
     const list = document.getElementById('warehouseList');
     list.innerHTML = '';
     currentProduct.warehouses.forEach(w => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'warehouse-item';
-        btn.innerHTML = `<span class="warehouse-name"><i class="fas fa-warehouse" style="margin-left:6px;color:var(--accent-indigo)"></i> ${w.name}</span><span class="product-arrow"><i class="fas fa-chevron-left"></i></span>`;
-        btn.onclick = (e) => selectWarehouse(w.id, e.currentTarget);
-        list.appendChild(btn);
-    });
-    card.style.display = '';
-    document.getElementById('brandCard').style.display = 'none';
-}
-
-function selectWarehouse(warehouseId, btnEl) {
-    currentWarehouse = currentProduct.warehouses.find(w => w.id === warehouseId);
-    document.querySelectorAll('.warehouse-item').forEach(el => el.classList.remove('active'));
-    btnEl.classList.add('active');
-
-    const list = document.getElementById('brandList');
-    list.innerHTML = '';
-    currentWarehouse.brands.forEach(b => {
         const row = document.createElement('div');
-        row.className = 'brand-row' + (b.has_stock ? '' : ' disabled');
-
-        const unitPart = b.trade_unit ? ` ${b.trade_unit}` : '';
+        row.className = 'wh-row';
+        const unitPart = w.unit ? ` ${w.unit}` : '';
         row.innerHTML = `
-            <div class="brand-head">
-                <span class="brand-badge ${b.id ? '' : 'generic'}">${b.id ? '<i class="fas fa-tag"></i> ' + b.name : '<i class="fas fa-box"></i> ' + b.name}</span>
-                <span class="brand-avail">موجودی: ${b.available}${unitPart}</span>
+            <div class="wh-head">
+                <span class="wh-badge"><i class="fas fa-warehouse"></i> ${w.name}</span>
+                <span class="wh-avail">موجودی: ${w.available}${unitPart}</span>
             </div>
-            ${b.id ? `<div class="brand-rate">نرخ تبدیل: هر ${b.trade_unit || 'واحد'} = ${b.rate} واحد پایه</div>` : ''}
-            <div class="brand-controls">
-                <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${b.trade_unit || 'واحد'})" ${b.has_stock ? '' : 'disabled'}>
-                <button type="button" class="add-btn" ${b.has_stock ? '' : 'disabled'}>افزودن</button>
+            <div class="wh-controls">
+                <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${w.unit || 'واحد'})">
+                <button type="button" class="add-btn">افزودن</button>
             </div>
             <div class="qty-warning"><i class="fas fa-triangle-exclamation"></i> مقدار وارد شده بیشتر از موجودی انبار است</div>`;
 
-        if (b.has_stock) {
-            const qtyInput = row.querySelector('.qty-input');
-            const warn = row.querySelector('.qty-warning');
-            row.querySelector('.add-btn').onclick = () => {
-                const val = parseFloat(qtyInput.value);
-                const maxVal = parseFloat(b.available);
-                if (!val || val <= 0 || isNaN(val)) { qtyInput.focus(); return; }
-                if (val > maxVal) { warn.style.display = ''; return; }
-                warn.style.display = 'none';
-                addRow(b, val);
-                qtyInput.value = '';
-            };
-            qtyInput.addEventListener('input', () => {
-                const val = parseFloat(qtyInput.value);
-                if (val && val > parseFloat(b.available)) warn.style.display = '';
-                else warn.style.display = 'none';
-            });
-        }
+        const qtyInput = row.querySelector('.qty-input');
+        const warn = row.querySelector('.qty-warning');
+        row.querySelector('.add-btn').onclick = () => {
+            const val = parseFloat(qtyInput.value);
+            const maxVal = parseFloat(w.available);
+            if (!val || val <= 0 || isNaN(val)) { qtyInput.focus(); return; }
+            if (val > maxVal) { warn.style.display = ''; return; }
+            warn.style.display = 'none';
+            addRow(w, val);
+            qtyInput.value = '';
+        };
+        qtyInput.addEventListener('input', () => {
+            const val = parseFloat(qtyInput.value);
+            if (val && val > parseFloat(w.available)) warn.style.display = '';
+            else warn.style.display = 'none';
+        });
         list.appendChild(row);
     });
-    document.getElementById('brandCard').style.display = '';
+    card.style.display = '';
 }
 
-function addRow(brand, qty) {
+function addRow(wh, qty) {
     const tbody = document.getElementById('reviewBody');
     const empty = document.getElementById('emptyReview');
     if (empty) { empty.closest('tr').remove(); }
 
     const tr = document.createElement('tr');
     tr.setAttribute('data-row-idx', nextIdx);
-    const unitPart = brand.trade_unit ? ` ${brand.trade_unit}` : '';
+    const unitPart = wh.unit ? ` ${wh.unit}` : '';
     tr.innerHTML = `
         <td>${currentProduct.name}</td>
-        <td>${brand.id ? brand.name : 'بدون برند'}</td>
-        <td>${currentWarehouse.name}</td>
+        <td>${wh.name}</td>
         <td>${qty}${unitPart}</td>
         <td>
             <select name="status" class="status-select">
@@ -295,8 +260,7 @@ function addRow(brand, qty) {
         </td>
         <td><button type="button" class="remove-btn" onclick="removeRow(this)"><i class="fas fa-xmark"></i></button></td>
         <input type="hidden" name="product_id" value="${currentProduct.id}">
-        <input type="hidden" name="warehouse_id" value="${currentWarehouse.id}">
-        <input type="hidden" name="brand_id" value="${brand.id || ''}">
+        <input type="hidden" name="warehouse_id" value="${wh.id}">
         <input type="hidden" name="qty" value="${qty}">`;
     tbody.appendChild(tr);
     nextIdx++;
@@ -307,7 +271,7 @@ function removeRow(btn) {
     tr.remove();
     const tbody = document.getElementById('reviewBody');
     if (!tbody.children.length) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-review">هنوز قلمی افزوده نشده است</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-review">هنوز قلمی افزوده نشده است</div></td></tr>';
     }
 }
 

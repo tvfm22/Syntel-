@@ -80,11 +80,11 @@
         display: grid; gap: 0.5rem; align-items: center;
     }
     .items-head {
-        grid-template-columns: 2fr 1.2fr 1.4fr 0.9fr 1fr 1fr 1.2fr 30px;
+        grid-template-columns: 2.2fr 1.6fr 0.9fr 1fr 1fr 1.3fr 30px;
         padding: 0 0.2rem 0.4rem; font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
     }
     .item-row {
-        grid-template-columns: 2fr 1.2fr 1.4fr 0.9fr 1fr 1fr 1.2fr 30px;
+        grid-template-columns: 2.2fr 1.6fr 0.9fr 1fr 1fr 1.3fr 30px;
         background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-light);
         border-radius: var(--radius-lg); padding: 0.55rem; margin-bottom: 0.5rem;
     }
@@ -254,7 +254,7 @@
         <div class="form-card">
             <div class="form-card-title"><i class="fas fa-list-ul"></i> اقلام حواله</div>
             <div class="items-head">
-                <span>محصول</span><span>برند</span><span>موجودی انبار (اختیاری)</span>
+                <span>محصول</span><span>موجودی انبار (اختیاری)</span>
                 <span>واحد</span><span>مقدار پایه</span><span>قیمت واحد</span>
                 <span>توضیح قلم</span><span></span>
             </div>
@@ -267,7 +267,6 @@
                 <i class="fas fa-circle-info"></i>
                 <div>
                     <b>مقدار پایه</b> میزان اصلی کالا در واحد انتخابی است (برای تعدیل، علامت جهت را نشان می‌دهد: + افزایش، − کاهش).
-                    <b>برند</b> اختیاری است؛ اگر انتخاب شود، نرخ تبدیل برند در محاسبهٔ مقدار تجاری لحاظ می‌شود.
                     انتخاب <b>موجودی انبار</b> اختیاری است — برای خروج، ترجیحاً موجودیِ دقیقِ همان انبار را انتخاب کنید.
                     <b>حوالهٔ ورود</b> همهٔ محصولات را می‌پذیرد: اگر کالا هنوز در انبار موجودی ندارد، هنگام نهایی‌سازی خودکار ثبت می‌شود.
                 </div>
@@ -297,8 +296,6 @@
 (function () {
     'use strict';
 
-    var BRANDS = {{ brands_json|safe }};
-
     // ── فهرست کامل محصولات برای جستجوی تایپی (یک‌بار درج می‌شود، نه در هر ردیف) ──
     var PRODUCTS = [
         {% for p in products %}
@@ -309,10 +306,8 @@
     var STOCK_ITEMS = [
         {% for si in stock_items %}
         { sid: {{ si.id }}, product_id: {{ si.product_id }},
-          brand_id: {{ si.product_brand_id|default:'null' }},
           warehouse_id: {{ si.warehouse_id|default:'null' }},
           name: "{{ si.product.name|escapejs }}",
-          brand: "{{ si.product_brand.brand_name|escapejs|default:'' }}",
           warehouse: "{{ si.warehouse.name|escapejs }}",
           unit: "{{ si.unit.name|escapejs }}",
           qty: "{{ si.quantity|trim_decimal }}" },
@@ -325,7 +320,6 @@
             {% for it in prefill_items %}
             { product_id: {{ it.product_id|default:'null' }},
               product_name: "{{ it.product_name|escapejs }}",
-              brand_id: {{ it.brand_id|default:'null' }},
               stock_id: {{ it.stock_id|default:'null' }},
               unit_id: {{ it.unit_id|default:'null' }},
               base: "{{ it.base|escapejs }}",
@@ -336,7 +330,6 @@
             {% for it in edit_items %}
             { product_id: {{ it.product_id|default:'null' }},
               product_name: "{{ it.product.name|escapejs|default:'' }}",
-              brand_id: {{ it.product_brand_id|default:'null' }},
               stock_id: {{ it.stock_item_id|default:'null' }},
               unit_id: {{ it.unit_id|default:'null' }},
               base: "{{ it.base_quantity|trim_decimal }}",
@@ -353,18 +346,11 @@
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function populateBrands(row) {
+    function populateStocks(row) {
         var hidden = row.querySelector('.row-product-id');
-        var brandSel = row.querySelector('.row-brand');
         var stockSel = row.querySelector('.row-stock');
         var pid = hidden.value;
-        brandSel.innerHTML = '<option value="">بدون برند</option>';
         stockSel.innerHTML = '<option value="">—</option>';
-        if (pid && BRANDS[pid]) {
-            BRANDS[pid].forEach(function (b) {
-                brandSel.innerHTML += '<option value="' + b.id + '">' + esc(b.name) + '</option>';
-            });
-        }
         if (pid) {
             var wh = selectedWarehouseId();
             var found = false;
@@ -372,7 +358,6 @@
                 if (String(si.product_id) !== pid) return;
                 if (wh && String(si.warehouse_id) !== wh) return;
                 stockSel.innerHTML += '<option value="' + si.sid + '">' +
-                    (si.brand ? esc(si.brand) + ' — ' : 'بدون برند — ') +
                     esc(si.warehouse) + ' — موجودی ' + esc(si.qty) + ' ' + esc(si.unit) + '</option>';
                 found = true;
             });
@@ -409,13 +394,11 @@
         var input = row.querySelector('.row-product-name');
         var hidden = row.querySelector('.row-product-id');
         var drop = row.querySelector('.prod-ac-drop');
-        var brandSel = row.querySelector('.row-brand');
         var stockSel = row.querySelector('.row-stock');
         var matches = [];
         var active = -1;
 
         function resetItemSelects() {
-            brandSel.innerHTML = '<option value="">بدون برند</option>';
             stockSel.innerHTML = '<option value="">—</option>';
         }
 
@@ -465,7 +448,7 @@
             hidden.value = p.id;
             input.classList.remove('invalid');
             closeDrop();
-            populateBrands(row);
+            populateStocks(row);
         }
 
         input.addEventListener('focus', function () {
@@ -505,7 +488,7 @@
             }
         });
         // باز شدن روی فیلدهای دیگر ردیف، فهرست را می‌بندد
-        [brandSel, stockSel, row.querySelector('.row-unit'),
+        [stockSel, row.querySelector('.row-unit'),
          row.querySelector('.row-qty')].forEach(function (el) {
             el.addEventListener('focus', closeDrop);
         });
@@ -525,7 +508,6 @@
             '  <input type="hidden" class="row-product-id" name="product_id[]">' +
             '  <div class="prod-ac-drop" hidden></div>' +
             '</div>' +
-            '<select class="row-brand" name="product_brand_id[]"><option value="">بدون برند</option></select>' +
             '<select class="row-stock" name="stock_item_id[]"><option value="">—</option></select>' +
             '<select class="row-unit" name="unit_id[]" required>' +
             '  <option value="">واحد...</option>' +
@@ -550,11 +532,8 @@
             nameInput.value = data.product_name || '';
         }
         attachProductBox(row);
-        // پس از اتصال DOM، گزینه‌های برند/موجودی را بر اساس انتخاب اولیه پر کن
-        populateBrands(row);
-        if (data.brand_id) {
-            row.querySelector('.row-brand').value = String(data.brand_id);
-        }
+        // پس از اتصال DOM، گزینه‌های موجودی را بر اساس انتخاب اولیه پر کن
+        populateStocks(row);
         if (data.stock_id) {
             row.querySelector('.row-stock').value = String(data.stock_id);
         }
@@ -575,7 +554,7 @@
             container.querySelectorAll('.item-row').forEach(function (row) {
                 var stockSel = row.querySelector('.row-stock');
                 var prev = stockSel.value;
-                populateBrands(row);
+                populateStocks(row);
                 if (prev) {
                     Array.prototype.forEach.call(stockSel.options, function (o) {
                         if (o.value === prev) stockSel.value = prev;

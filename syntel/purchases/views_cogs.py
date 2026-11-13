@@ -1402,12 +1402,27 @@ def cogs_recipe_api(request, item_id):
     if errors:
         return JsonResponse({'ok': False, 'error': ' '.join(errors[:3])}, status=400)
 
+    used_product_ids = {m.product_id for m, *_ in cleaned if m.product_id}
     with transaction.atomic():
+        # محصولاتی که پیش‌تر در هیچ رسپیِ این کافه نبودند و الان به رسپی اضافه می‌شوند
+        # در سفارش‌گذاری هم به‌صورت خودکار فعال می‌شوند.
+        newly_used_product_ids = set()
+        if used_product_ids:
+            already_used = set(
+                KukerRecipeLine.objects.filter(
+                    material__product_id__in=used_product_ids,
+                    item__cafe=cafe,
+                ).values_list('material__product_id', flat=True)
+            )
+            newly_used_product_ids = used_product_ids - already_used
+
         KukerRecipeLine.objects.filter(item=item).delete()
         KukerRecipeLine.objects.bulk_create([
             KukerRecipeLine(item=item, material=material, quantity=qty, unit=unit, fee=fee)
             for material, qty, unit, fee in cleaned
         ])
+        if newly_used_product_ids:
+            Product.objects.filter(id__in=newly_used_product_ids, is_active=False).update(is_active=True)
         update_fields = ['out_qty', 'out_unit']
         item.out_qty = out_qty
         item.out_unit = out_unit

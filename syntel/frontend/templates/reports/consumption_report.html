@@ -554,12 +554,6 @@
         font-size: 0.88rem;
     }
 
-    .cr-prod-brand {
-        font-size: 0.73rem;
-        color: var(--text-muted);
-        margin-top: 0.1rem;
-    }
-
     .cr-cat-badge {
         display: inline-flex;
         align-items: center;
@@ -1085,7 +1079,7 @@
                 <input type="text"
                        id="productQuickSearch"
                        value="{{ search_query }}"
-                       placeholder="جستجوی سریع نام کالا، برند، دسته‌بندی یا سکشن..."
+                       placeholder="جستجوی سریع نام کالا، دسته‌بندی یا سکشن..."
                        aria-label="جستجوی سریع کالا">
             </div>
 
@@ -1122,7 +1116,7 @@
                     {% for r in product_rows %}
                     <tr class="cr-product-row"
                         data-product-id="{{ r.product_id }}"
-                        data-search-text="{{ r.product_name }} {{ r.category_name }} {{ r.brands_display }} {% for sb in r.section_breakdown %}{{ sb.section }} {% endfor %}"
+                        data-search-text="{{ r.product_name }} {{ r.category_name }} {% for sb in r.section_breakdown %}{{ sb.section }} {% endfor %}"
                         onclick="openProductHistoryModal({{ r.product_id }})">
                         <td style="color:var(--text-muted); font-weight:700;">{{ forloop.counter }}</td>
                         <td>
@@ -1130,9 +1124,6 @@
                                 <div class="cr-prod-icon"><i class="fas fa-box"></i></div>
                                 <div>
                                     <div class="cr-prod-name">{{ r.product_name }}</div>
-                                    {% if r.brands %}
-                                    <div class="cr-prod-brand">برند: {{ r.brands_display }}</div>
-                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -1262,7 +1253,7 @@
                             <th>تاریخ و ساعت</th>
                             <th>سکشن تحویل‌گیرنده</th>
                             <th>مقدار تحویلی</th>
-                            <th>انبار / برند</th>
+                            <th>انبار</th>
                             <th>درخواست‌دهنده / مرجع</th>
                             <th>تخمین هزینه</th>
                         </tr>
@@ -1422,13 +1413,13 @@
             var costHtml = (rec.estimated_cost !== null && rec.estimated_cost !== undefined)
                 ? '<span class="cr-est-cost" style="font-size:0.78rem; padding:0.15rem 0.5rem;">' + fmtNumber(rec.estimated_cost) + ' تومان</span>'
                 : '<span class="cr-no-price">—</span>';
-            var brandWarehouse = escapeHtml(rec.warehouse_name || '—') + (rec.brand_name && rec.brand_name !== '—' ? ' <span style="color:var(--text-muted); font-size:0.73rem;">(' + escapeHtml(rec.brand_name) + ')</span>' : '');
+            var warehouseName = escapeHtml(rec.warehouse_name || '—');
             var reqInfo = escapeHtml(rec.requester_name || '—') + (rec.ref_label ? ' <span style="color:var(--text-muted); font-size:0.72rem;">[' + escapeHtml(rec.ref_label) + ']</span>' : '');
             html += '<tr>' +
                 '<td style="font-variant-numeric:tabular-nums; font-weight:700;">' + escapeHtml(rec.jalali_date) + ' <span style="color:var(--text-muted); font-size:0.74rem; margin-right:0.25rem;">' + escapeHtml(rec.time_str) + '</span></td>' +
                 '<td><span class="cr-sec-chip"><strong>' + escapeHtml(rec.section_name) + '</strong></span></td>' +
                 '<td style="font-weight:800; font-variant-numeric:tabular-nums;">' + escapeHtml(rec.quantity) + ' <span style="font-size:0.74rem; font-weight:600; color:var(--text-secondary);">' + escapeHtml(rec.unit_name) + '</span></td>' +
-                '<td>' + brandWarehouse + '</td>' +
+                '<td>' + warehouseName + '</td>' +
                 '<td>' + reqInfo + '</td>' +
                 '<td>' + costHtml + '</td>' +
                 '</tr>';

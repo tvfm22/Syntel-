@@ -16,7 +16,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from purchases.models import (
-    Cafe, Notification, OfficerAssignment, Product, ProductBrand, PurchaseItem,
+    Cafe, Notification, OfficerAssignment, Product, PurchaseItem,
     PurchaseRequest, Unit, WarehouseRequest, WarehouseRequestItem,
 )
 
@@ -33,7 +33,7 @@ def _set_cafe_session(client, cafe):
 
 
 class _GoodsRequestBase(TestCase):
-    """زیرساخت مشترک: دو کافه، واحد/محصول/برند در هر کدام"""
+    """زیرساخت مشترک: دو کافه، واحد و محصول در هر کدام"""
 
     def setUp(self):
         self.client = Client()
@@ -54,10 +54,6 @@ class _GoodsRequestBase(TestCase):
             name='Sugar', unit=self.unit_a, cafe=self.cafe_a, min_stock=1)
         self.product_b = Product.objects.create(
             name='Tea', unit=self.unit_b, cafe=self.cafe_b, min_stock=1)
-        self.brand_a = ProductBrand.objects.create(
-            product=self.product_a, brand_name='BrandX', conversion_rate=D('2'))
-        self.brand_b = ProductBrand.objects.create(
-            product=self.product_b, brand_name='BrandY', conversion_rate=D('3'))
 
     def _url(self, name, **kwargs):
         return reverse(name, kwargs={'cafe_code': 'a', **kwargs})
@@ -76,7 +72,6 @@ class WarehouseRequestFormTests(_GoodsRequestBase):
             'item_unit': ['Kilogram'],
             'item_description': ['برای آشپزخانه'],
             'item_product_id': [str(self.product_a.id)],
-            'item_brand_id': [''],
         }
         data.update(overrides)
         return self.client.post(self._url('warehouse_request_form'), data=data)
@@ -101,16 +96,16 @@ class WarehouseRequestFormTests(_GoodsRequestBase):
         self.assertEqual(item.unit, 'Kilogram')
         self.assertEqual(item.description, 'برای آشپزخانه')
         self.assertEqual(item.product_id, self.product_a.id)
-        self.assertIsNone(item.product_brand_id)
 
     def test_multi_item_request_is_created(self):
+        flour = Product.objects.create(
+            name='Flour', unit=self.unit_a, cafe=self.cafe_a, min_stock=1)
         r = self._post(
             product_name=['Sugar', 'Flour'],
             item_quantity=['5', '2.5'],
             item_unit=['Kilogram', 'Kilogram'],
             item_description=['a', 'b'],
-            item_product_id=[str(self.product_a.id), ''],
-            item_brand_id=['', ''],
+            item_product_id=[str(self.product_a.id), str(flour.id)],
         )
         self.assertEqual(r.status_code, 302)
         req = WarehouseRequest.objects.get()
@@ -132,7 +127,6 @@ class WarehouseRequestFormTests(_GoodsRequestBase):
             item_unit=['Kilogram', 'Kilogram', 'Kilogram'],
             item_description=['a', 'b', 'c'],
             item_product_id=[str(self.product_a.id), '', ''],
-            item_brand_id=['', '', ''],
         )
         self.assertEqual(r.status_code, 302)
         self.assertEqual(WarehouseRequest.objects.get().items.count(), 1)
@@ -165,41 +159,23 @@ class WarehouseRequestFormTests(_GoodsRequestBase):
         self.assertEqual(item.product_id, self.product_a.id)  # iexact
 
     def test_free_text_name_does_not_match_other_cafe_product(self):
-        """نامِ محصولِ کافهٔ دیگر به محصولِ آن کافه وصل نمی‌شود"""
+        """نامِ محصولِ کافهٔ دیگر به محصولِ آن کافه وصل نمی‌شود و برای درخواست‌کننده مسدود است"""
         r = self._post(product_name=['Tea'], item_product_id=[''])
-        self.assertEqual(r.status_code, 302)
-        item = WarehouseRequest.objects.get().items.get()
-        self.assertIsNone(item.product_id)   # کافهٔ A محصولی به نام Tea ندارد
-        self.assertEqual(item.name, 'Tea')   # ولی به‌عنوان نام آزاد ثبت می‌شود
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(WarehouseRequest.objects.count(), 0)
+        self.assertContains(r, 'در فهرست محصولات ثبت نشده است')
 
     def test_foreign_product_id_does_not_leak_across_cafes(self):
         """شناسهٔ خامِ محصولِ کافهٔ دیگر نباید به محصولِ آن کافه وصل شود
 
         شناسه‌ای که از POST می‌آید فقط در محدودهٔ کافهٔ فعلی جستجو می‌شود؛ پس
-        محصولِ کافهٔ B وصل نمی‌شود. قلم به‌صورت «نام آزاد» ثبت می‌شود تا
-        درخواست کاربر از بین نرود (رفتار ۱۴۰۵-۰۶-۲۰).
+        محصولِ کافهٔ B وصل نمی‌شود و برای درخواست‌کننده درخواست رد می‌شود.
         """
         r = self._post(product_name=['Tea'],
                        item_product_id=[str(self.product_b.id)])
-        self.assertEqual(r.status_code, 302)
-        item = WarehouseRequest.objects.get().items.get()
-        self.assertIsNone(item.product_id)
-        self.assertEqual(item.name, 'Tea')   # به‌عنوان نام آزاد ثبت می‌شود
-
-    def test_brand_from_other_product_is_ignored(self):
-        """برند باید به همان محصول تعلق داشته باشد؛ برندِ محصول دیگر ثبت نمی‌شود"""
-        r = self._post(item_brand_id=[str(self.brand_b.id)])
-        self.assertEqual(r.status_code, 302)
-        item = WarehouseRequest.objects.get().items.get()
-        self.assertEqual(item.product_id, self.product_a.id)
-        self.assertIsNone(item.product_brand_id)
-
-    def test_own_brand_is_recorded(self):
-        r = self._post(item_brand_id=[str(self.brand_a.id)])
-        self.assertEqual(r.status_code, 302)
-        self.assertEqual(
-            WarehouseRequest.objects.get().items.get().product_brand_id,
-            self.brand_a.id)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(WarehouseRequest.objects.count(), 0)
+        self.assertContains(r, 'در فهرست محصولات ثبت نشده است')
 
 
 class WarehouseRequestListTests(_GoodsRequestBase):
@@ -484,26 +460,17 @@ class ManagerApprovalOfRequesterRequestTests(_GoodsRequestBase):
 
 
     def test_foreign_product_id_does_not_leak_across_cafes(self):
-        """شناسهٔ خامِ محصولِ کافهٔ دیگر در فرم «درخواست کالا» هم وصل نمی‌شود
-
-        همان نشتِ فرمِ انبار در این نقطهٔ ورود هم وجود داشت (هر دو از یک
-        الگوی مشترک کپی شده بودند)؛ این تست بازگشتِ آن را می‌گیرد.
-        """
+        """شناسهٔ خامِ محصولِ کافهٔ دیگر در فرم «درخواست کالا» هم وصل نمی‌شود و برای درخواست‌کننده رد می‌شود"""
         r = self.client.post(self._url('purchase_request'), data={
             'product_name': ['Tea'],
             'item_quantity': ['5'],
             'item_unit': ['Kilogram'],
             'item_description': [''],
             'item_product_id': [str(self.product_b.id)],
-            'item_brand_id': [''],
         })
-        self.assertEqual(r.status_code, 302)
-        # درخواستِ تازه‌ساخته، جدا از درخواستِ از پیش موجودِ fixture
-        pr = PurchaseRequest.objects.exclude(id=self.purchase_request.id).get()
-        self.assertEqual(pr.cafe, self.cafe_a)
-        item = pr.items.get()
-        self.assertIsNone(item.product_id)
-        self.assertEqual(item.name, 'Tea')
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(PurchaseRequest.objects.exclude(id=self.purchase_request.id).exists())
+        self.assertContains(r, 'در فهرست محصولات ثبت نشده است')
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -131,7 +131,7 @@ def _change_stock_quantity(stock_item_id, delta):
             quantity=models.F('quantity') + delta)
     if not updated:
         return False, None, None
-    fresh = StockItem.objects.select_related('product', 'product_brand').get(id=stock_item_id)
+    fresh = StockItem.objects.select_related('product').get(id=stock_item_id)
     return True, fresh.quantity - delta, fresh.quantity
 
 
@@ -166,12 +166,10 @@ def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
         ok, prev_qty, new_qty = _change_stock_quantity(stock_item.id, delta)
         if not ok:
             raise InsufficientStockError(stock_item.product.name)
-        brand = stock_item.product_brand
         return StockTransaction.objects.create(
             stock_item=stock_item,
             transaction_type=_tx_type_for('', delta),
             quantity=abs(delta),
-            conversion_rate=brand.conversion_rate if brand else None,
             unit=stock_item.unit,
             reference_type=reference_type,
             reference_id=reference_id,
@@ -322,9 +320,9 @@ def _resolve_stock_item(item, warehouse, allow_explicit, create_if_missing=False
     """موجودی انبارِ هدف یک حرکت را تعیین می‌کند.
 
     - اگر قلم صریحاً موجودی انبار دارد: فقط سمتِ مبدأ از آن استفاده می‌شود
-      (موجودیِ صریح یعنی «الان کجاست»). سمتِ مقصد (انتقال) با محصول/برند در
+      (موجودیِ صریح یعنی «الان کجاست»). سمتِ مقصد (انتقال) با محصول در
       انبارِ مقصد یافت می‌شود.
-    - وگرنه با (محصول، برند، انبار) جست‌وجو می‌شود؛ چندتا = خطا (قلم باید
+    - وگرنه با (محصول، انبار) جست‌وجو می‌شود؛ چندتا = خطا (قلم باید
       صریحاً به موجودی انبار متصل شود).
     - نایافتنی: اگر create_if_missing باشد (سمتِ «ورود»ِ رسید/برگشتی) موجودیِ
       انبارِ نو با موجودیِ صفر ساخته می‌شود — رسیدِ کالای تازه به موجودیِ از
@@ -337,27 +335,20 @@ def _resolve_stock_item(item, warehouse, allow_explicit, create_if_missing=False
                 f'قلم «{item}»: موجودیِ انبارِ انتخابی در انبار «{warehouse.name}» نیست.')
         return si
     product_id = item.product_id or (item.stock_item_id and item.stock_item.product_id)
-    brand_id = item.product_brand_id or (item.stock_item_id and item.stock_item.product_brand_id)
-    qs = StockItem.objects.filter(warehouse_id=warehouse.id).select_related('product', 'product_brand')
+    qs = StockItem.objects.filter(warehouse_id=warehouse.id).select_related('product')
     if product_id:
         qs = qs.filter(product_id=product_id)
-    if brand_id:
-        qs = qs.filter(product_brand_id=brand_id)
-    else:
-        # قلمِ بدون برند فقط به موجودیِ بدون برند متصل می‌شود
-        qs = qs.filter(product_brand_id__isnull=True)
     matches = list(qs)
     if not matches:
         if create_if_missing and product_id:
             return StockItem.objects.create(
                 product_id=product_id,
-                product_brand_id=brand_id,
                 warehouse=warehouse,
                 unit_id=item.unit_id,
                 quantity=Decimal('0'),
             )
         raise VoucherValidationError(
-            f'قلم «{item}»: موجودیِ انبار برای این محصول/برند در انبار «{warehouse.name}» یافت نشد.')
+            f'قلم «{item}»: موجودیِ انبار برای این محصول در انبار «{warehouse.name}» یافت نشد.')
     if len(matches) > 1:
         raise VoucherValidationError(
             f'قلم «{item}»: چند موجودیِ انبار در انبار «{warehouse.name}» یافت شد — '
@@ -388,8 +379,8 @@ def _plan_movements(v):
 
     # قفلِ قلم‌ها با حواله (ویرایشِ همزمانِ قلم‌ها با نهایی‌سازی تداخل نکند)
     items = list(v.items.select_for_update().select_related(
-        'product', 'product_brand', 'unit',
-        'stock_item__product', 'stock_item__product_brand',
+        'product', 'unit',
+        'stock_item__product',
         'stock_item__warehouse',
     ))
     if not items:
@@ -404,17 +395,12 @@ def _plan_movements(v):
     plans: list[_PlannedMovement] = []
 
     for item in items:
-        # ── پیوند و برند ──
+        # ── پیوند محصول و موجودی ──
         if not (item.stock_item_id or item.product_id):
             raise VoucherValidationError(f'قلم «{item}» به محصول یا موجودیِ انبار متصل نیست.')
         si = item.stock_item
         if item.product_id and si and si.product_id != item.product_id:
             raise VoucherValidationError(f'قلم «{item}»: محصول قلم با موجودیِ انبارِ انتخابی مطابقت ندارد.')
-        if si and item.product_brand_id:
-            if si.product_brand_id and si.product_brand_id != item.product_brand_id:
-                raise VoucherValidationError(f'قلم «{item}»: برند قلم با برند موجودیِ انبار مطابقت ندارد.')
-            if not si.product_brand_id:
-                raise VoucherValidationError(f'قلم «{item}»: برند انتخاب شده ولی موجودیِ انبار بدون برند است.')
 
         # ── واحد ──
         if not item.unit_id:
@@ -429,22 +415,8 @@ def _plan_movements(v):
             raise VoucherValidationError(
                 f'قلم «{item}»: واحد قلم با واحدِ اصلیِ محصول مطابقت ندارد.')
 
-        # ── نرخ تبدیل و مقدار (همهٔ مقادیر اعشاری؛ هیچ truncation‌ای) ──
+        # ── مقدار (همهٔ مقادیر اعشاری؛ هیچ truncation‌ای) ──
         base = item.base_quantity
-        rate = item.conversion_rate
-        trade = item.trade_quantity
-        if rate is not None and rate <= 0:
-            raise VoucherValidationError(f'قلم «{item}»: نرخ تبدیل باید مثبت باشد.')
-        if trade is not None:
-            if rate is not None:
-                expected = (trade * rate).quantize(_DECIMAL_EPSILON)
-                if base != expected:
-                    raise VoucherValidationError(
-                        f'قلم «{item}»: مقدار پایه با «مقدار تجاری × نرخ تبدیل» مغایرت دارد '
-                        f'({base} ≠ {trade} × {rate}).')
-            elif base != trade:
-                raise VoucherValidationError(
-                    f'قلم «{item}»: نرخ تبدیل ثبت نشده ولی مقدار پایه و تجاری متفاوت‌اند.')
         if v.voucher_type == 'adjustment':
             if base == 0:
                 raise VoucherValidationError(f'قلم «{item}»: مقدار تعدیل نباید صفر باشد.')
@@ -583,7 +555,7 @@ def finalize_voucher(voucher, finalized_by=None):
         locked = {
             si.id: si
             for si in StockItem.objects.select_for_update()
-            .select_related('product', 'product_brand', 'warehouse')
+            .select_related('product', 'warehouse')
             .filter(id__in=[p.stock_item_id for p in plans])
         }
         if len(locked) != len(net):
@@ -613,14 +585,10 @@ def finalize_voucher(voucher, finalized_by=None):
             prev = running[p.stock_item_id]
             new = prev + p.delta
             running[p.stock_item_id] = new
-            rate = p.item.conversion_rate
-            if rate is None and p.stock_item.product_brand_id:
-                rate = p.stock_item.product_brand.conversion_rate
             tx = StockTransaction.objects.create(
                 stock_item_id=p.stock_item_id,
                 transaction_type=p.tx_type,
                 quantity=abs(p.delta),
-                conversion_rate=rate,
                 unit_id=p.item.unit_id,
                 reference_type='warehouse_voucher',
                 reference_id=v.id,
@@ -701,12 +669,9 @@ def reverse_voucher(voucher, created_by=None, description=None):
             WarehouseVoucherItem.objects.create(
                 voucher=reversal,
                 product=item.product,
-                product_brand=item.product_brand,
                 stock_item=item.stock_item,
                 unit=item.unit,
                 base_quantity=item.base_quantity,
-                trade_quantity=item.trade_quantity,
-                conversion_rate=item.conversion_rate,
                 unit_price=item.unit_price,
                 description=item.description,
             )

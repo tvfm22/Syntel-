@@ -93,9 +93,11 @@ def sync_raw_material(item, price=None, unit=None, save=True):
             item.out_unit = smallest or item.out_unit
         product = item.product
         if product is None:
+            from ..models import KukerRecipeLine
+            in_recipe = KukerRecipeLine.objects.filter(material=item).exists()
             product, _created = Product.objects.get_or_create(
                 cafe=item.cafe, name=item.name,
-                defaults={'is_active': True},
+                defaults={'is_active': in_recipe},
             )
             item.product = product
         product.base_unit_price = item.price

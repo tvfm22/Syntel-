@@ -153,11 +153,6 @@
     .done-row .item-avatar { background: #F1F5F9; color: var(--text-muted); }
     .item-prod-info { min-width: 0; flex: 1; }
     .item-name { font-size: 0.86rem; font-weight: 700; color: var(--text-primary); display: block; line-height: 1.4; }
-    .item-brand {
-        font-size: 0.68rem; font-weight: 600; color: var(--primary-dark); background: rgba(99,102,241,0.08);
-        padding: 0.1rem 0.5rem; border-radius: 999px; display: inline-block; margin-top: 0.2rem;
-        max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
     .item-desc-cell {
         font-size: 0.72rem; color: var(--text-secondary); line-height: 1.45;
         margin-top: 0.3rem; padding: 0.22rem 0.5rem;
@@ -273,7 +268,7 @@
         .date-arrow { width: 40px; height: 40px; }
         .date-display { flex: 1 1 auto; min-width: 0; }
         .dept-filter { width: 100%; min-width: 0; height: 40px; }
-        .wo-summary-strip { flex-direction: column; align-items: stretch; }
+        .wo-summary-strip { display: none; }
 
         .req-card { border-radius: var(--radius-lg); margin-bottom: 0.85rem; }
         .req-card-head { padding: 0.75rem; }
@@ -413,7 +408,7 @@
                             <th>کالا / توضیحات</th>
                             <th>مقدار درخواست</th>
                             <th>موجودی انبار</th>
-                            <th>انتخاب انبار / برند و مقدار تأمین</th>
+                            <th>انتخاب انبار و مقدار تأمین</th>
                             <th>عملیات</th>
                         </tr>
                     </thead>
@@ -425,9 +420,6 @@
                                 <div class="item-avatar">{{ v.item.product.name|default:v.item.name|slice:":1" }}</div>
                                 <div class="item-prod-info">
                                     <span class="item-name">{{ v.item.product.name|default:v.item.name }}</span>
-                                    {% if v.item.product_brand %}
-                                    <span class="item-brand">{{ v.item.product_brand.brand_name }}</span>
-                                    {% endif %}
                                     {% if v.item.description %}
                                     <div class="item-desc-cell">{{ v.item.description }}</div>
                                     {% endif %}
@@ -462,16 +454,15 @@
                                             {% with opt=opts|first %}
                                             <input type="hidden" name="stock_item_id" value="{{ opt.id }}">
                                             <span class="stock-label">
-                                                <i class="fas fa-box"></i> {% if opt.warehouse_name %}«{{ opt.warehouse_name }}» — {% endif %}بدون برند — موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
+                                                <i class="fas fa-box"></i> {% if opt.warehouse_name %}«{{ opt.warehouse_name }}» — {% endif %}موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
                                             </span>
                                             {% endwith %}
                                             {% else %}
                                             <select name="stock_item_id" class="stock-select" required>
-                                                <option value="">انتخاب برند...</option>
+                                                <option value="">انتخاب انبار...</option>
                                                 {% for opt in opts %}
                                                 <option value="{{ opt.id }}"{% if opt.default_selected %} selected{% endif %}>
-                                                    {{ opt.brand_name }}{% if opt.multi_warehouse %} ({{ opt.warehouse_name }}){% endif %}
-                                                    — موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
+                                                    {{ opt.warehouse_name|default:'انبار' }} — موجودی {{ opt.available|trim_decimal }} {{ opt.unit_label }}
                                                 </option>
                                                 {% endfor %}
                                             </select>
@@ -482,7 +473,7 @@
                                         </div>
                                     </div>
                                     {% if not meta or not meta.hide_select %}
-                                    <button type="button" class="add-row-btn" data-target="rows-{{ v.item.id }}"><i class="fas fa-plus"></i> تأمین از برند دیگر</button>
+                                    <button type="button" class="add-row-btn" data-target="rows-{{ v.item.id }}"><i class="fas fa-plus"></i> تأمین از انبار دیگر</button>
                                     {% endif %}
                                 </div>
                                 {% else %}
@@ -516,9 +507,6 @@
                                 <div class="item-avatar"><i class="fas fa-check" style="font-size:0.72rem;"></i></div>
                                 <div class="item-prod-info">
                                     <span class="item-name">{{ d.item.product.name|default:d.item.name }}</span>
-                                    {% if d.item.product_brand %}
-                                    <span class="item-brand">{{ d.item.product_brand.brand_name }}</span>
-                                    {% endif %}
                                     {% if d.item.description %}
                                     <div class="item-desc-cell">{{ d.item.description }}</div>
                                     {% endif %}
@@ -587,7 +575,7 @@ function reopenItem(id, status) {
     document.getElementById('reopen-form-' + id).submit();
 }
 
-/* ── ردیف‌های پویا: افزودن برند دیگر / حذف ردیف ── */
+/* ── ردیف‌های پویا: افزودن انبار دیگر / حذف ردیف ── */
 document.querySelectorAll('.add-row-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
         var rows = document.getElementById(btn.getAttribute('data-target'));

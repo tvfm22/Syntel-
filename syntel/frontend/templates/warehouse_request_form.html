@@ -275,15 +275,17 @@
         background: var(--bg-card); border-radius: var(--radius-2xl); padding: 24px;
         width: min(440px, 94vw); box-shadow: var(--shadow-xl);
     }
-    .modal-box h3 { font-size: 16px; margin-bottom: 16px; color: var(--text-primary); font-weight: 800; display: flex; align-items: center; gap: 0.45rem; }
+    .modal-box h3 { font-size: 16px; margin-bottom: 8px; color: var(--text-primary); font-weight: 800; display: flex; align-items: center; gap: 0.45rem; }
     .modal-box h3 i { color: var(--accent-indigo); }
+    .modal-hint { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; line-height: 1.7; }
     .modal-field  { margin-bottom: 14px; }
     .modal-field label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; }
-    .modal-field input, .modal-field select {
+    .modal-field input, .modal-field select, .modal-field textarea {
         width: 100%; padding: 9px 12px; border: 1.5px solid var(--border-default);
         border-radius: var(--radius-md); font-size: 14px; font-family: Vazir, sans-serif;
+        box-sizing: border-box;
     }
-    .modal-field input:focus, .modal-field select:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+    .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-btn-save {
         flex: 1; padding: 10px; background: var(--accent-green, #22C55E); color: white; border: none;
@@ -297,18 +299,7 @@
     }
     .modal-err { color: #dc2626; font-size: 13px; margin-top: 6px; }
 
-    /* ── brand chip + stock hint ── */
-    .brand-chip {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); color: #6d28d9;
-        border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 600;
-        margin-top: 6px;
-    }
-    .brand-chip .chip-clear {
-        background: none; border: none; color: #6d28d9; cursor: pointer;
-        font-size: 14px; line-height: 1; padding: 0;
-    }
-    .brand-chip .chip-clear:hover { color: #dc2626; }
+    /* ── stock hint ── */
     .entry-stock-hint { margin-top: 8px; font-size: 13px; }
     .entry-stock-hint.ok { color: #047857; }
     .entry-stock-hint.warn { color: #b45309; }
@@ -367,9 +358,7 @@
                                oninput="onAcInput(this)"
                                onkeydown="onAcKeydown(event)">
                         <input type="hidden" id="entryProductId" value="">
-                        <input type="hidden" id="entryBrandId" value="">
                         <div class="autocomplete-dropdown" id="entryAcDrop"></div>
-                        <div id="entryBrandChip" class="brand-chip" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -379,7 +368,8 @@
                 </div>
                 <div class="form-group">
                     <label>واحد</label>
-                    <select id="entryUnit" class="form-control"></select>
+                    <select id="entryUnit" class="form-control"
+                            {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}disabled{% endif %}></select>
                 </div>
             </div>
             <div class="form-group entry-description">
@@ -433,7 +423,6 @@
         <div class="modal-field">
             <label>نام کالا *</label>
             <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
-            <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-field">
             <label>واحد</label>
@@ -450,6 +439,11 @@
                 <option value="بطری">بطری</option>
                 <option value="پاکت">پاکت</option>
             </select>
+        </div>
+        <div class="modal-field">
+            <label>توضیحات *</label>
+            <textarea id="newProductDescription" rows="3" placeholder="توضیحات را وارد کنید..."></textarea>
+            <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-actions">
             <button class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
@@ -475,16 +469,20 @@
     let editingId = null;
     let pendingProductItemId = null;
     let isCheckingStock = false; // جلوگیری از ثبت دوباره هنگام کلیک/اینتر مکرر در طول بررسی موجودی
+    let selectedProductName = '';
 
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
     const AVAILABILITY_URL = "{% url 'check_product_availability' cafe_code=cafe_code %}";
     const CSRF_TOKEN       = "{{ csrf_token }}";
-    let entryBrandName = '';  // نام برند انتخاب‌شده در فرم ورود
+    const IS_REQUESTER     = {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}true{% else %}false{% endif %};
 
     function buildUnitOptions(selected) {
         const units = ['عدد','کیلوگرم','گرم','لیتر','بسته','کارتن','جعبه','شیشه','قوطی','بطری','پاکت'];
-        return units.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
+        if (selected && !units.includes(selected)) {
+            units.unshift(selected);
+        }
+        return units.map(u => `<option value="${escapeHtml(u)}" ${u === selected ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('');
     }
 
     // Init entry unit select
@@ -508,13 +506,18 @@
         const unit = document.getElementById('entryUnit').value;
         const description = document.getElementById('entryDescription').value.trim();
         const productId = document.getElementById('entryProductId').value;
-        const brandId = document.getElementById('entryBrandId').value;
 
         // Validation
         if (!name) {
             nameInput.style.borderColor = '#ef4444';
             nameInput.focus();
             alert('لطفاً نام کالا را وارد کنید');
+            return;
+        }
+        if (IS_REQUESTER && (!productId || name !== selectedProductName)) {
+            nameInput.style.borderColor = '#ef4444';
+            nameInput.focus();
+            alert('⚠️ لطفاً کالا را از لیست انتخاب کنید یا به عنوان کالای جدید ثبت نمایید.');
             return;
         }
         if (!quantity || parseFloat(quantity) <= 0) {
@@ -528,7 +531,7 @@
         nameInput.style.borderColor = '';
         qtyInput.style.borderColor = '';
 
-        // بررسی موجودی انبار برای محصول/برند انتخاب‌شده
+        // بررسی موجودی انبار برای محصول انتخاب‌شده
         // (فقط وقتی محصول از لیست پیشنهادها انتخاب شده باشد)
         let stockInfo = null;
         if (productId) {
@@ -536,13 +539,12 @@
             isCheckingStock = true;
             try {
                 const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(productId) +
-                                 '&brand_id=' + encodeURIComponent(brandId) +
                                  '&qty=' + encodeURIComponent(quantity);
                 try {
                     const resp = await fetch(checkUrl);
                     if (resp.ok) stockInfo = await resp.json();
                 } catch (e) { /* خطای شبکه: بررسی موجودی نادیده گرفته می‌شود */ }
-                showEntryStockHint(stockInfo, entryBrandName);
+                showEntryStockHint(stockInfo);
             } finally {
                 isCheckingStock = false;
             }
@@ -552,7 +554,7 @@
             // Update existing item
             const idx = items.findIndex(it => it.id === editingId);
             if (idx !== -1) {
-                items[idx] = { ...items[idx], name, quantity, unit, description, productId, brandId, brandName: entryBrandName, stockInfo };
+                items[idx] = { ...items[idx], name, quantity, unit, description, productId, stockInfo };
             }
             // Reset editing mode
             editingId = null;
@@ -567,8 +569,6 @@
                 unit,
                 description,
                 productId,
-                brandId,
-                brandName: entryBrandName,
                 stockInfo
             });
         }
@@ -577,65 +577,23 @@
         renderItemsTable();
     }
 
-    // ── برند انتخاب‌شده + بررسی موجودی انبار ───────────────────────────────
+    // ── بررسی موجودی انبار ───────────────────────────────
 
-    function setEntryBrand(brandId, brandName) {
-        entryBrandName = brandName || '';
-        document.getElementById('entryBrandId').value = brandId || '';
-        const chip = document.getElementById('entryBrandChip');
-        if (!chip) return;
-        if (brandId && brandName) {
-            chip.innerHTML = '<i class="fas fa-tag"></i> برند: ' + escapeHtml(brandName) +
-                ' <button type="button" class="chip-clear" onclick="clearEntryBrand()" title="حذف برند">&times;</button>';
-            chip.style.display = 'inline-flex';
-        } else {
-            chip.style.display = 'none';
-            chip.innerHTML = '';
-        }
-    }
-
-    function clearEntryBrand() {
-        setEntryBrand('', '');
-    }
-
-    function showEntryStockHint(stockInfo, brandName) {
+    function showEntryStockHint(stockInfo) {
         const hint = document.getElementById('entryStockHint');
         if (!hint) return;
         hint.className = 'entry-stock-hint';
         hint.style.display = 'none';
         if (!stockInfo) return;
-        const who = brandName ? 'برند «' + brandName + '»' : 'این کالا';
         if (stockInfo.available) {
             hint.className = 'entry-stock-hint ok';
             hint.textContent = 'موجودی انبار: ' + stockInfo.stock_trade + ' ' + stockInfo.unit_label +
                 (stockInfo.warehouses && stockInfo.warehouses.length ? ' (' + stockInfo.warehouses.join('، ') + ')' : '');
-        } else if (stockInfo.alternatives && stockInfo.alternatives.length) {
-            const alt = stockInfo.alternatives[0];
-            hint.className = 'entry-stock-hint warn';
-            hint.textContent = who + ' در انبار موجود نیست. پیشنهاد برند جایگزین: «' + alt.brand_name + '» (' + alt.available + ' ' + alt.unit + ')';
         } else {
             hint.className = 'entry-stock-hint err';
-            hint.textContent = who + ' در انبار موجود نیست.';
+            hint.textContent = 'این کالا در انبار موجود نیست.';
         }
         hint.style.display = 'block';
-    }
-
-    async function useAlternative(itemId, brandId, brandName) {
-        const item = items.find(it => it.id === itemId);
-        if (!item) return;
-        item.brandId = brandId;
-        item.brandName = brandName;
-        // بررسی مجدد موجودی برای برند جایگزین
-        if (item.productId) {
-            const checkUrl = AVAILABILITY_URL + '?product_id=' + encodeURIComponent(item.productId) +
-                             '&brand_id=' + encodeURIComponent(brandId) +
-                             '&qty=' + encodeURIComponent(item.quantity);
-            try {
-                const resp = await fetch(checkUrl);
-                if (resp.ok) item.stockInfo = await resp.json();
-            } catch (e) {}
-        }
-        renderItemsTable();
     }
 
     function editItem(id) {
@@ -645,7 +603,7 @@
         // Fill entry form with item data
         document.getElementById('entryProductName').value = item.name;
         document.getElementById('entryProductId').value = item.productId || '';
-        setEntryBrand(item.brandId || '', item.brandName || '');
+        selectedProductName = item.productId ? item.name : '';
         document.getElementById('entryQuantity').value = item.quantity;
         document.getElementById('entryUnit').innerHTML = buildUnitOptions(item.unit);
         document.getElementById('entryDescription').value = item.description || '';
@@ -683,7 +641,7 @@
     function clearEntryForm() {
         document.getElementById('entryProductName').value = '';
         document.getElementById('entryProductId').value = '';
-        setEntryBrand('', '');
+        selectedProductName = '';
         document.getElementById('entryQuantity').value = '';
         document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
         document.getElementById('entryDescription').value = '';
@@ -709,16 +667,11 @@
 
         items.forEach((item, idx) => {
             const tr = document.createElement('tr');
-            // نمایش محصول با برند: اگر برند انتخاب شده باشد «نام محصول - برند» نشان داده می‌شود
-            const displayName = item.brandName ? item.name + ' - ' + item.brandName : item.name;
+            const displayName = item.name;
             let stockHtml = '';
             if (item.stockInfo) {
                 if (item.stockInfo.available) {
                     stockHtml = `<div class="row-stock-line ok">موجودی انبار: ${item.stockInfo.stock_trade} ${item.stockInfo.unit_label}</div>`;
-                } else if (item.stockInfo.alternatives && item.stockInfo.alternatives.length) {
-                    const alt = item.stockInfo.alternatives[0];
-                    stockHtml = `<div class="row-stock-line warn">برند «${escapeHtml(item.brandName || item.name)}» موجود نیست. پیشنهاد: «${escapeHtml(alt.brand_name)}» (${alt.available} ${alt.unit})` +
-                        `<button type="button" class="alt-btn" onclick="useAlternative(${item.id}, ${alt.brand_id}, '${escapeJs(alt.brand_name)}')">استفاده از «${escapeHtml(alt.brand_name)}»</button></div>`;
                 } else {
                     stockHtml = '<div class="row-stock-line warn">این کالا در انبار موجود نیست.</div>';
                 }
@@ -746,6 +699,9 @@
 
     function onAcInput(input) {
         const q = input.value.trim();
+        document.getElementById('entryProductId').value = '';
+        selectedProductName = '';
+        showEntryStockHint(null);
         clearTimeout(acTimer);
         if (q.length < 1) { closeDropdown(); return; }
         acTimer = setTimeout(() => fetchSuggestions(q), 250);
@@ -788,11 +744,8 @@
         if (!p) return;
         document.getElementById('entryProductName').value = p.name;
         document.getElementById('entryProductId').value = p.id || '';
-        // برند انتخاب‌شده: اگر محصول برند دارد نام تجاری به صورت «محصول - برند» نمایش داده می‌شود
-        setEntryBrand(p.product_brand_id || '', p.brand || '');
-        if (p.unit) {
-            document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit);
-        }
+        selectedProductName = p.name || '';
+        document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit || 'عدد');
         closeDropdown();
         document.getElementById('entryQuantity').focus();
     }
@@ -841,6 +794,7 @@
     function openAddProductModal(prefillName = '') {
         pendingProductItemId = 'entry';
         document.getElementById('newProductName').value = prefillName;
+        document.getElementById('newProductDescription').value = '';
         document.getElementById('newProductErr').textContent = '';
         document.getElementById('addProductModal').classList.add('open');
         setTimeout(() => document.getElementById('newProductName').focus(), 100);
@@ -854,22 +808,29 @@
     function submitNewProduct() {
         const name = document.getElementById('newProductName').value.trim();
         const unit = document.getElementById('newProductUnit').value;
+        const description = document.getElementById('newProductDescription').value.trim();
         const errEl = document.getElementById('newProductErr');
         if (!name) { errEl.textContent = 'نام کالا اجباری است'; return; }
+        if (!description) {
+            errEl.textContent = '⚠️ توضیحات اجباری است — لطفاً توضیح کوتاهی بنویس.';
+            document.getElementById('newProductDescription').focus();
+            return;
+        }
         const btn = document.querySelector('.modal-btn-save');
         btn.disabled = true; btn.textContent = 'در حال ذخیره...';
         fetch(QUICK_ADD_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-            body: JSON.stringify({ name, unit })
+            body: JSON.stringify({ name, unit, description })
         }).then(r => r.json()).then(data => {
             btn.disabled = false; btn.textContent = 'ذخیره و انتخاب';
             if (data.success) {
                 document.getElementById('entryProductName').value = data.product.name;
                 document.getElementById('entryProductId').value = data.product.id;
-                setEntryBrand('', '');
-                if (data.product.unit) {
-                    document.getElementById('entryUnit').innerHTML = buildUnitOptions(data.product.unit);
+                selectedProductName = data.product.name || '';
+                document.getElementById('entryUnit').innerHTML = buildUnitOptions(data.product.unit || 'عدد');
+                if (description && !document.getElementById('entryDescription').value.trim()) {
+                    document.getElementById('entryDescription').value = description;
                 }
                 closeAddProductModal();
             } else {
@@ -899,7 +860,6 @@
             const fields = [
                 { name: 'product_name', value: item.name },
                 { name: 'item_product_id', value: item.productId || '' },
-                { name: 'item_brand_id', value: item.brandId || '' },
                 { name: 'item_quantity', value: item.quantity },
                 { name: 'item_unit', value: item.unit },
                 { name: 'item_description', value: item.description || '' },

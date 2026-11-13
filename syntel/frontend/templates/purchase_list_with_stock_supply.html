@@ -83,7 +83,7 @@
 
     <div class="info-box">
         <i class="fas fa-circle-info"></i>
-        <span>با تیک زدن هر قلم، برندهایی که از آن محصول در انبار موجود است نمایش داده می‌شود. می‌توانید از یک یا چند برند مقدار تامین کنید.</span>
+        <span>با تیک زدن هر قلم، موجودی آن محصول در انبارها نمایش داده می‌شود. می‌توانید از یک یا چند انبار مقدار تامین کنید.</span>
     </div>
 
     {% if pending_items %}
@@ -117,40 +117,24 @@
                 {% for si in stocks %}
                 <div class="stock-row">
                     <div>
-                        {% if si.product_brand %}
-                        <span class="brand-name"><i class="fas fa-tag"></i> {{ si.product_brand.brand_name }}</span>
-                        {% else %}
-                        <span class="brand-name" style="color:var(--text-secondary);"><i class="fas fa-box"></i> بدون برند</span>
-                        {% endif %}
                         {% if si.warehouse %}
                         <span class="stock-wh"><i class="fas fa-warehouse"></i> {{ si.warehouse.name }}</span>
                         {% endif %}
                     </div>
                     <div class="stock-avail">
                         موجودی:
-                        {% if si.product_brand and si.product_brand.conversion_rate %}
-                        <strong>{{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }}</strong> {{ si.product_brand.trade_unit }}
-                        {% else %}
                         <strong>{{ si.quantity|trim_decimal }}</strong>{% if si.unit %} {{ si.unit.name }}{% endif %}
-                        {% endif %}
                     </div>
-                    {% if si.product_brand and si.product_brand.conversion_rate %}
-                    <div class="stock-conv">نرخ تبدیل: هر {{ si.product_brand.trade_unit }} = {{ si.product_brand.conversion_rate|trim_decimal }} واحد پایه</div>
-                    {% endif %}
                     <div class="stock-qty-line">
                         <input type="hidden" name="stock_sid_{{ item.id }}" value="{{ si.id }}">
                         <input type="number" name="stock_qty_{{ item.id }}" class="form-input"
                                step="0.01" min="0" placeholder="مقدار تامین..."
                                data-max="{{ si.quantity }}"
-                               data-rate="{% if si.product_brand and si.product_brand.conversion_rate %}{{ si.product_brand.conversion_rate }}{% else %}1{% endif %}"
+                               data-rate="1"
                                data-warn="warn-{{ item.id }}-{{ si.id }}"
                                oninput="checkRowQty(this)">
                         <span class="stock-max">حداکثر:
-                            {% if si.product_brand and si.product_brand.conversion_rate %}
-                            {{ si.quantity|div:si.product_brand.conversion_rate|trim_decimal }} {{ si.product_brand.trade_unit }}
-                            {% else %}
                             {{ si.quantity|trim_decimal }}{% if si.unit %} {{ si.unit.name }}{% endif %}
-                            {% endif %}
                         </span>
                     </div>
                     <div class="warning" id="warn-{{ item.id }}-{{ si.id }}"><i class="fas fa-triangle-exclamation"></i> مقدار بیشتر از موجودی است!</div>
@@ -216,7 +200,7 @@
                 }
             });
             if (!hasAny) {
-                alert('لطفاً حداقل برای یک برند از «' + name + '» مقدار تامین وارد کنید');
+                alert('لطفاً حداقل برای یک انبار از «' + name + '» مقدار تامین وارد کنید');
                 valid = false;
             }
         });

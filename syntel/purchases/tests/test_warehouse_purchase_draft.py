@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from purchases.models import (
-    Cafe, Category, Unit, Product, ProductBrand, PurchaseRequest,
+    Cafe, Category, Unit, Product, PurchaseRequest,
     PurchaseItem, OfficerAssignment, PurchaseDraft, PurchaseDraftItem,
 )
 
@@ -36,8 +36,6 @@ class WarehousePurchaseDraftTests(TestCase):
         self.unit = Unit.objects.create(name='Kilogram', symbol='kg')
         self.product = Product.objects.create(
             name='محصول تست', category=self.category, unit=self.unit, cafe=self.cafe)
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='برند الف', trade_unit='قوطی')
 
         session = self.client.session
         session['selected_cafe_id'] = self.cafe.id
@@ -86,13 +84,12 @@ class WarehousePurchaseDraftTests(TestCase):
         self._login_as_warehouse()
         resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
             'action': 'add_item', 'product_id': str(self.product.id),
-            'brand_id': str(self.brand.id), 'new_qty': '7', 'unit': 'قوطی',
+            'new_qty': '7', 'unit': 'Kilogram',
         })
         self.assertEqual(PurchaseDraftItem.objects.count(), 1)
         d_item = PurchaseDraftItem.objects.first()
         self.assertEqual(d_item.quantity, 7)
-        self.assertEqual(d_item.product_brand, self.brand)
-        self.assertEqual(d_item.unit, 'قوطی')
+        self.assertEqual(d_item.unit, 'Kilogram')
 
     def test_foreign_product_id_does_not_leak_across_cafes(self):
         """شناسهٔ خامِ محصولِ کافهٔ دیگر نباید به پیش‌نویس این کافه وصل شود
@@ -135,7 +132,7 @@ class WarehousePurchaseDraftTests(TestCase):
         self._login_as_warehouse()
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
         PurchaseDraftItem.objects.create(
-            draft=draft, product=self.product, product_brand=self.brand,
+            draft=draft, product=self.product,
             name='محصول تست', quantity=5, unit='kg')
         resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
             'action': 'send',

@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, PurchaseDraft, PurchaseDraftItem,
+    Cafe, Unit, Product, PurchaseDraft, PurchaseDraftItem,
     PurchaseItem, PurchaseRequest, OfficerAssignment,
     User,
 )
@@ -24,12 +24,10 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
         self.officer = User.objects.create_user(
             username='arm_wh', password='x', role='warehouse', cafe=self.cafe)
 
-        # دو محصول برای سنجشِ «پیش‌نویس با قلم‌های دیگر خالی نشود»
+        # محصول برای سنجشِ «پیش‌نویس با قلم‌های دیگر خالی نشود»
         self.product = Product.objects.create(
             name='چای', cafe=self.cafe, unit=self.unit,
             shelf_life_days=90, is_active=True, is_complete=True)
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='احمد', trade_unit='کارتن', conversion_rate=1)
 
         today = timezone.localtime(timezone.now()).date()
         self.request1 = PurchaseRequest.objects.create(
@@ -55,7 +53,7 @@ class DraftAutoRemoveAfterReviewTest(TestCase):
             assigned_to=self.officer, assigned_by=self.officer)
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.officer)
         PurchaseDraftItem.objects.create(
-            draft=draft, product=self.product, product_brand=self.brand,
+            draft=draft, product=self.product,
             name='چای', quantity=2, unit='کارتن', source_item=self.item)
         return draft
 

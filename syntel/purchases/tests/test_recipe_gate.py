@@ -340,6 +340,70 @@ class QuickAddProductRdTests(RecipeGateBase):
         product = Product.objects.get(id=data['product']['id'])
         self.assertIsNone(recipe_gate_error(product))
 
+    def test_warehouse_request_form_modal_has_description_and_rd_hidden(self):
+        r = self.client.get(self.url_warehouse_request())
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'id="newProductDescription"')
+        self.assertNotContains(r, 'تحقیق و توسعه')
+
+    def test_purchase_request_form_hides_page_header_and_rd_text(self):
+        r = self.client.get(self.url_purchase_request())
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, 'class="page-header"')
+        self.assertNotContains(r, 'زمان تحویل و اقلام مورد نیاز بخش خود را مشخص کنید')
+        self.assertNotContains(r, 'تحقیق و توسعه')
+
+    def test_requester_blocked_from_unregistered_product_name(self):
+        r_pr = self.client.post(self.url_purchase_request(), {
+            'product_name': ['کالای تخیلی بدون ثبت'],
+            'item_quantity': ['2'],
+            'item_unit': ['عدد'],
+            'item_description': [''],
+            'item_product_id': [''],
+        })
+        self.assertEqual(r_pr.status_code, 200)
+        self.assertEqual(PurchaseRequest.objects.count(), 0)
+        self.assertContains(r_pr, 'در فهرست محصولات ثبت نشده است')
+
+        # فرستادن شناسه محصول دیگر با نام متفاوت هم نباید پذیرفته شود
+        r_spoof = self.client.post(self.url_purchase_request(), {
+            'product_name': ['نام جعلی'],
+            'item_quantity': ['2'],
+            'item_unit': ['عدد'],
+            'item_description': [''],
+            'item_product_id': [str(self.detergent.id)],
+        })
+        self.assertEqual(r_spoof.status_code, 200)
+        self.assertEqual(PurchaseRequest.objects.count(), 0)
+        self.assertContains(r_spoof, 'در فهرست محصولات ثبت نشده است')
+
+        r_wr = self.client.post(self.url_warehouse_request(), {
+            'product_name': ['کالای تخیلی انبار'],
+            'item_quantity': ['2'],
+            'item_unit': ['عدد'],
+            'item_description': [''],
+            'item_product_id': [''],
+        })
+        self.assertEqual(r_wr.status_code, 200)
+        self.assertEqual(WarehouseRequest.objects.count(), 0)
+        self.assertContains(r_wr, 'در فهرست محصولات ثبت نشده است')
+
+    def test_quick_add_existing_inactive_product_rejected(self):
+        self.detergent.is_active = False
+        self.detergent.save(update_fields=['is_active'])
+        data = self.post(self.detergent.name).json()
+        self.assertFalse(data['success'])
+        self.assertIn('غیرفعال', data['error'])
+
+    def test_quick_add_existing_uncategorized_incomplete_assigns_rd(self):
+        p = Product.objects.create(
+            name='کالای بی‌دسته قبلی', cafe=self.cafe, is_complete=False, is_active=True)
+        data = self.post('کالای بی‌دسته قبلی').json()
+        self.assertTrue(data['success'])
+        p.refresh_from_db()
+        self.assertIsNotNone(p.category)
+        self.assertEqual(p.category.name, RD_CATEGORY_NAME)
+
 
 class EditMyRequestTests(RecipeGateBase):
     """ویرایش «درخواست‌های من» هم راه دور زدن نباشد."""
@@ -457,3 +521,137 @@ class ProductListBadgeTests(RecipeGateBase):
         # نام کلاس در بلوک <style> هم هست؛ پس خودِ تگ بررسی می‌شود
         self.assertContains(r, '<span class="p-chip-rd"')
         self.assertContains(r, RD_CATEGORY_NAME)
+
+
+class ProductActiveStatusOrderingTests(RecipeGateBase):
+    """فعال/غیرفعال‌بودن محصول در سفارش‌گذاری و پیش‌فرض غیرفعال بدون رسپی."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.buyer)
+
+    def test_product_list_renders_status_column_and_filter(self):
+        self.milk.base_unit_price = Decimal('1081.0800')
+        self.milk.smallest_unit = 'گرم'
+        self.milk.save(update_fields=['base_unit_price', 'smallest_unit'])
+        r = self.client.get(reverse('product_list', kwargs={'cafe_code': self.cafe.code}))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, '<th>وضعیت</th>')
+        self.assertContains(r, 'name="is_active"')
+        self.assertContains(r, '۱,۰۸۱')
+        self.assertContains(r, 'ریال')
+        self.assertNotContains(r, '1081.08')
+
+    def test_product_create_defaults_inactive_when_unchecked(self):
+        r = self.client.post(
+            reverse('product_create', kwargs={'cafe_code': self.cafe.code}),
+            {
+                'name': 'پسته تازه',
+                'category': str(self.food.id),
+                'usage_location': 'general',
+                'is_active_present': '1',
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        p = Product.objects.get(cafe=self.cafe, name='پسته تازه')
+        self.assertFalse(p.is_active)
+
+    def test_product_create_and_update_respect_is_active_checkbox(self):
+        r = self.client.post(
+            reverse('product_create', kwargs={'cafe_code': self.cafe.code}),
+            {
+                'name': 'اسکاچ',
+                'category': str(self.cleaning.id),
+                'usage_location': 'general',
+                'is_active_present': '1',
+                'is_active': 'on',
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        p = Product.objects.get(cafe=self.cafe, name='اسکاچ')
+        self.assertTrue(p.is_active)
+
+        # غیرفعال‌کردن از فرم ویرایش
+        self.client.post(
+            reverse('product_update', kwargs={'cafe_code': self.cafe.code, 'product_id': p.id}),
+            {
+                'name': 'اسکاچ',
+                'category': str(self.cleaning.id),
+                'usage_location': 'general',
+                'is_active_present': '1',
+            },
+        )
+        p.refresh_from_db()
+        self.assertFalse(p.is_active)
+
+    def test_product_toggle_active_switches_status_and_keeps_filters(self):
+        url = reverse('product_toggle_active', kwargs={
+            'cafe_code': self.cafe.code, 'product_id': self.detergent.id})
+        r = self.client.post(url, {'filter_recipe': 'free'})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('recipe=free', r['Location'])
+        self.detergent.refresh_from_db()
+        self.assertFalse(self.detergent.is_active)
+
+        # برگشت به فعال
+        self.client.post(url)
+        self.detergent.refresh_from_db()
+        self.assertTrue(self.detergent.is_active)
+
+    def test_inactive_product_hidden_and_blocked_in_ordering(self):
+        self.detergent.is_active = False
+        self.detergent.save(update_fields=['is_active'])
+
+        self.client.force_login(self.requester)
+        ac = self.client.get(self.url_autocomplete(), {'q': 'مایع'}).json()
+        self.assertEqual(ac['results'], [])
+        cat_api = self.client.get(self.url_category_products(self.cleaning.id)).json()
+        self.assertEqual(cat_api['results'], [])
+
+        r_pr = self.client.post(self.url_purchase_request(), {
+            'product_name': [self.detergent.name],
+            'item_quantity': ['2'],
+            'item_unit': ['عدد'],
+            'item_description': [''],
+            'item_product_id': [str(self.detergent.id)],
+            'item_brand_id': [''],
+        })
+        self.assertEqual(r_pr.status_code, 200)
+        self.assertEqual(PurchaseRequest.objects.count(), 0)
+        self.assertContains(r_pr, 'غیرفعال است')
+
+        r_wr = self.client.post(self.url_warehouse_request(), {
+            'product_name': [self.detergent.name],
+            'item_quantity': ['2'],
+            'item_unit': ['عدد'],
+            'item_description': [''],
+            'item_product_id': [str(self.detergent.id)],
+            'item_brand_id': [''],
+        })
+        self.assertEqual(r_wr.status_code, 200)
+        self.assertEqual(WarehouseRequest.objects.count(), 0)
+        self.assertContains(r_wr, 'غیرفعال است')
+
+    def test_adding_inactive_product_to_recipe_activates_it(self):
+        self.milk.is_active = False
+        self.milk.save(update_fields=['is_active'])
+
+        admin_user = User.objects.create_user(
+            username='rg_admin', password='x', role='admin', cafe=self.cafe)
+        self.client.force_login(admin_user)
+        r = self.client.post(
+            reverse('cogs_recipe_api', kwargs={'cafe_code': self.cafe.code, 'item_id': self.dish.id}),
+            data=json.dumps({
+                'out_qty': '1',
+                'out_unit': 'پرس',
+                'lines': [{
+                    'material_id': self.milk_item.id,
+                    'qty': '100',
+                    'unit': 'گرم',
+                }],
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 200)
+        self.milk.refresh_from_db()
+        self.assertTrue(self.milk.is_active)

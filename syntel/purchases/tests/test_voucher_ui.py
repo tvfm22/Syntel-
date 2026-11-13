@@ -15,7 +15,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from purchases.models import (
-    Cafe, Department, Product, ProductBrand, StockItem, StockTransaction, Unit,
+    Cafe, Department, Product, StockItem, StockTransaction, Unit,
     Warehouse, WarehouseVoucher,
 )
 
@@ -30,7 +30,7 @@ def _set_cafe_session(client, cafe):
 
 
 class VoucherUIBaseline(TestCase):
-    """زیرساخت مشترک: کافه + انبارها + محصول/برند + موجودی"""
+    """زیرساخت مشترک: کافه + انبارها + محصول + موجودی"""
 
     def setUp(self):
         self.client = Client()
@@ -53,8 +53,6 @@ class VoucherUIBaseline(TestCase):
             cafe=self.cafe, code='whB', name='انبار بخش', is_active=True)
         self.product = Product.objects.create(
             name='Sugar', unit=self.unit, cafe=self.cafe, min_stock=1)
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='BrandX', conversion_rate=Decimal('2'))
         self.stock_a = StockItem.objects.create(
             product=self.product, warehouse=self.wh_a, quantity=10, unit=self.unit)
         # موجودیِ مقصدِ انتقال: سرویس برای سمت مقصد، موجودیِ از پیش‌تعریف‌شده می‌خواهد
@@ -67,12 +65,11 @@ class VoucherUIBaseline(TestCase):
         return reverse(name, kwargs={'cafe_code': 'main', **kwargs})
 
     def _create_post(self, voucher_type, source=None, dest=None, qty='5',
-                     brand=None, stock_item=None, action='submit',
+                     stock_item=None, action='submit',
                      department=None, product=None, date=None):
         data = {
             'action': action,
             'product_id[]': [str((product or self.product).id)],
-            'product_brand_id[]': [str(brand.id) if brand else ''],
             'stock_item_id[]': [str(stock_item.id) if stock_item else ''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': [qty],
@@ -143,24 +140,17 @@ class VoucherCreateEachTypeTests(VoucherUIBaseline):
         self.assertEqual(tx.quantity, Decimal('5'))
         self.assertEqual(tx.new_quantity, Decimal('15'))
 
-    def test_create_issue_decreases_stock_with_brand_rate(self):
-        # وقتی برند انتخاب می‌شود، موجودیِ انبار باید همان برند را داشته باشد
-        stock_branded = StockItem.objects.create(
-            product=self.product, product_brand=self.brand,
-            warehouse=self.wh_a, quantity=10, unit=self.unit)
+    def test_create_issue_decreases_stock(self):
         r = self._create_post('issue', source=self.wh_a, qty='3',
-                              brand=self.brand, stock_item=stock_branded)
+                              stock_item=self.stock_a)
         self.assertEqual(r.status_code, 302)
         v = WarehouseVoucher.objects.get(voucher_type='issue')
         self.assertEqual(v.status, 'finalized')
-        stock_branded.refresh_from_db()
-        # اثر روی موجودی بر پایهٔ «مقدار پایه» است (واحد پایه)؛ نرخ تبدیلِ برند
-        # برای گزارش‌گیری ثبت می‌شود و رابطهٔ «تجاری × نرخ = پایه» اعتبارسنجی می‌شود
-        self.assertEqual(stock_branded.quantity, Decimal('7'))
+        self.stock_a.refresh_from_db()
+        self.assertEqual(self.stock_a.quantity, Decimal('7'))
         tx = StockTransaction.objects.get(voucher=v)
         self.assertEqual(tx.transaction_type, 'out')
         self.assertEqual(tx.quantity, Decimal('3'))
-        self.assertEqual(tx.conversion_rate, Decimal('2'))  # نرخ برند روی تراکنش ثبت شد
         self.assertEqual(tx.previous_quantity, Decimal('10'))
         self.assertEqual(tx.new_quantity, Decimal('7'))
 
@@ -307,7 +297,6 @@ class DraftEditCancelTests(VoucherUIBaseline):
         r = self.client.post(self._url('voucher_edit', voucher_id=v.id), data={
             'dest_warehouse': str(self.wh_a.id),
             'product_id[]': [str(self.product.id)],
-            'product_brand_id[]': [''],
             'stock_item_id[]': [''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': ['7'],
@@ -681,12 +670,10 @@ class ReceiptStockCreationTests(VoucherUIBaseline):
     """حوالهٔ ورود همهٔ محصولات را می‌پذیرد — اگر موجودیِ انباری ثبت نشده،
     هنگام نهایی‌سازی خودکار ساخته می‌شود (فقط سمتِ «ورود»: رسید و برگشتی)"""
 
-    def _post(self, voucher_type, source=None, dest=None, product=None,
-              brand=None, qty='5'):
+    def _post(self, voucher_type, source=None, dest=None, product=None, qty='5'):
         data = {
             'action': 'submit',
             'product_id[]': [str((product or self.product).id)],
-            'product_brand_id[]': [str(brand.id) if brand else ''],
             'stock_item_id[]': [''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': [qty],
@@ -714,18 +701,6 @@ class ReceiptStockCreationTests(VoucherUIBaseline):
         self.assertEqual(tx.transaction_type, 'in')
         self.assertEqual(tx.previous_quantity, Decimal('0'))
         self.assertEqual(tx.new_quantity, Decimal('5'))
-
-    def test_receipt_branded_new_product_creates_branded_stock(self):
-        """رسیدِ برنددارِ بدونِ موجودی → موجودی با همان برند ساخته می‌شود"""
-        tea = Product.objects.create(name='Tea', unit=self.unit, cafe=self.cafe)
-        tea_brand = ProductBrand.objects.create(
-            product=tea, brand_name='TeaBrand', conversion_rate=Decimal('2'))
-        r = self._post('receipt', dest=self.wh_b, product=tea,
-                       brand=tea_brand, qty='5')
-        self.assertEqual(r.status_code, 302)
-        si = StockItem.objects.get(product=tea, warehouse=self.wh_b)
-        self.assertEqual(si.product_brand_id, tea_brand.id)
-        self.assertEqual(si.quantity, Decimal('5'))
 
     def test_return_new_product_creates_stock_item(self):
         """برگشتی هم سمتِ ورود است — موجودیِ نبوده در انبارِ مبدأ را می‌سازد"""
@@ -757,7 +732,6 @@ class ReceiptStockCreationTests(VoucherUIBaseline):
             'source_warehouse': str(self.wh_a.id),
             'dest_warehouse': str(self.wh_b.id),
             'product_id[]': [str(salt.id)],
-            'product_brand_id[]': [''],
             'stock_item_id[]': [''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': ['3'],

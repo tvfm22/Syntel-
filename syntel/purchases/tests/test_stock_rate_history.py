@@ -6,7 +6,7 @@ from django.utils import timezone
 from purchases.models import (
     Cafe, Category, Unit, Product, PurchaseRequest,
     PurchaseItem, OfficerAssignment, Warehouse, StockItem,
-    ProductBrand, StockTransaction,
+    StockTransaction,
 )
 
 User = get_user_model()
@@ -34,7 +34,7 @@ class TrimDecimalRegressionTests(TestCase):
 
 
 class StockTransactionRateTests(TestCase):
-    """تاریخچه: برند و نرخ تبدیل هنگام کسر از انبار ثبت و نمایش داده شود"""
+    """تاریخچه: کسر از انبار و ثبت تراکنش هنگام تامین"""
 
     def setUp(self):
         self.client = Client()
@@ -62,12 +62,8 @@ class StockTransactionRateTests(TestCase):
 
         self.product = Product.objects.create(
             name='Oil Product', category=self.category, unit=self.unit, min_stock=1)
-        # هر بسته = 2.5 کیلوگرم (واحد پایه)
-        self.brand = ProductBrand.objects.create(
-            product=self.product, brand_name='برند روغن خورشید',
-            conversion_rate=Decimal('2.5'), trade_unit='بسته')
         self.stock = StockItem.objects.create(
-            product=self.product, product_brand=self.brand,
+            product=self.product,
             warehouse=self.warehouse, quantity=50, unit=self.unit)
 
     def _add_item(self):
@@ -75,14 +71,14 @@ class StockTransactionRateTests(TestCase):
             user=self.user, cafe=self.cafe, status='pending')
         item = PurchaseItem.objects.create(
             request=req, product=self.product, name=self.product.name,
-            quantity=2, unit='بسته')
+            quantity=2, unit='Kilogram')
         OfficerAssignment.objects.create(
             item=item, target_role='warehouse',
             assigned_to=self.user, status='pending')
         return item
 
-    def test_fulfill_records_conversion_rate(self):
-        """تراکنش خروج هنگام تامین، نرخ تبدیل برند را ذخیره می‌کند"""
+    def test_fulfill_records_stock_transaction(self):
+        """تراکنش خروج هنگام تامین در انبار ثبت و موجودی کسر می‌شود"""
         item = self._add_item()
         self.client.login(username='stock_user', password='testpass123')
         url = reverse('warehouse_officer_dashboard', kwargs={'cafe_code': 'main'})
@@ -96,13 +92,12 @@ class StockTransactionRateTests(TestCase):
         self.assertEqual(response.status_code, 302)
         tx = StockTransaction.objects.get(
             reference_type='officer_assignment', transaction_type='out')
-        self.assertEqual(tx.quantity, Decimal('5.0000'))       # 2 بسته × 2.5
-        self.assertEqual(tx.conversion_rate, Decimal('2.5000'))
+        self.assertEqual(tx.quantity, Decimal('2.0000'))
         self.stock.refresh_from_db()
-        self.assertEqual(self.stock.quantity, Decimal('45.0000'))
+        self.assertEqual(self.stock.quantity, Decimal('48.0000'))
 
-    def test_history_page_shows_brand_and_rate(self):
-        """صفحه تاریخچه، برند و نرخ تبدیل و معادل تجاری را نمایش می‌دهد"""
+    def test_history_page_shows_transaction(self):
+        """صفحه تاریخچه، تراکنش خروج را نمایش می‌دهد"""
         item = self._add_item()
         self.client.login(username='stock_user', password='testpass123')
         url = reverse('warehouse_officer_dashboard', kwargs={'cafe_code': 'main'})
@@ -118,7 +113,5 @@ class StockTransactionRateTests(TestCase):
             kwargs={'cafe_code': 'main', 'stock_id': self.stock.id})
         response = self.client.get(hist_url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'برند روغن خورشید')
-        self.assertContains(response, 'نرخ تبدیل: هر بسته = 2.5 Kilogram')
-        # معادل تجاری 5 کیلوگرم → 2 بسته
-        self.assertContains(response, 'معادل تجاری: 2 بسته')
+        self.assertContains(response, 'Oil Product')
+        self.assertContains(response, 'خروج')

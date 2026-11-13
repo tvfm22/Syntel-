@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from purchases.models import (
-    Cafe, Category, Invoice, InvoiceItem, Payment, Product, ProductBrand,
+    Cafe, Category, Invoice, InvoiceItem, Payment, Product,
     PurchaseOrder, PurchaseRequest, Requester, Supplier, SupplierEvaluation,
 )
 
@@ -35,9 +35,6 @@ class MultiTenancyIsolationTests(TestCase):
 
         self.prod_a = Product.objects.create(name='Prod A', category=self.cat_a, cafe=self.cafe_a)
         self.prod_b = Product.objects.create(name='Prod B', category=self.cat_b, cafe=self.cafe_b)
-
-        self.brand_a = ProductBrand.objects.create(product=self.prod_a, brand_name='Brand A')
-        self.brand_b = ProductBrand.objects.create(product=self.prod_b, brand_name='Brand B')
 
         self.sup_a = Supplier.objects.create(name='Sup A', cafe=self.cafe_a)
         self.sup_b = Supplier.objects.create(name='Sup B', cafe=self.cafe_b)
@@ -104,11 +101,6 @@ class MultiTenancyIsolationTests(TestCase):
         r1 = self.client.post(reverse('product_delete', kwargs={'cafe_code': 'cafe_a', 'product_id': self.prod_b.id}))
         self.assertEqual(r1.status_code, 404)
         self.assertTrue(Product.objects.filter(id=self.prod_b.id).exists())
-
-        r2 = self.client.post(reverse('product_brand_delete', kwargs={'cafe_code': 'cafe_code', 'brand_id': self.brand_b.id}))
-        # Not found in Cafe A
-        r2 = self.client.post(reverse('product_brand_delete', kwargs={'cafe_code': 'cafe_a', 'brand_id': self.brand_b.id}))
-        self.assertEqual(r2.status_code, 404)
 
     def test_payment_idor_rejected(self):
         """User from Cafe A cannot view or delete Cafe B's payment"""

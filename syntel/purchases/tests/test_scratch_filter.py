@@ -36,7 +36,6 @@ class ScratchFilter(TestCase):
         data = {
             'action': 'submit',
             'product_id[]': [str(self.product.id)],
-            'product_brand_id[]': [''],
             'stock_item_id[]': [str(stock_item.id) if stock_item else ''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': [qty],

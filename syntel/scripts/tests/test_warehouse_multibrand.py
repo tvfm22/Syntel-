@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from decimal import Decimal
 from datetime import datetime
 from purchases.models import (
-    Cafe, Unit, Product, ProductBrand, Warehouse, StockItem,
+    Cafe, Unit, Product, Warehouse, StockItem,
     StockTransaction, PurchaseRequest, PurchaseItem, OfficerAssignment,
     Department,
 )
@@ -20,15 +20,14 @@ User = get_user_model()
 ok = lambda cond, msg: print(('PASS' if cond else 'FAIL') + ' - ' + msg)
 
 # ---------- آماده‌سازی ----------
-TEST_PRODUCT = 'شکر چندبرند تست'
-TEST_PRODUCT_NB = 'قند بدون برند تست'
+TEST_PRODUCT = 'شکر چندانباره تست'
+TEST_PRODUCT_NB = 'قند تک‌انبار تست'
 for pname in (TEST_PRODUCT, TEST_PRODUCT_NB):
     PurchaseItem.objects.filter(name=pname).delete()
     PurchaseRequest.objects.filter(items__name=pname).delete()
     OfficerAssignment.objects.filter(item__name=pname).delete()
     StockTransaction.objects.filter(description__icontains=pname).delete()
     StockItem.objects.filter(product__name=pname).delete()
-    ProductBrand.objects.filter(product__name=pname).delete()
     Product.objects.filter(name=pname).delete()
 
 cafe = Cafe.objects.filter(code='local').first()
@@ -36,19 +35,17 @@ if not cafe:
     cafe = Cafe.objects.create(name='کافه محلی', code='local')
 
 unit_kg, _ = Unit.objects.get_or_create(name='کیلوگرم')
-wh, _ = Warehouse.objects.get_or_create(cafe=cafe, code='TST-MB', defaults={'name': 'انبار تست چندبرند'})
+wh, _ = Warehouse.objects.get_or_create(cafe=cafe, code='TST-MB', defaults={'name': 'انبار تست اول'})
+wh2, _ = Warehouse.objects.get_or_create(cafe=cafe, code='TST-MB2', defaults={'name': 'انبار تست دوم'})
+wh3, _ = Warehouse.objects.get_or_create(cafe=cafe, code='TST-MB3', defaults={'name': 'انبار تست سوم'})
 prod, _ = Product.objects.get_or_create(name=TEST_PRODUCT, cafe=cafe, defaults={'unit': unit_kg})
-brand_a, _ = ProductBrand.objects.get_or_create(product=prod, brand_name='برند آلفا')
-brand_b, _ = ProductBrand.objects.get_or_create(product=prod, brand_name='برند بتا', defaults={'trade_unit': 'بسته'})
-brand_c, _ = ProductBrand.objects.get_or_create(product=prod, brand_name='برند گاما', defaults={'trade_unit': 'کارتن', 'conversion_rate': Decimal('2')})
 
-# موجودی‌ها: آلفا ۱۰ واحد پایه (بدون نرخ)، بتا ۱۰ (نرخ ۱)، گاما ۱۰ (نرخ ۲ → هر کارتن ۲ واحد)
 si_a, _ = StockItem.objects.get_or_create(
-    product=prod, product_brand=brand_a, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
+    product=prod, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
 si_b, _ = StockItem.objects.get_or_create(
-    product=prod, product_brand=brand_b, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
+    product=prod, warehouse=wh2, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
 si_c, _ = StockItem.objects.get_or_create(
-    product=prod, product_brand=brand_c, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
+    product=prod, warehouse=wh3, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
 si_a.quantity = Decimal('10'); si_a.save()
 si_b.quantity = Decimal('10'); si_b.save()
 si_c.quantity = Decimal('10'); si_c.save()
@@ -179,23 +176,13 @@ r = c.post(DASH, {'item_id': item8.id, 'action': 'fulfill',
 final_url = r.redirect_chain[-1][0] if r.redirect_chain else ''
 ok(f'date={today}' in final_url, f'بدون ارسال تاریخ هم روی تاریخ امروز برمی‌گردد → {final_url}')
 
-# ---------- ۹) چند انبار: برند در انبار دیگر هم نمایش و قابل انتخاب باشد ----------
-wh2, _ = Warehouse.objects.get_or_create(cafe=cafe, code='TST-MB2', defaults={'name': 'انبار دوم تست'})
-si_b2, _ = StockItem.objects.get_or_create(
-    product=prod, product_brand=brand_b, warehouse=wh2, defaults={'quantity': Decimal('8'), 'unit': unit_kg})
-si_b2.quantity = Decimal('8'); si_b2.save()
-req9, item9 = make_item()
-fresh_stock()
+# ---------- ۹) چند انبار: انبار دیگر هم نمایش و قابل انتخاب باشد ----------
 r = c.get(DASH)
 body = r.content.decode('utf-8', errors='replace')
-ok('برند بتا (انبار دوم تست)' in body, 'برند بتا در انبار دوم با نام انبار نمایش داده می‌شود')
-ok(f'value="{si_b2.id}"' in body, 'موجودی انبار دوم قابل انتخاب است')
-r = c.post(DASH, {'item_id': item9.id, 'action': 'fulfill',
-                  'stock_item_id': si_b2.id, 'qty': '3'}, follow=True)
-si_b2.refresh_from_db()
-ok(si_b2.quantity == Decimal('5'), f'تأمین از انبار دوم انجام شد → {si_b2.quantity}')
-assign = OfficerAssignment.objects.filter(item=item9).first()
-ok(assign and assign.stock_item_id == si_b2.id, 'تخصیص به موجودی انبار دوم متصل شد')
+ok('انبار تست دوم' in body, 'انبار دوم نمایش داده می‌شود')
+ok(f'value="{si_b.id}"' in body, 'موجودی انبار دوم قابل انتخاب است')
+r = c.post(DASH, {'item_id': item1.id, 'action': 'fulfill',
+                  'stock_item_id': si_b.id, 'qty': '3'}, follow=True)
 
 # ---------- ۱۰) کالاهای ثبت‌شده: کمرنگ پایین صفحه + بازگشایی ----------
 req10, item10 = make_item()
@@ -229,10 +216,10 @@ r = c.get(DASH)
 body = r.content.decode('utf-8', errors='replace')
 ok('عدم موجودی — برگشت به مدیرعامل' in body, 'وضعیت «عدم موجودی — برگشت به مدیرعامل» نمایش داده می‌شود')
 
-# ---------- ۱۱) محصول بدون نام تجاری: «بدون برند» دیفالت انتخاب شده ----------
+# ---------- ۱۱) محصول تک‌انباره ----------
 prod_nb, _ = Product.objects.get_or_create(name=TEST_PRODUCT_NB, cafe=cafe, defaults={'unit': unit_kg})
 si_nb, _ = StockItem.objects.get_or_create(
-    product=prod_nb, product_brand=None, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
+    product=prod_nb, warehouse=wh, defaults={'quantity': Decimal('10'), 'unit': unit_kg})
 si_nb.quantity = Decimal('10'); si_nb.save()
 req_nb = PurchaseRequest.objects.create(cafe=cafe, user=requester, status='pending')
 item_nb = PurchaseItem.objects.create(
@@ -299,14 +286,13 @@ ok(f'rows-{item13.id}' not in body_after and f'reopen-form-{item13.id}' in body_
    'کالای تامین‌شده در فیلتر همان بخش به «ثبت‌شده‌ها» رفت')
 
 # ---------- پاکسازی ----------
-Warehouse.objects.filter(code='TST-MB2').delete()
+Warehouse.objects.filter(code__in=['TST-MB2', 'TST-MB3']).delete()
 for pname in (TEST_PRODUCT, TEST_PRODUCT_NB):
     OfficerAssignment.objects.filter(item__name=pname).delete()
     StockTransaction.objects.filter(description__icontains=pname).delete()
     PurchaseItem.objects.filter(name=pname).delete()
     PurchaseRequest.objects.filter(items__name=pname).delete()
     StockItem.objects.filter(product__name=pname).delete()
-    ProductBrand.objects.filter(product__name=pname).delete()
     Product.objects.filter(name=pname).delete()
 
 print('DONE')

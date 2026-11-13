@@ -26,7 +26,6 @@ from .models import (
     Department,
     Notification,
     Product,
-    ProductBrand,
     StockItem,
     StockTransaction,
     Unit,
@@ -82,7 +81,7 @@ def _set_stock_quantity(stock_item_id, absolute):
 @custom_login_required
 @role_required(['store', 'purchasing', 'manager', 'warehouse'])
 def stock_list(request: HttpRequest) -> HttpResponse:
-    """لیست موجودی‌های انبار - کارت به ازای هر (محصول، انبار) با تفکیک برند"""
+    """لیست موجودی‌های انبار - یک ردیف به ازای هر (محصول، انبار)"""
     cafe = get_cafe_from_request(request)
 
     # همه انبارهای فعال کافه جاری
@@ -97,7 +96,7 @@ def stock_list(request: HttpRequest) -> HttpResponse:
         selected_warehouse = warehouses_qs.filter(id=warehouse_id).first()
 
     stock_items = StockItem.objects.select_related(
-        'product', 'unit', 'warehouse', 'product_brand', 'product__unit'
+        'product', 'unit', 'warehouse', 'product__unit', 'product__category'
     ).order_by('warehouse__name', 'product__name')
     if selected_warehouse:
         stock_items = stock_items.filter(warehouse=selected_warehouse)
@@ -109,13 +108,11 @@ def stock_list(request: HttpRequest) -> HttpResponse:
     if show_low_stock:
         stock_items = stock_items.filter(quantity__lte=models.F('min_quantity'))
 
-    # جستجو (نام محصول، نام برند، دسته‌بندی)
+    # جستجو (نام محصول، دسته‌بندی)
     search_query = request.GET.get('search')
     if search_query:
         stock_items = stock_items.filter(
             Q(product__name__icontains=search_query) |
-            Q(product__brands__brand_name__icontains=search_query) |
-            Q(product_brand__brand_name__icontains=search_query) |
             Q(product__category__name__icontains=search_query)
         ).distinct()
 
@@ -124,25 +121,19 @@ def stock_list(request: HttpRequest) -> HttpResponse:
         if si.unit_id is None and si.product and si.product.unit_id:
             si.unit = si.product.unit
 
-    # تجمیع به تفکیک (محصول، انبار) - یک کارت برای هر محصول
+    # تجمیع به تفکیک (محصول، انبار) - یک ردیف برای هر محصول در هر انبار
     groups_dict = {}
     for si in stock_items:
         key = (si.product_id, si.warehouse_id)
         group = groups_dict.setdefault(key, {
             'product': si.product,
             'warehouse': si.warehouse,
-            'brand_items': [],
-            'unbranded_items': [],
             'first_item': si,
             'total_quantity': Decimal('0'),
             'total_min_quantity': Decimal('0'),
         })
         group['total_quantity'] += si.quantity
         group['total_min_quantity'] += si.min_quantity
-        if si.product_brand_id:
-            group['brand_items'].append(si)
-        else:
-            group['unbranded_items'].append(si)
 
     groups_list = list(groups_dict.values())
     for g in groups_list:
@@ -170,7 +161,7 @@ def stock_list(request: HttpRequest) -> HttpResponse:
 def stock_transactions(request: HttpRequest, stock_id: int) -> HttpResponse:
     """تاریخچه تراکنش‌های یک موجودی"""
     stock_item = get_object_or_404(StockItem, id=stock_id)
-    transactions = stock_item.transactions.select_related('created_by', 'stock_item__product_brand').all()
+    transactions = stock_item.transactions.select_related('created_by').all()
 
     # صفحه‌بندی
     paginator = Paginator(transactions, 50)
@@ -568,32 +559,25 @@ def _voucher_form_options(cafe, warehouse_id):
     products = (Product.objects.filter(cafe=cafe, is_active=True)
                 .select_related('category', 'unit').order_by('category__name', 'name'))
     units = Unit.objects.filter(cafe=cafe)
-    brands_by_product = {}
-    for b in (ProductBrand.objects.filter(product__cafe=cafe, is_active=True)
-              .select_related('product').order_by('brand_name')):
-        brands_by_product.setdefault(b.product_id, []).append(
-            {'id': b.id, 'name': b.brand_name})
     # موجودی‌ها: اگر انبار مشخص شده باشد فقط همان انبار، وگرنه همهٔ انبارهای
     # کافه — تا در صفحهٔ ایجاد (که هنوز انبار انتخاب نشده) فهرست «موجودی انبار»
     # خالی نباشد. در سمت کلاینت با انتخاب انبار، فهرست فیلتر می‌شود.
     stock_qs = StockItem.objects.filter(warehouse__cafe=cafe)
     if warehouse_id:
         stock_qs = stock_qs.filter(warehouse_id=warehouse_id)
-    stock_items = (stock_qs.select_related('product', 'product_brand', 'unit', 'warehouse')
+    stock_items = (stock_qs.select_related('product', 'unit', 'warehouse')
                    .order_by('warehouse__name', 'product__name'))
     return {
         'products': products,
         'units': units,
-        'brands_json': json.dumps(brands_by_product, ensure_ascii=False),
         'stock_items': stock_items,
     }
 
 
 def _parse_voucher_lines(request, cafe, voucher_type):
-    """پارس قلم‌های فرم — هر شناسهٔ ارسالی (محصول/برند/موجودی/واحد) فقط در
+    """پارس قلم‌های فرم — هر شناسهٔ ارسالی (محصول/موجودی/واحد) فقط در
     کافهٔ فعلی معتبر است؛ خروجی (خطوط معتبر، خطاها)"""
     product_ids = request.POST.getlist('product_id[]')
-    brand_ids   = request.POST.getlist('product_brand_id[]')
     stock_ids   = request.POST.getlist('stock_item_id[]')
     unit_ids    = request.POST.getlist('unit_id[]')
     quantities  = request.POST.getlist('base_quantity[]')
@@ -610,18 +594,6 @@ def _parse_voucher_lines(request, cafe, voucher_type):
         except (Product.DoesNotExist, ValueError, TypeError):
             errors.append(f'قلم {idx + 1}: محصول نامعتبر یا متعلق به کافهٔ دیگر است')
             continue
-
-        brand = None
-        if idx < len(brand_ids) and brand_ids[idx]:
-            try:
-                brand = ProductBrand.objects.select_related('product').get(
-                    id=int(brand_ids[idx]), product__cafe=cafe)
-            except (ProductBrand.DoesNotExist, ValueError, TypeError):
-                errors.append(f'قلم {idx + 1}: برند نامعتبر یا متعلق به کافهٔ دیگر است')
-                continue
-            if brand.product_id != product.id:
-                errors.append(f'قلم {idx + 1}: برند «{brand.brand_name}» متعلق به این محصول نیست')
-                continue
 
         stock_item = None
         if idx < len(stock_ids) and stock_ids[idx]:
@@ -653,16 +625,16 @@ def _parse_voucher_lines(request, cafe, voucher_type):
 
         base_qty = _dec(quantities)
         if base_qty == 'INVALID':
-            errors.append(f'قلم {idx + 1}: مقدار پایه نامعتبر است')
+            errors.append(f'قلم {idx + 1}: مقدار نامعتبر است')
             continue
         if base_qty is None:
-            errors.append(f'قلم {idx + 1}: مقدار پایه الزامی است')
+            errors.append(f'قلم {idx + 1}: مقدار الزامی است')
             continue
         if base_qty == 0:
-            errors.append(f'قلم {idx + 1}: مقدار پایه نباید صفر باشد')
+            errors.append(f'قلم {idx + 1}: مقدار نباید صفر باشد')
             continue
         if base_qty < 0 and voucher_type != 'adjustment':
-            errors.append(f'قلم {idx + 1}: مقدار پایه باید مثبت باشد')
+            errors.append(f'قلم {idx + 1}: مقدار باید مثبت باشد')
             continue
 
         price = _dec(prices, default=Decimal('0'))
@@ -671,12 +643,9 @@ def _parse_voucher_lines(request, cafe, voucher_type):
 
         lines.append({
             'product': product,
-            'product_brand': brand,
             'stock_item': stock_item,
             'unit': unit_obj,
             'base_quantity': base_qty,
-            'trade_quantity': None,
-            'conversion_rate': brand.conversion_rate if brand else None,
             'unit_price': price,
             'description': (item_descs[idx] if idx < len(item_descs) else '').strip(),
         })
@@ -687,7 +656,6 @@ def _voucher_prefill_items(request, cafe):
     """اقلامِ ارسال‌شده در POST را برای نمایش دوبارهٔ فرم پس از خطا برمی‌گرداند؛
     بدون این کار با هر خطای اعتبارسنجی، همهٔ ردیف‌های واردشده پاک می‌شدند."""
     product_ids = request.POST.getlist('product_id[]')
-    brand_ids = request.POST.getlist('product_brand_id[]')
     stock_ids = request.POST.getlist('stock_item_id[]')
     unit_ids = request.POST.getlist('unit_id[]')
     quantities = request.POST.getlist('base_quantity[]')
@@ -714,7 +682,6 @@ def _voucher_prefill_items(request, cafe):
         items.append({
             'product_id': as_int(pid),
             'product_name': names.get(pid, ''),
-            'brand_id': as_int(at(brand_ids, idx)),
             'stock_id': as_int(at(stock_ids, idx)),
             'unit_id': as_int(at(unit_ids, idx)),
             'base': qty,
@@ -738,7 +705,6 @@ def _render_voucher_form(request, cafe, voucher_type, warehouse, extra=None):
         'cafe_code': cafe.code if cafe else '',
         'products': opts['products'],
         'units': opts['units'],
-        'brands_json': opts['brands_json'],
         'stock_items': opts['stock_items'],
         'prefill_items': [],
         'form_description': '',
@@ -949,7 +915,7 @@ def voucher_detail(request: HttpRequest, voucher_id: int) -> HttpResponse:
     cafe = get_cafe_from_request(request)
     voucher = get_scoped_object_or_404(WarehouseVoucher, request, id=voucher_id)
     items = voucher.items.select_related(
-        'product', 'product_brand', 'unit', 'stock_item__warehouse').all()
+        'product', 'unit', 'stock_item__warehouse').all()
     movements = StockTransaction.objects.filter(voucher=voucher).select_related(
         'stock_item__product', 'stock_item__warehouse', 'created_by').order_by('created_at')
 
@@ -1033,7 +999,7 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
         messages.success(request, f'پیش‌نویس {voucher.voucher_number} به‌روزرسانی شد.')
         return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
 
-    items = voucher.items.select_related('product', 'product_brand', 'unit').all()
+    items = voucher.items.select_related('product', 'unit').all()
     return _render_voucher_form(request, cafe, voucher.voucher_type,
                                 voucher.source_warehouse or voucher.destination_warehouse,
                                 {'editing': True, 'edit_voucher': voucher,
@@ -1091,7 +1057,7 @@ def voucher_approve(request: HttpRequest, voucher_id: int) -> HttpResponse:
 
     return render(request, 'stock/voucher_approve.html', {
         'voucher': voucher,
-        'items': voucher.items.select_related('product', 'product_brand', 'unit').all(),
+        'items': voucher.items.select_related('product', 'unit').all(),
         'cafe_code': cafe.code if cafe else '',
     })
 
@@ -1231,7 +1197,7 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
                 # موجودی انبار فقط در همین انبار جستجو می‌شود — شناسه‌ای از انبار
                 # دیگر خطا می‌دهد و کل ثبت را برمی‌گرداند (رفع خطای انبارِ اشتباه)
                 try:
-                    si = StockItem.objects.select_related('product_brand', 'unit').get(
+                    si = StockItem.objects.select_related('unit').get(
                         id=int(stock_item_id), warehouse=warehouse)
                 except (StockItem.DoesNotExist, ValueError) as exc:
                     raise _InsufficientStock(
@@ -1263,7 +1229,6 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
                 WarehouseVoucherItem.objects.create(
                     voucher=voucher,
                     product=si.product,
-                    product_brand=si.product_brand,
                     stock_item=si,
                     unit=si.unit,
                     base_quantity=delta,
@@ -1342,7 +1307,7 @@ def stock_movements(request: HttpRequest) -> HttpResponse:
     """
     cafe = get_cafe_from_request(request)
     txs = StockTransaction.objects.select_related(
-        'stock_item__product', 'stock_item__product_brand',
+        'stock_item__product',
         'stock_item__warehouse', 'voucher', 'created_by'
     ).filter(stock_item__warehouse__cafe=cafe)
 

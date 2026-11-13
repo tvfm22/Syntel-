@@ -8,7 +8,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 
 from purchases.models import (
-    User, Cafe, PurchaseRequest, PurchaseItem, OfficerAssignment,
+    User, Cafe, Product, PurchaseRequest, PurchaseItem, OfficerAssignment,
 )
 
 
@@ -16,6 +16,8 @@ class DecimalQuantityTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.cafe = Cafe.objects.create(name='کافه تست', code='deq')
+        for pname in ('شیر', 'نان', 'پنیر'):
+            Product.objects.create(name=pname, cafe=cls.cafe, is_active=True, is_complete=True)
         cls.requester = User.objects.create_user(
             username='deq_owner', password='testpass123',
             role='requester', cafe=cls.cafe, is_active=True,

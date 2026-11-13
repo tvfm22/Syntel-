@@ -55,7 +55,6 @@ class VoucherCreateUXTests(VoucherUIBaseline):
         r = self.client.post(self._url('voucher_create', voucher_type='receipt'), {
             'action': 'submit',
             'product_id[]': [str(self.product.id), ''],
-            'product_brand_id[]': ['', ''],
             'stock_item_id[]': ['', ''],
             'unit_id[]': [str(self.unit.id), ''],
             'base_quantity[]': ['0', ''],
@@ -67,7 +66,7 @@ class VoucherCreateUXTests(VoucherUIBaseline):
         })
         self.assertEqual(r.status_code, 200)
         html = r.content.decode('utf-8')
-        self.assertIn('مقدار پایه نباید صفر باشد', html)
+        self.assertIn('مقدار نباید صفر باشد', html)
         self.assertIn('product_name: "Sugar"', html)
         self.assertIn('base: "0"', html)
         self.assertIn('قلم نگه‌داشته‌شده', html)
@@ -78,7 +77,6 @@ class VoucherCreateUXTests(VoucherUIBaseline):
         r = self.client.post(self._url('voucher_create', voucher_type='receipt'), {
             'action': 'submit',
             'product_id[]': [str(self.product.id)],
-            'product_brand_id[]': [''],
             'stock_item_id[]': [''],
             'unit_id[]': [str(self.unit.id)],
             'base_quantity[]': ['5'],

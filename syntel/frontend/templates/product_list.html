@@ -160,47 +160,25 @@
         font-size: 0.78rem; font-weight: 700;
     }
 
-    /* ---------- نام‌های تجاری ---------- */
-    .p-brands { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
-
-    .p-brand-chip {
-        display: inline-flex; align-items: center; gap: 0.25rem;
-        background: rgba(59, 130, 246, 0.07); color: #2563EB;
-        border: 1px solid rgba(59, 130, 246, 0.16);
-        padding: 0.15rem 0.55rem; border-radius: var(--radius-xs);
-        font-size: 0.74rem; font-weight: 600;
-        max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    /* ---------- وضعیت (فعال/غیرفعال در سفارش‌گذاری) ---------- */
+    .p-status-btn {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 600;
+        padding: 0.25rem 0.65rem; border-radius: 999px;
+        border: 1px solid transparent; background: transparent;
+        cursor: pointer; transition: all var(--transition-fast);
     }
-
-    .p-more {
-        display: inline-flex; align-items: center;
-        background: var(--bg-subtle); color: var(--text-muted);
-        padding: 0.15rem 0.45rem; border-radius: var(--radius-xs);
-        font-size: 0.72rem; font-weight: 700;
-    }
-
-    .p-add-brand {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 24px; height: 24px; border-radius: var(--radius-xs);
-        border: 1px dashed var(--border-strong);
-        color: var(--text-muted); font-size: 0.68rem;
-        transition: all var(--transition-fast); flex-shrink: 0;
-    }
-    .p-add-brand:hover {
-        color: var(--primary-dark); border-color: rgba(139,92,246,0.5);
-        background: rgba(139,92,246,0.07); border-style: solid;
-    }
-
-    .p-converted { margin-top: 0.35rem; font-size: 0.72rem; color: #A16207; font-weight: 600; }
-    .p-empty-brands { color: var(--text-muted); font-size: 0.78rem; }
-
-    /* ---------- وضعیت ---------- */
-    .p-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; }
     .p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .is-active { color: #15803D; }
-    .is-active .p-dot { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
-    .is-off { color: var(--gray-400); }
-    .is-off .p-dot { background: var(--border-strong); }
+    .p-status-btn.is-active {
+        color: #15803D; background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.22);
+    }
+    .p-status-btn.is-active .p-dot { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
+    .p-status-btn.is-active:hover { background: rgba(34, 197, 94, 0.16); }
+    .p-status-btn.is-off {
+        color: var(--gray-500, #64748B); background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.25);
+    }
+    .p-status-btn.is-off .p-dot { background: var(--border-strong); }
+    .p-status-btn.is-off:hover { background: rgba(148, 163, 184, 0.22); color: var(--text-primary); }
 
     /* ---------- اکشن‌ها ---------- */
     .p-actions { display: inline-flex; gap: 0.4rem; }
@@ -254,7 +232,7 @@
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" name="search" value="{{ search }}"
-                       placeholder="جستجو در محصولات یا نام‌های تجاری..." class="search-input" aria-label="جستجو">
+                       placeholder="جستجو در محصولات..." class="search-input" aria-label="جستجو">
             </div>
 
             <select name="category" class="p-select" aria-label="فیلتر دسته‌بندی">
@@ -314,7 +292,6 @@
                         <th>قیمت واحد</th>
                         <th>حداقل موجودی</th>
                         <th>عمر مفید</th>
-                        <th>نام‌های تجاری</th>
                         <th>رسپی و سفارش</th>
                         <th>وضعیت</th>
                         <th style="text-align:left;">عملیات</th>
@@ -366,7 +343,7 @@
                         <!-- قیمت واحد کوچک‌ترین واحد -->
                         <td>
                             {% if product.base_unit_price is not None %}
-                            <div class="p-price">{{ product.base_unit_price|trim_decimal:4 }}</div>
+                            <div class="p-price">{{ product.base_unit_price|number_format }} <span style="font-weight:500;font-size:0.78rem;color:var(--text-secondary);">ریال</span></div>
                             <div class="p-sub">به ازای هر ۱ {{ product.smallest_unit|default:"واحد" }}</div>
                             {% else %}
                             <span class="muted-dash">—</span>
@@ -383,42 +360,6 @@
                             {% else %}
                             <span class="muted-dash">—</span>
                             {% endif %}
-                        </td>
-
-                        <!-- نام‌های تجاری -->
-                        <td>
-                            {% with brands=product.active_brands %}
-                            {% if brands %}
-                            <div class="p-brands">
-                                {% for brand in brands %}
-                                    {% if forloop.counter <= 3 %}
-                                    <span class="p-brand-chip"
-                                          title="{% if brand.trade_unit %}{{ brand.trade_unit }}{% if brand.conversion_rate %} = {{ brand.conversion_rate|floatformat:"-1" }} {{ product.unit.name|default:'' }}{% endif %}{% else %}{{ brand.brand_name }}{% endif %}">
-                                        {{ brand.brand_name }}
-                                    </span>
-                                    {% endif %}
-                                {% endfor %}
-                                {% if brands|length > 3 %}
-                                <span class="p-more">+{{ brands|length|add:"-3" }}</span>
-                                {% endif %}
-                                <a href="{% url 'product_brand_add' cafe_code=cafe_code product_id=product.id %}"
-                                   class="p-add-brand" title="افزودن نام تجاری">
-                                    <i class="fas fa-plus"></i>
-                                </a>
-                            </div>
-                            <div class="p-converted">
-                                مجموع تبدیل: {{ product.total_converted_amount|floatformat:"-1" }} {{ product.unit.name|default:'' }}
-                            </div>
-                            {% else %}
-                            <div class="p-brands">
-                                <span class="p-empty-brands">بدون نام تجاری</span>
-                                <a href="{% url 'product_brand_add' cafe_code=cafe_code product_id=product.id %}"
-                                   class="p-add-brand" title="افزودن نام تجاری">
-                                    <i class="fas fa-plus"></i>
-                                </a>
-                            </div>
-                            {% endif %}
-                            {% endwith %}
                         </td>
 
                         <!-- مصرف در رسپی منو + قابلیت سفارش -->
@@ -444,12 +385,22 @@
                             {% endif %}
                         </td>
 
-                        <!-- وضعیت -->
+                        <!-- وضعیت سفارش‌گذاری (قابل تغییر با کلیک) -->
                         <td>
-                            <span class="p-status {% if product.is_active %}is-active{% else %}is-off{% endif %}">
-                                <span class="p-dot"></span>
-                                {% if product.is_active %}فعال{% else %}غیرفعال{% endif %}
-                            </span>
+                            <form method="POST" action="{% url 'product_toggle_active' cafe_code=cafe_code product_id=product.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                {% if search %}<input type="hidden" name="filter_search" value="{{ search }}">{% endif %}
+                                {% if selected_category %}<input type="hidden" name="filter_category" value="{{ selected_category }}">{% endif %}
+                                {% if selected_status %}<input type="hidden" name="filter_is_active" value="{{ selected_status }}">{% endif %}
+                                {% if selected_pricing %}<input type="hidden" name="filter_pricing" value="{{ selected_pricing }}">{% endif %}
+                                {% if selected_recipe %}<input type="hidden" name="filter_recipe" value="{{ selected_recipe }}">{% endif %}
+                                <button type="submit"
+                                        class="p-status-btn {% if product.is_active %}is-active{% else %}is-off{% endif %}"
+                                        title="{% if product.is_active %}فعال در سفارش‌گذاری — برای غیرفعال‌کردن کلیک کنید{% else %}غیرفعال در سفارش‌گذاری — برای فعال‌کردن کلیک کنید{% endif %}">
+                                    <span class="p-dot"></span>
+                                    {% if product.is_active %}فعال{% else %}غیرفعال{% endif %}
+                                </button>
+                            </form>
                         </td>
 
                         <!-- عملیات -->
