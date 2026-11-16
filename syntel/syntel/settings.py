@@ -144,6 +144,10 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'purchases.User'
 
+AUTHENTICATION_BACKENDS = [
+    'purchases.auth_backends.CaseInsensitiveModelBackend',
+]
+
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

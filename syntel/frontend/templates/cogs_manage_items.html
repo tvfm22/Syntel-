@@ -583,13 +583,18 @@
                                 <option value="__new__">➕ دستهٔ جدید…</option>
                             </select>
                         </div>
-                        <div class="field">
-                            <label>محل استفاده / بخش</label>
-                            <select name="usage_location">
+                        <div class="field is-full">
+                            <label>محل استفاده / بخش‌های درخواست</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-top:0.25rem;" id="rawUsageGroup">
                                 {% for u in usage_locations %}
-                                <option value="{{ u.value }}">{{ u.label }}</option>
+                                <label style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.35rem 0.7rem;border:1px solid var(--border-default,#d1d5db);border-radius:8px;font-size:0.82rem;cursor:pointer;background:#f8fafc;">
+                                    <input type="checkbox" name="usage_locations" value="{{ u.value }}"
+                                           {% if u.value == 'general' %}checked{% endif %}
+                                           style="width:auto;margin:0;">
+                                    <span>{{ u.label }}</span>
+                                </label>
                                 {% endfor %}
-                            </select>
+                            </div>
                         </div>
                         <div class="field">
                             <label>واحد پایه</label>
@@ -922,6 +927,24 @@
     }
     rawPriceUnit.addEventListener('change', toggleRawPackage);
     toggleRawPackage();
+
+    const rawUsageGroup = document.getElementById('rawUsageGroup');
+    if (rawUsageGroup) {
+        const usageBoxes = Array.from(rawUsageGroup.querySelectorAll('input[name="usage_locations"]'));
+        const generalBox = usageBoxes.find(cb => cb.value === 'general');
+        usageBoxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                if (cb === generalBox && cb.checked) {
+                    usageBoxes.forEach(other => { if (other !== generalBox) other.checked = false; });
+                } else if (cb !== generalBox && cb.checked && generalBox) {
+                    generalBox.checked = false;
+                }
+                if (!usageBoxes.some(other => other.checked) && generalBox) {
+                    generalBox.checked = true;
+                }
+            });
+        });
+    }
 
     document.getElementById('rawForm').addEventListener('submit', function (e) {
         e.preventDefault();

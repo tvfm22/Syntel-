@@ -54,9 +54,10 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     list_editable = ('is_active',)
     ordering = ('name',)
+    filter_horizontal = ('departments',)
     fieldsets = (
         ('اطلاعات پایه', {
-            'fields': ('name', 'category', 'unit', 'is_active')
+            'fields': ('name', 'category', 'unit', 'departments', 'is_active')
         }),
         ('موجودی', {
             'fields': ('current_stock', 'min_stock')

@@ -169,6 +169,14 @@ class PurchaseRequest(models.Model):
     manager_confirmed: models.BooleanField = models.BooleanField(default=False, verbose_name='تایید نهایی مدیر')
     manager_confirmed_at: models.DateTimeField = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ تایید مدیر')
     manager_confirmed_by: models.ForeignKey = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='confirmed_requests', verbose_name='تایید کننده')
+    intended_purchasing_officer: models.ForeignKey = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='intended_purchase_requests',
+        verbose_name='مسئول خرید انتخاب‌شده',
+    )
     rejection_reason: models.TextField = models.TextField(blank=True, null=True, verbose_name='دلیل رد')
     # زمان تحویل درخواست‌شده: تاریخ مشخص یا تحویل فوری
     delivery_date = models.DateField(null=True, blank=True, verbose_name='زمان تحویل (تاریخ)')
@@ -400,6 +408,12 @@ class Product(models.Model):
     shelf_life_days = models.PositiveIntegerField(null=True, blank=True, verbose_name='عمر مفید (روز)',
                                                   help_text='مدت زمان ماندگاری محصول به روز؛ مثال: 180')
     usage_location = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default='general', verbose_name='محل استفاده')
+    departments = models.ManyToManyField(
+        'Department',
+        blank=True,
+        related_name='products',
+        verbose_name='بخش‌های درخواست',
+    )
     description = models.TextField(blank=True, verbose_name='توضیحات')
     is_active = models.BooleanField(default=True, verbose_name='فعال')
     # --- قیمت واحد کوچک‌ترین واحد (همگام با KukerItem مواد اولیه) -------------
@@ -421,6 +435,33 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
     cafe = models.ForeignKey('Cafe', on_delete=models.CASCADE, related_name='products', verbose_name='کافه', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ بروزرسانی')
+
+    OLD_USAGE_KEY_MAP = {
+        'kitchen': 'آشپزخانه',
+        'bar': 'بار',
+        'counter': 'کانتر',
+        'cashier': 'صندوق',
+        'facilities': 'تاسیسات',
+    }
+
+    @property
+    def request_section_labels(self):
+        """نام بخش‌های درخواست انتخاب‌شده برای این محصول؛ برای عمومی ['عمومی'] و برای بدون بخش ['بدون بخش']."""
+        if self.pk:
+            depts = list(self.departments.all())
+            if depts:
+                return [d.name for d in depts]
+        if self.usage_location == 'none':
+            return ['بدون بخش']
+        if not self.usage_location or self.usage_location == 'general':
+            return ['عمومی']
+        if self.usage_location == 'multi':
+            return ['چند بخش']
+        return [self.OLD_USAGE_KEY_MAP.get(self.usage_location, self.usage_location)]
+
+    @property
+    def request_sections_display(self):
+        return '، '.join(self.request_section_labels)
 
     def __str__(self):
         return self.name
@@ -1831,6 +1872,7 @@ class OfficerAssignment(models.Model):
     STATUS_CHOICES = [
         ('pending', 'در انتظار بررسی'),
         ('purchased', 'خریداری شده'),
+        ('not_purchased', 'خریداری نشده'),
         ('returned', 'بازگشت به مدیرعامل'),
         ('fulfilled', 'تامین از انبار'),
         ('not_in_stock', 'عدم موجودی'),
@@ -1843,6 +1885,7 @@ class OfficerAssignment(models.Model):
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='officer_assignments', verbose_name='مسئول')
     assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_officer_assignments', verbose_name='تخصیص‌دهنده')
     assigned_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ تخصیص')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='تاریخ انجام/بازگشت')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='وضعیت')
     notes = models.TextField(blank=True, verbose_name='یادداشت')
     # اطلاعات تامین از انبار (وقتی مسئول انبار تامین می‌کند)

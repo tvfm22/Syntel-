@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}{% if is_warehouse_self_buy %}سوابق خریدهای من - کوکر{% else %}سوابق لیست خرید - کوکر{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .poh-wrap { max-width: 1080px; margin: 0 auto; }
+
+    .poh-wrap .page-header {
+        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
+        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+        border-radius: var(--radius-xl);
+    }
+    .ph-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .ph-icon {
+        width: 42px; height: 42px; border-radius: var(--radius-md); flex-shrink: 0;
+        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .page-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .ph-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .ph-tab {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.9rem; border-radius: var(--radius-md);
+        font-size: 0.8rem; font-weight: 700; text-decoration: none;
+        border: 1px solid var(--border-default); background: var(--bg-subtle);
+        color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .ph-tab:hover { background: rgba(99,102,241,0.08); color: var(--accent-indigo); border-color: rgba(99,102,241,0.3); }
+    .ph-tab.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
+
+    .poh-stats { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; }
+    .poh-stat-card {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg); padding: 0.85rem 1.25rem;
+        box-shadow: var(--shadow-sm); flex: 1; min-width: 160px;
+        display: flex; align-items: center; gap: 0.85rem;
+    }
+    .poh-stat-icon {
+        width: 40px; height: 40px; border-radius: var(--radius-md);
+        display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
+    }
+    .poh-stat-icon.green { background: #ECFDF5; color: #059669; }
+    .poh-stat-icon.amber { background: #FEF3C7; color: #D97706; }
+    .poh-stat-num { font-size: 1.35rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .poh-stat-lbl { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
+
+    .poh-toolbar {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); padding: 0.85rem 1.15rem;
+        margin-bottom: var(--space-4); box-shadow: var(--shadow-sm);
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 0.75rem;
+    }
+    .filter-pills { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+    .filter-pill {
+        padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+        text-decoration: none; border: 1px solid var(--border-default);
+        background: var(--bg-subtle); color: var(--text-secondary);
+    }
+    .filter-pill.active {
+        background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo);
+    }
+    .search-box { display: flex; gap: 0.45rem; align-items: center; }
+    .search-box input {
+        height: 36px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+        padding: 0 0.75rem; font-family: 'Vazir', sans-serif; font-size: 0.8rem; min-width: 210px;
+    }
+    .search-box button {
+        height: 36px; border: none; border-radius: var(--radius-sm); padding: 0 0.85rem;
+        background: var(--accent-indigo); color: #fff; font-family: 'Vazir', sans-serif;
+        font-size: 0.78rem; font-weight: 700; cursor: pointer;
+    }
+
+    .day-card {
+        background: var(--bg-card); border-radius: var(--radius-xl);
+        border: 1px solid var(--border-default); box-shadow: var(--shadow-sm);
+        margin-bottom: var(--space-4); overflow: hidden;
+    }
+    .day-head {
+        background: var(--bg-subtle); padding: 0.75rem 1.2rem;
+        border-bottom: 1px solid var(--border-default);
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .day-title { font-size: 0.92rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem; }
+    .day-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .day-badge {
+        padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+    }
+    .day-badge.green { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+    .day-badge.amber { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .hist-table th, .hist-table td {
+        padding: 0.65rem 1rem; text-align: right; border-bottom: 1px solid var(--border-light);
+    }
+    .hist-table th { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background: #FAFAFC; }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .st-pill {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+    }
+    .st-pill.purchased { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+    .st-pill.not_purchased, .st-pill.returned { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+
+    .empty-state {
+        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
+        background: var(--bg-card); border-radius: var(--radius-xl); border: 1px dashed var(--border-strong);
+    }
+    .empty-state .empty-icon { font-size: 2.3rem; margin-bottom: 0.7rem; color: var(--accent-indigo); opacity: 0.45; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="poh-wrap">
+    <div class="page-header">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-history"></i></div>
+            <div>
+                <h1 class="page-title">{% if is_warehouse_self_buy %}سوابق خریدهای من{% else %}سوابق لیست خرید{% endif %}</h1>
+                <div class="page-sub">{{ user.first_name }} {{ user.last_name }}</div>
+            </div>
+        </div>
+        <div class="ph-actions">
+            <a href="{% url list_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" class="ph-tab">
+                <i class="fas fa-shopping-basket"></i>
+                {% if is_warehouse_self_buy %}خریدهای من{% else %}لیست خرید من{% endif %}
+            </a>
+            <a href="{% url history_url_name|default:'purchase_officer_history' cafe_code=cafe_code %}" class="ph-tab active">
+                <i class="fas fa-history"></i>
+                {% if is_warehouse_self_buy %}سوابق خریدهای من{% else %}سوابق لیست خرید{% endif %}
+            </a>
+        </div>
+    </div>
+
+    <div class="poh-stats">
+        <div class="poh-stat-card">
+            <div class="poh-stat-icon"><i class="fas fa-list-ol"></i></div>
+            <div>
+                <div class="poh-stat-num">{{ total_count }}</div>
+                <div class="poh-stat-lbl">کل اقلام ثبت‌شده</div>
+            </div>
+        </div>
+        <div class="poh-stat-card">
+            <div class="poh-stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="poh-stat-num">{{ total_purchased }}</div>
+                <div class="poh-stat-lbl">خریداری شده</div>
+            </div>
+        </div>
+        <div class="poh-stat-card">
+            <div class="poh-stat-icon amber"><i class="fas fa-times-circle"></i></div>
+            <div>
+                <div class="poh-stat-num">{{ total_returned }}</div>
+                <div class="poh-stat-lbl">خریداری نشده</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="poh-toolbar">
+        <div class="filter-pills">
+            <a href="?status=all{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="filter-pill{% if status_filter == 'all' %} active{% endif %}">همه</a>
+            <a href="?status=purchased{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="filter-pill{% if status_filter == 'purchased' %} active{% endif %}">خریداری شده</a>
+            <a href="?status=not_purchased{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="filter-pill{% if status_filter == 'not_purchased' or status_filter == 'returned' %} active{% endif %}">خریداری نشده</a>
+        </div>
+        <form method="get" class="search-box">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="text" name="q" value="{{ q_filter }}" placeholder="جستجوی نام کالا...">
+            <button type="submit"><i class="fas fa-search"></i> جستجو</button>
+        </form>
+    </div>
+
+    {% if date_groups %}
+        {% for grp in date_groups %}
+        <div class="day-card">
+            <div class="day-head">
+                <div class="day-title">
+                    <i class="fas fa-calendar-day" style="color:var(--accent-indigo);"></i>
+                    <span>{{ grp.date|jalali_date:"%d %B %Y" }}</span>
+                </div>
+                <div class="day-badges">
+                    {% if grp.purchased_count %}
+                    <span class="day-badge green"><i class="fas fa-check"></i> {{ grp.purchased_count }} خریداری‌شده</span>
+                    {% endif %}
+                    {% if grp.returned_count %}
+                    <span class="day-badge amber"><i class="fas fa-xmark"></i> {{ grp.returned_count }} خریداری‌نشده</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="hist-table">
+                    <thead>
+                        <tr>
+                            <th>کالا</th>
+                            <th>مقدار</th>
+                            <th>بخش</th>
+                            <th>درخواست</th>
+                            <th>وضعیت</th>
+                            <th>ساعت / یادداشت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in grp.items %}
+                        <tr>
+                            <td>
+                                <b>{{ entry.name }}</b>
+                                {% if entry.description %}
+                                <div style="font-size:0.74rem;color:var(--text-muted);">{{ entry.description }}</div>
+                                {% endif %}
+                            </td>
+                            <td><b>{{ entry.quantity|trim_decimal }}</b> {{ entry.unit }}</td>
+                            <td>{{ entry.dept }}</td>
+                            <td><span style="font-family:monospace;font-size:0.78rem;">{{ entry.request_number }}</span></td>
+                            <td>
+                                <span class="st-pill {{ entry.status }}">
+                                    <i class="fas {% if entry.status == 'purchased' %}fa-check{% else %}fa-xmark{% endif %}"></i>
+                                    {{ entry.status_label }}
+                                </span>
+                            </td>
+                            <td style="font-size:0.75rem;color:var(--text-muted);">
+                                {{ entry.time_str }}
+                                {% if entry.notes %}<div>{{ entry.notes|truncatechars:80 }}</div>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-clock-rotate-left"></i></div>
+            <h3>سابقه‌ای یافت نشد</h3>
+            <p>هنوز قلمی خریداری یا برگشت داده نشده است.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

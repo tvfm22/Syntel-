@@ -128,6 +128,13 @@
         padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
         font-size: 0.78rem; font-weight: 600;
     }
+    .p-chip-muted {
+        display: inline-block;
+        background: rgba(148, 163, 184, 0.12); color: var(--text-muted);
+        border: 1px dashed var(--border-strong);
+        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
+        font-size: 0.78rem; font-weight: 500;
+    }
     .muted-dash { color: var(--text-muted); font-size: 0.85rem; }
 
     .p-num { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
@@ -244,6 +251,17 @@
                 {% endfor %}
             </select>
 
+            <select name="department" class="p-select" aria-label="فیلتر بخش درخواست">
+                <option value="">همه بخش‌های درخواست</option>
+                <option value="general" {% if selected_department == 'general' %}selected{% endif %}>عمومی (همه بخش‌ها)</option>
+                <option value="none" {% if selected_department == 'none' %}selected{% endif %}>بدون بخش</option>
+                {% for dep in departments_qs %}
+                <option value="{{ dep.id }}" {% if dep.id|stringformat:"s" == selected_department %}selected{% endif %}>
+                    {{ dep.name }}
+                </option>
+                {% endfor %}
+            </select>
+
             <select name="is_active" class="p-select" aria-label="فیلتر وضعیت">
                 <option value="">همه وضعیت‌ها</option>
                 <option value="true" {% if selected_status == 'true' %}selected{% endif %}>فقط فعال</option>
@@ -267,7 +285,7 @@
                 <i class="fas fa-search"></i> جستجو
             </button>
 
-            {% if search or selected_category or selected_status or selected_pricing or selected_recipe %}
+            {% if search or selected_category or selected_department or selected_status or selected_pricing or selected_recipe %}
             <a href="{% url 'product_list' cafe_code=cafe_code %}" class="p-reset" title="حذف همه فیلترها">
                 <i class="fas fa-xmark"></i> پاک‌کردن
             </a>
@@ -288,6 +306,7 @@
                     <tr>
                         <th>محصول</th>
                         <th>دسته‌بندی</th>
+                        <th>بخش‌های درخواست</th>
                         <th>واحد</th>
                         <th>قیمت واحد</th>
                         <th>حداقل موجودی</th>
@@ -328,6 +347,15 @@
                             {% else %}
                             <span class="muted-dash">—</span>
                             {% endif %}
+                        </td>
+
+                        <!-- بخش‌های درخواست -->
+                        <td>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.25rem;">
+                                {% for sec_label in product.request_section_labels %}
+                                <span class="{% if sec_label == 'عمومی' %}p-chip{% elif sec_label == 'بدون بخش' %}p-chip-muted{% else %}p-chip-accent{% endif %}">{{ sec_label }}</span>
+                                {% endfor %}
+                            </div>
                         </td>
 
                         <!-- واحد -->
@@ -391,6 +419,7 @@
                                 {% csrf_token %}
                                 {% if search %}<input type="hidden" name="filter_search" value="{{ search }}">{% endif %}
                                 {% if selected_category %}<input type="hidden" name="filter_category" value="{{ selected_category }}">{% endif %}
+                                {% if selected_department %}<input type="hidden" name="filter_department" value="{{ selected_department }}">{% endif %}
                                 {% if selected_status %}<input type="hidden" name="filter_is_active" value="{{ selected_status }}">{% endif %}
                                 {% if selected_pricing %}<input type="hidden" name="filter_pricing" value="{{ selected_pricing }}">{% endif %}
                                 {% if selected_recipe %}<input type="hidden" name="filter_recipe" value="{{ selected_recipe }}">{% endif %}

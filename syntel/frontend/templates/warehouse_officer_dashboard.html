@@ -251,6 +251,9 @@
     .status-not_in_stock { background: #FEE2E2; color: #991B1B; }
     .status-returned     { background: #DBEAFE; color: #1E40AF; }
     .status-locked       { background: #EDE9FE; color: #5B21B6; }
+    .wo-quick-link-accent {
+        background: #EEF2FF !important; color: #4338CA !important; border-color: #C7D2FE !important;
+    }
 
     .empty-state {
         text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
@@ -361,8 +364,14 @@
             </span>
         </div>
         <div class="wo-sum-links">
+            <a href="{% url 'warehouse_my_purchases' cafe_code=cafe_code %}" class="wo-quick-link wo-quick-link-accent">
+                <i class="fas fa-shopping-basket"></i> خریدهای من{% if my_purchases_count %} ({{ my_purchases_count }}){% endif %}
+            </a>
+            <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}" class="wo-quick-link">
+                <i class="fas fa-tasks"></i> وضعیت خرید
+            </a>
             <a href="{% url 'warehouse_purchase_draft' cafe_code=cafe_code %}" class="wo-quick-link">
-                <i class="fas fa-cart-shopping"></i> پیش‌نویس درخواست خرید
+                <i class="fas fa-cart-shopping"></i> پیش‌نویس درخواست خرید{% if draft_count %} ({{ draft_count }}){% endif %}
             </a>
             <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="wo-quick-link">
                 <i class="fas fa-boxes-stacked"></i> موجودی انبار
@@ -518,8 +527,13 @@
                         <td><span style="color:var(--text-muted)">—</span></td>
                         <td class="cell-actions">
                             {% if d.locked %}
+                            {% if d.locked_status == 'pending_manager_approval' %}
                             <span class="status-tag status-locked"><i class="fas fa-lock"></i> در لیست خرید — ارسال به مدیرعامل</span>
                             <div class="reopen-hint">در انتظار تایید مدیرعامل؛ قابل تغییر نیست</div>
+                            {% else %}
+                            <span class="status-tag status-locked"><i class="fas fa-lock"></i> در لیست خرید — ارسال به واحد خرید</span>
+                            <div class="reopen-hint">ارسال‌شده برای خرید؛ قابل تغییر نیست</div>
+                            {% endif %}
                             {% else %}
                             <span class="status-tag status-{{ d.assignment.status }}">
                                 {% if d.assignment.status == 'fulfilled' %}<i class="fas fa-check-circle"></i> تأمین شده

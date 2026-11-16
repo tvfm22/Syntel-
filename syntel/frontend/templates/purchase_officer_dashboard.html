@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}{% if is_self_buy %}لیست خرید من - کوکر{% else %}داشبورد مسئول خرید - کوکر{% endif %}{% endblock %}
+{% block title %}{% if is_warehouse_self_buy %}خریدهای من - کوکر{% elif is_self_buy %}لیست خرید من - کوکر{% else %}لیست خرید من - کوکر{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -84,8 +84,9 @@
     }
     .po-btn-green { background: #10B981; color: white; }
     .po-btn-green:hover { background: #059669; }
-    .po-btn-amber { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
-    .po-btn-amber:hover { background: #FDE68A; }
+    .po-btn-red { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .po-btn-red:hover { background: #FEE2E2; }
+    .row-bulk-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
 
     .desc-list { margin-top: 0.65rem; }
     .desc-item {
@@ -98,6 +99,17 @@
         text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
         background: var(--bg-card); border-radius: var(--radius-xl); border: 1px dashed var(--border-strong);
     }
+    .po-stat-icon.amber { background: #FEF3C7; color: #D97706; }
+    .ph-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .ph-tab {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.9rem; border-radius: var(--radius-md);
+        font-size: 0.8rem; font-weight: 700; text-decoration: none;
+        border: 1px solid var(--border-default); background: var(--bg-subtle);
+        color: var(--text-secondary); transition: all var(--transition-fast);
+    }
+    .ph-tab:hover { background: rgba(99,102,241,0.08); color: var(--accent-indigo); border-color: rgba(99,102,241,0.3); }
+    .ph-tab.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
     .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.75rem; color: var(--accent-indigo); opacity: 0.45; }
     .empty-state h3 { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.35rem; }
 </style>
@@ -111,9 +123,21 @@
         <div class="ph-main">
             <div class="ph-icon"><i class="fas fa-shopping-basket"></i></div>
             <div>
-                <h1 class="page-title">{% if is_self_buy %}لیست خرید من{% else %}داشبورد مسئول خرید{% endif %}</h1>
+                <h1 class="page-title">{% if is_warehouse_self_buy %}خریدهای من{% elif is_self_buy %}لیست خرید من{% else %}لیست خرید من{% endif %}</h1>
                 <div class="page-sub">{{ user.first_name }} {{ user.last_name }}</div>
             </div>
+        </div>
+        <div class="ph-actions">
+            {% if not is_warehouse_self_buy %}
+            <a href="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" class="ph-tab active">
+                <i class="fas fa-shopping-basket"></i>
+                لیست خرید من
+            </a>
+            {% endif %}
+            <a href="{% url history_url_name|default:'purchase_officer_history' cafe_code=cafe_code %}" class="ph-tab">
+                <i class="fas fa-history"></i>
+                {% if is_warehouse_self_buy %}سوابق خریدهای من{% else %}سوابق لیست خرید{% endif %}
+            </a>
         </div>
     </div>
 
@@ -132,17 +156,32 @@
                 <div class="po-stat-lbl">قلم درخواستی</div>
             </div>
         </div>
+        {% if awaiting_ceo_count %}
+        <div class="po-stat-card">
+            <div class="po-stat-icon amber"><i class="fas fa-user-shield"></i></div>
+            <div>
+                <div class="po-stat-num">{{ awaiting_ceo_count }}</div>
+                <div class="po-stat-lbl">قلم در انتظار تایید مدیرعامل</div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="po-hint">
         <i class="fas fa-circle-info"></i>
         <span>
-        {% if is_self_buy %}
+        {% if is_warehouse_self_buy %}
+        اقلامی که با «خرید توسط خودم» برای خودتان انتخاب کرده‌اید نمایش داده می‌شود.
+        اگر کالا را خریداری می‌کنید «خریداری شد» و در صورت عدم تهیه «خریداری نشده» را بزنید تا در وضعیت خرید و سوابق ثبت شود.
+        {% if awaiting_ceo_count %}
+        ({{ awaiting_ceo_count }} قلم نیازمند تایید مدیرعامل نیز دارید که تا قبل از تایید مدیرعامل در این صفحه ظاهر نمی‌شود.)
+        {% endif %}
+        {% elif is_self_buy %}
         اقلامی که با «خرید توسط خودم» برای خودتان نگه داشته‌اید نمایش داده می‌شود.
-        اگر کالا را خریداری می‌کنید «خریداری شد» و اگر نمی‌خواهید آن را بخرید «بازگشت به درخواست‌ها» را بزنید.
+        اگر کالا را خریداری می‌کنید «خریداری شد» و در صورت عدم تهیه «خریداری نشده» را بزنید.
         {% else %}
-        فقط اقلامی که مدیرعامل برای شما ارسال کرده است نمایش داده می‌شود.
-        اگر کالا را خریداری می‌کنید «خریداری شد» و اگر نمی‌توانید آن را تهیه کنید «بازگشت به مدیرعامل» را بزنید.
+        اقلامی که برای خرید به شما ارسال شده نمایش داده می‌شود؛ کالاهای یکسان جمع زده شده و سهم هر بخش جداگانه نوشته شده است.
+        اگر کالا را خریداری می‌کنید «خریداری شد» و اگر تهیه نشد «خریداری نشده» را بزنید.
         {% endif %}
         </span>
     </div>
@@ -152,7 +191,29 @@
         <div class="row-card">
             <div class="row-head">
                 <div class="row-name">{{ row.name }}</div>
-                <div class="row-qty">جمع: {{ row.total_qty|trim_decimal }} {{ row.unit }}</div>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <div class="row-qty">جمع کل: {{ row.total_qty|trim_decimal }} {{ row.unit }}</div>
+                    {% if row.assignments|length > 1 %}
+                    <div class="row-bulk-actions">
+                        <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_ids" value="{{ row.assignment_ids_csv }}">
+                            <button type="submit" name="action" value="purchased" class="po-btn po-btn-green"
+                                    onclick="return confirm('کل جمع «{{ row.name }}» ({{ row.total_qty|trim_decimal }} {{ row.unit }}) خریداری شد؟');">
+                                <i class="fas fa-check-double"></i> خریداری شد (همه)
+                            </button>
+                        </form>
+                        <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_ids" value="{{ row.assignment_ids_csv }}">
+                            <button type="submit" name="action" value="not_purchased" class="po-btn po-btn-red"
+                                    onclick="return confirm('کل «{{ row.name }}» به عنوان خریداری‌نشده ثبت شود؟');">
+                                <i class="fas fa-xmark"></i> خریداری نشده (همه)
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="dept-pills">
@@ -166,23 +227,25 @@
                 <div class="item-line-info">
                     <b>{{ row.name }}</b> — <span class="item-line-qty">{{ a.item.quantity|trim_decimal }} {{ row.unit }}</span>
                     <span>
-                        ({{ a.item.request.user.department.name|default:a.item.request.user.get_role_display }})
+                        {% with src_item=a.item.source_item|default:a.item %}
+                        (بخش: <b>{{ src_item.request.user.department.name|default:src_item.request.user.get_role_display }}</b>)
+                        {% endwith %}
                         {% if a.item.description %} • <i class="fas fa-comment-dots"></i> {{ a.item.description }}{% endif %}
                     </span>
                     <span style="color:var(--text-muted);font-size:0.75rem;">{{ a.item.request.created_at|jalali_date }}</span>
                 </div>
                 <div class="item-actions">
-                    <form method="post" style="display:inline;">
+                    <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="item_id" value="{{ a.id }}">
                         <button type="submit" name="action" value="purchased" class="po-btn po-btn-green"
                                 onclick="return confirm('«{{ row.name }}» خریداری شد؟');"><i class="fas fa-check"></i> خریداری شد</button>
                     </form>
-                    <form method="post" style="display:inline;">
+                    <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="item_id" value="{{ a.id }}">
-                        <button type="submit" name="action" value="return" class="po-btn po-btn-amber"
-                                onclick="return confirm('این قلم {% if is_self_buy %}به درخواست‌ها برگردانده شود؟{% else %}به لیست مدیرعامل برگردانده شود؟{% endif %}');"><i class="fas fa-rotate-left"></i> {% if is_self_buy %}بازگشت به درخواست‌ها{% else %}بازگشت به مدیرعامل{% endif %}</button>
+                        <button type="submit" name="action" value="not_purchased" class="po-btn po-btn-red"
+                                onclick="return confirm('«{{ row.name }}» به عنوان خریداری‌نشده ثبت شود؟');"><i class="fas fa-xmark"></i> خریداری نشده</button>
                     </form>
                 </div>
             </div>

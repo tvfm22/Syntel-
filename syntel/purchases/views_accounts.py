@@ -52,7 +52,7 @@ def _redirect_user_home(user, cafe_code):
 @csrf_exempt
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
-        username = request.POST.get("username", "")
+        username = (request.POST.get("username") or "").strip()
         password = request.POST.get("password", "")
         cafe_code = request.POST.get("cafe_code", "")
 
@@ -260,7 +260,7 @@ def user_create(request, cafe_code=None):
     cafes = Cafe.objects.filter(is_active=True)
     departments = Department.objects.filter(is_active=True, cafe=cafe)
     if request.method == "POST":
-        username = request.POST.get("username")
+        username = (request.POST.get("username") or "").strip()
         email = request.POST.get("email", "")
         password = request.POST.get("password1") or request.POST.get("password")
         confirm_password = request.POST.get("password2") or request.POST.get("confirm_password")
@@ -272,7 +272,7 @@ def user_create(request, cafe_code=None):
             return render(request, "user_form.html", {
                 "error": "نام کاربری الزامی است",
                 "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username__iexact=username).exists():
             return render(request, "user_form.html", {
                 "error": f"نام کاربری '{username}' قبلاً استفاده شده است. لطفاً نام دیگری انتخاب کنید.",
                 "roles": _get_departments(), "cafes": cafes, "departments": departments, "form_data": request.POST})
@@ -327,9 +327,9 @@ def user_update(request, cafe_code=None, user_id=None):
     departments = Department.objects.filter(is_active=True, cafe=cafe)
     if request.method == "POST":
         # تغییر نام کاربری (اختیاری)
-        new_username = request.POST.get("username", "").strip()
+        new_username = (request.POST.get("username") or "").strip()
         if new_username and new_username != user_obj.username:
-            if User.objects.filter(username=new_username).exists():
+            if User.objects.filter(username__iexact=new_username).exclude(pk=user_obj.pk).exists():
                 return render(request, "user_form.html", {
                     "edit_user": user_obj,
                     "roles": _get_departments(),

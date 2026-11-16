@@ -464,6 +464,23 @@ def _usage_location_label(value):
     return value
 
 
+def _product_usage_info(product):
+    """برگرداندن (usage_location_str, usage_label_str, usage_locations_list) برای محصول."""
+    if product is None:
+        return 'general', 'عمومی', ['general']
+    depts = list(product.departments.all())
+    if depts:
+        names = [d.name for d in depts]
+        return (names[0] if len(names) == 1 else 'multi'), '، '.join(names), names
+    ul = product.usage_location or 'general'
+    if ul == 'general':
+        return 'general', 'عمومی', ['general']
+    if ul == 'none':
+        return 'none', 'بدون بخش', []
+    mapped = Product.OLD_USAGE_KEY_MAP.get(ul, ul)
+    return ul, mapped, [mapped]
+
+
 def _category_options(cafe):
     """دسته‌بندی‌های کافه که روی مواد اولیه استفاده شده‌اند یا مواد غذایی‌اند."""
     return list(Category.objects.filter(cafe=cafe, is_active=True)
@@ -525,9 +542,32 @@ def _create_raw_material(cafe, data, user=None):
             return None, None, ('واحد پایه با واحد خرید هم‌خوان نیست: '
                                 f'«{base_unit}» در مقابل «{resolved["entered_unit"]}».')
 
-    usage_location = (data.get('usage_location') or 'general').strip()[:20] or 'general'
-    allowed = {o['value'] for o in _usage_location_choices(cafe)}
-    if usage_location not in allowed:
+    raw_locs = (data.getlist('usage_locations') if hasattr(data, 'getlist')
+                else data.get('usage_locations')) or []
+    if isinstance(raw_locs, str):
+        raw_locs = [raw_locs]
+    if not raw_locs and data.get('usage_location'):
+        raw_locs = [data.get('usage_location')]
+
+    cleaned_locs = [str(x).strip() for x in raw_locs if str(x).strip()]
+    depts_by_name = {
+        d.name.strip(): d
+        for d in Department.objects.filter(cafe=cafe, is_active=True).order_by('name')
+    }
+    matched_depts = []
+    if cleaned_locs and 'general' not in cleaned_locs:
+        for val in cleaned_locs:
+            dep = depts_by_name.get(val)
+            if dep is None and val.isdigit():
+                dep = next((d for d in depts_by_name.values() if d.id == int(val)), None)
+            if dep is not None and dep not in matched_depts:
+                matched_depts.append(dep)
+
+    if len(matched_depts) == 1:
+        usage_location = matched_depts[0].name[:20]
+    elif len(matched_depts) > 1:
+        usage_location = 'multi'
+    else:
         usage_location = 'general'
 
     with transaction.atomic():
@@ -538,6 +578,8 @@ def _create_raw_material(cafe, data, user=None):
             base_unit_price=resolved['price'] if resolved else None,
             is_active=True, is_complete=True,
         )
+        if matched_depts:
+            product.departments.set(matched_depts)
         item = KukerItem.objects.create(
             cafe=cafe, name=name, key=_unique_key(name, cafe), kind=KukerItem.KIND_RAW,
             out_unit=base_unit,
@@ -716,16 +758,17 @@ def cogs_manage_items(request):
     )
 
     rows = []
-    for it in items_qs.select_related('product', 'product__category').order_by('name'):
+    for it in (items_qs.select_related('product', 'product__category')
+               .prefetch_related('product__departments').order_by('name')):
         product = it.product
+        usage_loc, usage_label, _usage_locs = _product_usage_info(product)
         rows.append({
             'obj': it,
             'product': product,
             'category': (product.category.name if product and product.category
                          else (it.category or '')),
-            'usage_location': (product.usage_location if product else 'general') or 'general',
-            'usage_label': _usage_location_label(
-                product.usage_location if product else 'general'),
+            'usage_location': usage_loc,
+            'usage_label': usage_label,
             'base_unit': it.out_unit or (product.smallest_unit if product else '') or '—',
             # فقط بهای خود قلم — همان عددی که موتور بهای تمام شده استفاده می‌کند
             'price': it.price,
@@ -1097,12 +1140,13 @@ def _filter_options(raw_rows):
         slot['count'] += 1
         slot['cost'] += row['cost']
 
-        dval = row['usage_location'] or 'general'
-        slot = depts.setdefault(dval, {
-            'value': dval, 'label': _usage_location_label(dval),
-            'count': 0, 'cost': Decimal('0')})
-        slot['count'] += 1
-        slot['cost'] += row['cost']
+        row_depts = row.get('usage_locations') or [row['usage_location'] or 'general']
+        for dval in row_depts:
+            slot = depts.setdefault(dval, {
+                'value': dval, 'label': _usage_location_label(dval),
+                'count': 0, 'cost': Decimal('0')})
+            slot['count'] += 1
+            slot['cost'] += row['cost']
 
     cat_list = sorted(cats.values(), key=lambda c: (c['id'] == UNCATEGORIZED, c['name']))
     dept_list = sorted(depts.values(), key=lambda d: (d['value'] == 'general', d['label']))
@@ -1207,7 +1251,10 @@ def cogs_consumption_calc(request):
 
     raw_rows = cogs['raw_rows']
     for row in raw_rows:
-        row['usage_label'] = _usage_location_label(row['usage_location'])
+        locs = row.get('usage_locations') or [row['usage_location'] or 'general']
+        row['usage_locations'] = locs
+        row['usage_locations_csv'] = '|'.join(locs)
+        row['usage_label'] = '، '.join(_usage_location_label(v) for v in locs)
     categories, departments = _filter_options(raw_rows)
 
     cat_filter = (request.GET.get('cat') or request.POST.get('cat') or '').strip()
@@ -1220,7 +1267,7 @@ def cogs_consumption_calc(request):
     filtered_rows = [
         r for r in raw_rows
         if (not cat_filter or (r['category_id'] or UNCATEGORIZED) == cat_filter)
-        and (not dept_filter or (r['usage_location'] or 'general') == dept_filter)
+        and (not dept_filter or dept_filter in (r.get('usage_locations') or [r['usage_location'] or 'general']))
     ]
     filtered_total = sum((r['cost'] for r in filtered_rows), Decimal('0'))
 

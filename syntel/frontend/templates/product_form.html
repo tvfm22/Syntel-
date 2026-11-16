@@ -72,6 +72,59 @@
     margin-bottom: 0.85rem; padding-bottom: 0.45rem; border-bottom: 1px dashed var(--gray-200);
 }
 
+/* انتخاب چندگانه بخش‌های درخواست */
+.section-picker-grid {
+    display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.35rem;
+}
+.section-chip {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    padding: 0.5rem 0.9rem; border-radius: 10px;
+    border: 1.5px solid var(--border-medium); background: var(--bg-input);
+    color: var(--dark); font-size: 0.84rem; font-weight: 600;
+    cursor: pointer; user-select: none; transition: all 0.15s;
+}
+.section-chip:hover {
+    border-color: var(--primary); background: #fff;
+}
+.section-chip input[type="checkbox"] {
+    width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--primary);
+}
+.section-chip.is-selected {
+    background: var(--primary-light); border-color: var(--primary);
+    color: var(--primary-dark); font-weight: 700;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+}
+.section-chip.is-general.is-selected {
+    background: #ECFDF5; border-color: #10B981; color: #065F46;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12);
+}
+.section-chip.is-general.is-selected input[type="checkbox"] {
+    accent-color: #10B981;
+}
+.section-header-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+}
+.section-manage-link {
+    font-size: 0.78rem; font-weight: 600; color: var(--primary); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+}
+.section-manage-link:hover { text-decoration: underline; }
+.section-quick-add {
+    display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem; flex-wrap: wrap;
+}
+.section-quick-add .form-input {
+    flex: 1; min-width: 200px; padding: 0.5rem 0.8rem; font-size: 0.84rem;
+}
+.btn-add-section {
+    padding: 0.5rem 0.95rem; border-radius: 10px; border: 1.5px solid var(--primary);
+    background: var(--primary-light); color: var(--primary-dark); font-family: inherit;
+    font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 0.35rem; transition: all 0.15s;
+}
+.btn-add-section:hover { background: var(--primary); color: #fff; }
+.btn-add-section:disabled { opacity: 0.6; cursor: not-allowed; }
+.section-quick-feedback { font-size: 0.78rem; margin-top: 0.35rem; font-weight: 600; }
+
 @media (max-width: 768px) {
     .product-form { padding: 1.25rem; }
     .form-row { grid-template-columns: 1fr; gap: 0; }
@@ -213,24 +266,46 @@
             </div>
             {% endif %}
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="usage_location" class="form-label">
-                        محل استفاده <span class="required">*</span>
+            <div class="form-group" id="section_picker_group">
+                <div class="section-header-row">
+                    <label class="form-label" style="margin-bottom:0;">
+                        بخش‌های درخواست (محل استفاده) <span class="required">*</span>
                     </label>
-                    <select id="usage_location" name="usage_location" class="form-select" required>
-                        <option value="">انتخاب محل استفاده</option>
-                        <option value="general" {% if product and product.usage_location == 'general' %}selected{% elif form_data and form_data.usage_location == 'general' %}selected{% endif %}>عمومی</option>
-                        {% for dep in departments_qs %}
-                        <option value="{{ dep.name }}"
-                                {% if product and product.usage_location == dep.name %}selected
-                                {% elif form_data and form_data.usage_location == dep.name %}selected{% endif %}>
-                            {{ dep.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <a href="{% url 'department_list' cafe_code=cafe_code %}" class="section-manage-link" target="_blank" rel="noopener">
+                        <i class="fas fa-cog"></i> مدیریت بخش‌ها
+                    </a>
                 </div>
+                <input type="hidden" name="departments_present" value="1">
+                <div class="section-picker-grid" id="sectionPickerGrid">
+                    <label class="section-chip is-general{% if is_general_selected %} is-selected{% endif %}" for="usage_general">
+                        <input type="checkbox" id="usage_general" name="usage_general" value="1"
+                               {% if is_general_selected %}checked{% endif %}>
+                        <i class="fas fa-globe" style="font-size:0.82rem;"></i>
+                        <span>عمومی (همه بخش‌ها)</span>
+                    </label>
+                    {% for dep in departments_qs %}
+                    <label class="section-chip{% if dep.id in selected_department_ids %} is-selected{% endif %}" for="dep_{{ dep.id }}">
+                        <input type="checkbox" id="dep_{{ dep.id }}" name="departments" value="{{ dep.id }}"
+                               {% if dep.id in selected_department_ids %}checked{% endif %}>
+                        <span>{{ dep.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="section-quick-add">
+                    <input type="text" id="newSectionNameInput" class="form-input"
+                           placeholder="نام بخش درخواست جدید (مثلاً: آشپزخانه، بار، سالن)..."
+                           maxlength="100" autocomplete="off">
+                    <button type="button" id="btnAddSection" class="btn-add-section">
+                        <i class="fas fa-plus"></i> افزودن بخش
+                    </button>
+                </div>
+                <div id="newSectionFeedback" class="section-quick-feedback" style="display:none;"></div>
+                <small style="color:var(--gray-500);display:block;margin-top:6px;font-size:0.78rem;">
+                    می‌توانید یک یا چند بخش درخواست را انتخاب یا بخش جدیدی اضافه کنید؛ با انتخاب «عمومی»، محصول برای همه بخش‌ها قابل سفارش خواهد بود.
+                </small>
+            </div>
 
+            <div class="form-row">
                 <div class="form-group">
                     <label for="min_stock" class="form-label">حداقل موجودی</label>
                     <input type="number" id="min_stock" name="min_stock" class="form-input"
@@ -286,6 +361,138 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('.product-form');
     if (!form) return;
 
+    const generalCb = document.getElementById('usage_general');
+    const pickerGrid = document.getElementById('sectionPickerGrid');
+    const newSectionInput = document.getElementById('newSectionNameInput');
+    const btnAddSection = document.getElementById('btnAddSection');
+    const newSectionFeedback = document.getElementById('newSectionFeedback');
+    const QUICK_ADD_DEP_URL = "{% url 'quick_add_department' cafe_code=cafe_code %}";
+    const CSRF_TOKEN = form.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+
+    function getDeptCbs() {
+        return Array.from(form.querySelectorAll('input[name="departments"]'));
+    }
+
+    function syncSectionChips() {
+        if (generalCb) {
+            generalCb.closest('.section-chip')?.classList.toggle('is-selected', generalCb.checked);
+        }
+        getDeptCbs().forEach(cb => {
+            cb.closest('.section-chip')?.classList.toggle('is-selected', cb.checked);
+        });
+    }
+
+    function bindDeptCheckbox(cb) {
+        cb.addEventListener('change', function() {
+            if (cb.checked && generalCb) {
+                generalCb.checked = false;
+            }
+            syncSectionChips();
+        });
+    }
+
+    if (generalCb) {
+        generalCb.addEventListener('change', function() {
+            if (generalCb.checked) {
+                getDeptCbs().forEach(cb => { cb.checked = false; });
+            }
+            syncSectionChips();
+        });
+    }
+
+    getDeptCbs().forEach(bindDeptCheckbox);
+    syncSectionChips();
+
+    function showSectionFeedback(msg, isError) {
+        if (!newSectionFeedback) return;
+        newSectionFeedback.textContent = msg;
+        newSectionFeedback.style.display = msg ? 'block' : 'none';
+        newSectionFeedback.style.color = isError ? 'var(--danger)' : '#065F46';
+    }
+
+    function addOrSelectDepartmentChip(dep) {
+        const depIdStr = String(dep.id);
+        let existing = getDeptCbs().find(cb => cb.value === depIdStr);
+        if (!existing && pickerGrid) {
+            const label = document.createElement('label');
+            label.className = 'section-chip is-selected';
+            label.setAttribute('for', 'dep_' + depIdStr);
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = 'dep_' + depIdStr;
+            cb.name = 'departments';
+            cb.value = depIdStr;
+            cb.checked = true;
+
+            const span = document.createElement('span');
+            span.textContent = dep.name;
+
+            label.appendChild(cb);
+            label.appendChild(span);
+            pickerGrid.appendChild(label);
+            bindDeptCheckbox(cb);
+            existing = cb;
+        } else if (existing) {
+            existing.checked = true;
+        }
+        if (generalCb) generalCb.checked = false;
+        syncSectionChips();
+    }
+
+    function submitQuickSection() {
+        if (!newSectionInput || !btnAddSection) return;
+        const name = newSectionInput.value.trim();
+        if (!name) {
+            showSectionFeedback('لطفاً نام بخش جدید را وارد کنید.', true);
+            newSectionInput.focus();
+            return;
+        }
+        showSectionFeedback('', false);
+        btnAddSection.disabled = true;
+        const origHtml = btnAddSection.innerHTML;
+        btnAddSection.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال افزودن...';
+
+        fetch(QUICK_ADD_DEP_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+            body: JSON.stringify({ name: name }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success && data.department) {
+                    addOrSelectDepartmentChip(data.department);
+                    newSectionInput.value = '';
+                    showSectionFeedback('بخش «' + data.department.name + '» اضافه و انتخاب شد.', false);
+                    newSectionInput.focus();
+                } else {
+                    showSectionFeedback((data && data.error) || 'خطا در افزودن بخش جدید.', true);
+                }
+            })
+            .catch(() => {
+                showSectionFeedback('خطای ارتباط با سرور. لطفاً دوباره تلاش کنید.', true);
+            })
+            .finally(() => {
+                btnAddSection.disabled = false;
+                btnAddSection.innerHTML = origHtml;
+            });
+    }
+
+    if (btnAddSection) {
+        btnAddSection.addEventListener('click', submitQuickSection);
+    }
+    if (newSectionInput) {
+        newSectionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitQuickSection();
+            }
+        });
+    }
+
     form.addEventListener('submit', function(e) {
         let isValid = true;
         document.querySelectorAll('.error-message').forEach(el => el.remove());
@@ -296,6 +503,18 @@ document.addEventListener('DOMContentLoaded', function() {
             errorDiv.className = 'error-message';
             errorDiv.textContent = 'نام محصول الزامی است';
             nameInput.parentNode.appendChild(errorDiv);
+            isValid = false;
+        }
+
+        const hasSection = (generalCb && generalCb.checked) || getDeptCbs().some(cb => cb.checked);
+        if (!hasSection) {
+            const group = document.getElementById('section_picker_group');
+            if (group) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = 'حداقل یک بخش درخواست (یا گزینه عمومی) را انتخاب کنید.';
+                group.appendChild(errorDiv);
+            }
             isValid = false;
         }
 

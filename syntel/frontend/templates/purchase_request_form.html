@@ -451,6 +451,7 @@
                     <div class="autocomplete-wrap">
                         <select id="entryCategorySelect" class="form-control" onchange="onEntryCategorySelect(this)">
                             <option value="">انتخاب دسته‌بندی...</option>
+                            <option value="all">همه کالاها</option>
                             {% for cat in all_categories %}
                             <option value="{{ cat.id }}">{{ cat.full_path }}</option>
                             {% endfor %}
@@ -581,6 +582,7 @@
     let selectedProductName = ''; // نام کالایی که کاربر از فهرست انتخاب یا جدید ثبت کرده است
 
     const AUTOCOMPLETE_URL = "{% url 'products_autocomplete' cafe_code=cafe_code %}";
+    const ALL_CATEGORY_PRODUCTS_URL = "{% url 'all_category_products_api' cafe_code=cafe_code %}";
     const QUICK_ADD_URL    = "{% url 'quick_add_product' cafe_code=cafe_code %}";
     const AVAILABILITY_URL = "{% url 'check_product_availability' cafe_code=cafe_code %}";
     const CSRF_TOKEN       = "{{ csrf_token }}";
@@ -923,11 +925,10 @@
         selectedProductName = '';
         showEntryStockHint(null);
         clearTimeout(acTimer);
-        // اگر دسته انتخاب شده باشد، تایپ در فیلد نام کالا = سرچ درون کالاهای همان دسته
+        // اگر دسته (یا «همه کالاها») انتخاب شده باشد، تایپ در فیلد اصلی نام کالا = فیلتر درون همان لیست
         if (document.getElementById('entryCategoryId').value) {
             catBrowseSearch = q;
-            if (!q) { closeDropdown(); return; }
-            acTimer = setTimeout(() => fetchCategoryProducts(), 250);
+            acTimer = setTimeout(() => fetchCategoryProducts(), q ? 200 : 0);
             return;
         }
         if (q.length < 1) { closeDropdown(); return; }
@@ -1018,25 +1019,11 @@
         }
     });
 
-    // ── مرور کالاهای دسته‌بندی از روی فیلد «نام کالا» ────────────────────
-    // وقتی دسته‌بندی انتخاب شده باشد، کلیک/فوکوس روی «نام کالا» لیست کالاهای
-    // همان دسته را با سرچ‌باکش در بالای لیست باز می‌کند. بدون انتخاب دسته،
-    // رفتار autocomplete عادی سراسری حفظ می‌شود.
+    // ── مرور کالاهای دسته‌بندی (و همه کالاها) از روی فیلد اصلی «نام کالا» ──
+    // وقتی دسته‌بندی یا «همه کالاها» انتخاب شده باشد، لیست کالاها مستقیماً زیر
+    // همین فیلد باز می‌شود و تایپ در خود فیلد نام کالا آن را فیلتر می‌کند.
 
-    let catProductTimer = null;
-    let catBrowseSearch = '';  // عبارت سرچ درون dropdown دسته
-
-    function onCategorySearchInput() {
-        clearTimeout(catProductTimer);
-        catProductTimer = setTimeout(() => {
-            const catId = document.getElementById('entryCategoryId').value;
-            if (!catId) return;
-            const box = document.getElementById('categoryBrowseSearch');
-            if (!box) return;
-            catBrowseSearch = box.value.trim();
-            fetchCategoryProducts();
-        }, 250);
-    }
+    let catBrowseSearch = '';  // عبارت فیلتر از فیلد اصلی نام کالا
 
     function setEntryCategory(catId, catName, opts) {
         opts = opts || {};
@@ -1052,9 +1039,11 @@
         }
         document.getElementById('entryCategoryId').value = effectiveId;
         document.getElementById('entryCategoryName').value = effectiveName;
-        // سرچ درون dropdown دسته ریست شود
+        // عبارت سرچ ریست شود
         catBrowseSearch = '';
-        if (effectiveId && !opts.silent) {
+        if (!effectiveId) {
+            closeDropdown();
+        } else if (!opts.silent) {
             document.getElementById('entryProductName').focus();
         }
     }
@@ -1077,12 +1066,11 @@
         setEntryCategory(newCatId, sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : '');
     }
 
-    // فوکوس/کلیک روی فیلد نام کالا: اگر دسته انتخاب شده باشد، لیست کالاهای
-    // همان دسته با سرچ‌باکس بالای لیست باز می‌شود؛ در غیر این صورت رفتار عادی
+    // فوکوس/کلیک روی فیلد نام کالا: اگر دسته یا «همه کالاها» انتخاب شده باشد،
+    // لیست کالاها زیر همین فیلد باز می‌شود؛ در غیر این صورت رفتار autocomplete عادی
     function onProductFocus(input) {
         const catId = document.getElementById('entryCategoryId').value;
         if (!catId) return;  // بدون دسته: autocomplete عادی هنگام تایپ باز می‌شود
-        // عبارت تایپ‌شده در فیلد به‌عنوان سرچ درون دسته استفاده می‌شود
         catBrowseSearch = input.value.trim();
         fetchCategoryProducts();
     }
@@ -1091,10 +1079,15 @@
         const catId = document.getElementById('entryCategoryId').value;
         if (!catId) return;
         const q = catBrowseSearch;
-        // URL دسته‌ای: /<cafe_code>/api/categories/<id>/products/
-        const parts = window.location.pathname.split('/').filter(Boolean);
-        const base = '/' + (parts.slice(0, 1).join('/'));
-        const url = `${base}/api/categories/${catId}/products/` + (q ? `?q=${encodeURIComponent(q)}` : '');
+        let url;
+        if (catId === 'all') {
+            url = ALL_CATEGORY_PRODUCTS_URL + (q ? `?q=${encodeURIComponent(q)}` : '');
+        } else {
+            // URL دسته‌ای: /<cafe_code>/api/categories/<id>/products/
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            const base = '/' + (parts.slice(0, 1).join('/'));
+            url = `${base}/api/categories/${catId}/products/` + (q ? `?q=${encodeURIComponent(q)}` : '');
+        }
         fetch(url)
             .then(r => r.json())
             .then(data => {
@@ -1105,42 +1098,34 @@
     }
 
     function renderCategoryProductsDropdown(results, q) {
-        const catName = document.getElementById('entryCategoryName').value;
+        const catId = document.getElementById('entryCategoryId').value;
         const drop = document.getElementById('entryAcDrop');
         if (!drop) return;
 
-        // سرچ‌باکس بالای لیست (در خود dropdown) — فقط کار می‌کند که دسته انتخاب شده باشد
-        let html = `<div style="padding:8px 10px;border-bottom:1px solid #e5e7eb;position:sticky;top:0;background:#fff;">
-            <input type="text" id="categoryBrowseSearch" value="${escapeHtml(catBrowseSearch)}"
-                   placeholder="🔍 جستجو در کالاهای «${escapeHtml(catName)}»..." autocomplete="off"
-                   style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-family:Vazir,sans-serif;box-sizing:border-box;"
-                   oninput="onCategorySearchInput()" onmousedown="event.stopPropagation()">
-        </div>`;
-
+        let html = '';
         if (!results.length) {
-            html += '<div class="cat-empty">کالایی در این دسته' + (q ? ' با این عبارت' : '') + ' یافت نشد.</div>';
-            if (q) {
-                html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
-                    ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
-                </div>`;
-            }
+            html += '<div class="cat-empty">' +
+                (catId === 'all' ? 'کالایی' : 'کالایی در این دسته') +
+                (q ? ' با این عبارت' : '') + ' یافت نشد.</div>';
         } else {
-            html += results.map((p, idx) =>
-                `<div class="ac-item" onmousedown="selectCategoryProduct(${idx})">
+            html += results.map((p, idx) => {
+                const subParts = [];
+                if (catId === 'all' && p.category) subParts.push(escapeHtml(p.category));
+                if (p.unit) subParts.push('واحد: ' + escapeHtml(p.unit));
+                return `<div class="ac-item" onmousedown="selectCategoryProduct(${idx})">
                     <div class="ac-name">${escapeHtml(p.label || p.name)}</div>
-                    ${p.unit ? `<div class="ac-cat">واحد: ${escapeHtml(p.unit)}</div>` : ''}
-                </div>`
-            ).join('');
+                    ${subParts.length ? `<div class="ac-cat">${subParts.join(' · ')}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+        if (q) {
+            html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
+                ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
+            </div>`;
         }
         drop.innerHTML = html;
         drop.classList.add('open');
         acHighlightIdx = -1;
-        // فوکوس روی سرچ‌باکس فقط در اولین باز شدن (وقتی فیلد نام کالا خالی است)
-        const nameVal = document.getElementById('entryProductName').value.trim();
-        if (!nameVal) {
-            const box = document.getElementById('categoryBrowseSearch');
-            if (box && !catBrowseSearch) box.focus();
-        }
     }
 
     function selectCategoryProduct(idx) {
@@ -1149,9 +1134,11 @@
         document.getElementById('entryProductName').value = p.name;
         document.getElementById('entryProductId').value = p.id || '';
         selectedProductName = p.name || '';
-        // دسته همان دسته انتخابی می‌ماند (کالای دسته است) — فقط همگام‌سازی نمایش
+        // پس از انتخاب کالا، دسته‌بندی خودکار روی دستهٔ واقعی کالا تنظیم می‌شود
         if (p.category_id) {
-            setEntryCategory(p.category_id, p.category || document.getElementById('entryCategoryName').value, { silent: true });
+            setEntryCategory(p.category_id, p.category || '', { silent: true });
+        } else if (document.getElementById('entryCategoryId').value === 'all') {
+            setEntryCategory('', '', { silent: true });
         }
         document.getElementById('entryUnit').innerHTML = buildUnitOptions(p.unit || 'عدد');
         closeDropdown();

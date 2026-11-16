@@ -64,6 +64,37 @@ class TestCategoryProductsApi(CategoryBrowseBase):
         url = reverse('category_products_api', kwargs={'cafe_code': 'cb', 'category_id': cat.id})
         self.assertEqual(self.client.get(url).json()['results'], [])
 
+    def test_all_categories_endpoint_returns_all_complete_products_and_prioritizes_prefix(self):
+        cat1 = Category.objects.create(name='میوه', cafe=self.cafe)
+        cat2 = Category.objects.create(name='نانوایی', cafe=self.cafe)
+        Product.objects.create(name='آناناس', category=cat1, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان تست', category=cat2, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان', category=cat2, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان ناقص', category=cat2, cafe=self.cafe, is_complete=False)
+
+        url = reverse('all_category_products_api', kwargs={'cafe_code': 'cb'})
+        all_names = [r['name'] for r in self.client.get(url).json()['results']]
+        self.assertEqual(set(all_names), {'آناناس', 'نان تست', 'نان'})
+
+        filtered_names = [r['name'] for r in self.client.get(url + '?q=نان').json()['results']]
+        self.assertEqual(filtered_names, ['نان', 'نان تست', 'آناناس'])
+
+    def test_category_search_prioritizes_prefix(self):
+        cat = Category.objects.create(name='خوراکی', cafe=self.cafe)
+        Product.objects.create(name='آناناس', category=cat, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان بربری', category=cat, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان', category=cat, cafe=self.cafe, is_complete=True)
+        url = reverse('category_products_api', kwargs={'cafe_code': 'cb', 'category_id': cat.id})
+        names = [r['name'] for r in self.client.get(url + '?q=نان').json()['results']]
+        self.assertEqual(names, ['نان', 'نان بربری', 'آناناس'])
+
+    def test_purchase_request_form_has_all_option_and_no_extra_search_box(self):
+        resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'cb'}))
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode('utf-8')
+        self.assertIn('<option value="all">همه کالاها</option>', html)
+        self.assertNotIn('id="categoryBrowseSearch"', html)
+
 
 @override_settings(SESSION_COOKIE_SAMESITE='Lax')
 class TestQuickAddProductRules(CategoryBrowseBase):
@@ -100,6 +131,23 @@ class TestQuickAddProductRules(CategoryBrowseBase):
         names = [r['name'] for r in self.client.get(url + '?q=کالای').json()['results']]
         self.assertNotIn('کالای ناقص فرم', names)
         self.assertIn('کالای کامل فرم', names)
+
+    def test_autocomplete_prioritizes_prefix_and_searches_name_only(self):
+        cat_dairy = Category.objects.create(name='لبنیات و تخم مرغ', cafe=self.cafe)
+        cat_bread = Category.objects.create(name='نانوایی', cafe=self.cafe)
+        Product.objects.create(name='آناناس', category=cat_bread, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان باگت', category=cat_bread, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='نان', category=cat_bread, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='شیر پرچرب', category=cat_dairy, cafe=self.cafe, is_complete=True)
+        Product.objects.create(name='تخم مرغ محلی', category=cat_dairy, cafe=self.cafe, is_complete=True)
+
+        url = reverse('products_autocomplete', kwargs={'cafe_code': 'cb'})
+        bread_names = [r['name'] for r in self.client.get(url, {'q': 'نان'}).json()['results']]
+        self.assertEqual(bread_names, ['نان', 'نان باگت', 'آناناس'])
+
+        egg_names = [r['name'] for r in self.client.get(url, {'q': 'تخم مرغ'}).json()['results']]
+        self.assertEqual(egg_names, ['تخم مرغ محلی'])
+        self.assertNotIn('شیر پرچرب', egg_names)
 
 
 @override_settings(SESSION_COOKIE_SAMESITE='Lax')

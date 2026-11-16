@@ -8,6 +8,7 @@
 - درخواست ارسال‌شده فقط تا قبل از تایید مدیرعامل قابل ویرایش/حذف قلم است
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -129,7 +130,10 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertEqual(PurchaseDraft.objects.count(), 0)  # پیش‌نویس خالی حذف شد
 
     def test_send_creates_request_for_ceo_approval(self):
+        """کالای مشمول (مثلاً ارزش بالای ۴۰۰ میلیون ریال) برای تایید مدیرعامل ارسال می‌شود"""
         self._login_as_warehouse()
+        self.product.base_unit_price = Decimal('100000000')  # 100M * 5 = 500M > 400M
+        self.product.save(update_fields=['base_unit_price'])
         draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
         PurchaseDraftItem.objects.create(
             draft=draft, product=self.product,
@@ -267,3 +271,168 @@ class WarehousePurchaseDraftTests(TestCase):
         self.client.login(username='req1', password='testpass123')
         resp = self.client.get(reverse('warehouse_purchase_draft', args=['testcafe']))
         self.assertEqual(resp.status_code, 302)  # ریدایرکت (به login یا داشبورد خرید)
+
+    def test_normal_product_sends_directly_to_purchasing(self):
+        """کالای عادی (تعریف‌شده، کامل، زیر ۴۰۰ میلیون و زیر ۳ برابر میانگین) مستقیم به واحد خرید می‌رود"""
+        self._login_as_warehouse()
+        self.product.base_unit_price = Decimal('80000000')
+        self.product.smallest_unit = 'kg'
+        self.product.save(update_fields=['base_unit_price', 'smallest_unit'])
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        # 5 * 80M = 400M (دقیقاً مرزی، بیش از ۴۰۰ میلیون نیست)
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product,
+            name='محصول تست', quantity=5, unit='kg')
+        resp = self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {
+            'action': 'send',
+        })
+        self.assertRedirects(resp, reverse('warehouse_purchase_draft', args=['testcafe']))
+        direct_req = PurchaseRequest.objects.filter(source='warehouse_purchase').first()
+        self.assertIsNotNone(direct_req)
+        self.assertEqual(direct_req.status, 'pending')
+        self.assertFalse(direct_req.manager_confirmed)
+
+        # در فهرست واحد خرید ظاهر می‌شود
+        po = User.objects.create_user(
+            username='po_direct', password='testpass123', role='purchasing', cafe=self.cafe)
+        self.client.login(username='po_direct', password='testpass123')
+        po_resp = self.client.get(reverse('approved_requests_for_orders', args=['testcafe']))
+        self.assertContains(po_resp, str(direct_req.id))
+
+    def test_unlisted_and_incomplete_and_rd_products_need_ceo(self):
+        """کالای تعریف‌نشده، کالای ناقص و کالای تحقیق و توسعه باید به مدیرعامل بروند"""
+        self._login_as_warehouse()
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        incomplete_prod = Product.objects.create(
+            name='کالای جدید کاربر', category=self.category, unit=self.unit,
+            cafe=self.cafe, is_complete=False)
+        rd_cat = Category.objects.create(name='تحقیق و توسعه', cafe=self.cafe)
+        rd_prod = Product.objects.create(
+            name='کالای R&D', category=rd_cat, unit=self.unit,
+            cafe=self.cafe, is_complete=True)
+
+        PurchaseDraftItem.objects.create(draft=draft, product=None, name='کالای آزاد', quantity=1, unit='kg')
+        PurchaseDraftItem.objects.create(draft=draft, product=incomplete_prod, name=incomplete_prod.name, quantity=1, unit='kg')
+        PurchaseDraftItem.objects.create(draft=draft, product=rd_prod, name=rd_prod.name, quantity=1, unit='kg')
+
+        self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {'action': 'send'})
+        ceo_req = PurchaseRequest.objects.filter(source='warehouse_purchase', status='pending_manager_approval').first()
+        self.assertIsNotNone(ceo_req)
+        self.assertEqual(ceo_req.items.count(), 3)
+        self.assertFalse(PurchaseRequest.objects.filter(source='warehouse_purchase', status='pending').exists())
+
+    def test_high_quantity_vs_historical_avg_unit_normalized(self):
+        """مقدار بیش از ۳ برابر میانگین خرید قبلی (با تبدیل kg/گرم) نیاز به تایید مدیرعامل دارد"""
+        self._login_as_warehouse()
+        # سابقهٔ خرید قبلی: 2000 گرم = 2 کیلوگرم، خرید شده
+        hist_req = PurchaseRequest.objects.create(
+            user=self.requester, cafe=self.cafe, status='completed')
+        PurchaseItem.objects.create(
+            request=hist_req, product=self.product, name=self.product.name,
+            quantity=Decimal('2000'), unit='گرم', purchased_quantity=Decimal('2000'))
+
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        # 6 کیلوگرم = ۳ برابر میانگین (نباید نیاز به مدیرعامل داشته باشد)
+        d_ok = PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, name='محصول تست', quantity=6, unit='kg')
+        # 6.5 کیلوگرم > ۳ برابر میانگین (باید نیاز به مدیرعامل داشته باشد)
+        d_high = PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, name='محصول تست', quantity=Decimal('6.5'), unit='kg')
+
+        from purchases.services.purchase_approval import evaluate_draft_items_ceo_status
+        eval_map = evaluate_draft_items_ceo_status([d_ok, d_high], cafe=self.cafe)
+        self.assertFalse(eval_map[d_ok.id]['needs_ceo'])
+        self.assertTrue(eval_map[d_high.id]['needs_ceo'])
+
+    def test_send_splits_mixed_draft_into_ceo_and_direct_requests(self):
+        """ارسال سبد ترکیبی باید اقلام عادی و نیازمند تایید مدیرعامل را در دو درخواست جدا ثبت کند"""
+        self._login_as_warehouse()
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, name='کالای عادی', quantity=2, unit='kg')
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=None, name='کالای تعریف‌نشده', quantity=1, unit='kg')
+
+        self.client.post(reverse('warehouse_purchase_draft', args=['testcafe']), {'action': 'send'})
+        direct_req = PurchaseRequest.objects.filter(source='warehouse_purchase', status='pending').first()
+        ceo_req = PurchaseRequest.objects.filter(source='warehouse_purchase', status='pending_manager_approval').first()
+        self.assertIsNotNone(direct_req)
+        self.assertIsNotNone(ceo_req)
+        self.assertEqual(list(direct_req.items.values_list('name', flat=True)), ['کالای عادی'])
+        self.assertEqual(list(ceo_req.items.values_list('name', flat=True)), ['کالای تعریف‌نشده'])
+
+    def test_edit_draft_and_sent_items_full_fields(self):
+        """ویرایش کامل نام/کالا، مقدار، واحد و توضیحات هم در پیش‌نویس و هم در درخواست در انتظار تایید مدیرعامل"""
+        self._login_as_warehouse()
+        gram_unit = Unit.objects.create(name='Gram', symbol='گرم')
+        other_prod = Product.objects.create(
+            name='کالای دوم', category=self.category, unit=gram_unit, cafe=self.cafe)
+
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        d_item = PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, name='محصول تست', quantity=2, unit='kg')
+
+        url = reverse('warehouse_purchase_draft', args=['testcafe'])
+        self.client.post(url, {
+            'action': 'edit_item',
+            'item_id': d_item.id,
+            'product_id': other_prod.id,
+            'name': 'کالای دوم',
+            'quantity': '750',
+            'unit': 'گرم',
+            'description': 'بسته جدید',
+        })
+        d_item.refresh_from_db()
+        self.assertEqual(d_item.product_id, other_prod.id)
+        self.assertEqual(d_item.name, 'کالای دوم')
+        self.assertEqual(d_item.quantity, Decimal('750'))
+        self.assertEqual(d_item.unit, 'گرم')
+        self.assertEqual(d_item.description, 'بسته جدید')
+
+        # همچنین edit_sent روی درخواست در انتظار تایید مدیرعامل
+        ceo_req = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            source='warehouse_purchase')
+        s_item = PurchaseItem.objects.create(
+            request=ceo_req, product=None, name='کالای قبلی', quantity=1, unit='kg')
+        self.client.post(url, {
+            'action': 'edit_sent',
+            'request_id': ceo_req.id,
+            'item_id': s_item.id,
+            'product_id': other_prod.id,
+            'name': 'کالای دوم',
+            'quantity': '300',
+            'unit': 'گرم',
+            'description': 'ویرایش شد',
+        })
+        s_item.refresh_from_db()
+        self.assertEqual(s_item.product_id, other_prod.id)
+        self.assertEqual(s_item.name, 'کالای دوم')
+        self.assertEqual(s_item.quantity, Decimal('300'))
+        self.assertEqual(s_item.unit, 'گرم')
+        self.assertEqual(s_item.description, 'ویرایش شد')
+
+    def test_page_renders_search_box_edit_modal_and_routing_badges(self):
+        """بررسی وجود سرچ باکس کالا مشابه درخواست کالا، دکمه ویرایش، مودال ویرایش و نشانگر تایید مدیرعامل"""
+        self._login_as_warehouse()
+        draft = PurchaseDraft.objects.create(cafe=self.cafe, created_by=self.wo)
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=self.product, name='محصول تست', quantity=1, unit='kg')
+        PurchaseDraftItem.objects.create(
+            draft=draft, product=None, name='کالای آزاد', quantity=1, unit='kg')
+        ceo_req = PurchaseRequest.objects.create(
+            user=self.wo, cafe=self.cafe, status='pending_manager_approval',
+            source='warehouse_purchase')
+        PurchaseItem.objects.create(
+            request=ceo_req, product=None, name='قلم ارسالی', quantity=2, unit='kg')
+
+        resp = self.client.get(reverse('warehouse_purchase_draft', args=['testcafe']))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="entryProductName"')
+        self.assertContains(resp, 'id="entryCategorySelect"')
+        self.assertContains(resp, 'همه کالاها')
+        self.assertContains(resp, 'id="editItemModal"')
+        self.assertContains(resp, 'id="addProductModal"')
+        self.assertContains(resp, 'نیاز به تایید مدیرعامل')
+        self.assertContains(resp, 'ارسال مستقیم به واحد خرید')
+        self.assertContains(resp, 'ویرایش')

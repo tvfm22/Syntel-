@@ -534,7 +534,7 @@
                     {% for r in raw_rows %}
                     <tr class="raw-row"
                         data-cat="{{ r.category_id }}"
-                        data-dept="{{ r.usage_location }}"
+                        data-dept="{{ r.usage_locations_csv }}"
                         data-cost="{{ r.cost }}">
                         <td>{{ r.item.name }}</td>
                         <td class="cogs-muted">{{ r.item.code|default:'—' }}</td>
@@ -827,7 +827,8 @@
         let subtotal = 0, shown = 0;
         rawTable.querySelectorAll('tr.raw-row').forEach(row => {
             const catOk = !cat || row.dataset.cat === cat;
-            const deptOk = !dept || row.dataset.dept === dept;
+            const rowDepts = (row.dataset.dept || '').split('|');
+            const deptOk = !dept || rowDepts.includes(dept);
             const textOk = !term || row.textContent.includes(term);
             const visible = catOk && deptOk && textOk;
             row.style.display = visible ? '' : 'none';

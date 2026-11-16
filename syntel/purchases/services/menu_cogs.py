@@ -704,9 +704,9 @@ UNCATEGORIZED = 'none'
 
 
 def product_metadata(product_ids):
-    """Category / requester department of the inventory products behind raw rows.
+    """Category / requester department(s) of the inventory products behind raw rows.
 
-    Returns ``{product_id: {'category_id', 'category_name', 'usage_location'}}``.
+    Returns ``{product_id: {'category_id', 'category_name', 'usage_location', 'usage_locations'}}``.
     Materials with no linked product are reported as ``category_id='none'`` and
     ``usage_location='general'`` so the page filters stay exhaustive.
     """
@@ -716,12 +716,23 @@ def product_metadata(product_ids):
     if not ids:
         return {}
     meta = {}
-    for row in (Product.objects.filter(pk__in=ids)
-                .values('id', 'category_id', 'category__name', 'usage_location')):
-        meta[row['id']] = {
-            'category_id': str(row['category_id']) if row['category_id'] else UNCATEGORIZED,
-            'category_name': row['category__name'] or '',
-            'usage_location': row['usage_location'] or 'general',
+    qs = (Product.objects.filter(pk__in=ids)
+          .select_related('category')
+          .prefetch_related('departments'))
+    for p in qs:
+        depts = [d.name for d in p.departments.all()]
+        if depts:
+            usage_locations = depts
+            usage_location = depts[0] if len(depts) == 1 else '، '.join(depts)
+        else:
+            ul = p.usage_location or 'general'
+            usage_locations = [ul]
+            usage_location = ul
+        meta[p.id] = {
+            'category_id': str(p.category_id) if p.category_id else UNCATEGORIZED,
+            'category_name': p.category.name if p.category else '',
+            'usage_location': usage_location,
+            'usage_locations': usage_locations,
         }
     return meta
 
@@ -819,6 +830,7 @@ def compute_cogs(sold, cafe=None):
                 row['category_id'] = info.get('category_id') or UNCATEGORIZED
                 row['category_name'] = info.get('category_name') or ''
                 row['usage_location'] = info.get('usage_location') or 'general'
+                row['usage_locations'] = info.get('usage_locations') or [row['usage_location']]
             rows.append(row)
         rows.sort(key=lambda r: r['cost'], reverse=True)
         return rows

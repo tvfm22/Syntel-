@@ -93,7 +93,7 @@ class SentToCeoLockTest(TestCase):
     # ── تست‌ها ─────────────────────────────────────────────────────────────
 
     def test_sent_item_is_locked_on_dashboard(self):
-        """بعد از ارسال: کارت قلم قفل است — بدون دکمهٔ بازگشایی و با برچسب ارسال به مدیرعامل"""
+        """بعد از ارسال: کارت قلم قفل است — بدون دکمهٔ بازگشایی و با برچسب مقصد (واحد خرید یا مدیرعامل)"""
         self._refer_and_send()
         resp, entry = self._done_entry()
         self.assertIsNotNone(entry, 'قلم باید در بخش «ثبت‌شده»ی داشبورد باشد')
@@ -101,7 +101,7 @@ class SentToCeoLockTest(TestCase):
         self.assertEqual(entry['locked_request_id'],
                          PurchaseRequest.objects.get(source='warehouse_purchase').id)
         body = resp.content.decode('utf-8')
-        self.assertIn('ارسال به مدیرعامل', body)
+        self.assertIn('ارسال به واحد خرید', body)
         self.assertIn('done-row done-row-locked', body)
         self.assertNotIn(f'id="reopen-form-{self.item.id}"', body,
                          'فرم بازگشایی نباید برای قلم قفل‌شده رندر شود')
@@ -157,7 +157,13 @@ class SentToCeoLockTest(TestCase):
 
     def test_lock_releases_after_ceo_reject(self):
         """ردِ مدیرعامل قفل را باز می‌کند: قلم دوباره قابل بازگشایی است"""
+        self.product.base_unit_price = Decimal('100000000')  # 5 * 100M = 500M > 400M → برای مدیرعامل می‌رود
+        self.product.save(update_fields=['base_unit_price'])
         sent = self._refer_and_send()
+        self.assertEqual(sent.status, 'pending_manager_approval')
+
+        _dash_resp, _ = self._done_entry()
+        self.assertIn('ارسال به مدیرعامل', _dash_resp.content.decode('utf-8'))
 
         self.client.force_login(self.ceo)
         self.client.post(

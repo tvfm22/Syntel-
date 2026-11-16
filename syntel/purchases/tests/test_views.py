@@ -487,3 +487,46 @@ class ViewTests(TestCase):
         response = self.client.get(reverse(
             'invoice_detail', kwargs={'cafe_code': CAFE_CODE, 'invoice_id': 99999}))
         self.assertEqual(response.status_code, 404)
+
+    def test_mobile_hamburger_logout_present_for_all_roles(self):
+        """همه کاربران در منوی همبرگری (sidebar-nav) آیتم خروج را داشته باشند"""
+        from django.template.loader import render_to_string
+        from django.test import RequestFactory
+
+        factory = RequestFactory()
+        roles = [
+            'requester', 'kitchen', 'bar', 'counter', 'cashier', 'facilities',
+            'purchasing', 'warehouse', 'finance_manager', 'accounting',
+            'manager', 'ceo', 'admin',
+        ]
+        logout_url = reverse('logout')
+
+        for role in roles:
+            user = User.objects.create_user(
+                username=f'menu_user_{role}',
+                password='testpass123',
+                role=role,
+                cafe=self.cafe,
+            )
+            request = factory.get(f'/{CAFE_CODE}/')
+            request.user = user
+            request.session = {}
+            html = render_to_string(
+                'dashboard_layout.html',
+                {'cafe_code': CAFE_CODE, 'current_cafe': self.cafe},
+                request=request,
+            )
+            nav_start = html.find('<nav class="sidebar-nav">')
+            nav_end = html.find('</nav>', nav_start)
+            self.assertNotEqual(nav_start, -1, f"sidebar-nav missing for role {role}")
+            self.assertNotEqual(nav_end, -1, f"sidebar-nav closing tag missing for role {role}")
+            nav_html = html[nav_start:nav_end]
+            self.assertIn('mobile-nav-logout', nav_html, f"mobile-nav-logout missing in sidebar-nav for role {role}")
+            self.assertIn('nav-item-logout', nav_html, f"nav-item-logout missing in sidebar-nav for role {role}")
+            self.assertIn(f'action="{logout_url}"', nav_html, f"logout action missing in sidebar-nav for role {role}")
+            self.assertIn('خروج از سیستم', nav_html, f"logout label missing in sidebar-nav for role {role}")
+
+        # Verify POST to logout logs the user out cleanly
+        self.client.login(username='kitchen_user', password='testpass123')
+        post_resp = self.client.post(logout_url)
+        self.assertEqual(post_resp.status_code, 302)
