@@ -5,6 +5,7 @@ from . import views
 from . import views_dashboard
 from . import views_analytics
 from . import views_cogs
+from . import api_mobile
 
 
 def cafe_view(view_func):
@@ -33,6 +34,10 @@ auth_urlpatterns = [
     path('health/', views.system_health_check, name='system_health_check'),
     # Google Drive OAuth callback — must be an exact, stable redirect URI (no cafe prefix)
     path('backup/drive/callback/', views.drive_callback, name='drive_callback'),
+    # Mobile Android App DRF Authentication API
+    path('api/mobile/auth/login/', api_mobile.mobile_login, name='mobile_api_login'),
+    path('api/mobile/auth/me/', api_mobile.mobile_me, name='mobile_api_me'),
+    path('api/mobile/auth/logout/', api_mobile.mobile_logout, name='mobile_api_logout'),
 ]
 
 # مسیرهای داخل کافه (با prefix cafe_code)
@@ -356,6 +361,26 @@ cafe_urlpatterns = [
 
     # API URLs for inventory history
     path('api/warehouses/<int:warehouse_id>/products/<int:stock_item_id>/history/', cv(views.api_product_stock_history), name='api_product_stock_history'),
+
+    # Mobile Android App DRF API (cafe-scoped)
+    path('api/mobile/requester/summary/', api_mobile.mobile_requester_summary, name='mobile_api_requester_summary'),
+    path('api/mobile/requester/products/', api_mobile.mobile_requester_products, name='mobile_api_requester_products'),
+    path('api/mobile/requester/requests/', api_mobile.mobile_requester_requests, name='mobile_api_requester_requests'),
+    path('api/mobile/requester/requests/<int:request_id>/', api_mobile.mobile_requester_edit_request, name='mobile_api_requester_edit_request'),
+    path('api/mobile/requester/received-items/', api_mobile.mobile_received_items, name='mobile_api_received_items'),
+    path('api/mobile/requester/received-items/confirm/', api_mobile.mobile_confirm_received_items, name='mobile_api_confirm_received_items'),
+    path('api/mobile/warehouse/dashboard/', api_mobile.mobile_warehouse_dashboard, name='mobile_api_warehouse_dashboard'),
+    path('api/mobile/warehouse/items/<int:item_id>/action/', api_mobile.mobile_warehouse_item_action, name='mobile_api_warehouse_item_action'),
+    path('api/mobile/warehouse/draft/', api_mobile.mobile_warehouse_draft, name='mobile_api_warehouse_draft'),
+    path('api/mobile/warehouse/draft/items/', api_mobile.mobile_warehouse_draft_add, name='mobile_api_warehouse_draft_add'),
+    path('api/mobile/warehouse/draft/items/<int:item_id>/', api_mobile.mobile_warehouse_draft_item_detail, name='mobile_api_warehouse_draft_item_detail'),
+    path('api/mobile/warehouse/draft/send/', api_mobile.mobile_warehouse_draft_send, name='mobile_api_warehouse_draft_send'),
+    path('api/mobile/warehouse/stock/', api_mobile.mobile_warehouse_stock, name='mobile_api_warehouse_stock'),
+    path('api/mobile/warehouse/stock/<int:stock_id>/transactions/', api_mobile.mobile_stock_transactions, name='mobile_api_stock_transactions'),
+    path('api/mobile/warehouse/vouchers/', api_mobile.mobile_warehouse_vouchers, name='mobile_api_warehouse_vouchers'),
+    path('api/mobile/purchasing/dashboard/', api_mobile.mobile_purchasing_dashboard, name='mobile_api_purchasing_dashboard'),
+    path('api/mobile/purchasing/action/', api_mobile.mobile_purchasing_action, name='mobile_api_purchasing_action'),
+    path('api/mobile/purchasing/history/', api_mobile.mobile_purchasing_history, name='mobile_api_purchasing_history'),
 ]
 
 # ترکیب مسیرها - مسیرهای احراز هویت + مسیرهای کافه با prefix

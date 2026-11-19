@@ -2,6 +2,9 @@
 
 import multiprocessing
 import os
+import subprocess
+import sys
+from pathlib import Path
 
 # Server socket
 bind = "0.0.0.0:8000"
@@ -38,3 +41,27 @@ tmp_upload_dir = None
 # SSL (if needed in future)
 # keyfile = None
 # certfile = None
+
+
+def on_starting(server):
+    """Run pending Django migrations once in the master process before workers fork.
+
+    Django PaaS (S2I) deployments do not execute Dockerfile/entrypoint.sh, so running
+    `manage.py migrate --noinput` here guarantees new tables (e.g. `authtoken_token`
+    for the mobile API) are created automatically on every deploy without risking
+    concurrent SQLite writes across workers or leaking DB connections across fork().
+    """
+    if os.getenv('AUTO_MIGRATE_ON_START', '1').strip().lower() in ('0', 'false', 'no'):
+        return
+
+    manage_py = Path(__file__).resolve().parent.parent / 'manage.py'
+    if not manage_py.exists():
+        server.log.warning("manage.py not found at %s; skipping auto-migrate.", manage_py)
+        return
+
+    server.log.info("Running Django migrations via %s...", manage_py)
+    subprocess.run(
+        [sys.executable, str(manage_py), 'migrate', '--noinput'],
+        check=True,
+    )
+    server.log.info("Django migrations complete.")

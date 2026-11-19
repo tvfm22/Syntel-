@@ -46,6 +46,7 @@ class CafeMiddleware:
         '/media/',
         '/health/',
         '/accounts/login/',
+        '/api/mobile/',
     ]
     
     # Role هایی که باید کافه انتخاب کنند
@@ -60,7 +61,7 @@ class CafeMiddleware:
         
         # بررسی مسیرهای exempt
         path = request.path
-        if any(path.startswith(exempt) for exempt in self.EXEMPT_PATHS):
+        if any(path.startswith(exempt) for exempt in self.EXEMPT_PATHS) or '/api/mobile/' in path:
             return self.get_response(request)
         
         # اگر کاربر لاگین نیست، اجازه بده ادامه بده (login_required خودش handle می‌کنه)

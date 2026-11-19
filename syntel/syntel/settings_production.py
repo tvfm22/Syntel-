@@ -73,6 +73,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 # ALLOWED_HOSTS - Configure for your domain
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else [
     'syntel.liara.run',
+    'syntel.apps.teh11.abrhapaas.com',
     'localhost',
     '127.0.0.1',
     '*',  # Remove this in production for better security
@@ -132,14 +133,23 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'purchases',
     'rest_framework',
+    'rest_framework.authtoken',
     'drf_spectacular',
 ]
 
 AUTH_USER_MODEL = 'purchases.User'
 
+AUTHENTICATION_BACKENDS = [
+    'purchases.auth_backends.CaseInsensitiveModelBackend',
+]
+
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
 }
 
 # drf-spectacular settings
