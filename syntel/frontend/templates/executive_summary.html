@@ -238,10 +238,12 @@
     </div>
 </div>
 
+{{ dept_performance|json_script:"dept-performance-data" }}
 <script>
 // Department Performance Chart
 const deptCtx = document.getElementById('departmentPerformanceChart').getContext('2d');
-const deptData = {{ dept_performance|safe }};
+let deptData = JSON.parse(document.getElementById('dept-performance-data').textContent || '[]');
+if (typeof deptData === 'string') { try { deptData = JSON.parse(deptData); } catch (e) { deptData = []; } }
 new Chart(deptCtx, {
     type: 'bar',
     data: {

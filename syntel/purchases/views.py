@@ -23,6 +23,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, F, Count
 from django.db import connections, models, transaction
@@ -109,236 +110,26 @@ User = get_user_model()
 
 
 # ---------------------------------------------------------------------------
-# Cafe Helpers and Decorators
+# Cafe Helpers and Decorators (centralized in views_helpers.py)
 # ---------------------------------------------------------------------------
-
-def cafe_view(view_func):
-    """
-    Decorator که پارامتر cafe_code را از URL می‌گیرد و نادیده می‌گیرد.
-    اطلاعات کافه از middleware در request.cafe قرار دارد.
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        # حذف cafe_code از kwargs چون middleware آن را handle می‌کند
-        kwargs.pop('cafe_code', None)
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def get_cafe_from_request(request):
-    """گرفتن کافه فعلی از request یا session"""
-    if hasattr(request, 'cafe') and request.cafe:
-        return request.cafe
-    
-    cafe_id = request.session.get('selected_cafe_id')
-    if cafe_id:
-        try:
-            return Cafe.objects.get(id=cafe_id)
-        except Cafe.DoesNotExist:
-            return None
-    return None
-
-
-# مسیر رسیدن به کافه برای هر مدل — هر مدلی که خارج از این فهرست است برای
-# جستجوهای کافه‌محور «ممنوع» است (شکستِ بسته: fallback بی‌scope وجود ندارد).
-CAFE_LOOKUP_PATHS = {
-    'WarehouseVoucher':     'cafe',
-    'WarehouseVoucherItem': 'voucher__cafe',
-    'StockItem':            'warehouse__cafe',
-    'StockTransaction':     'stock_item__warehouse__cafe',
-    'Warehouse':            'cafe',
-    'Product':              'cafe',
-    'Unit':                 'cafe',
-    'Category':             'cafe',
-    'Department':           'cafe',
-    'Supplier':             'cafe',
-    'Requester':            'cafe',
-    'Invoice':              'cafe',
-    'InvoiceItem':          'invoice__cafe',
-    'PurchaseRequest':      'cafe',
-    'PurchaseItem':         'request__cafe',
-    'WarehouseRequest':     'cafe',
-    'WarehouseRequestItem': 'warehouse_request__cafe',
-    'OfficerAssignment':    'item__request__cafe',
-    'StockRequest':         'purchase_item__request__cafe',
-    'StockRequestItem':     'stock_request__purchase_item__request__cafe',
-    'PurchaseDraft':        'cafe',
-    'PurchaseDraftItem':    'draft__cafe',
-    # منو / بهای تمام شده
-    'KukerItem':            'cafe',
-    'MenuSection':          'cafe',
-    'CogsReport':           'cafe',
-    'KukerItemCostHistory': 'item__cafe',
-}
-
-
-def get_scoped_object_or_404(model, request, **lookup):
-    """دریافت یک رکورد با قفلِ کافه‌محور — بدون کافهٔ فعال همیشه 404 (fail-closed).
-
-    - کافه از request/session گرفته می‌شود؛ اگر نبود → Http404 (حتی اگر رکوردی
-      با cafe=NULL موجود باشد — هیچ fallback خارج از scope نیست).
-    - مدلی که در CAFE_LOOKUP_PATHS نیست → Http404 (ناشناخته = عمداً ممنوع).
-    """
-    cafe = get_cafe_from_request(request)
-    if cafe is None:
-        raise Http404('کافهٔ فعال یافت نشد')
-    path = CAFE_LOOKUP_PATHS.get(model.__name__)
-    if path is None:
-        raise Http404(f'مدل {model.__name__} در CAFE_LOOKUP_PATHS نیست')
-    lookup[path] = cafe
-    return get_object_or_404(model, **lookup)
-
-
-def filter_by_cafe(queryset, request):
-    """فیلتر کردن queryset بر اساس کافهٔ فعلی — شکستِ بسته:
-
-    بدون کافهٔ فعال یا مدلِ بدون مسیرِ کافه → queryset خالی، نه بازگشتِ بی‌scope.
-    """
-    cafe = get_cafe_from_request(request)
-    if cafe is None:
-        return queryset.none()
-    path = CAFE_LOOKUP_PATHS.get(queryset.model.__name__)
-    if path is None:
-        return queryset.none()
-    return queryset.filter(**{path: cafe})
-
-
-def get_scoped_locked_object_or_404(model, request, **lookup):
-    """مثل get_scoped_object_or_404، ولی ردیف را با select_for_update قفل می‌کند.
-
-    باید داخل transaction.atomic() صدا زده شود؛ بدون کافهٔ فعال یا مدلِ
-    بدون مسیرِ کافه همیشه Http404 می‌دهد (fail-closed).
-    """
-    cafe = get_cafe_from_request(request)
-    if cafe is None:
-        raise Http404('کافهٔ فعال یافت نشد')
-    path = CAFE_LOOKUP_PATHS.get(model.__name__)
-    if path is None:
-        raise Http404(f'مدل {model.__name__} در CAFE_LOOKUP_PATHS نیست')
-    lookup[path] = cafe
-    return get_object_or_404(model.objects.select_for_update(), **lookup)
-
-
-def get_cafe_redirect_url(url_name, request, **kwargs):
-    """ساخت URL با cafe_code"""
-    cafe_code = get_cafe_code(request)
-    if cafe_code:
-        kwargs['cafe_code'] = cafe_code
-    return redirect(url_name, **kwargs)
-
-
-def get_cafe_url(url_name, request, **kwargs):
-    """مثل get_cafe_redirect_url ولی رشتهٔ URL برمیگرداند (برای افزودن query string)"""
-    cafe_code = get_cafe_code(request)
-    if cafe_code:
-        kwargs['cafe_code'] = cafe_code
-    return reverse(url_name, kwargs=kwargs)
-
-
-def cafe_context(request):
-    """اضافه کردن اطلاعات کافه به context"""
-    cafe = get_cafe_from_request(request)
-    return {
-        'current_cafe': cafe,
-        'cafe_code': cafe.code if cafe else None,
-        'can_switch_cafe': request.user.is_authenticated and request.user.can_switch_cafe,
-        'all_cafes': Cafe.objects.filter(is_active=True) if request.user.is_authenticated and request.user.can_switch_cafe else [],
-    }
-
-
-# ---------------------------------------------------------------------------
-# Helpers and decorators
-# ---------------------------------------------------------------------------
-
-def custom_login_required(view_func):
-    """Wrapper around login_required to keep a single login URL."""
-    return login_required(view_func, login_url="login")
-
-
-def role_required(roles):
-    """
-    Simple role-based access control.
-    
-    کاربران با نقش 'admin' و superuser ها به همه صفحات دسترسی دارند.
-    نقش دوم (secondary_role) هم در نظر گرفته می‌شود.
-    """
-
-    def decorator(view_func):
-        @wraps(view_func)
-        def _wrapped(request, *args, **kwargs):
-            if not request.user.is_authenticated:
-                return redirect("login")
-            
-            # Admin و superuser به همه جا دسترسی دارند
-            user_role = getattr(request.user, "role", None)
-            user_secondary_role = getattr(request.user, "secondary_role", None)
-            if not (user_role == 'admin' or request.user.is_superuser):
-                # برای سایر کاربران، چک کردن نقش اصلی یا نقش دوم
-                if roles and user_role not in roles:
-                    # چک کردن نقش دوم
-                    if not (user_secondary_role and user_secondary_role in roles):
-                        return redirect("login")
-            
-            if not request.user.is_active:
-                logout(request)
-                return redirect("login")
-            return view_func(request, *args, **kwargs)
-
-        return _wrapped
-
-    return decorator
-
-
-def _parse_decimal(value):
-    try:
-        # جداکننده سه‌رقمی (کاما) را حذف کن — کاربران با کاما وارد می‌کنند
-        return Decimal(str(value).replace(",", ""))
-    except Exception:
-        return None
-
-
-def _fmt2(value):
-    """نمایش عددی موجودی: حداکثر ۲ رقم اعشار؛ رقم‌های صفرِ آخر حذف می‌شوند.
-
-    هم‌معنای فیلتر قالبی |trim_decimal — برای رشته‌سازی اعداد در view ها
-    (پیام‌ها و JSON) که از فیلتر قالب نمی‌گذرند:
-    25.00 → «25»  |  12.50 → «12.5»  |  8.333… → «8.33»
-    """
-    try:
-        d = Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        return format(d.normalize(), 'f')
-    except (ValueError, TypeError, ArithmeticError):
-        return str(value)
-
-
-def _warehouse_request_status(statuses):
-    """وضعیت نهایی درخواست انبار از وضعیت اقلام آن.
-
-    نتیجهٔ مختلط (مثلاً بخشی از انبار و بخشی به خرید) «fulfilled» نیست؛
-    وضعیت جداگانهٔ «partial» می‌گیرد تا با درخواست کاملاً تامین‌شده اشتباه نشود.
-    """
-    statuses = set(statuses)
-    if not statuses:
-        return 'pending'
-    if statuses == {'from_stock'}:
-        return 'approved_from_stock'
-    if statuses == {'to_purchase'}:
-        return 'approved_purchase'
-    if statuses == {'declined'}:
-        return 'declined'
-    return 'partial'
-
-
-def _parse_iso_date(value):
-    """پارس تاریخ ISO (YYYY-MM-DD یا YYYY/MM/DD)؛ در صورت نامعتبر None"""
-    if not value:
-        return None
-    for fmt in ('%Y-%m-%d', '%Y/%m/%d'):
-        try:
-            return datetime.strptime(str(value), fmt).date()
-        except ValueError:
-            continue
-    return None
+from .views_helpers import (
+    CAFE_LOOKUP_PATHS,
+    _fmt2,
+    _parse_decimal,
+    _parse_iso_date,
+    _warehouse_request_status,
+    cafe_context,
+    cafe_view,
+    custom_login_required,
+    filter_by_cafe,
+    get_cafe_from_request,
+    get_cafe_redirect_url,
+    get_cafe_url,
+    get_scoped_locked_object_or_404,
+    get_scoped_object_or_404,
+    resolve_api_cafe,
+    role_required,
+)
 
 
 
@@ -483,48 +274,47 @@ def purchasing_requests_list(request: HttpRequest) -> HttpResponse:
 @role_required(["purchasing", "warehouse"])
 def process_purchase_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Process purchase request items - set quantities and supply status"""
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
+    purchase_request = get_scoped_object_or_404(PurchaseRequest, request, id=request_id)
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
 
+    valid_supply_statuses = {choice[0] for choice in PurchaseItem.SUPPLY_STATUS_CHOICES}
+
     if request.method == "POST":
-        # Process each item
-        for item in purchase_request.items.all():
-            purchased_qty = request.POST.get(f'purchased_qty_{item.id}', '')
-            supply_status = request.POST.get(f'supply_status_{item.id}', 'pending')
-            
-            if purchased_qty:
-                item.purchased_quantity = _parse_decimal(purchased_qty) or 0
-            item.supply_status = supply_status
-            item.save()
+        with transaction.atomic():
+            # Process each item
+            for item in purchase_request.items.all():
+                purchased_qty = request.POST.get(f'purchased_qty_{item.id}', '')
+                supply_status = request.POST.get(f'supply_status_{item.id}', 'pending')
+                if supply_status not in valid_supply_statuses:
+                    supply_status = 'pending'
 
-            # (جریان قدیمی «تامین از انبار» با سیستم حواله‌ها جایگزین شده و حذف گردید)
+                if purchased_qty:
+                    parsed_qty = _parse_decimal(purchased_qty)
+                    if parsed_qty is not None and parsed_qty >= 0:
+                        item.purchased_quantity = parsed_qty
+                item.supply_status = supply_status
+                item.save()
 
-        # اگر گزینه «ارجاع به خرید» برای اقلامی که از لیست انبار آمده‌اند
-        # این اقلام را به یک درخواست خرید جدید اضافه کن
-        items_to_purchase = [
-            item for item in purchase_request.items.all()
-            if request.POST.get(f'supply_status_{item.id}') == 'purchased'
-        ]
+            # Update request status if all items are processed
+            all_processed = all(
+                item.supply_status != 'pending'
+                for item in purchase_request.items.all()
+            )
+            if all_processed:
+                purchase_request.status = 'purchased'
+                purchase_request.processed_by = request.user
+                purchase_request.processed_at = timezone.now()
+                purchase_request.save()
+                messages.success(request, 'درخواست با موفقیت پردازش شد')
 
-        # Update request status if all items are processed
-        all_processed = all(
-            item.supply_status != 'pending' 
-            for item in purchase_request.items.all()
-        )
-        if all_processed:
-            purchase_request.status = 'purchased'
-            purchase_request.processed_by = request.user
-            purchase_request.processed_at = timezone.now()
-            purchase_request.save()
-            messages.success(request, 'درخواست با موفقیت پردازش شد')
-        
         return redirect('purchasing_requests_list', cafe_code=cafe_code)
-    
+
     # Get stock items for search
-    stock_items = StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0)
-    if cafe:
-        stock_items = stock_items.filter(warehouse__cafe=cafe)
+    stock_items = filter_by_cafe(
+        StockItem.objects.select_related('product', 'unit', 'warehouse').filter(quantity__gt=0),
+        request,
+    )
 
     return render(request, "process_purchase_request.html", {
         "purchase_request": purchase_request,
@@ -538,6 +328,7 @@ def process_purchase_request(request: HttpRequest, request_id: int) -> HttpRespo
 # ---------------------------------------------------------------------------
 
 @custom_login_required
+@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing", "warehouse", "manager", "ceo", "requester"])
 def warehouse_request_form(request: HttpRequest) -> HttpResponse:
     """فرم ثبت درخواست از انبار توسط درخواست‌دهندگان (آشپزخانه، بار، تاسیسات و...)"""
     cafe = get_cafe_from_request(request)
@@ -1362,20 +1153,25 @@ def purchase_day_detail(request: HttpRequest) -> HttpResponse:
     if not date_str or not role:
         return get_cafe_redirect_url('purchase_lists_by_date', request)
     
-    # Parse date
-    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-    
+    # Parse date safely
+    try:
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        messages.error(request, 'فرمت تاریخ نامعتبر است.')
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
+
     cafe = get_cafe_from_request(request)
-    # Get all purchased requests for this date and role
-    requests = PurchaseRequest.objects.filter(
-        status='purchased',
-        user__role=role,
-        processed_at__date=date_obj
-    )
-    if cafe:
-        requests = requests.filter(cafe=cafe)
-    requests = requests.prefetch_related('items', 'user', 'processed_by')
-    
+    # Get all purchased requests for this date and role (fail closed if no cafe)
+    if cafe is None:
+        requests = PurchaseRequest.objects.none()
+    else:
+        requests = PurchaseRequest.objects.filter(
+            cafe=cafe,
+            status='purchased',
+            user__role=role,
+            processed_at__date=date_obj
+        ).prefetch_related('items', 'user', 'processed_by')
+
     # Collect all items
     all_items = []
     for req in requests:
@@ -1384,7 +1180,7 @@ def purchase_day_detail(request: HttpRequest) -> HttpResponse:
             if item.supply_status == 'purchased':
                 supplied_quantity = item.purchased_quantity or 0
             elif item.supply_status == 'from_stock':
-                supplied_quantity = item.quantity
+                supplied_quantity = item.purchased_quantity if item.purchased_quantity is not None else item.quantity
             elif item.supply_status == 'not_supplied':
                 supplied_quantity = 0
             else:  # pending
@@ -1442,8 +1238,12 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     if not date_str or not role:
         return get_cafe_redirect_url('purchase_lists_by_date', request)
     
-    # Parse date
-    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    # Parse date safely
+    try:
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        messages.error(request, 'فرمت تاریخ نامعتبر است.')
+        return get_cafe_redirect_url('purchase_lists_by_date', request)
     jalali_date = jdatetime.date.fromgregorian(date=date_obj)
     jalali_months = {
         1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
@@ -1454,15 +1254,16 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     jalali_str = f"{jalali_date.day} {jalali_months[jalali_date.month]} {jalali_date.year}"
     
     cafe = get_cafe_from_request(request)
-    # Get all purchased requests for this date and role
-    requests_qs = PurchaseRequest.objects.filter(
-        status='purchased',
-        user__role=role,
-        processed_at__date=date_obj
-    )
-    if cafe:
-        requests_qs = requests_qs.filter(cafe=cafe)
-    requests_qs = requests_qs.prefetch_related('items', 'user', 'processed_by')
+    # Get all purchased requests for this date and role (fail closed if no cafe)
+    if cafe is None:
+        requests_qs = PurchaseRequest.objects.none()
+    else:
+        requests_qs = PurchaseRequest.objects.filter(
+            cafe=cafe,
+            status='purchased',
+            user__role=role,
+            processed_at__date=date_obj
+        ).prefetch_related('items', 'user', 'processed_by')
     
     role_names = {
         'kitchen': 'آشپزخانه',
@@ -1481,7 +1282,7 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
             if item.supply_status == 'purchased':
                 supplied_quantity = item.purchased_quantity or 0
             elif item.supply_status == 'from_stock':
-                supplied_quantity = item.quantity
+                supplied_quantity = item.purchased_quantity if item.purchased_quantity is not None else item.quantity
             elif item.supply_status == 'not_supplied':
                 supplied_quantity = 0
             else:  # pending
@@ -1583,7 +1384,7 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
         if item.supply_status == 'purchased':
             supplied_quantity = item.purchased_quantity or 0
         elif item.supply_status == 'from_stock':
-            supplied_quantity = item.quantity
+            supplied_quantity = item.purchased_quantity if item.purchased_quantity is not None else item.quantity
         elif item.supply_status == 'not_supplied':
             supplied_quantity = 0
         else:  # pending
@@ -1654,8 +1455,10 @@ def export_purchase_day_pdf(request: HttpRequest) -> HttpResponse:
     pdf = buffer.getvalue()
     buffer.close()
     
+    safe_date = re.sub(r'[^A-Za-z0-9_-]', '_', str(date_str or ''))[:20]
+    safe_role = re.sub(r'[^A-Za-z0-9_-]', '_', str(role or ''))[:30]
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="purchase_list_{date_str}_{role}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="purchase_list_{safe_date}_{safe_role}.pdf"'
     return response
 
 
@@ -1687,37 +1490,49 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 @custom_login_required
 @role_required(["admin", "accounting", "ceo", "manager"])
 def finance_dashboard(request: HttpRequest) -> HttpResponse:
-    from datetime import date
-    
-    # آمار اصلی
+    today_local = timezone.localdate()
+
+    # آمار اصلی (شکست بسته بدون کافه)
     cafe = get_cafe_from_request(request)
-    invoice_qs = Invoice.objects.all()
-    if cafe:
-        invoice_qs = invoice_qs.filter(cafe=cafe)
+    if cafe is None:
+        invoice_qs = Invoice.objects.none()
+        payment_qs = Payment.objects.none()
+        stock_qs = StockItem.objects.none()
+        stock_req_qs = StockRequest.objects.none()
+        tx_qs = StockTransaction.objects.none()
+    else:
+        invoice_qs = Invoice.objects.filter(cafe=cafe)
+        payment_qs = Payment.objects.filter(
+            Q(invoice__cafe=cafe) | Q(invoices__cafe=cafe)
+        ).distinct()
+        stock_qs = StockItem.objects.filter(warehouse__cafe=cafe)
+        stock_req_qs = StockRequest.objects.filter(purchase_item__request__cafe=cafe)
+        tx_qs = StockTransaction.objects.filter(stock_item__warehouse__cafe=cafe)
+
     stats = {
         "invoices": invoice_qs.count(),
-        "payments": Payment.objects.count(),
+        "payments": payment_qs.count(),
     }
-    
+
     # آمار انبار
     stock_stats = {
-        "total_items": StockItem.objects.count(),
-        "low_stock_items": StockItem.objects.filter(quantity__lte=F('min_quantity')).count(),
+        "total_items": stock_qs.count(),
+        "low_stock_items": stock_qs.filter(quantity__lte=F('min_quantity')).count(),
         "total_stock_value": 0,
-        "pending_stock_requests": StockRequest.objects.filter(status='pending').count(),
-        "fulfilled_today": StockRequest.objects.filter(
+        "pending_stock_requests": stock_req_qs.filter(status='pending').count(),
+        "fulfilled_today": stock_req_qs.filter(
             status='fulfilled',
-            fulfilled_at__date=date.today()
+            fulfilled_at__date=today_local
         ).count(),
     }
-    
+
     # موجودی‌های کم
-    low_stock_items = StockItem.objects.select_related('product', 'unit').filter(
+    low_stock_items = stock_qs.select_related('product', 'unit').filter(
         quantity__lte=F('min_quantity')
     )[:10]
-    
+
     # آخرین تراکنش‌های انبار
-    recent_transactions = StockTransaction.objects.select_related(
+    recent_transactions = tx_qs.select_related(
         'stock_item__product',
         'created_by'
     ).order_by('-created_at')[:10]
@@ -1727,7 +1542,7 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
         "stock_stats": stock_stats,
         "low_stock_items": low_stock_items,
         "recent_transactions": recent_transactions,
-        "today": date.today(),
+        "today": today_local,
     })
 
 
@@ -1735,25 +1550,31 @@ def finance_dashboard(request: HttpRequest) -> HttpResponse:
 @role_required(["finance_manager"])
 def finance_manager_dashboard(request: HttpRequest) -> HttpResponse:
     """داشبورد اختصاصی مدیر مالی"""
-    from datetime import date
-    
+    today_local = timezone.localdate()
+
     cafe = get_cafe_from_request(request)
-    invoice_qs = Invoice.objects.all()
-    supplier_qs = Supplier.objects.all()
-    if cafe:
-        invoice_qs = invoice_qs.filter(cafe=cafe)
-        supplier_qs = supplier_qs.filter(cafe=cafe)
+    if cafe is None:
+        invoice_qs = Invoice.objects.none()
+        supplier_qs = Supplier.objects.none()
+        payment_qs = Payment.objects.none()
+    else:
+        invoice_qs = Invoice.objects.filter(cafe=cafe)
+        supplier_qs = Supplier.objects.filter(cafe=cafe)
+        payment_qs = Payment.objects.filter(
+            Q(invoice__cafe=cafe) | Q(invoices__cafe=cafe)
+        ).distinct()
+
     stats = {
         "total_invoices": invoice_qs.count(),
-        "total_payments": Payment.objects.count(),
-        "pending_invoices": invoice_qs.filter(status='pending').count(),
+        "total_payments": payment_qs.count(),
+        "pending_invoices": invoice_qs.filter(status__in=['draft', 'sent']).count(),
         "unpaid_invoices": invoice_qs.filter(payment_status='unpaid').count(),
         "total_suppliers": supplier_qs.count(),
     }
-    
+
     return render(request, "finance_manager_dashboard.html", {
         "stats": stats,
-        "today": date.today(),
+        "today": today_local,
     })
 
 
@@ -1970,12 +1791,17 @@ def purchase_request_success(request):
 @custom_login_required
 def purchase_requests_list(request):
     cafe = get_cafe_from_request(request)
-    # For mobile users, show only their own requests
-    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
-        requests_qs = PurchaseRequest.objects.filter(user=request.user)
-        if cafe:
-            requests_qs = requests_qs.filter(cafe=cafe)
-        requests_qs = requests_qs.prefetch_related("items").order_by("-created_at")
+    requester_roles = ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']
+    staff_roles = ['purchasing', 'warehouse', 'manager', 'ceo', 'admin']
+
+    # For mobile/requester users, show only their own requests
+    if request.user.role in requester_roles:
+        if cafe is None:
+            requests_qs = PurchaseRequest.objects.none()
+        else:
+            requests_qs = PurchaseRequest.objects.filter(
+                user=request.user, cafe=cafe
+            ).prefetch_related("items").order_by("-created_at")
         requests_list = list(requests_qs)
 
         # پرچم «قابل ویرایش»: تا وقتی مسئول انبار برای اقلامِ درخواست وضعیتی ثبت
@@ -1989,8 +1815,6 @@ def purchase_requests_list(request):
         # درخواست‌های قدیمی‌تر زیر یک بخش «قبلی» نمایش داده می‌شوند
         from datetime import timedelta
         weekday_names = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه']
-        # created_at is stored in UTC (USE_TZ=True); group by the cafe's local
-        # calendar day so "today"/"yesterday" match what users actually see.
         today = timezone.localdate()
         week_start = today - timedelta(days=6)
         grouped_by_day = {}
@@ -2019,22 +1843,25 @@ def purchase_requests_list(request):
             "is_mobile_user": True,
         }
         return render(request, "purchase_requests_list.html", context)
-    
+
+    if not (request.user.is_superuser or request.user.role in staff_roles):
+        return HttpResponseForbidden("شما مجاز به مشاهده فهرست درخواست‌ها نیستید")
+
     # For purchasing/manager users
     selected_department = request.GET.get("department") or ""
-    requests_qs = PurchaseRequest.objects.select_related("user__department").prefetch_related("items")
-    if cafe:
-        requests_qs = requests_qs.filter(cafe=cafe)
-    requests_qs = requests_qs.order_by("-created_at")
-    if selected_department:
-        # Try filtering by department name first (for requester users)
-        requests_qs = requests_qs.filter(
-            models.Q(user__department__name=selected_department) |
-            models.Q(user__role=selected_department)
-        )
-
-    # Build department list from Department model + any old roles with pending requests
-    department_list = Department.objects.filter(is_active=True, cafe=cafe).values_list('name', 'name')
+    if cafe is None:
+        requests_qs = PurchaseRequest.objects.none()
+        department_list = []
+    else:
+        requests_qs = PurchaseRequest.objects.filter(cafe=cafe).select_related(
+            "user__department"
+        ).prefetch_related("items").order_by("-created_at")
+        if selected_department:
+            requests_qs = requests_qs.filter(
+                models.Q(user__department__name=selected_department) |
+                models.Q(user__role=selected_department)
+            )
+        department_list = Department.objects.filter(is_active=True, cafe=cafe).values_list('name', 'name')
 
     context = {
         "requests": list(requests_qs),
@@ -2042,30 +1869,33 @@ def purchase_requests_list(request):
         "selected_department": selected_department,
         "is_mobile_user": False,
     }
-    
+
     if request.headers.get('HX-Request'):
         return render(request, "partials/requests_table_body.html", context)
-        
+
     return render(request, "purchase_requests_list.html", context)
 
 
 @custom_login_required
 def purchase_request_detail(request, request_id):
-    cafe = get_cafe_from_request(request)
-    pr_qs = PurchaseRequest.objects.prefetch_related("items", "activities")
-    if cafe:
-        pr_qs = pr_qs.filter(cafe=cafe)
-    purchase_request = get_object_or_404(pr_qs, id=request_id)
-    
-    # Check permissions: mobile users can only see their own requests
-    if request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']:
-        if purchase_request.user != request.user:
-            from django.http import HttpResponseForbidden
-            return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
+    requester_roles = ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester']
+    staff_roles = ['purchasing', 'warehouse', 'manager', 'ceo', 'admin']
+
+    if not (request.user.is_superuser or request.user.role in requester_roles or request.user.role in staff_roles):
+        return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
+
+    purchase_request = get_scoped_object_or_404(
+        PurchaseRequest, request, id=request_id
+    )
+
+    # Check permissions: mobile/requester users can only see their own requests
+    is_mobile_user = request.user.role in requester_roles and not request.user.is_superuser
+    if is_mobile_user and purchase_request.user_id != request.user.id:
+        return HttpResponseForbidden("شما مجاز به مشاهده این درخواست نیستید")
 
     context = {
         "purchase_request": purchase_request,
-        "is_mobile_user": request.user.role in ['kitchen', 'bar', 'counter', 'cashier', 'facilities', 'requester'],
+        "is_mobile_user": is_mobile_user,
     }
     return render(request, "purchase_request_detail.html", context)
 
@@ -2261,10 +2091,7 @@ def edit_my_request(request, request_id):
     cafe = get_cafe_from_request(request)
     cafe_code = cafe.code if cafe else 'local'
     receipt_gate = receipt_gate_context(request.user, cafe, cafe_code)
-    pr_qs = PurchaseRequest.objects.prefetch_related('items')
-    if cafe:
-        pr_qs = pr_qs.filter(cafe=cafe)
-    purchase_request = get_object_or_404(pr_qs, id=request_id)
+    purchase_request = get_scoped_object_or_404(PurchaseRequest, request, id=request_id)
 
     if purchase_request.user != request.user:
         return HttpResponseForbidden("فقط صاحب درخواست می‌تواند آن را ویرایش کند")
@@ -2296,139 +2123,151 @@ def edit_my_request(request, request_id):
             messages.error(request, "درخواست باید دست‌کم یک قلم داشته باشد.")
             return _render([], request.POST.get("delivery_date", "").strip())
 
-        # قفل «تایید دریافت قبل از درخواست جدید»: قلم تازهای که از صفحهٔ ویرایش
-        # اضافه شود درست مثل ثبت درخواست تازه، مستقیم به صندوق مسئول انبار
-        # میرود. ویرایش اقلام موجود (مثلاً اصلاح مقدار) همچنان آزاد است.
-        # بررسی قبل از هرگونه ذخیره/حذف انجام میشود تا تغییرات نیمهکاره نماند.
-        pending_receipts = pending_receipt_count(request.user, cafe)
-        if pending_receipts:
-            known_ids = set(purchase_request.items.values_list('id', flat=True))
-            adds_new_item = False
+        with transaction.atomic():
+            purchase_request = get_scoped_locked_object_or_404(
+                PurchaseRequest, request, id=request_id
+            )
+            if not _request_editable_by_owner(purchase_request):
+                messages.error(
+                    request,
+                    "این درخواست توسط مسئول انبار تعیین وضعیت شده و دیگر قابل ویرایش نیست.")
+                return redirect('purchase_requests_list', cafe_code=cafe_code)
+
+            existing = {item.id: item for item in purchase_request.items.all()}
+
+            # قفل «تایید دریافت قبل از درخواست جدید» — بررسی قبل از هرگونه تغییر
+            pending_receipts = pending_receipt_count(request.user, cafe)
+            if pending_receipts:
+                known_ids = set(existing.keys())
+                adds_new_item = False
+                for idx, raw_id in enumerate(item_ids):
+                    row_name = (names[idx] if idx < len(names) else '').strip()
+                    if not row_name:
+                        continue
+                    if raw_id.isdigit() and int(raw_id) in known_ids:
+                        continue
+                    adds_new_item = True
+                    break
+                if adds_new_item:
+                    messages.error(request, receipt_gate_message(pending_receipts))
+                    rows = [{
+                        "id": raw_id,
+                        "name": (names[i] if i < len(names) else '').strip(),
+                        "quantity": quantities[i] if i < len(quantities) else '',
+                        "unit": (units[i] if i < len(units) else '').strip(),
+                        "description": (descriptions[i] if i < len(descriptions) else '').strip(),
+                        "removed": raw_id.isdigit() and int(raw_id) in removed_ids,
+                    } for i, raw_id in enumerate(item_ids)]
+                    return _render(rows, request.POST.get("delivery_date", "").strip())
+
+            locked_item_ids = set(
+                OfficerAssignment.objects
+                .filter(item__request=purchase_request, target_role='warehouse')
+                .exclude(status='pending')
+                .values_list('item_id', flat=True)
+            )
+            removable_ids = removed_ids - locked_item_ids
+
+            # اعتبارسنجی کاملِ همهٔ ردیف‌ها پیش از هرگونه delete یا save
+            posted_rows = []
+            updates_to_apply = []
+            new_items = []
+            error_message = None
+
             for idx, raw_id in enumerate(item_ids):
-                row_name = (names[idx] if idx < len(names) else '').strip()
-                if not row_name:
-                    continue  # ردیف خالی دستنخورده
-                if raw_id.isdigit() and int(raw_id) in known_ids:
-                    continue  # قلم موجود
-                adds_new_item = True
-                break
-            if adds_new_item:
-                messages.error(request, receipt_gate_message(pending_receipts))
-                rows = [{
+                name = (names[idx] if idx < len(names) else "").strip()
+                qty = _parse_decimal(quantities[idx] if idx < len(quantities) else "")
+                unit = (units[idx] if idx < len(units) else "").strip()
+                desc = (descriptions[idx] if idx < len(descriptions) else "").strip()
+                is_removed = raw_id.isdigit() and int(raw_id) in removed_ids
+                posted_rows.append({
                     "id": raw_id,
-                    "name": (names[i] if i < len(names) else '').strip(),
-                    "quantity": quantities[i] if i < len(quantities) else '',
-                    "unit": (units[i] if i < len(units) else '').strip(),
-                    "description": (descriptions[i] if i < len(descriptions) else '').strip(),
-                    "removed": raw_id.isdigit() and int(raw_id) in removed_ids,
-                } for i, raw_id in enumerate(item_ids)]
-                return _render(rows, request.POST.get("delivery_date", "").strip())
-
-        # فقط اقلامی حذف می‌شوند که برای مسئول انبار وضعیتی نگرفته‌اند
-        # (محافظ در برابر ویرایش همزمان توسط مسئول انبار)
-        locked_item_ids = set(
-            OfficerAssignment.objects
-            .filter(item__request=purchase_request, target_role='warehouse')
-            .exclude(status='pending')
-            .values_list('item_id', flat=True)
-        )
-        removable_ids = removed_ids - locked_item_ids
-        if removed_ids & locked_item_ids:
-            messages.warning(
-                request,
-                "برخی اقلام انتخاب‌شده برای حذف، توسط مسئول انبار تعیین وضعیت شده‌اند و حذف نشدند.")
-        purchase_request.items.filter(id__in=removable_ids).delete()
-        # ردیف‌های prefetch شده را از کش مدل هم حذف کن تا با رکورد حذف‌شده کار نشود
-        if hasattr(purchase_request, '_prefetched_objects_cache'):
-            purchase_request._prefetched_objects_cache.pop('items', None)
-        existing = {item.id: item for item in purchase_request.items.all()}
-
-        posted_rows = []
-        new_items = []
-        error_message = None
-        for idx, raw_id in enumerate(item_ids):
-            name = (names[idx] if idx < len(names) else "").strip()
-            qty = _parse_decimal(quantities[idx] if idx < len(quantities) else "")
-            unit = (units[idx] if idx < len(units) else "").strip()
-            desc = (descriptions[idx] if idx < len(descriptions) else "").strip()
-            posted_rows.append({
-                "id": raw_id,
-                "name": name,
-                "quantity": quantities[idx] if idx < len(quantities) else "",
-                "unit": unit,
-                "description": desc,
-                "removed": raw_id in removed_ids,
-            })
-            if not name:
-                error_message = "نام همهٔ اقلام الزامی است"
-                break
-            if qty is None or qty <= 0 or qty > 99999999:
-                error_message = f"مقدار «{name}» باید عددی بزرگ‌تر از صفر باشد"
-                break
-            if raw_id.isdigit() and int(raw_id) in removable_ids:
-                continue  # ردیف حذف‌شده — پردازش نمی‌شود
-            if raw_id.isdigit() and int(raw_id) in existing:
-                item = existing[int(raw_id)]
-                if (item.name or '').strip() != name:
-                    # عوض‌کردن نامِ یک ردیف با کالای غذاییِ بدون رسپی، همان
-                    # دور زدنِ فرم ثبت است — انبار بر اساس همین نام تامین می‌کند.
-                    gate_error = _recipe_gate_for_name(request, cafe, name)
-                    if gate_error:
-                        error_message = gate_error
+                    "name": name,
+                    "quantity": quantities[idx] if idx < len(quantities) else "",
+                    "unit": unit,
+                    "description": desc,
+                    "removed": is_removed,
+                })
+                if raw_id.isdigit() and int(raw_id) in removable_ids:
+                    continue
+                if not name:
+                    error_message = "نام همهٔ اقلام الزامی است"
+                    break
+                if qty is None or qty <= 0 or qty > 99999999:
+                    error_message = f"مقدار «{name}» باید عددی بزرگ‌تر از صفر باشد"
+                    break
+                if raw_id.isdigit() and int(raw_id) in existing:
+                    item = existing[int(raw_id)]
+                    old_name = (item.name or '').strip()
+                    new_product = item.product
+                    if old_name != name:
+                        gate_error = _recipe_gate_for_name(request, cafe, name)
+                        if gate_error:
+                            error_message = gate_error
+                            break
+                        new_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else None
+                    updates_to_apply.append((item, name, new_product, qty, unit, desc))
+                else:
+                    item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first() if cafe else None
+                    inactive_err = inactive_product_error(item_product)
+                    if inactive_err:
+                        error_message = inactive_err
                         break
+                    if item_product is not None and not bypasses_recipe_gate(request.user):
+                        gate_error = recipe_gate_error(item_product, cafe=cafe)
+                        if gate_error:
+                            error_message = gate_error
+                            break
+                    new_items.append(PurchaseItem(
+                        request=purchase_request, product=item_product,
+                        name=name, quantity=qty, unit=unit or "عدد",
+                        description=desc or "",
+                    ))
+
+            if error_message:
+                messages.error(request, error_message)
+                return _render(posted_rows, request.POST.get("delivery_date", "").strip())
+
+            # همه‌چیز معتبر است — اکنون حذف‌ها و ذخیره‌ها را اتمیک اعمال می‌کنیم
+            if removed_ids & locked_item_ids:
+                messages.warning(
+                    request,
+                    "برخی اقلام انتخاب‌شده برای حذف، توسط مسئول انبار تعیین وضعیت شده‌اند و حذف نشدند.")
+            if removable_ids:
+                purchase_request.items.filter(id__in=removable_ids).delete()
+
+            for item, name, new_product, qty, unit, desc in updates_to_apply:
                 item.name = name
+                item.product = new_product
                 item.quantity = qty
                 if unit:
                     item.unit = unit
                 item.description = desc
                 item.save()
-            else:
-                item_product = None
-                if cafe:
-                    item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first()
-                inactive_err = inactive_product_error(item_product)
-                if inactive_err:
-                    error_message = inactive_err
-                    break
-                if item_product is not None and not bypasses_recipe_gate(request.user):
-                    gate_error = recipe_gate_error(item_product, cafe=cafe)
-                    if gate_error:
-                        error_message = gate_error
-                        break
-                new_items.append(PurchaseItem(
-                    request=purchase_request, product=item_product,
-                    name=name, quantity=qty, unit=unit or "عدد",
-                    description=desc or "",
-                ))
 
-        if error_message:
-            messages.error(request, error_message)
-            return _render(posted_rows, request.POST.get("delivery_date", "").strip())
+            if new_items:
+                for item in new_items:
+                    item.save()
+                _route_request_to_warehouse(
+                    purchase_request, new_items, request.user,
+                    notes='قلم اضافه‌شده هنگام ویرایش درخواست توسط درخواست‌دهنده')
 
-        if new_items:
-            for item in new_items:
-                item.save()
-            # اقلام جدید مثل فرم ثبت، مستقیم به صندوق مسئول انبار می‌روند
-            _route_request_to_warehouse(
-                purchase_request, new_items, request.user,
-                notes='قلم اضافه‌شده هنگام ویرایش درخواست توسط درخواست‌دهنده')
+            delivery_raw = request.POST.get('delivery_date', '').strip()
+            if delivery_raw:
+                try:
+                    purchase_request.delivery_date = datetime.strptime(delivery_raw, '%Y-%m-%d').date()
+                    purchase_request.delivery_immediate = False
+                    purchase_request.save(update_fields=['delivery_date', 'delivery_immediate'])
+                except (ValueError, TypeError):
+                    pass
 
-        # زمان تحویل (اختیاری — در صورت انتخاب، جایگزین می‌شود)
-        delivery_raw = request.POST.get('delivery_date', '').strip()
-        if delivery_raw:
-            try:
-                purchase_request.delivery_date = datetime.strptime(delivery_raw, '%Y-%m-%d').date()
-                purchase_request.delivery_immediate = False
-                purchase_request.save(update_fields=['delivery_date', 'delivery_immediate'])
-            except (ValueError, TypeError):
-                pass
+            ActivityLog.objects.create(
+                user=request.user,
+                request=purchase_request,
+                action="updated",
+                description="ویرایش درخواست توسط صاحب آن (بخش درخواست‌های من)",
+            )
 
-        ActivityLog.objects.create(
-            user=request.user,
-            request=purchase_request,
-            action="updated",
-            description="ویرایش درخواست توسط صاحب آن (بخش درخواست‌های من)",
-        )
         messages.success(request, "درخواست با موفقیت ویرایش شد.")
         return redirect('purchase_requests_list', cafe_code=cafe_code)
 
@@ -2455,14 +2294,17 @@ def edit_my_request(request, request_id):
 @role_required(["purchasing", "manager"])
 def reports_dashboard(request):
     cafe = get_cafe_from_request(request)
-    pr_qs = PurchaseRequest.objects.all()
-    inv_qs = Invoice.objects.all()
-    if cafe:
-        pr_qs = pr_qs.filter(cafe=cafe)
-        inv_qs = inv_qs.filter(cafe=cafe)
+    if cafe is None:
+        pr_qs = PurchaseRequest.objects.none()
+        inv_qs = Invoice.objects.none()
+        po_qs = PurchaseOrder.objects.none()
+    else:
+        pr_qs = PurchaseRequest.objects.filter(cafe=cafe)
+        inv_qs = Invoice.objects.filter(cafe=cafe)
+        po_qs = PurchaseOrder.objects.filter(request__cafe=cafe)
     stats = {
         "total_requests": pr_qs.count(),
-        "completed_orders": PurchaseOrder.objects.filter(status="completed").count(),
+        "completed_orders": po_qs.filter(status="completed").count(),
         "paid_invoices": inv_qs.filter(status="paid").count(),
     }
     return render(request, "reports_dashboard.html", {"stats": stats})
@@ -2471,14 +2313,27 @@ def reports_dashboard(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def export_to_excel(request):
+    import openpyxl
+
     cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.filter(cafe=cafe).select_related("user").order_by("-created_at")[:500] if cafe else PurchaseRequest.objects.none()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Purchase Requests"
+    ws.append(["Request ID", "Request Number", "User", "Status", "Created At"])
+    for pr in pr_qs:
+        ws.append([
+            pr.id,
+            pr.request_number,
+            pr.user.username if pr.user else "",
+            pr.status,
+            pr.created_at.strftime("%Y-%m-%d %H:%M") if pr.created_at else "",
+        ])
+
     output = io.BytesIO()
-    output.write(b"Request ID,Status\n")
-    pr_qs = PurchaseRequest.objects.all()
-    if cafe:
-        pr_qs = pr_qs.filter(cafe=cafe)
-    for pr in pr_qs[:500]:
-        output.write(f"{pr.id},{pr.status}\n".encode("utf-8"))
+    wb.save(output)
+    output.seek(0)
 
     response = HttpResponse(
         output.getvalue(),
@@ -2491,9 +2346,30 @@ def export_to_excel(request):
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def export_to_pdf(request):
-    response = HttpResponse(content_type="application/pdf")
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    cafe = get_cafe_from_request(request)
+    pr_qs = PurchaseRequest.objects.filter(cafe=cafe).order_by("-created_at")[:100] if cafe else PurchaseRequest.objects.none()
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    y = A4[1] - 50
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, f"Purchase Requests Report ({cafe.code if cafe else 'N/A'})")
+    y -= 28
+    c.setFont("Helvetica", 10)
+    for pr in pr_qs:
+        c.drawString(50, y, f"#{pr.request_number} - status: {pr.status}")
+        y -= 16
+        if y < 50:
+            c.showPage()
+            c.setFont("Helvetica", 10)
+            y = A4[1] - 50
+    c.save()
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="reports.pdf"'
-    response.write(b"%PDF-1.4\n%PDF placeholder for tests\n")
     return response
 
 
@@ -2553,37 +2429,40 @@ from .views_backups import (
 @role_required(["manager"])
 def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Edit a purchased request - allows manager to modify items"""
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    
+    from urllib.parse import urlencode
+
+    purchase_request = get_scoped_object_or_404(PurchaseRequest, request, id=request_id)
+    valid_supply_statuses = {choice[0] for choice in PurchaseItem.SUPPLY_STATUS_CHOICES}
+
     if request.method == 'POST':
-        # Update each item
-        for item in purchase_request.items.all():
-            purchased_qty_key = f'purchased_quantity_{item.id}'
-            supply_status_key = f'supply_status_{item.id}'
-            
-            if purchased_qty_key in request.POST:
-                try:
-                    item.purchased_quantity = _parse_decimal(request.POST.get(purchased_qty_key, '')) or 0
-                except (ValueError, TypeError):
-                    item.purchased_quantity = 0
-            
-            if supply_status_key in request.POST:
-                item.supply_status = request.POST.get(supply_status_key, 'pending')
-            
-            item.save()
-        
-        # Get the date and role for redirect
+        with transaction.atomic():
+            for item in purchase_request.items.all():
+                purchased_qty_key = f'purchased_quantity_{item.id}'
+                supply_status_key = f'supply_status_{item.id}'
+
+                if purchased_qty_key in request.POST:
+                    parsed_qty = _parse_decimal(request.POST.get(purchased_qty_key, ''))
+                    item.purchased_quantity = parsed_qty if (parsed_qty is not None and parsed_qty >= 0) else 0
+
+                if supply_status_key in request.POST:
+                    status_val = request.POST.get(supply_status_key, 'pending')
+                    if status_val in valid_supply_statuses:
+                        item.supply_status = status_val
+
+                item.save()
+
         date_str = request.POST.get('date', '')
         role = request.POST.get('role', '')
 
         if date_str and role:
-            return redirect(f"{get_cafe_url('purchase_day_detail', request)}?date={date_str}&role={role}")
+            return redirect(
+                f"{get_cafe_url('purchase_day_detail', request)}?{urlencode({'date': date_str, 'role': role})}"
+            )
         return get_cafe_redirect_url('purchase_lists_by_date', request)
 
-    # GET request - show edit form
     date_str = request.GET.get('date', '')
     role = request.GET.get('role', '')
-    
+
     return render(request, "purchase_list_edit_request.html", {
         "purchase_request": purchase_request,
         "date_str": date_str,
@@ -2595,10 +2474,11 @@ def purchase_list_edit_request(request: HttpRequest, request_id: int) -> HttpRes
 @role_required(["manager"])
 def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> HttpResponse:
     """Confirm a purchased request by manager"""
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    
+    from urllib.parse import urlencode
+
+    purchase_request = get_scoped_object_or_404(PurchaseRequest, request, id=request_id)
+
     if request.method == 'POST':
-        # Toggle confirmation status
         if purchase_request.manager_confirmed:
             purchase_request.manager_confirmed = False
             purchase_request.manager_confirmed_at = None
@@ -2607,15 +2487,16 @@ def purchase_list_confirm_request(request: HttpRequest, request_id: int) -> Http
             purchase_request.manager_confirmed = True
             purchase_request.manager_confirmed_at = timezone.now()
             purchase_request.manager_confirmed_by = request.user
-        
+
         purchase_request.save()
 
-        # Get the date and role for redirect
         date_str = request.POST.get('date', '')
         role = request.POST.get('role', '')
 
         if date_str and role:
-            return redirect(f"{get_cafe_url('purchase_day_detail', request)}?date={date_str}&role={role}")
+            return redirect(
+                f"{get_cafe_url('purchase_day_detail', request)}?{urlencode({'date': date_str, 'role': role})}"
+            )
         return get_cafe_redirect_url('purchase_lists_by_date', request)
 
     return get_cafe_redirect_url('purchase_lists_by_date', request)
@@ -2916,10 +2797,9 @@ def _selected_sections_for_form(product, departments_qs, form_data):
 def _render_product_form(request, product=None, mode='create', error='', form_data=None):
     """رندر مشترک فرم محصول"""
     cafe = get_cafe_from_request(request)
-    categories = Category.objects.all()
-    if cafe:
-        categories = categories.filter(cafe=cafe)
-    departments_qs = list(Department.objects.filter(is_active=True, cafe=cafe).order_by('name'))
+    categories = filter_by_cafe(Category.objects.all(), request)
+    units = filter_by_cafe(Unit.objects.all(), request)
+    departments_qs = list(Department.objects.filter(is_active=True, cafe=cafe).order_by('name')) if cafe else []
     selected_department_ids, is_general_selected = _selected_sections_for_form(
         product, departments_qs, form_data
     )
@@ -2928,7 +2808,7 @@ def _render_product_form(request, product=None, mode='create', error='', form_da
         "product": product,
         "mode": mode,
         "categories": categories,
-        "units": Unit.objects.all(),
+        "units": units,
         "departments_qs": departments_qs,
         "selected_department_ids": selected_department_ids,
         "is_general_selected": is_general_selected,
@@ -2946,14 +2826,14 @@ def _render_product_form(request, product=None, mode='create', error='', form_da
 @role_required(["purchasing", "manager"])
 def product_create(request):
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         if not name:
             return _render_product_form(request, error='نام محصول الزامی است.', form_data=request.POST)
         # Check for duplicate product name in same cafe
-        existing = Product.objects.filter(name__iexact=name)
-        if cafe:
-            existing = existing.filter(cafe=cafe)
+        existing = Product.objects.filter(name__iexact=name, cafe=cafe)
         if existing.exists():
             return _render_product_form(
                 request,
@@ -2963,13 +2843,22 @@ def product_create(request):
         selected_depts, usage_loc, sec_error = _resolve_product_sections(request.POST, cafe)
         if sec_error:
             return _render_product_form(request, error=sec_error, form_data=request.POST)
-        category = Category.objects.filter(id=request.POST.get("category") or None).first()
-        unit = Unit.objects.filter(id=request.POST.get("unit") or None).first()
+        try:
+            min_stock_val = int(request.POST.get("min_stock") or 0)
+        except (ValueError, TypeError):
+            return _render_product_form(request, error='حداقل موجودی نامعتبر است.', form_data=request.POST)
+        if min_stock_val < 0:
+            return _render_product_form(request, error='حداقل موجودی نمی‌تواند منفی باشد.', form_data=request.POST)
+
+        cat_raw = (request.POST.get("category") or "").strip()
+        unit_raw = (request.POST.get("unit") or "").strip()
+        category = Category.objects.filter(id=int(cat_raw), cafe=cafe).first() if cat_raw.isdigit() else None
+        unit = Unit.objects.filter(id=int(unit_raw), cafe=cafe).first() if unit_raw.isdigit() else None
         selected_product = Product.objects.create(
             name=name,
             category=category,
             unit=unit,
-            min_stock=int(request.POST.get("min_stock") or 0),
+            min_stock=min_stock_val,
             shelf_life_days=_parse_int_or_none(request.POST.get("shelf_life_days")),
             usage_location=usage_loc,
             is_active=("is_active" in request.POST),
@@ -2992,15 +2881,13 @@ def product_create(request):
 def product_update(request, product_id):
     """ویرایش اطلاعات پایه محصول (نام، دسته‌بندی، واحد، حداقل موجودی، ...)"""
     cafe = get_cafe_from_request(request)
-    product = get_object_or_404(Product, id=product_id)
+    product = get_scoped_object_or_404(Product, request, id=product_id)
     if request.method == "POST":
         new_name = (request.POST.get("name") or "").strip()
         if not new_name:
             return _render_product_form(request, product=product, mode='edit_product',
                                         error='نام محصول الزامی است.', form_data=request.POST)
-        existing = Product.objects.filter(name__iexact=new_name).exclude(id=product.id)
-        if cafe:
-            existing = existing.filter(cafe=cafe)
+        existing = Product.objects.filter(name__iexact=new_name, cafe=cafe).exclude(id=product.id)
         if existing.exists():
             return _render_product_form(request, product=product, mode='edit_product',
                                         error=f'محصولی با نام «{new_name}» قبلاً ثبت شده است.', form_data=request.POST)
@@ -3010,18 +2897,29 @@ def product_update(request, product_id):
         if sec_error:
             return _render_product_form(request, product=product, mode='edit_product',
                                         error=sec_error, form_data=request.POST)
+        try:
+            min_stock_raw = request.POST.get("min_stock")
+            min_stock_val = int(min_stock_raw) if (min_stock_raw is not None and str(min_stock_raw).strip() != "") else product.min_stock
+        except (ValueError, TypeError):
+            return _render_product_form(request, product=product, mode='edit_product',
+                                        error='حداقل موجودی نامعتبر است.', form_data=request.POST)
+        if min_stock_val < 0:
+            return _render_product_form(request, product=product, mode='edit_product',
+                                        error='حداقل موجودی نمی‌تواند منفی باشد.', form_data=request.POST)
+
+        cat_raw = (request.POST.get("category") or "").strip()
+        unit_raw = (request.POST.get("unit") or "").strip()
         product.name = new_name
-        product.category = Category.objects.filter(id=request.POST.get("category") or None).first() or product.category
-        product.unit = Unit.objects.filter(id=request.POST.get("unit") or None).first() or product.unit
-        product.min_stock = int(request.POST.get("min_stock") or product.min_stock)
-        # خالی بودن فیلد عمر مفید یعنی پاک شدن آن
+        if cat_raw.isdigit():
+            product.category = Category.objects.filter(id=int(cat_raw), cafe=cafe).first() or product.category
+        if unit_raw.isdigit():
+            product.unit = Unit.objects.filter(id=int(unit_raw), cafe=cafe).first() or product.unit
+        product.min_stock = min_stock_val
         product.shelf_life_days = _parse_int_or_none(request.POST.get("shelf_life_days"))
         product.usage_location = usage_loc
         product.description = request.POST.get("description", product.description)
         if "is_active_present" in request.POST:
             product.is_active = ("is_active" in request.POST)
-        # تکمیل اطلاعات کالای ناقص (ساخته‌شده از فرم درخواست): با اولین ویرایش کامل می‌شود
-        # و از این پس در پیشنهادهای درخواست نمایش داده می‌شود
         if not product.is_complete:
             product.is_complete = True
         product.save()
@@ -3063,7 +2961,7 @@ def product_toggle_active(request, product_id):
 @role_required(["purchasing", "manager"])
 def product_delete(request, product_id):
     cafe_code = get_cafe_code(request) or 'local'
-    product = get_object_or_404(Product, id=product_id)
+    product = get_scoped_object_or_404(Product, request, id=product_id)
     if request.method == "POST":
         product.delete()
         return redirect("product_list", cafe_code=cafe_code)
@@ -3174,13 +3072,27 @@ def category_update(request, category_id):
     # فقط دستهٔ کافه جاری قابل ویرایش است — دستهٔ کافه دیگر ۴۰۴ میشود
     category = get_scoped_object_or_404(Category, request, id=category_id)
     if request.method == "POST":
-        category.name = request.POST.get("name", category.name)
-        category.description = request.POST.get("description", category.description)
-        parent_id = request.POST.get("parent")
-        if parent_id:
-            category.parent = Category.objects.filter(id=parent_id, cafe=cafe).first()
-        else:
-            category.parent = None
+        new_name = (request.POST.get("name") or "").strip() or category.name
+        new_desc = request.POST.get("description", category.description)
+        parent_raw = (request.POST.get("parent") or "").strip()
+        new_parent = None
+        if parent_raw:
+            if not parent_raw.isdigit():
+                messages.error(request, 'دسته والد نامعتبر است.')
+                return get_cafe_redirect_url("category_list", request)
+            new_parent = Category.objects.filter(id=int(parent_raw), cafe=cafe).first()
+            # جلوگیری از چرخه در سلسله‌مراتب دسته‌بندی‌ها
+            cursor = new_parent
+            visited = {category.id}
+            while cursor is not None:
+                if cursor.id in visited:
+                    messages.error(request, 'انتخاب این دسته به عنوان والد باعث ایجاد چرخه می‌شود.')
+                    return get_cafe_redirect_url("category_list", request)
+                visited.add(cursor.id)
+                cursor = cursor.parent
+        category.name = new_name
+        category.description = new_desc
+        category.parent = new_parent
         category.requires_recipe = request.POST.get("requires_recipe") == "on"
         category.save()
         return get_cafe_redirect_url("category_list", request)
@@ -3218,10 +3130,26 @@ def category_delete(request, category_id):
 # ---------------------------------------------------------------------------
 
 
+_PO_ALLOWED_TRANSITIONS = {
+    'draft': {'sent', 'cancelled'},
+    'ordered': {'sent', 'confirmed', 'cancelled'},
+    'sent': {'confirmed', 'in_transit', 'delivered', 'cancelled'},
+    'confirmed': {'in_transit', 'delivered', 'cancelled'},
+    'in_transit': {'delivered', 'cancelled'},
+    'delivered': {'inspected', 'completed', 'cancelled'},
+    'inspected': {'completed', 'cancelled'},
+    'completed': set(),
+    'cancelled': set(),
+}
+
+
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_orders_list(request):
-    orders = PurchaseOrder.objects.select_related("supplier", "request").all()
+    orders = filter_by_cafe(
+        PurchaseOrder.objects.select_related("supplier", "request").all(),
+        request,
+    )
     return render(request, "purchase_orders_list.html", {"orders": orders})
 
 
@@ -3229,28 +3157,47 @@ def purchase_orders_list(request):
 @role_required(["purchasing", "manager"])
 def purchase_order_create(request, request_id):
     cafe = get_cafe_from_request(request)
-    purchase_request = get_object_or_404(PurchaseRequest, id=request_id)
-    suppliers = Supplier.objects.all()
-    if cafe:
-        suppliers = suppliers.filter(cafe=cafe)
+    purchase_request = get_scoped_object_or_404(PurchaseRequest, request, id=request_id)
+    suppliers = filter_by_cafe(Supplier.objects.all(), request)
     if request.method == "POST":
-        supplier = Supplier.objects.filter(id=request.POST.get("supplier")).first()
-        order_number = request.POST.get("order_number") or f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}"
-        order = PurchaseOrder.objects.create(
-            request=purchase_request,
-            supplier=supplier,
-            order_number=order_number,
-            status="ordered",
-            created_by=request.user,
-            delivery_date=request.POST.get("expected_delivery_date") or None,
-            notes=request.POST.get("notes", ""),
-        )
-        ActivityLog.objects.create(
-            user=request.user,
-            request=purchase_request,
-            action="updated",
-            description="Purchase order created",
-        )
+        supplier_raw = (request.POST.get("supplier") or "").strip()
+        if not supplier_raw.isdigit():
+            messages.error(request, 'تأمین‌کننده معتبر انتخاب کنید.')
+            return render(
+                request,
+                "purchase_order_form.html",
+                {"purchase_request": purchase_request, "suppliers": suppliers},
+            )
+        supplier = get_scoped_object_or_404(Supplier, request, id=int(supplier_raw))
+        delivery_raw = (request.POST.get("expected_delivery_date") or "").strip()
+        delivery_date = _parse_iso_date(delivery_raw) if delivery_raw else None
+        if delivery_raw and delivery_date is None:
+            messages.error(request, 'فرمت تاریخ تحویل نامعتبر است.')
+            return render(
+                request,
+                "purchase_order_form.html",
+                {"purchase_request": purchase_request, "suppliers": suppliers},
+            )
+        with transaction.atomic():
+            existing_order = PurchaseOrder.objects.filter(request=purchase_request).first()
+            if existing_order is not None:
+                return get_cafe_redirect_url("purchase_order_detail", request, order_id=existing_order.id)
+            order_number = request.POST.get("order_number") or f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            order = PurchaseOrder.objects.create(
+                request=purchase_request,
+                supplier=supplier,
+                order_number=order_number,
+                status="ordered",
+                created_by=request.user,
+                delivery_date=delivery_date,
+                notes=request.POST.get("notes", ""),
+            )
+            ActivityLog.objects.create(
+                user=request.user,
+                request=purchase_request,
+                action="updated",
+                description="Purchase order created",
+            )
         return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
     return render(
         request,
@@ -3259,81 +3206,119 @@ def purchase_order_create(request, request_id):
     )
 
 
+@custom_login_required
+@role_required(["purchasing", "manager", "finance_manager", "accounting", "ceo"])
 def purchase_order_detail(request, order_id):
-    order = get_object_or_404(PurchaseOrder, id=order_id)
+    order = get_scoped_object_or_404(PurchaseOrder, request, id=order_id)
     return render(request, "purchase_order_detail.html", {"order": order})
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
 def purchase_order_update(request, order_id):
-    order = get_object_or_404(PurchaseOrder, id=order_id)
+    order = get_scoped_object_or_404(PurchaseOrder, request, id=order_id)
     if request.method == "POST":
-        order.status = request.POST.get("status", order.status)
+        new_status = (request.POST.get("status") or order.status).strip()
+        valid_statuses = {choice[0] for choice in PurchaseOrder.STATUS_CHOICES}
+        if new_status != order.status:
+            if new_status not in valid_statuses:
+                messages.error(request, 'وضعیت سفارش نامعتبر است.')
+                return render(request, "purchase_order_form.html", {"order": order})
+            allowed = _PO_ALLOWED_TRANSITIONS.get(order.status, set())
+            if new_status not in allowed:
+                messages.error(request, 'تغییر وضعیت درخواستی مجاز نیست.')
+                return render(request, "purchase_order_form.html", {"order": order})
+            order.status = new_status
+        order.notes = request.POST.get("notes", order.notes)
         order.save()
         return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
     return render(request, "purchase_order_form.html", {"order": order})
 
 
 def _set_order_status(request, order_id, status):
-    order = get_object_or_404(PurchaseOrder, id=order_id)
-    order.status = status
-    order.save()
+    with transaction.atomic():
+        order = get_scoped_locked_object_or_404(PurchaseOrder, request, id=order_id)
+        allowed = _PO_ALLOWED_TRANSITIONS.get(order.status, set())
+        if status not in allowed:
+            messages.error(request, f'تغییر وضعیت سفارش از «{order.status}» به «{status}» مجاز نیست.')
+            return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
+        order.status = status
+        now = timezone.now()
+        if status == "sent" and not order.sent_at:
+            order.sent_at = now
+        elif status == "confirmed" and not order.confirmed_at:
+            order.confirmed_at = now
+        elif status == "delivered" and not order.delivered_at:
+            order.delivered_at = now
+        order.save()
     return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_send(request, order_id):
     return _set_order_status(request, order_id, "sent")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_confirm(request, order_id):
     return _set_order_status(request, order_id, "confirmed")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_mark_in_transit(request, order_id):
     return _set_order_status(request, order_id, "in_transit")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_deliver(request, order_id):
     return _set_order_status(request, order_id, "delivered")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_inspect(request, order_id):
     return _set_order_status(request, order_id, "inspected")
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_complete(request, order_id):
-    order = get_object_or_404(PurchaseOrder.objects.select_related('request'), id=order_id)
-    order.status = "completed"
-    order.save()
-    # تکمیل سفارش خرید = پایان مسیر «درخواست خرید» مسئول انبار: درخواستِ مرتبط
-    # «خریداری شده» می‌شود تا در فهرست‌های در انتظار باقی نماند
-    pr = order.request
-    if pr and pr.source == 'warehouse_purchase' and pr.status in ('pending', 'pending_manager_approval'):
-        pr.status = 'purchased'
-        pr.save(update_fields=['status'])
-        ActivityLog.objects.create(
-            user=request.user,
-            request=pr,
-            action='updated',
-            description=f'تکمیل سفارش خرید {order.order_number} — درخواست {request_number_for(pr.id)} خریداری شد')
+    with transaction.atomic():
+        order = get_scoped_locked_object_or_404(PurchaseOrder, request, id=order_id)
+        allowed = _PO_ALLOWED_TRANSITIONS.get(order.status, set())
+        if "completed" not in allowed:
+            messages.error(request, f'تغییر وضعیت سفارش از «{order.status}» به «completed» مجاز نیست.')
+            return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
+        order.status = "completed"
+        order.completed_at = timezone.now()
+        order.save()
+        # تکمیل سفارش خرید = پایان مسیر «درخواست خرید» مسئول انبار: درخواستِ مرتبط
+        # «خریداری شده» می‌شود تا در فهرست‌های در انتظار باقی نماند
+        pr = order.request
+        if pr and pr.source == 'warehouse_purchase' and pr.status in ('pending', 'pending_manager_approval'):
+            pr.status = 'purchased'
+            pr.save(update_fields=['status'])
+            ActivityLog.objects.create(
+                user=request.user,
+                request=pr,
+                action='updated',
+                description=f'تکمیل سفارش خرید {order.order_number} — درخواست {request_number_for(pr.id)} خریداری شد')
     return get_cafe_redirect_url("purchase_order_detail", request, order_id=order.id)
 
 
 @custom_login_required
 @role_required(["purchasing", "manager"])
+@require_POST
 def purchase_order_cancel(request, order_id):
     return _set_order_status(request, order_id, "cancelled")
 
@@ -4434,54 +4419,59 @@ def purchase_category_analysis(request):
     با فیلتر آبشاری: تاریخ -> دسته اصلی -> زیردسته -> فروشنده
     """
     cafe = get_cafe_from_request(request)
-    
-    # دریافت فیلترها از URL
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    category_id = request.GET.get('category', '')
-    subcategory_id = request.GET.get('subcategory', '')
-    supplier_id = request.GET.get('supplier', '')
-    
-    # دسته‌بند‌های اصلی (بدون والد) - بدون فیلتر cafe برای نمایش همه
-    main_categories = Category.objects.filter(
-        parent__isnull=True,
-        is_active=True
-    ).order_by('name')
-    
-    # زیردسته‌ها (اگر دسته اصلی انتخاب شده) - بدون فیلتر cafe
-    subcategories = []
-    if category_id:
-        subcategories = Category.objects.filter(
-            parent_id=category_id,
+
+    start_date_raw = request.GET.get('start_date', '')
+    end_date_raw = request.GET.get('end_date', '')
+    category_raw = request.GET.get('category', '')
+    subcategory_raw = request.GET.get('subcategory', '')
+    supplier_raw = request.GET.get('supplier', '')
+
+    start_date_obj = _parse_iso_date(start_date_raw)
+    end_date_obj = _parse_iso_date(end_date_raw)
+    category_id = int(category_raw) if str(category_raw).isdigit() else None
+    subcategory_id = int(subcategory_raw) if str(subcategory_raw).isdigit() else None
+    supplier_id = int(supplier_raw) if str(supplier_raw).isdigit() else None
+
+    if cafe is None:
+        main_categories = Category.objects.none()
+        subcategories = Category.objects.none()
+        suppliers = Supplier.objects.none()
+    else:
+        main_categories = Category.objects.filter(
+            cafe=cafe,
+            parent__isnull=True,
             is_active=True
         ).order_by('name')
-    
-    # فروشندگان فیلتر شده بر اساس زیردسته
-    if subcategory_id:
-        # فقط فروشندگانی که محصولات این زیردسته را فروخته‌اند
-        invoice_items_qs = InvoiceItem.objects.filter(
-            product__category_id=subcategory_id,
-            invoice__status__in=['sent', 'approved', 'partially_paid', 'paid', 'overdue'],
-            invoice__supplier__isnull=False
-        )
-        
-        # اعمال فیلتر تاریخ
-        if start_date:
-            invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__gte=start_date)
-        if end_date:
-            invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__lte=end_date)
-        
-        # دریافت فروشندگان منحصر به فرد
-        supplier_ids = invoice_items_qs.values_list('invoice__supplier_id', flat=True).distinct()
-        suppliers = Supplier.objects.filter(
-            id__in=supplier_ids,
-            status='active'
-        ).order_by('name')
-    else:
-        #اگر زیردسته انتخاب نشده، همه فروشندگان فعال را نمایش بده - بدون فیلتر cafe
-        suppliers = Supplier.objects.filter(status='active').order_by('name')
-    
-    # محصولات و داده‌های فیلتر شده
+
+        subcategories = []
+        if category_id:
+            subcategories = Category.objects.filter(
+                cafe=cafe,
+                parent_id=category_id,
+                is_active=True
+            ).order_by('name')
+
+        if subcategory_id:
+            invoice_items_qs = InvoiceItem.objects.filter(
+                invoice__cafe=cafe,
+                product__category_id=subcategory_id,
+                invoice__status__in=['sent', 'approved', 'partially_paid', 'paid', 'overdue'],
+                invoice__supplier__isnull=False
+            )
+            if start_date_obj:
+                invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__gte=start_date_obj)
+            if end_date_obj:
+                invoice_items_qs = invoice_items_qs.filter(invoice__invoice_date__lte=end_date_obj)
+
+            supplier_ids = invoice_items_qs.values_list('invoice__supplier_id', flat=True).distinct()
+            suppliers = Supplier.objects.filter(
+                cafe=cafe,
+                id__in=supplier_ids,
+                status='active'
+            ).order_by('name')
+        else:
+            suppliers = Supplier.objects.filter(cafe=cafe, status='active').order_by('name')
+
     products_data = []
     summary = {
         'total_items': 0,
@@ -4489,27 +4479,21 @@ def purchase_category_analysis(request):
         'unique_products': 0,
         'unique_suppliers': 0
     }
-    
-    if subcategory_id:  # فقط زمانی که زیردسته انتخاب شده
-        # Query اولیه
+
+    if cafe is not None and subcategory_id:
         invoice_items = InvoiceItem.objects.filter(
+            invoice__cafe=cafe,
             product__category_id=subcategory_id,
             invoice__status__in=['sent', 'approved', 'partially_paid', 'paid', 'overdue']
         ).select_related('product', 'invoice', 'invoice__supplier')
-        
-        # اعمال فیلترهای تاریخ
-        if start_date:
-            invoice_items = invoice_items.filter(invoice__invoice_date__gte=start_date)
-        if end_date:
-            invoice_items = invoice_items.filter(invoice__invoice_date__lte=end_date)
-        
-        # اعمال فیلتر فروشنده
+
+        if start_date_obj:
+            invoice_items = invoice_items.filter(invoice__invoice_date__gte=start_date_obj)
+        if end_date_obj:
+            invoice_items = invoice_items.filter(invoice__invoice_date__lte=end_date_obj)
         if supplier_id:
             invoice_items = invoice_items.filter(invoice__supplier_id=supplier_id)
-        
-        # گروه‌بندی بر اساس محصول و فروشنده
-        from django.db.models import Count, F, ExpressionWrapper
-        
+
         products_summary = invoice_items.values(
             'product__id',
             'product__name',
@@ -4522,59 +4506,53 @@ def purchase_category_analysis(request):
             weighted_price_sum=Sum(F('quantity') * F('unit_price')),
             purchase_count=Count('id')
         ).order_by('-total_amount')
-        
+
         products_data = list(products_summary)
-        
-        # محاسبه میانگین وزنی برای هر محصول
+
         for product in products_data:
             if product['total_quantity'] and product['total_quantity'] > 0:
                 product['weighted_avg_price'] = product['weighted_price_sum'] / product['total_quantity']
             else:
                 product['weighted_avg_price'] = 0
-        
-        # محاسبه خلاصه
+
         summary['total_items'] = invoice_items.count()
         summary['total_amount'] = invoice_items.aggregate(
             total=Sum('line_total')
         )['total'] or Decimal('0')
         summary['unique_products'] = len(products_data)
         summary['unique_suppliers'] = invoice_items.values('invoice__supplier').distinct().count()
-        
-        # محاسبه میانگین کل (average of all unit prices)
+
         avg_result = invoice_items.aggregate(avg_price=Sum('unit_price'))
         count = invoice_items.count()
         if count > 0 and avg_result['avg_price']:
             summary['avg_price'] = avg_result['avg_price'] / count
         else:
             summary['avg_price'] = Decimal('0')
-        
-        # محاسبه میانگین وزنی (weighted average: sum(quantity * unit_price) / sum(quantity))
+
         total_quantity = invoice_items.aggregate(total_qty=Sum('quantity'))['total_qty'] or Decimal('0')
         weighted_sum = invoice_items.aggregate(
             weighted=Sum(F('quantity') * F('unit_price'))
         )['weighted'] or Decimal('0')
-        
+
         summary['total_quantity'] = total_quantity
-        
         if total_quantity > 0:
             summary['weighted_avg_price'] = weighted_sum / total_quantity
         else:
             summary['weighted_avg_price'] = Decimal('0')
-    
+
     context = {
         'main_categories': main_categories,
         'subcategories': subcategories,
         'suppliers': suppliers,
         'products_data': products_data,
         'summary': summary,
-        # مقادیر فیلتر برای نگه داشتن در فرم
-        'start_date': start_date,
-        'end_date': end_date,
-        'selected_category': category_id,
-        'selected_subcategory': subcategory_id,
-        'selected_supplier': supplier_id,
+        'start_date': start_date_raw,
+        'end_date': end_date_raw,
+        'selected_category': category_raw,
+        'selected_subcategory': subcategory_raw,
+        'selected_supplier': supplier_raw,
     }
-    
+
     return render(request, 'purchase_category_analysis.html', context)
 
 
@@ -4590,12 +4568,6 @@ def executive_summary(request):
     return render(request, "analytics_dashboard.html")
 
 
-@custom_login_required
-def test_filter_page(request):
-    """صفحه تست فیلترها"""
-    return render(request, "test_filter.html")
-
-
 # ---------------------------------------------------------------------------
 # Notifications
 # ---------------------------------------------------------------------------
@@ -4603,40 +4575,68 @@ def test_filter_page(request):
 
 @custom_login_required
 def notifications_list(request, cafe_code=None):
-    notifications = Notification.objects.filter(recipient=request.user)
+    notifications = filter_by_cafe(
+        Notification.objects.filter(recipient=request.user), request
+    ).order_by("-created_at")
     return render(request, "notifications_list.html", {"notifications": notifications})
 
 
 @custom_login_required
 def notification_detail(request, notification_id):
-    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification = get_scoped_object_or_404(
+        Notification, request, id=notification_id, recipient=request.user
+    )
     return render(request, "notification_detail.html", {"notification": notification})
 
 
+def _wants_json_response(request):
+    accept = request.headers.get('Accept', '')
+    ctype = request.content_type or ''
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in accept
+        or 'application/json' in ctype
+    )
+
+
 @custom_login_required
+@require_POST
 def mark_notification_read(request, notification_id):
-    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification = get_scoped_object_or_404(
+        Notification, request, id=notification_id, recipient=request.user
+    )
     notification.is_read = True
-    notification.save()
+    notification.save(update_fields=['is_read'])
+    if _wants_json_response(request):
+        return JsonResponse({'success': True})
     return get_cafe_redirect_url("notifications_list", request)
 
 
 @custom_login_required
+@require_POST
 def delete_notification(request, notification_id):
-    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification = get_scoped_object_or_404(
+        Notification, request, id=notification_id, recipient=request.user
+    )
     notification.delete()
+    if _wants_json_response(request):
+        return JsonResponse({'success': True})
     return get_cafe_redirect_url("notifications_list", request)
 
 
 @custom_login_required
 def get_unread_notifications_count(request):
-    count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    count = filter_by_cafe(
+        Notification.objects.filter(recipient=request.user, is_read=False), request
+    ).count()
     return JsonResponse({"count": count})
 
 
 @custom_login_required
 def get_recent_notifications(request):
-    notifications = Notification.objects.filter(recipient=request.user).order_by("-created_at")[:5]
+    notifications = filter_by_cafe(
+        Notification.objects.filter(recipient=request.user), request
+    ).order_by("-created_at")[:5]
     data = [
         {
             "title": n.title,
@@ -4655,24 +4655,28 @@ def get_recent_notifications(request):
 
 
 def handler404(request, exception=None):
-    raise Http404()
+    return HttpResponse("صفحه مورد نظر یافت نشد.", status=404)
 
 
 @custom_login_required
+@role_required(["purchasing", "manager", "finance_manager", "accounting", "ceo"])
 def search_supplier_products(request):
     """Search for products used in previous invoices for a specific supplier."""
-    supplier_id = request.GET.get('supplier_id')
+    cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'results': []}, status=403)
+    supplier_id = (request.GET.get('supplier_id') or '').strip()
     query = request.GET.get('q', '').strip()
-    
-    if not supplier_id:
+
+    if not supplier_id.isdigit():
         return JsonResponse({'results': []})
-        
-    # Search in InvoiceItems linked to Invoices from this supplier
+
     items = InvoiceItem.objects.filter(
-        invoice__supplier_id=supplier_id,
+        invoice__cafe=cafe,
+        invoice__supplier_id=int(supplier_id),
         description__icontains=query
     ).values_list('description', flat=True).distinct()[:10]
-    
+
     return JsonResponse({'results': list(items)})
 
 
@@ -4792,8 +4796,8 @@ def category_products_api(request: HttpRequest, category_id: int = None) -> Json
     is_all = str(category_id) == 'all'
     if not is_all:
         if category_id and str(category_id).isdigit():
-            # محصولات دسته انتخاب‌شده + زیردسته‌های آن
-            cat = Category.objects.filter(id=int(category_id), is_active=True).first()
+            # محصولات دسته انتخاب‌شده + زیردسته‌های آن (محدود به کافه جاری)
+            cat = filter_by_cafe(Category.objects.filter(id=int(category_id), is_active=True), request).first()
             if not cat:
                 return JsonResponse({'results': []})
             cat_ids = [cat.id] + list(cat.subcategories.filter(is_active=True).values_list('id', flat=True))
@@ -4814,19 +4818,25 @@ def category_products_api(request: HttpRequest, category_id: int = None) -> Json
 @custom_login_required
 def check_product_availability(request: HttpRequest) -> JsonResponse:
     """بررسی موجودی انبار برای محصول انتخاب‌شده هنگام ثبت درخواست کالا."""
-    product_id = request.GET.get('product_id')
-    qty = _parse_decimal(request.GET.get('qty', '') or 0)
-
-    product = Product.objects.filter(id=product_id).first()
-    if not product:
+    product_id_raw = (request.GET.get('product_id') or '').strip()
+    if not product_id_raw.isdigit():
         return JsonResponse({'error': 'محصول یافت نشد'}, status=404)
 
+    qty = _parse_decimal(request.GET.get('qty', '') or 0)
+    if qty is None or qty < 0 or not qty.is_finite():
+        return JsonResponse({'error': 'مقدار نامعتبر است'}, status=400)
+
     cafe = get_cafe_from_request(request)
-    stock_qs = StockItem.objects.filter(product=product, quantity__gt=0).select_related(
-        'warehouse', 'unit')
-    if cafe:
-        stock_qs = stock_qs.filter(warehouse__cafe=cafe)
-    stock_rows = list(stock_qs)
+    if cafe is None:
+        return JsonResponse({'error': 'کافه یافت نشد'}, status=404)
+
+    product = get_scoped_object_or_404(Product, request, id=int(product_id_raw))
+
+    stock_rows = list(
+        StockItem.objects.filter(
+            product=product, quantity__gt=0, warehouse__cafe=cafe
+        ).select_related('warehouse', 'unit')
+    )
 
     total_qty = sum((s.quantity for s in stock_rows), Decimal('0'))
     unit_label = (
@@ -4835,7 +4845,7 @@ def check_product_availability(request: HttpRequest) -> JsonResponse:
         else (product.unit.name if product.unit else '')
     )
     warehouses = sorted({s.warehouse.name for s in stock_rows if s.warehouse})
-    available = qty is not None and qty > 0 and total_qty >= qty
+    available = qty > 0 and total_qty >= qty
 
     return JsonResponse({
         'product_id': product.id,
@@ -4888,7 +4898,6 @@ def search_categories_autocomplete(request):
 # ---------------------------------------------------------------------------
 from .views_inventory import (
     _InsufficientStock,
-    _set_stock_quantity,
     stock_list,
     stock_transactions,
     warehouse_management,
@@ -4919,6 +4928,8 @@ from .views_inventory import (
 )
 
 
+@custom_login_required
+@role_required(["manager", "ceo", "admin"])
 def management_dashboard(request):
     """
     داشبورد مدیریت با نمودار دایره‌ای هزینه‌ها و تحلیل رشد قیمت
@@ -5186,7 +5197,12 @@ def _sync_request_status(request_obj, keep_queue=False):
     items = list(request_obj.items.all())
     if not items:
         return
-    assignments = OfficerAssignment.objects.filter(item__request=request_obj)
+    assignments = (
+        OfficerAssignment.objects
+        .filter(item__request=request_obj)
+        .exclude(status='reopened')
+        .order_by('id')
+    )
     by_item = {a.item_id: a.status for a in assignments}
     statuses = [by_item.get(i.id) for i in items]
     real = [s for s in statuses if s]
@@ -5851,7 +5867,6 @@ def _flash_warehouse_dispatch_result(
 
 @custom_login_required
 @role_required(['purchasing', 'warehouse'])
-@transaction.atomic
 def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
     """صفحه مسئول انبار: کالاهای درخواستی که در انبار موجودی دارند، مستقیم و
     بدون تایید مدیرعامل ارسال می‌شوند. مسئول انبار می‌تواند تامین کند،
@@ -5899,107 +5914,114 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
             messages.error(request, 'قلم درخواست یافت نشد')
             return redirect(dash_url)
 
-        # شناسهٔ خام فقط در کافهٔ فعلی معتبر است؛ کافهٔ دیگر → 404
-        item = get_scoped_locked_object_or_404(PurchaseItem, request, id=item_pk)
+        with transaction.atomic():
+            # شناسهٔ خام فقط در کافهٔ فعلی معتبر است؛ کافهٔ دیگر → 404
+            item = get_scoped_locked_object_or_404(PurchaseItem, request, id=item_pk)
 
-        # قلمی که در لیست خرید ثبت و برای مدیرعامل ارسال شده، دیگر در داشبورد
-        # قابل تغییر وضعیت نیست (تا وقتی مدیرعامل آن درخواست خرید را رد نکرده باشد)
-        if _item_sent_to_ceo(item) is not None and action in (
-                'fulfill', 'to_purchase', 'not_in_stock', 'reopen'):
-            messages.error(
-                request,
-                f'«{item.name}» در لیست خرید ثبت شده و برای تایید مدیرعامل ارسال شده است — '
-                'از داشبورد انبار قابل تغییر وضعیت نیست.')
-            return redirect(dash_url)
-
-        # تخصیص موجود (در انتظار) یا ساخت تخصیص جدید — با قفل ردیف
-        assignment = item.officer_assignments.select_for_update().filter(
-            target_role='warehouse', status='pending'
-        ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True)).first()
-
-        # اگر قبلاً نتیجهٔ نهایی ثبت شده، همین POST دوباره اجرا نمی‌شود.
-        done_assigns = item.officer_assignments.select_for_update().filter(
-            target_role='warehouse',
-            status__in=('fulfilled', 'returned', 'not_in_stock'),
-        ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True))
-        if action in ('fulfill', 'to_purchase') and done_assigns.exists():
-            messages.warning(request, 'این قلم قبلاً پردازش شده است.')
-            return redirect(dash_url)
-        if action == 'not_in_stock' and done_assigns.filter(
-                status__in=('fulfilled', 'not_in_stock')).exists():
-            messages.warning(request, 'این قلم قبلاً پردازش شده است.')
-            return redirect(dash_url)
-        # «عدم موجودی» روی قلمِ ارجاع‌شده همان تخصیص returned را به روز می‌کند
-        if action == 'not_in_stock' and assignment is None:
-            assignment = done_assigns.order_by('-assigned_at').first()
-
-        if action == 'fulfill':
-            # ردیف‌های انتخابی: ردیف اول (stock_item_id/qty) + ردیف‌های پویای JS (stock_item_id_X/qty_X)
-            stock_ids = request.POST.getlist("stock_item_id")
-            qtys = request.POST.getlist("qty")
-            extra_rows = []
-            i = 1
-            while f"stock_item_id_{i}" in request.POST:
-                extra_rows.append((request.POST.get(f"stock_item_id_{i}", ""), request.POST.get(f"qty_{i}", "")))
-                i += 1
-            all_rows = list(zip(stock_ids, qtys)) + extra_rows
-
-            # تجمیع ردیف‌های تکراری (همان انبار چند بار انتخاب شده) تا از یک موجودی دوبار کم نشود
-            merged = {}
-            order = []
-            for sid, qty_str in all_rows:
-                if not sid:
-                    continue
-                qty = _parse_decimal(qty_str)
-                if sid not in merged:
-                    merged[sid] = {'qty': qty, 'order': len(order)}
-                    order.append(sid)
-                elif qty is not None:
-                    merged[sid]['qty'] = (merged[sid]['qty'] or 0) + qty
-
-            has_error = False
-            validated = []  # (stock_item, qty)
-            for sid in order:
-                qty = merged[sid]['qty']
-                # موجودی فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
-                if not str(sid).isdigit():
-                    stock_item = None
-                else:
-                    stock_item = StockItem.objects.filter(
-                        id=int(sid), warehouse__cafe=cafe).first()
-
-                if stock_item is None or qty is None or qty <= 0:
-                    messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
-                    has_error = True
-                    break
-                if stock_item.product_id != item.product_id:
-                    messages.error(request, f'موجودی انبار با کالای «{item.name}» مطابقت ندارد')
-                    has_error = True
-                    break
-                base_deduction = qty
-                if base_deduction > stock_item.quantity:
-                    messages.error(request,
-                        f'موجودی «{stock_item.product.name}» ({stock_item.quantity}) کمتر از مقدار درخواستی است')
-                    has_error = True
-                    break
-                validated.append((stock_item, base_deduction, qty))
-
-            if has_error:
-                return redirect(dash_url)
-
-            if not validated:
-                messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
-                return redirect(dash_url)
-
-            total_trade = sum((qty for _si, _base, qty in validated), Decimal('0'))
-            if total_trade > item.quantity:
+            # قلمی که در لیست خرید ثبت و برای مدیرعامل ارسال شده، دیگر در داشبورد
+            # قابل تغییر وضعیت نیست (تا وقتی مدیرعامل آن درخواست خرید را رد نکرده باشد)
+            if _item_sent_to_ceo(item) is not None and action in (
+                    'fulfill', 'to_purchase', 'not_in_stock', 'reopen'):
                 messages.error(
                     request,
-                    f'مقدار تامین‌شده برای «{item.name}» از مقدار درخواستی بیشتر است.')
+                    f'«{item.name}» در لیست خرید ثبت شده و برای تایید مدیرعامل ارسال شده است — '
+                    'از داشبورد انبار قابل تغییر وضعیت نیست.')
                 return redirect(dash_url)
 
-            try:
-                with transaction.atomic():
+            # تخصیص موجود (در انتظار) یا ساخت تخصیص جدید — با قفل ردیف
+            assignment = item.officer_assignments.select_for_update().filter(
+                target_role='warehouse', status='pending'
+            ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True)).first()
+
+            # اگر قبلاً نتیجهٔ نهایی ثبت شده، همین POST دوباره اجرا نمی‌شود.
+            done_assigns = item.officer_assignments.select_for_update().filter(
+                target_role='warehouse',
+                status__in=('fulfilled', 'returned', 'not_in_stock'),
+            ).filter(Q(assigned_to=request.user) | Q(assigned_to__isnull=True))
+            if action in ('fulfill', 'to_purchase') and done_assigns.exists():
+                messages.warning(request, 'این قلم قبلاً پردازش شده است.')
+                return redirect(dash_url)
+            if action == 'not_in_stock' and done_assigns.filter(
+                    status__in=('fulfilled', 'not_in_stock')).exists():
+                messages.warning(request, 'این قلم قبلاً پردازش شده است.')
+                return redirect(dash_url)
+            # «عدم موجودی» روی قلمِ ارجاع‌شده همان تخصیص returned را به روز می‌کند
+            if action == 'not_in_stock' and assignment is None:
+                assignment = done_assigns.order_by('-assigned_at').first()
+
+            if action == 'fulfill':
+                # ردیف‌های انتخابی: ردیف اول (stock_item_id/qty) + ردیف‌های پویای JS (stock_item_id_X/qty_X)
+                stock_ids = request.POST.getlist("stock_item_id")
+                qtys = request.POST.getlist("qty")
+                extra_rows = []
+                i = 1
+                while f"stock_item_id_{i}" in request.POST:
+                    extra_rows.append((request.POST.get(f"stock_item_id_{i}", ""), request.POST.get(f"qty_{i}", "")))
+                    i += 1
+                all_rows = list(zip(stock_ids, qtys)) + extra_rows
+
+                # تجمیع ردیف‌های تکراری (همان انبار چند بار انتخاب شده) تا از یک موجودی دوبار کم نشود
+                merged = {}
+                order = []
+                has_error = False
+                for sid, qty_str in all_rows:
+                    if not sid:
+                        continue
+                    qty = _parse_decimal(qty_str)
+                    if qty is None or not qty.is_finite() or qty <= 0:
+                        messages.error(request, f'برای «{item.name}» مقدار معتبر مثبت وارد کنید')
+                        has_error = True
+                        break
+                    if sid not in merged:
+                        merged[sid] = {'qty': qty, 'order': len(order)}
+                        order.append(sid)
+                    else:
+                        merged[sid]['qty'] = merged[sid]['qty'] + qty
+
+                if has_error:
+                    return redirect(dash_url)
+
+                validated = []  # (stock_item, qty)
+                for sid in order:
+                    qty = merged[sid]['qty']
+                    # موجودی فقط در محدودهٔ کافهٔ فعلی — نه با id خام از POST
+                    if not str(sid).isdigit():
+                        stock_item = None
+                    else:
+                        stock_item = StockItem.objects.filter(
+                            id=int(sid), warehouse__cafe=cafe).first()
+
+                    if stock_item is None or qty is None or qty <= 0:
+                        messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
+                        has_error = True
+                        break
+                    if stock_item.product_id != item.product_id:
+                        messages.error(request, f'موجودی انبار با کالای «{item.name}» مطابقت ندارد')
+                        has_error = True
+                        break
+                    base_deduction = qty
+                    if base_deduction > stock_item.quantity:
+                        messages.error(request,
+                            f'موجودی «{stock_item.product.name}» ({stock_item.quantity}) کمتر از مقدار درخواستی است')
+                        has_error = True
+                        break
+                    validated.append((stock_item, base_deduction, qty))
+
+                if has_error:
+                    return redirect(dash_url)
+
+                if not validated:
+                    messages.error(request, f'برای «{item.name}» موجودی انبار و مقدار معتبر انتخاب کنید')
+                    return redirect(dash_url)
+
+                total_trade = sum((qty for _si, _base, qty in validated), Decimal('0'))
+                if total_trade > item.quantity:
+                    messages.error(
+                        request,
+                        f'مقدار تامین‌شده برای «{item.name}» از مقدار درخواستی بیشتر است.')
+                    return redirect(dash_url)
+
+                try:
                     for idx, (stock_item, base_deduction, qty) in enumerate(validated):
                         # کسر اتمیک از موجودی انبار
                         apply_stock_delta(
@@ -6026,66 +6048,68 @@ def warehouse_officer_dashboard(request: HttpRequest) -> HttpResponse:
                             extra_assignment.supplied_quantity = base_deduction
                             extra_assignment.notes = f'تامین شد: {qty} از انبار {stock_item.warehouse.name if stock_item.warehouse else ""}.'
                             extra_assignment.save()
-            except (InsufficientStockError, StockScopeError) as exc:
-                messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت نشد')
-                return redirect(dash_url)
-            _remove_from_purchase_drafts(item)
-            _sync_request_status(item.request)
-            messages.success(request, f'«{item.name}» از انبار تامین شد.')
-            return redirect(dash_url)
-
-        elif action in ('to_purchase', 'not_in_stock'):
-            if assignment is None:
-                assignment = _assign_item(item, 'warehouse', request.user, request.user)
-            if action == 'to_purchase':
-                # ارجاع به خرید: قلم به صفحه «درخواست خرید» (پیش‌نویس) می‌رود تا
-                # مسئول انبار لیست را تکمیل کند و بعد برای تایید مدیرعامل بفرستد
-                assignment.status = 'returned'
-                assignment.notes = (assignment.notes or '') + ' ارجاع به درخواست خرید.'
-                assignment.save()
-                _sync_request_status(item.request)
-                draft = _get_or_create_purchase_draft(cafe, request.user)
-                PurchaseDraftItem.objects.get_or_create(
-                    draft=draft,
-                    source_item=item,
-                    defaults={
-                        'product': item.product,
-                        'name': item.product.name if item.product else item.name,
-                        'quantity': item.quantity,
-                        'unit': item.unit,
-                        'description': item.description or '',
-                    },
-                )
-                messages.info(request, f'«{item.product.name if item.product else item.name}» به صفحه «درخواست خرید» اضافه شد (از منوی کنار قابل مشاهده است).')
-                return redirect(dash_url)
-            else:
-                assignment.status = 'not_in_stock'
-                assignment.notes = (assignment.notes or '') + ' عدم امکان تأمین ثبت شد.'
-                assignment.save()
+                except (InsufficientStockError, StockScopeError) as exc:
+                    transaction.set_rollback(True)
+                    messages.error(request, f'موجودی «{exc}» در این لحظه کافی نیست؛ ثبت نشد')
+                    return redirect(dash_url)
                 _remove_from_purchase_drafts(item)
                 _sync_request_status(item.request)
-                messages.warning(request, f'برای «{item.name}» عدم امکان تأمین ثبت شد.')
-            return redirect(dash_url)
-
-        elif action == 'reopen':
-            # بازگشایی فقط با دلیل و با ردیف جبرانی؛ هیچ سند یا تخصیصی حذف نمی‌شود
-            reason = (request.POST.get('reason') or '').strip()
-            try:
-                reopen_officer_assignments(
-                    item, cafe=cafe, reopened_by=request.user, reason=reason)
-            except (ReopenNotAllowedError, StockScopeError,
-                    InsufficientStockError) as exc:
-                messages.error(request, f'بازگشایی ناموفق بود: {exc}')
+                messages.success(request, f'«{item.name}» از انبار تامین شد.')
                 return redirect(dash_url)
-            # قلمی که قبلاً «ارجاع به خرید» شده بود دیگر ارجاع نیست — از پیش‌نویس خرید حذف شود
-            _removed = _remove_from_purchase_drafts(item)
-            _sync_request_status(item.request)
-            if _removed:
-                msg = f'«{item.name}» از لیست خرید حذف و به لیست فعال بازگردانده شد.'
-            else:
-                msg = f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.'
-            messages.info(request, msg)
-            return redirect(dash_url)
+
+            elif action in ('to_purchase', 'not_in_stock'):
+                if assignment is None:
+                    assignment = _assign_item(item, 'warehouse', request.user, request.user)
+                if action == 'to_purchase':
+                    # ارجاع به خرید: قلم به صفحه «درخواست خرید» (پیش‌نویس) می‌رود تا
+                    # مسئول انبار لیست را تکمیل کند و بعد برای تایید مدیرعامل بفرستد
+                    assignment.status = 'returned'
+                    assignment.notes = (assignment.notes or '') + ' ارجاع به درخواست خرید.'
+                    assignment.save()
+                    _sync_request_status(item.request)
+                    draft = _get_or_create_purchase_draft(cafe, request.user)
+                    PurchaseDraftItem.objects.get_or_create(
+                        draft=draft,
+                        source_item=item,
+                        defaults={
+                            'product': item.product,
+                            'name': item.product.name if item.product else item.name,
+                            'quantity': item.quantity,
+                            'unit': item.unit,
+                            'description': item.description or '',
+                        },
+                    )
+                    messages.info(request, f'«{item.product.name if item.product else item.name}» به صفحه «درخواست خرید» اضافه شد (از منوی کنار قابل مشاهده است).')
+                    return redirect(dash_url)
+                else:
+                    assignment.status = 'not_in_stock'
+                    assignment.notes = (assignment.notes or '') + ' عدم امکان تأمین ثبت شد.'
+                    assignment.save()
+                    _remove_from_purchase_drafts(item)
+                    _sync_request_status(item.request)
+                    messages.warning(request, f'برای «{item.name}» عدم امکان تأمین ثبت شد.')
+                return redirect(dash_url)
+
+            elif action == 'reopen':
+                # بازگشایی فقط با دلیل و با ردیف جبرانی؛ هیچ سند یا تخصیصی حذف نمی‌شود
+                reason = (request.POST.get('reason') or '').strip()
+                try:
+                    reopen_officer_assignments(
+                        item, cafe=cafe, reopened_by=request.user, reason=reason)
+                except (ReopenNotAllowedError, StockScopeError,
+                        InsufficientStockError) as exc:
+                    transaction.set_rollback(True)
+                    messages.error(request, f'بازگشایی ناموفق بود: {exc}')
+                    return redirect(dash_url)
+                # قلمی که قبلاً «ارجاع به خرید» شده بود دیگر ارجاع نیست — از پیش‌نویس خرید حذف شود
+                _removed = _remove_from_purchase_drafts(item)
+                _sync_request_status(item.request)
+                if _removed:
+                    msg = f'«{item.name}» از لیست خرید حذف و به لیست فعال بازگردانده شد.'
+                else:
+                    msg = f'«{item.name}» بازگشایی شد — دوباره از اول ثبت کنید.'
+                messages.info(request, msg)
+                return redirect(dash_url)
 
     # ── درخواست‌های این کافه (پیش‌فرض: فقط امروز؛ فیلتر روزِ ثبت روی همین پایه) ──
     cutoff_dt = timezone.localtime(timezone.now()) - timedelta(days=45)
@@ -6412,38 +6436,44 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        if action == 'send':
-            draft = PurchaseDraft.objects.filter(cafe=cafe, created_by=request.user).first()
-            draft_items = list(
-                draft.items.select_related('product', 'product__unit', 'product__category', 'source_item')
-            ) if draft else []
-            if not draft_items:
-                messages.error(request, 'پیش‌نویس خالی است — چیزی برای ارسال نیست')
-                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+        def _post_int(key):
+            raw = (request.POST.get(key) or '').strip()
+            return int(raw) if raw.isdigit() else None
 
-            has_selection_ui = request.POST.get('has_selection_ui') == '1'
-            if has_selection_ui or 'selected_item_ids' in request.POST:
-                selected_ids = {
-                    int(x) for x in request.POST.getlist('selected_item_ids')
-                    if str(x).strip().isdigit()
-                }
-                draft_items = [d for d in draft_items if d.id in selected_ids]
+        if action == 'send':
+            with transaction.atomic():
+                draft = PurchaseDraft.objects.select_for_update().filter(
+                    cafe=cafe, created_by=request.user
+                ).first()
+                draft_items = list(
+                    draft.items.select_related('product', 'product__unit', 'product__category', 'source_item')
+                ) if draft else []
                 if not draft_items:
-                    messages.error(request, 'لطفاً حداقل یک قلم را برای ارسال انتخاب کنید')
+                    messages.error(request, 'پیش‌نویس خالی است — چیزی برای ارسال نیست')
                     return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            officer_raw = (request.POST.get('officer_user_id') or '').strip()
-            if has_selection_ui and not officer_raw:
-                messages.error(request, 'لطفاً مسئول خرید یا «خرید توسط خودم» را انتخاب کنید')
-                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                has_selection_ui = request.POST.get('has_selection_ui') == '1'
+                if has_selection_ui or 'selected_item_ids' in request.POST:
+                    selected_ids = {
+                        int(x) for x in request.POST.getlist('selected_item_ids')
+                        if str(x).strip().isdigit()
+                    }
+                    draft_items = [d for d in draft_items if d.id in selected_ids]
+                    if not draft_items:
+                        messages.error(request, 'لطفاً حداقل یک قلم را برای ارسال انتخاب کنید')
+                        return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            target_officer, is_self_buy, err_msg = _resolve_purchasing_target_officer(
-                cafe, request.user, officer_raw)
-            if err_msg:
-                messages.error(request, err_msg)
-                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                officer_raw = (request.POST.get('officer_user_id') or '').strip()
+                if has_selection_ui and not officer_raw:
+                    messages.error(request, 'لطفاً مسئول خرید یا «خرید توسط خودم» را انتخاب کنید')
+                    return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            with transaction.atomic():
+                target_officer, is_self_buy, err_msg = _resolve_purchasing_target_officer(
+                    cafe, request.user, officer_raw)
+                if err_msg:
+                    messages.error(request, err_msg)
+                    return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+
                 ceo_req, direct_req, ceo_items, direct_items = _dispatch_warehouse_purchase_items(
                     cafe=cafe,
                     request_user=request.user,
@@ -6530,9 +6560,10 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action == 'edit_item':
+            item_pk = _post_int('item_id')
             d_item = PurchaseDraftItem.objects.filter(
-                id=request.POST.get('item_id', '') or -1, draft__cafe=cafe,
-                draft__created_by=request.user).select_related('draft').first()
+                id=item_pk, draft__cafe=cafe,
+                draft__created_by=request.user).select_related('draft').first() if item_pk else None
             qty = _parse_decimal(request.POST.get('quantity', ''))
             if d_item is None:
                 messages.error(request, 'قلم پیش‌نویس یافت نشد')
@@ -6568,116 +6599,132 @@ def warehouse_purchase_draft(request: HttpRequest) -> HttpResponse:
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action == 'delete_item':
-            d_item = PurchaseDraftItem.objects.filter(
-                id=request.POST.get('item_id', '') or -1, draft__cafe=cafe,
-                draft__created_by=request.user).first()
-            if d_item:
+            item_pk = _post_int('item_id')
+            if not item_pk:
+                messages.error(request, 'قلم پیش‌نویس یافت نشد')
+                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+            with transaction.atomic():
+                d_item = PurchaseDraftItem.objects.select_for_update().filter(
+                    id=item_pk, draft__cafe=cafe,
+                    draft__created_by=request.user).first()
+                if not d_item:
+                    messages.error(request, 'قلم پیش‌نویس یافت نشد')
+                    return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
                 name = d_item.name
                 source_item = d_item.source_item
-                d_item.delete()
                 if source_item:
                     try:
                         reopen_officer_assignments(
                             source_item, cafe=cafe, reopened_by=request.user,
                             reason='حذف از لیست خرید و بازگشت به لیست انبار')
                         _sync_request_status(source_item.request)
-                    except Exception:
-                        pass
+                    except (ReopenNotAllowedError, StockScopeError,
+                            InsufficientStockError, InventoryServiceError) as exc:
+                        transaction.set_rollback(True)
+                        messages.error(request, f'بازگشت به لیست انبار ناموفق بود: {exc}')
+                        return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                d_item.delete()
                 draft = PurchaseDraft.objects.filter(cafe=cafe, created_by=request.user).first()
                 if draft and not draft.items.exists():
                     draft.delete()
-                msg = f'«{name}» از پیش‌نویس حذف شد'
-                if source_item:
-                    msg += ' و به لیست انبار بازگشت'
-                messages.info(request, msg)
-            else:
-                messages.error(request, 'قلم پیش‌نویس یافت نشد')
+            msg = f'«{name}» از پیش‌نویس حذف شد'
+            if source_item:
+                msg += ' و به لیست انبار بازگشت'
+            messages.info(request, msg)
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action == 'discard_draft':
-            draft = PurchaseDraft.objects.filter(cafe=cafe, created_by=request.user).first()
-            if draft:
-                has_source = False
-                for di in list(draft.items.filter(source_item__isnull=False)):
-                    has_source = True
-                    try:
-                        reopen_officer_assignments(
-                            di.source_item, cafe=cafe, reopened_by=request.user,
-                            reason='حذف از لیست خرید و بازگشت به لیست انبار')
-                        _sync_request_status(di.source_item.request)
-                    except Exception:
-                        pass
-                draft.delete()
-                msg = 'پیش‌نویس حذف شد'
-                if has_source:
-                    msg += ' و اقلام ارجاعی به لیست انبار بازگشتند'
-                messages.info(request, msg)
+            with transaction.atomic():
+                draft = PurchaseDraft.objects.select_for_update().filter(
+                    cafe=cafe, created_by=request.user
+                ).first()
+                if draft:
+                    has_source = False
+                    for di in list(draft.items.filter(source_item__isnull=False)):
+                        has_source = True
+                        try:
+                            reopen_officer_assignments(
+                                di.source_item, cafe=cafe, reopened_by=request.user,
+                                reason='حذف از لیست خرید و بازگشت به لیست انبار')
+                            _sync_request_status(di.source_item.request)
+                        except (ReopenNotAllowedError, StockScopeError,
+                                InsufficientStockError, InventoryServiceError) as exc:
+                            transaction.set_rollback(True)
+                            messages.error(request, f'بازگشت اقلام به لیست انبار ناموفق بود: {exc}')
+                            return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                    draft.delete()
+                    msg = 'پیش‌نویس حذف شد'
+                    if has_source:
+                        msg += ' و اقلام ارجاعی به لیست انبار بازگشتند'
+                    messages.info(request, msg)
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
         elif action in ('edit_sent', 'delete_sent'):
             # ویرایش/حذف اقلام درخواست‌های ارسال‌شده فقط تا قبل از تایید مدیرعامل.
-            # بعد از تایید مدیرعامل، درخواست به واحد خرید (ثبت سفارش خرید) می‌رود
-            # و دیگر در این صفحه تغییرپذیر نیست.
-            req = PurchaseRequest.objects.filter(
-                id=request.POST.get('request_id', '') or -1,
-                source='warehouse_purchase',
-                status='pending_manager_approval',
-            ).select_related('user').first()
-            if req is None or (cafe and req.cafe_id != cafe.id):
-                messages.error(request, 'درخواست یافت نشد یا دیگر قابل ویرایش نیست (پس از تایید مدیرعامل)')
+            req_pk = _post_int('request_id')
+            item_pk = _post_int('item_id')
+            if not req_pk or not item_pk:
+                messages.error(request, 'درخواست یا قلم نامعتبر است')
                 return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+            with transaction.atomic():
+                req = PurchaseRequest.objects.select_for_update().filter(
+                    id=req_pk,
+                    source='warehouse_purchase',
+                    status='pending_manager_approval',
+                ).select_related('user').first()
+                if req is None or (cafe and req.cafe_id != cafe.id):
+                    messages.error(request, 'درخواست یافت نشد یا دیگر قابل ویرایش نیست (پس از تایید مدیرعامل)')
+                    return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
-            if action == 'edit_sent':
-                item = req.items.filter(id=request.POST.get('item_id', '') or -1).first()
-                qty = _parse_decimal(request.POST.get('quantity', ''))
-                if item is None:
-                    messages.error(request, 'قلم یافت نشد')
-                elif qty is None or qty <= 0 or qty > 99999999:
-                    messages.error(request, 'مقدار باید عدد مثبت باشد')
-                else:
-                    has_name_field = any(k in request.POST for k in ('product_id', 'name', 'new_name'))
-                    if has_name_field:
-                        raw_name = (request.POST.get('name', '') or request.POST.get('new_name', '') or '').strip()
-                        raw_pid = request.POST.get('product_id', '')
-                        new_product = _resolve_draft_product(cafe, raw_pid, raw_name)
-                        if new_product is None and not raw_name:
-                            messages.error(request, 'نام کالا را وارد کنید')
-                            return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
-                        if inactive_product_error(new_product):
-                            messages.error(request, inactive_product_error(new_product))
-                            return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
-                        item.product = new_product
-                        item.name = new_product.name if new_product else raw_name
-
-                    new_unit = (request.POST.get('unit', '') or '').strip()
-                    if new_unit:
-                        item.unit = new_unit
-                    elif has_name_field and item.product and item.product.unit:
-                        item.unit = item.product.unit.name
-
-                    item.quantity = qty
-                    desc = request.POST.get('description')
-                    if desc is not None:
-                        item.description = desc.strip()
-                    item.save()
-                    messages.success(request, f'«{item.product.name if item.product else item.name}» ویرایش شد')
-            else:  # delete_sent
-                item = req.items.filter(id=request.POST.get('item_id', '') or -1).first()
-                if item is None:
-                    messages.error(request, 'قلم یافت نشد')
-                else:
-                    name = item.product.name if item.product else item.name
-                    item.delete()
-                    if not req.items.exists():
-                        # درخواست خالی‌شده حذف نمی‌شود: در صف مدیرعامل می‌ماند تا
-                        # خودِ مدیرعامل آن را تعیین‌تکلیف کند (تایید/رد).
-                        messages.info(
-                            request,
-                            f'«{name}» حذف شد — درخواست اکنون بدون قلم است و از صف '
-                            'مدیرعامل حذف نمی‌شود؛ برای حذف کامل، از مدیرعامل بخواهید آن را رد کند.'
-                        )
+                if action == 'edit_sent':
+                    item = req.items.select_for_update().filter(id=item_pk).first()
+                    qty = _parse_decimal(request.POST.get('quantity', ''))
+                    if item is None:
+                        messages.error(request, 'قلم یافت نشد')
+                    elif qty is None or qty <= 0 or qty > 99999999:
+                        messages.error(request, 'مقدار باید عدد مثبت باشد')
                     else:
-                        messages.info(request, f'«{name}» از درخواست حذف شد')
+                        has_name_field = any(k in request.POST for k in ('product_id', 'name', 'new_name'))
+                        if has_name_field:
+                            raw_name = (request.POST.get('name', '') or request.POST.get('new_name', '') or '').strip()
+                            raw_pid = request.POST.get('product_id', '')
+                            new_product = _resolve_draft_product(cafe, raw_pid, raw_name)
+                            if new_product is None and not raw_name:
+                                messages.error(request, 'نام کالا را وارد کنید')
+                                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                            if inactive_product_error(new_product):
+                                messages.error(request, inactive_product_error(new_product))
+                                return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
+                            item.product = new_product
+                            item.name = new_product.name if new_product else raw_name
+
+                        new_unit = (request.POST.get('unit', '') or '').strip()
+                        if new_unit:
+                            item.unit = new_unit
+                        elif has_name_field and item.product and item.product.unit:
+                            item.unit = item.product.unit.name
+
+                        item.quantity = qty
+                        desc = request.POST.get('description')
+                        if desc is not None:
+                            item.description = desc.strip()
+                        item.save()
+                        messages.success(request, f'«{item.product.name if item.product else item.name}» ویرایش شد')
+                else:  # delete_sent
+                    item = req.items.select_for_update().filter(id=item_pk).first()
+                    if item is None:
+                        messages.error(request, 'قلم یافت نشد')
+                    else:
+                        name = item.product.name if item.product else item.name
+                        item.delete()
+                        if not req.items.exists():
+                            messages.info(
+                                request,
+                                f'«{name}» حذف شد — درخواست اکنون بدون قلم است و از صف '
+                                'مدیرعامل حذف نمی‌شود؛ برای حذف کامل، از مدیرعامل بخواهید آن را رد کند.'
+                            )
+                        else:
+                            messages.info(request, f'«{name}» از درخواست حذف شد')
             return redirect('warehouse_purchase_draft', cafe_code=cafe_code)
 
     # ── پیش‌نویس جاری ──
@@ -6857,8 +6904,10 @@ def purchase_orders_status(request: HttpRequest) -> HttpResponse:
                     _sync_request_status(assignment.item.request)
                     messages.success(request, f'وضعیت «{assignment.item.name}» به‌روز شد.')
             elif action == 'reassign':
-                officer_id = request.POST.get('officer_id', '')
-                officer = User.objects.filter(id=int(officer_id), is_active=True).first() if officer_id else None
+                officer_id = (request.POST.get('officer_id') or '').strip()
+                officer = None
+                if officer_id.isdigit():
+                    officer = _officer_users(cafe, assignment.target_role).filter(id=int(officer_id)).first()
                 if officer and _officer_can_role(officer, assignment.target_role):
                     assignment.assigned_to = officer
                     assignment.save()
@@ -7019,14 +7068,25 @@ def all_departments_requests(request):
 
     # ── پردازش فرم: ارسال به مسئول / حذف قلم / ویرایش قلم ──
     if request.method == 'POST':
+        can_mutate = (
+            request.user.is_superuser
+            or request.user.role in ('manager', 'ceo', 'admin')
+        )
+        if not can_mutate:
+            return HttpResponseForbidden('فقط مدیر یا مدیرعامل مجاز به انجام این عملیات است.')
         action = request.POST.get('action', '')
         if request_type == 'purchase':
             if action == 'send':
                 item_ids = [i for i in request.POST.get('item_ids', '').split(',') if i.strip().isdigit()]
-                officer_id = request.POST.get('officer_user_id', '')
+                officer_id = request.POST.get('officer_user_id', '').strip()
                 officer = None
-                if officer_id.strip().isdigit():
-                    officer = User.objects.filter(id=int(officer_id), is_active=True).first()
+                if officer_id.isdigit():
+                    officer_qs = User.objects.filter(id=int(officer_id), is_active=True)
+                    if cafe:
+                        officer_qs = officer_qs.filter(
+                            Q(cafe=cafe) | Q(cafe__isnull=True, role__in=User.CAFE_SELECTION_ROLES)
+                        )
+                    officer = officer_qs.first()
                 # «خرید توسط خودم»: مدیرعامل/مدیر قلم را برای خودش نگه می‌دارد
                 # (به «لیست خرید من» خودش می‌رود، نه به مسئول خرید)
                 is_self_buy = (
@@ -7832,6 +7892,7 @@ def request_management_warehouse_pdf(request: HttpRequest) -> HttpResponse:
 # ---------------------------------------------------------------------------
 
 @custom_login_required
+@role_required(["kitchen", "bar", "counter", "store", "cashier", "facilities", "purchasing", "warehouse", "manager", "ceo", "requester"])
 def quick_add_product(request):
     """Create a new Product on-the-fly from the request form.
 
@@ -7848,11 +7909,13 @@ def quick_add_product(request):
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
 
-    name = data.get('name', '').strip()
-    unit_name = data.get('unit', 'عدد').strip()
-    usage_location = data.get('usage_location', '').strip()
-    description = data.get('description', '').strip()
+    name = str(data.get('name') or '').strip()
+    unit_name = str(data.get('unit') or 'عدد').strip() or 'عدد'
+    usage_location = str(data.get('usage_location') or '').strip()
+    description = str(data.get('description') or '').strip()
 
     if not name:
         return JsonResponse({'success': False, 'error': 'نام کالا الزامی است'})
@@ -7956,8 +8019,10 @@ def quick_add_department(request):
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({'success': False, 'error': 'درخواست نامعتبر است'}, status=400)
 
-    name = data.get('name', '').strip()
+    name = str(data.get('name') or '').strip()
 
     if not name:
         return JsonResponse({'success': False, 'error': 'نام بخش الزامی است'})

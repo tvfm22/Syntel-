@@ -30,6 +30,10 @@ API عمومی:
 <div class="cogs-modal" id="recipeModal">
     <div class="cogs-modal-box is-wide">
         <div class="cogs-modal-head">
+            <button type="button" class="recipe-back-btn" id="btnRecipeBack" title="بازگشت به آیتم قبلی">
+                <i class="fas fa-arrow-right"></i>
+                <span id="recipeBackLabel">بازگشت</span>
+            </button>
             <div>
                 <h3 id="recipeTitle">ویرایش رسپی</h3>
                 <div class="modal-sub" id="recipeSub">—</div>
@@ -62,6 +66,7 @@ API عمومی:
 
             <div class="recipe-lines-head">
                 <h4><i class="fas fa-list"></i> مواد اولیه و نیمه‌آماده‌های مصرفی</h4>
+                <span class="recipe-lines-hint">برای مشاهده اقلام هر نیمه‌آماده روی برچسب آن کلیک کنید</span>
                 <button type="button" class="btn-sm is-primary" id="btnAddLine" style="margin-inline-start:auto;">
                     <i class="fas fa-plus"></i> افزودن سطر
                 </button>
@@ -141,15 +146,41 @@ API عمومی:
 
     /* ---------- وضعیت ---------- */
     let currentItem = null;
+    let currentItemName = '';
+    let navHistory = [];
     let materials = [];
     let materialMap = {};
     let lineSeq = 0;
     let onSaved = () => window.location.reload();
 
-    function badgeFor(kind) {
-        return kind === 'raw'
-            ? '<span class="line-badge is-raw">کالا / ماده اولیه</span>'
-            : '<span class="line-badge is-prep">نیمه‌آماده</span>';
+    const esc = s => String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    function badgeFor(mat) {
+        if (!mat) return '';
+        if (mat.kind === 'raw') {
+            return '<span class="line-badge is-raw">کالا / ماده اولیه</span>';
+        }
+        const isDish = mat.kind === 'dish';
+        const cls = isDish ? 'is-dish' : 'is-prep';
+        const label = isDish ? 'غذای منو' : 'نیمه‌آماده';
+        return `<button type="button" class="line-badge ${cls} is-link" data-open-sub="${esc(mat.id)}" title="مشاهده اقلام «${esc(mat.name)}»"><i class="fas fa-arrow-up-right-from-square"></i> ${label}</button>`;
+    }
+
+    function updateNavHeader() {
+        const backBtn = document.getElementById('btnRecipeBack');
+        const backLbl = document.getElementById('recipeBackLabel');
+        if (!backBtn) return;
+        if (navHistory.length) {
+            const prev = navHistory[navHistory.length - 1];
+            backLbl.textContent = prev.name ? `بازگشت به «${prev.name}»` : 'بازگشت';
+            backBtn.classList.add('is-visible');
+        } else {
+            backBtn.classList.remove('is-visible');
+        }
     }
 
     function materialOptionsHtml(selectedId) {
@@ -169,6 +200,10 @@ API عمومی:
                 html += `<option value="${m.id}"${String(m.id) === String(selectedId) ? ' selected' : ''}>${m.name}</option>`;
             });
             html += '</optgroup>';
+        }
+        if (selectedId && materialMap[String(selectedId)] && materialMap[String(selectedId)].kind === 'dish') {
+            const dMat = materialMap[String(selectedId)];
+            html += `<optgroup label="غذای منو"><option value="${dMat.id}" selected>${dMat.name}</option></optgroup>`;
         }
         return html;
     }
@@ -239,7 +274,7 @@ API عمومی:
         const perUnit = total / outQty;
         document.getElementById('recipeTotal').textContent = money(perUnit);
         document.getElementById('recipeTotalUnit').textContent =
-            'تومان به ازای هر ۱ ' + (document.getElementById('rOutUnit').value || 'واحد');
+            'ریال به ازای هر ۱ ' + (document.getElementById('rOutUnit').value || 'واحد');
     }
 
     function addLineRow(data) {
@@ -276,7 +311,7 @@ API عمومی:
         const syncBadge = () => {
             const mat = materialMap[matSel.value];
             const holder = row.querySelector('.line-kind');
-            holder.innerHTML = mat ? badgeFor(mat.kind) : '';
+            holder.innerHTML = badgeFor(mat);
             if (mat && !unitSel.value) unitSel.value = mat.unit || '';
         };
         syncBadge();
@@ -304,9 +339,14 @@ API عمومی:
         sel.innerHTML = html;
     }
 
-    function openRecipe(itemId) {
+    function loadRecipe(itemId, options) {
         if (!itemId) return;
+        const keepHistory = options && options.keepHistory;
+        if (!keepHistory) navHistory = [];
+
         currentItem = itemId;
+        currentItemName = '';
+        updateNavHeader();
         const url = RECIPE_URL.replace('999999', itemId);
         document.getElementById('recipeAlert').classList.remove('is-open');
         document.getElementById('recipeLines').innerHTML = '';
@@ -320,15 +360,22 @@ API عمومی:
             .then(r => r.json())
             .then(data => {
                 if (!data.ok) throw new Error(data.error || 'خطا در دریافت رسپی');
+                if (String(currentItem) !== String(itemId)) return;
                 const item = data.item;
+                currentItemName = item.name || '';
                 materials = data.materials || [];
                 materialMap = {};
                 materials.forEach(m => { materialMap[String(m.id)] = m; });
+                (data.extra_materials || []).forEach(m => { materialMap[String(m.id)] = m; });
 
+                const trail = navHistory.length
+                    ? ' · مسیر: ' + navHistory.map(h => h.name).concat([item.name]).join(' › ')
+                    : '';
                 document.getElementById('recipeTitle').textContent = 'ویرایش رسپی — ' + item.name;
                 document.getElementById('recipeSub').textContent =
                     (item.kind === 'prep' ? 'نیمه‌آماده' : 'غذای منو') +
-                    (item.cost_per ? ' · بهای فعلی ' + money(item.cost_per) + ' تومان' : '');
+                    (item.cost_per ? ' · بهای فعلی ' + money(item.cost_per) + ' ریال' : '') +
+                    trail;
                 document.getElementById('rName').value = item.name;
                 document.getElementById('rOutQty').value = item.out_qty;
                 fillSelect(document.getElementById('rOutUnit'),
@@ -348,6 +395,26 @@ API عمومی:
                 box.classList.add('is-open');
             });
     }
+
+    function openRecipe(itemId) {
+        loadRecipe(itemId, { keepHistory: false });
+    }
+
+    document.getElementById('recipeLines').addEventListener('click', e => {
+        const subBtn = e.target.closest('[data-open-sub]');
+        if (!subBtn) return;
+        const subId = subBtn.dataset.openSub;
+        if (!subId || String(subId) === String(currentItem)) return;
+        const curName = (document.getElementById('rName').value || currentItemName || '').trim();
+        navHistory.push({ id: currentItem, name: curName });
+        loadRecipe(subId, { keepHistory: true });
+    });
+
+    document.getElementById('btnRecipeBack').addEventListener('click', () => {
+        if (!navHistory.length) return;
+        const prev = navHistory.pop();
+        loadRecipe(prev.id, { keepHistory: true });
+    });
 
     document.getElementById('btnAddLine').addEventListener('click', () => addLineRow(null));
     document.getElementById('rOutQty').addEventListener('input', recalcTotal);

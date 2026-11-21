@@ -38,17 +38,32 @@
             } else {
                 matches = SUPPLIERS.slice(0, 20);  // بدون جستجو: لیست تا ۲۰ مورد
             }
-            if (!matches.length) { dropdown.classList.remove('show'); dropdown.innerHTML = ''; return; }
-            dropdown.innerHTML = matches.map(function(s) {
+            dropdown.replaceChildren();
+            if (!matches.length) { dropdown.classList.remove('show'); return; }
+            var frag = document.createDocumentFragment();
+            matches.forEach(function(s) {
+                var item = document.createElement('div');
+                item.className = 'sup-item';
+                item.dataset.id = String(s.id);
+
+                var nameEl = document.createElement('div');
+                nameEl.className = 'sup-item-name';
+                nameEl.textContent = s.name || '';
+                item.appendChild(nameEl);
+
                 var extra = [];
                 if (s.bank_name) extra.push(s.bank_name);
                 if (s.card_number) extra.push('کارت: ' + s.card_number);
                 if (s.sheba_number) extra.push('شبا: ' + s.sheba_number);
-                return '<div class="sup-item" data-id="' + s.id + '">'
-                     + '<div class="sup-item-name">' + s.name + '</div>'
-                     + (extra.length ? '<div class="sup-item-bank">' + extra.join(' • ') + '</div>' : '')
-                     + '</div>';
-            }).join('');
+                if (extra.length) {
+                    var bankEl = document.createElement('div');
+                    bankEl.className = 'sup-item-bank';
+                    bankEl.textContent = extra.join(' • ');
+                    item.appendChild(bankEl);
+                }
+                frag.appendChild(item);
+            });
+            dropdown.appendChild(frag);
             dropdown.classList.add('show');
         }
 
@@ -56,7 +71,7 @@
             input.value = s.name;
             hidden.value = s.id;
             dropdown.classList.remove('show');
-            dropdown.innerHTML = '';
+            dropdown.replaceChildren();
         }
 
         input.addEventListener('input', function() {

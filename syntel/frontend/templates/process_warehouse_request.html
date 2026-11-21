@@ -201,22 +201,47 @@
         }
         const q = query.toLowerCase();
         const filtered = allStockItems.filter(s => s.product_name.toLowerCase().includes(q));
+        resultsDiv.replaceChildren();
         if (filtered.length === 0) {
-            resultsDiv.innerHTML = '<div style="color:var(--text-muted); font-size:13px; padding:8px;">محصولی یافت نشد</div>';
+            const empty = document.createElement('div');
+            empty.style.cssText = 'color:var(--text-muted); font-size:13px; padding:8px;';
+            empty.textContent = 'محصولی یافت نشد';
+            resultsDiv.appendChild(empty);
             return;
         }
-        resultsDiv.innerHTML = filtered.slice(0, 15).map(s => `
-            <div class="stock-result-item" id="result-${itemId}-${s.id}" onclick="selectStock('${itemId}', ${s.id}, '${s.product_name.replace(/'/g,"\\'")}', ${s.quantity}, '${s.unit}', '${s.warehouse}')">
-                <span>
-                    <span class="stock-name">${s.product_name}</span><br>
-                    <span class="stock-warehouse">انبار: ${s.warehouse}</span>
-                </span>
-                <div style="text-align:left">
-                    <span class="stock-qty">${s.quantity}</span><br>
-                    <span class="stock-warehouse">${s.unit}</span>
-                </div>
-            </div>
-        `).join('');
+        filtered.slice(0, 15).forEach(s => {
+            const row = document.createElement('div');
+            row.className = 'stock-result-item';
+            row.id = `result-${itemId}-${s.id}`;
+            row.addEventListener('click', () => selectStock(itemId, s.id, s.product_name, s.quantity, s.unit, s.warehouse));
+
+            const leftSpan = document.createElement('span');
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'stock-name';
+            nameSpan.textContent = s.product_name;
+            const whSpan = document.createElement('span');
+            whSpan.className = 'stock-warehouse';
+            whSpan.textContent = `انبار: ${s.warehouse}`;
+            leftSpan.appendChild(nameSpan);
+            leftSpan.appendChild(document.createElement('br'));
+            leftSpan.appendChild(whSpan);
+
+            const rightDiv = document.createElement('div');
+            rightDiv.style.textAlign = 'left';
+            const qtySpan = document.createElement('span');
+            qtySpan.className = 'stock-qty';
+            qtySpan.textContent = s.quantity;
+            const unitSpan = document.createElement('span');
+            unitSpan.className = 'stock-warehouse';
+            unitSpan.textContent = s.unit;
+            rightDiv.appendChild(qtySpan);
+            rightDiv.appendChild(document.createElement('br'));
+            rightDiv.appendChild(unitSpan);
+
+            row.appendChild(leftSpan);
+            row.appendChild(rightDiv);
+            resultsDiv.appendChild(row);
+        });
     }
 
     function selectStock(itemId, stockId, name, qty, unit, warehouse) {

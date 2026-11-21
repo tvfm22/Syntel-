@@ -13,7 +13,6 @@
     در `KukerItemCostHistory` ثبت می‌گردد.
 """
 import json
-from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlencode
 
@@ -22,10 +21,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Q
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 # Fallback-safe references for COGS menu workbook
@@ -42,8 +42,8 @@ from .services.menu_cogs import (
 )
 from .services.product_sync import sync_raw_material
 from .services.units import (
-    is_bigger_than_smallest, normalize_package_price, normalize_to_smallest_unit,
-    smallest_unit_of, units_are_compatible,
+    convert_quantity_to_smallest_unit, is_bigger_than_smallest, normalize_package_price,
+    normalize_to_smallest_unit, smallest_unit_of, units_are_compatible,
 )
 from .views import (
     custom_login_required, get_cafe_from_request, get_scoped_object_or_404, role_required,
@@ -72,7 +72,10 @@ def _to_decimal(value):
     if not text:
         return None
     try:
-        return Decimal(text)
+        dec = Decimal(text)
+        if not dec.is_finite():
+            return None
+        return dec
     except InvalidOperation:
         return None
 
@@ -100,7 +103,7 @@ def _read_jalali(source, prefix):
 
 
 def _current_jalali_month():
-    today = date.today()
+    today = timezone.localdate()
     j_today = jdatetime.date.fromgregorian(date=today)
     start = jdatetime.date(j_today.year, j_today.month, 1).togregorian()
     return start, today
@@ -123,9 +126,13 @@ def _jalali_text(dt, with_time=False):
 
 
 def _back(request, fallback='cogs_menu_list'):
-    """Redirect back to a COGS page inside the current cafe."""
-    nxt = request.POST.get('next') or request.GET.get('next')
-    if nxt:
+    """Redirect back to a COGS page inside the current cafe (Open Redirect safe)."""
+    nxt = (request.POST.get('next') or request.GET.get('next') or '').strip()
+    if nxt and url_has_allowed_host_and_scheme(
+        nxt,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return redirect(nxt)
     cafe = getattr(request, 'cafe', None) or get_cafe_from_request(request)
     code = getattr(cafe, 'code', None)
@@ -157,22 +164,34 @@ def _unique_key(name, cafe=None):
 
 
 def _has_cycle(start_id, cafe=None):
-    """True if the recipe graph contains a cycle reachable from start_id."""
+    """3-color iterative DFS: True if the recipe graph contains a cycle reachable from start_id."""
     edges = {}
     lines = KukerRecipeLine.objects.all()
     if cafe is not None:
         lines = lines.filter(item__cafe=cafe)
     for item_id, material_id in lines.values_list('item_id', 'material_id'):
-        edges.setdefault(item_id, set()).add(material_id)
-    stack, seen = [(start_id, {start_id})], set()
+        edges.setdefault(item_id, []).append(material_id)
+
+    state = {}  # node_id -> 1 (visiting/gray) | 2 (visited/black)
+    stack = [(start_id, 0)]
     while stack:
-        node, path = stack.pop()
-        for nxt in edges.get(node, ()):
-            if nxt in path:
+        node, idx = stack.pop()
+        neighbors = edges.get(node, ())
+        if idx == 0:
+            st = state.get(node, 0)
+            if st == 2:
+                continue
+            state[node] = 1
+        if idx < len(neighbors):
+            stack.append((node, idx + 1))
+            nxt = neighbors[idx]
+            st = state.get(nxt, 0)
+            if st == 1:
                 return True
-            if nxt not in seen:
-                seen.add(nxt)
-                stack.append((nxt, path | {nxt}))
+            if st == 0:
+                stack.append((nxt, 0))
+        else:
+            state[node] = 2
     return False
 
 
@@ -269,6 +288,8 @@ def _group_items(rows, sections, kind, fixed_names):
 @role_required(['admin'])
 def cogs_menu_list(request):
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
     ensure_default_menu_sections(cafe)
 
     graph = MenuGraph.from_db(cafe=cafe)
@@ -423,12 +444,12 @@ def _price_preview(resolved, item_name=''):
 
     amount = resolved['entered_amount']
     if resolved['package_size']:
-        entered = (f'{_fa_num(amount)} تومان برای بستهٔ '
+        entered = (f'{_fa_num(amount)} ریال برای بستهٔ '
                    f'{_fa_num(resolved["package_size"], 3)} {resolved["package_unit"]}')
     else:
-        entered = f'{_fa_num(amount)} تومان برای ۱ {resolved["entered_unit"]}'
+        entered = f'{_fa_num(amount)} ریال برای ۱ {resolved["entered_unit"]}'
 
-    stored = f'{_fa_num(resolved["price"])} تومان به ازای هر ۱ {resolved["smallest_unit"]}'
+    stored = f'{_fa_num(resolved["price"])} ریال به ازای هر ۱ {resolved["smallest_unit"]}'
     return {
         'ok': True,
         'item': item_name,
@@ -711,6 +732,8 @@ def _create_menu_item(cafe, data):
 def cogs_manage_items(request):
     """صفحهٔ ۲ — افزودن آیتم، مدیریت بخش‌ها و ورود قیمت مواد اولیه."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
 
     if request.method == 'POST':
         action = (request.POST.get('action') or 'add').strip()
@@ -881,8 +904,11 @@ def _create_raw_item(request, cafe):
 
 def _update_item_price(request, cafe):
     """به‌روزرسانی قیمت یک ماده اولیه + هم‌گام‌سازی انبار + ثبت تاریخچه بها."""
-    item = KukerItem.objects.filter(
-        cafe=cafe, pk=request.POST.get('item_id'), kind=KukerItem.KIND_RAW).first()
+    item_pk = _as_int(request.POST.get('item_id'))
+    item = (
+        KukerItem.objects.filter(cafe=cafe, pk=item_pk, kind=KukerItem.KIND_RAW).first()
+        if item_pk else None
+    )
     if item is None:
         if _wants_json(request):
             return JsonResponse({'ok': False, 'error': 'کالای موردنظر پیدا نشد.'},
@@ -916,7 +942,7 @@ def _update_item_price(request, cafe):
     verb = 'به‌روز شد' if changed else 'تغییری نکرد'
     messages.success(
         request,
-        f'قیمت «{item.name}» {verb} — {_fa_num(item.price)} تومان به ازای هر ۱ '
+        f'قیمت «{item.name}» {verb} — {_fa_num(item.price)} ریال به ازای هر ۱ '
         f'{item.out_unit or "واحد"}.')
     if _wants_json(request):
         return JsonResponse({
@@ -949,7 +975,9 @@ def _raw_item_payload(item, product):
 @role_required(['admin'])
 def cogs_price_preview(request):
     """پیش‌نمایش زندهٔ تبدیل قیمت، بدون ذخیره‌کردن چیزی."""
-    get_cafe_from_request(request)      # فقط برای اطمینان از کافهٔ فعال
+    cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404)
     resolved = _resolve_price_input(
         request.GET.get('price'), request.GET.get('unit') or 'kg',
         request.GET.get('package_size'), request.GET.get('package_unit'))
@@ -963,6 +991,8 @@ def cogs_price_preview(request):
 def cogs_raw_material_create(request):
     """ساخت ماده اولیه (Product + KukerItem) از مودال صفحهٔ ۲."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404)
     item, product, error = _create_raw_material(cafe, request.POST, request.user)
     if error:
         return JsonResponse({'ok': False, 'error': error}, status=400)
@@ -975,8 +1005,13 @@ def cogs_raw_material_create(request):
 def cogs_price_entry(request):
     """ثبت قیمت ماده اولیه با نرمال‌سازی + تاریخچه + عکس‌برداری بها."""
     cafe = get_cafe_from_request(request)
-    item = KukerItem.objects.filter(
-        cafe=cafe, pk=request.POST.get('item_id'), kind=KukerItem.KIND_RAW).first()
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404)
+    item_pk = _as_int(request.POST.get('item_id'))
+    item = (
+        KukerItem.objects.filter(cafe=cafe, pk=item_pk, kind=KukerItem.KIND_RAW).first()
+        if item_pk else None
+    )
     if item is None:
         return JsonResponse({'ok': False, 'error': 'کالای موردنظر پیدا نشد.'}, status=404)
 
@@ -1007,6 +1042,8 @@ def cogs_price_entry(request):
 def cogs_menu_item_create(request):
     """ساخت غذای منو / نیمه‌آماده و برگرداندن شناسه برای باز کردن ویرایشگر رسپی."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404)
     item, error = _create_menu_item(cafe, request.POST)
     if error:
         return JsonResponse({'ok': False, 'error': error}, status=400)
@@ -1032,6 +1069,8 @@ def cogs_menu_item_create(request):
 def cogs_item_price_update(request):
     """ویرایش قیمت یک ماده اولیه از صفحهٔ قیمت‌گذاری."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404) if _wants_json(request) else _back(request)
     return _update_item_price(request, cafe)
 
 
@@ -1157,6 +1196,8 @@ def _filter_options(raw_rows):
 @role_required(['admin'])
 def cogs_consumption_calc(request):
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
     graph = MenuGraph.from_db(cafe=cafe)
     if not graph.items:
         messages.warning(request, 'هنوز منویی برای این کافه وارد نشده است. یک بار دستور '
@@ -1164,7 +1205,7 @@ def cogs_consumption_calc(request):
         return render(request, 'cogs_consumption_calc.html',
                       {'cogs_page': 'consumption', 'has_menu': False})
 
-    today = date.today()
+    today = timezone.localdate()
     default_start, _ = _current_jalali_month()
 
     report = None
@@ -1315,6 +1356,7 @@ def cogs_consumption_calc(request):
         'avg_cost': (cogs['total_cost'] / sold_total) if sold_total else None,
         'dishes_sold': sum(1 for r in cogs['dishes'] if r['qty']),
         'history': history,
+        'unit_choices': UNIT_CHOICES,
     }
     return render(request, 'cogs_consumption_calc.html', context)
 
@@ -1336,17 +1378,32 @@ def cogs_recipe_api(request, item_id):
         cost_per = _item_cost(graph, key, cost_cache)
 
         lines = []
+        extra_materials = []
+        seen_extra = set()
         for ln in item.lines.select_related('material').order_by('id'):
             mat_key = str(ln.material_id)
             if ln.material.kind == KukerItem.KIND_RAW:
                 line_cost = None
+                eff_unit = ln.unit or ln.material.out_unit or ''
                 if ln.fee is not None:
-                    line_cost = Decimal(str(ln.quantity)) * ln.fee
+                    conv_qty, _ = convert_quantity_to_smallest_unit(ln.quantity, eff_unit)
+                    if conv_qty is not None:
+                        line_cost = conv_qty * ln.fee
                 elif graph.items.get(mat_key, {}).get('price') is not None:
-                    line_cost = Decimal(str(ln.quantity)) * graph.items[mat_key]['price']
+                    line_cost, _ = graph._raw_line_cost(mat_key, ln.quantity, eff_unit)
             else:
                 sub = _item_cost(graph, mat_key, cost_cache)
                 line_cost = (Decimal(str(ln.quantity)) * sub) if sub is not None else None
+                if ln.material.kind == KukerItem.KIND_DISH and ln.material_id not in seen_extra:
+                    seen_extra.add(ln.material_id)
+                    extra_materials.append({
+                        'id': ln.material_id,
+                        'name': ln.material.name,
+                        'kind': ln.material.kind,
+                        'kind_label': KIND_LABELS.get(ln.material.kind, ''),
+                        'unit': ln.material.out_unit or '',
+                        'cost': str(sub) if sub is not None else '',
+                    })
             lines.append({
                 'id': ln.id,
                 'material_id': ln.material_id,
@@ -1375,6 +1432,7 @@ def cogs_recipe_api(request, item_id):
             },
             'lines': lines,
             'materials': _material_options(cafe, graph, cost_cache, exclude_id=item.id),
+            'extra_materials': extra_materials,
             'sections': _sections_payload(cafe, item.kind),
             'unit_choices': UNIT_CHOICES,
         })
@@ -1386,6 +1444,8 @@ def cogs_recipe_api(request, item_id):
         payload = json.loads(request.body.decode('utf-8'))
     except (ValueError, UnicodeDecodeError):
         return JsonResponse({'ok': False, 'error': 'داده ارسالی معتبر نیست.'}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({'ok': False, 'error': 'داده ارسالی معتبر نیست.'}, status=400)
 
     name = (payload.get('name') or '').strip()[:200]
     if name and name != item.name:
@@ -1394,63 +1454,116 @@ def cogs_recipe_api(request, item_id):
             return JsonResponse({'ok': False,
                                  'error': f'آیتم دیگری با نام «{name}» وجود دارد.'}, status=400)
 
-    out_qty = _to_decimal(payload.get('out_qty')) or Decimal('1')
+    raw_out_qty = payload.get('out_qty')
+    if raw_out_qty is not None and str(raw_out_qty).strip() != '':
+        out_qty = _to_decimal(raw_out_qty)
+        if out_qty is None or out_qty <= 0:
+            return JsonResponse({'ok': False, 'error': 'مقدار خروجی باید بزرگ‌تر از صفر باشد.'}, status=400)
+    else:
+        out_qty = Decimal('1')
     out_unit = (payload.get('out_unit') or '').strip()[:20]
-    if out_qty <= 0:
-        return JsonResponse({'ok': False, 'error': 'مقدار خروجی باید بزرگ‌تر از صفر باشد.'}, status=400)
 
-    section_id = payload.get('section_id') or None
+    raw_section_id = payload.get('section_id')
+    section_id = _as_int(raw_section_id)
     section = None
-    if section_id:
+    if raw_section_id not in (None, ''):
+        if not section_id:
+            return JsonResponse({'ok': False, 'error': 'بخش انتخاب‌شده معتبر نیست.'}, status=400)
         section = MenuSection.objects.filter(
             cafe=cafe, pk=section_id, kind=item.kind).first()
         if section is None:
             return JsonResponse({'ok': False, 'error': 'بخش انتخاب‌شده معتبر نیست.'}, status=400)
 
+    raw_lines = payload.get('lines')
+    if raw_lines is None:
+        raw_lines = []
+    if not isinstance(raw_lines, list):
+        return JsonResponse({'ok': False, 'error': 'قالب سطرهای رسپی نامعتبر است.'}, status=400)
+
     cleaned, errors = [], []
-    for idx, line in enumerate(payload.get('lines') or [], 1):
+    for idx, line in enumerate(raw_lines, 1):
+        if not isinstance(line, dict):
+            errors.append(f'سطر {idx}: قالب سطر نامعتبر است.')
+            continue
         qty = _to_decimal(line.get('qty'))
         unit = (line.get('unit') or '').strip()[:20]
         fee = _to_decimal(line.get('fee'))
-        material_id = line.get('material_id')
+        raw_mat_id = line.get('material_id')
+        material_id = _as_int(raw_mat_id)
         line_name = (line.get('name') or '').strip()
         if qty is None or qty <= 0:
             errors.append(f'سطر {idx}: مقدار باید بزرگ‌تر از صفر باشد.')
             continue
-        if material_id:
+        if fee is not None and fee < 0:
+            errors.append(f'سطر {idx}: فی نمی‌تواند منفی باشد.')
+            continue
+        material = None
+        new_raw_spec = None
+        if raw_mat_id not in (None, ''):
+            if not material_id:
+                errors.append(f'سطر {idx}: کالای انتخاب‌شده معتبر نیست.')
+                continue
             material = KukerItem.objects.filter(cafe=cafe, pk=material_id).first()
             if material is None:
                 errors.append(f'سطر {idx}: کالای انتخاب‌شده پیدا نشد.')
                 continue
             if material.kind == KukerItem.KIND_DISH:
-                errors.append(f'سطر {idx}: غذای منو را نمی‌توان به‌عنوان ماده اولیه انتخاب کرد.')
-                continue
+                already_dish_line = (
+                    item.kind == KukerItem.KIND_DISH
+                    and KukerRecipeLine.objects.filter(item=item, material=material).exists()
+                )
+                if not already_dish_line:
+                    errors.append(f'سطر {idx}: غذای منو را نمی‌توان به‌عنوان ماده اولیه انتخاب کرد.')
+                    continue
         elif line_name:
             material = (KukerItem.objects.filter(cafe=cafe, name=line_name).first()
                         or KukerItem.objects.filter(
                             cafe=cafe, key=normalize_name(line_name)).first())
             if material is None:
-                # کالای جدید همین‌جا ساخته می‌شود و با کالای انبار هم‌گام می‌شود
-                material = KukerItem(
-                    cafe=cafe, name=line_name, key=_unique_key(line_name, cafe),
-                    kind=KukerItem.KIND_RAW, out_unit=unit or '',
-                    price=fee if fee is not None else None, is_custom=True)
-                material.save()
-                if fee is not None:
-                    sync_raw_material(material, price=fee, unit=unit)
+                new_raw_spec = (line_name, unit, fee)
         else:
             errors.append(f'سطر {idx}: نام کالا خالی است.')
             continue
-        if material.id == item.id:
-            errors.append(f'سطر {idx}: یک آیتم نمی‌تواند خودش را مصرف کند.')
-            continue
-        cleaned.append((material, qty, unit, fee))
+
+        if material is not None:
+            if material.id == item.id:
+                errors.append(f'سطر {idx}: یک آیتم نمی‌تواند خودش را مصرف کند.')
+                continue
+            if (
+                material.kind == KukerItem.KIND_RAW
+                and material.out_unit
+                and unit
+                and not units_are_compatible(material.out_unit, unit)
+            ):
+                errors.append(
+                    f'سطر {idx}: واحد «{unit}» با واحد پایه «{material.out_unit}» کالای «{material.name}» هم‌خوان نیست.'
+                )
+                continue
+
+        cleaned.append((material, new_raw_spec, qty, unit, fee))
 
     if errors:
         return JsonResponse({'ok': False, 'error': ' '.join(errors[:3])}, status=400)
 
-    used_product_ids = {m.product_id for m, *_ in cleaned if m.product_id}
     with transaction.atomic():
+        resolved_lines = []
+        for material, new_raw_spec, qty, unit, fee in cleaned:
+            if material is None and new_raw_spec is not None:
+                r_name, r_unit, r_fee = new_raw_spec
+                material = (KukerItem.objects.filter(cafe=cafe, name=r_name).first()
+                            or KukerItem.objects.filter(
+                                cafe=cafe, key=normalize_name(r_name)).first())
+                if material is None:
+                    material = KukerItem(
+                        cafe=cafe, name=r_name, key=_unique_key(r_name, cafe),
+                        kind=KukerItem.KIND_RAW, out_unit=r_unit or '',
+                        price=r_fee if r_fee is not None else None, is_custom=True)
+                    material.save()
+                    if r_fee is not None:
+                        sync_raw_material(material, price=r_fee, unit=r_unit)
+            resolved_lines.append((material, qty, unit, fee))
+
+        used_product_ids = {m.product_id for m, *_ in resolved_lines if m.product_id}
         # محصولاتی که پیش‌تر در هیچ رسپیِ این کافه نبودند و الان به رسپی اضافه می‌شوند
         # در سفارش‌گذاری هم به‌صورت خودکار فعال می‌شوند.
         newly_used_product_ids = set()
@@ -1466,7 +1579,7 @@ def cogs_recipe_api(request, item_id):
         KukerRecipeLine.objects.filter(item=item).delete()
         KukerRecipeLine.objects.bulk_create([
             KukerRecipeLine(item=item, material=material, quantity=qty, unit=unit, fee=fee)
-            for material, qty, unit, fee in cleaned
+            for material, qty, unit, fee in resolved_lines
         ])
         if newly_used_product_ids:
             Product.objects.filter(id__in=newly_used_product_ids, is_active=False).update(is_active=True)
@@ -1555,11 +1668,18 @@ def cogs_item_cost_history(request, item_id):
 @require_POST
 def cogs_section_save(request):
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        return JsonResponse({'ok': False, 'error': 'کافهٔ فعال یافت نشد.'}, status=404) if _wants_json(request) else _back(request)
     kind = request.POST.get('kind')
     if kind not in (MenuSection.KIND_DISH, MenuSection.KIND_PREP):
         kind = MenuSection.KIND_DISH
     name = (request.POST.get('name') or '').strip()[:120]
-    section_id = request.POST.get('section_id') or None
+    raw_section_id = request.POST.get('section_id')
+    section_id = _as_int(raw_section_id)
+
+    if raw_section_id and not section_id:
+        payload = {'ok': False, 'error': 'شناسه بخش معتبر نیست.'}
+        return JsonResponse(payload, status=400) if _wants_json(request) else _back(request)
 
     if not name:
         payload = {'ok': False, 'error': 'نام بخش الزامی است.'}
@@ -1577,6 +1697,12 @@ def cogs_section_save(request):
         if section is None:
             payload = {'ok': False, 'error': 'بخش موردنظر پیدا نشد.'}
             return JsonResponse(payload, status=404) if _wants_json(request) else _back(request)
+        if section.name in PREP_SECTION_NAMES and name != section.name:
+            payload = {'ok': False, 'error': 'بخش‌های ثابت آماده‌سازی قابل تغییر نام نیستند.'}
+            if _wants_json(request):
+                return JsonResponse(payload, status=400)
+            messages.error(request, payload['error'])
+            return _back(request)
         old_name = section.name
         section.name = name
         section.save(update_fields=['name'])
@@ -1604,6 +1730,8 @@ def cogs_section_save(request):
 def cogs_item_add(request):
     """تعریف کالای جدید (ماده اولیه) — نام قدیمی، حالا روی صفحهٔ قیمت‌گذاری."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
     return _create_raw_item(request, cafe)
 
 
@@ -1613,6 +1741,8 @@ def cogs_item_add(request):
 def cogs_menu_item_add(request):
     """تعریف غذای جدید یا نیمه‌آماده جدید در منو."""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404('کافهٔ فعال یافت نشد')
     name = (request.POST.get('name') or '').strip()
     if not name:
         messages.error(request, 'نام آیتم الزامی است.')
@@ -1623,7 +1753,14 @@ def cogs_menu_item_add(request):
     kind = request.POST.get('kind') if request.POST.get('kind') in (
         KukerItem.KIND_DISH, KukerItem.KIND_PREP) else KukerItem.KIND_DISH
     sheet = request.POST.get('sheet') if request.POST.get('sheet') in MENU_CHOICES else MENU_CHOICES[0]
-    out_qty = _to_decimal(request.POST.get('out_qty')) or Decimal('1')
+    raw_out_qty = (request.POST.get('out_qty') or '').strip()
+    if raw_out_qty:
+        out_qty = _to_decimal(raw_out_qty)
+        if out_qty is None or out_qty <= 0:
+            messages.error(request, 'مقدار خروجی باید بزرگ‌تر از صفر باشد.')
+            return _back(request)
+    else:
+        out_qty = Decimal('1')
     out_unit = (request.POST.get('out_unit') or 'پرس').strip()[:20]
     # بخش منو: بخش دلخواه کاربر ساخته می‌شود، وگرنه از روی برگه منو
     section = None

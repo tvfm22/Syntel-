@@ -9,6 +9,12 @@
 (function () {
     'use strict';
 
+    function normalizeDigits(value) {
+        return String(value || '')
+            .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 0x06F0); })
+            .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x0660); });
+    }
+
     function pad2(value) {
         return String(value).padStart(2, '0');
     }
@@ -27,42 +33,53 @@
         if (!year || !month || !day) return;
 
         function fillFromHidden() {
-            var raw = String(hidden.value || '').trim();
+            var raw = normalizeDigits(hidden.value).trim();
             if (!raw) return;
             var datePart = raw.split('T')[0].split(' ')[0];
             var parts = datePart.split(/[\/\-]/);
             if (parts.length === 3) {
-                year.value = parts[0];
-                month.value = parts[1];
-                day.value = parts[2];
+                year.value = parts[0].replace(/\D/g, '').slice(0, 4);
+                month.value = parts[1].replace(/\D/g, '').slice(0, 2);
+                day.value = parts[2].replace(/\D/g, '').slice(0, 2);
             }
         }
 
         function combine() {
-            var y = String(year.value || '').trim();
-            var m = String(month.value || '').trim();
-            var d = String(day.value || '').trim();
-            if (y && m && d) {
-                hidden.value = y + '/' + pad2(m) + '/' + pad2(d);
+            var y = normalizeDigits(year.value).replace(/\D/g, '');
+            var m = normalizeDigits(month.value).replace(/\D/g, '');
+            var d = normalizeDigits(day.value).replace(/\D/g, '');
+            if (y.length === 4 && m && d) {
+                var mNum = parseInt(m, 10);
+                var dNum = parseInt(d, 10);
+                if (mNum < 1) mNum = 1;
+                if (mNum > 12) mNum = 12;
+                var maxDay = mNum <= 6 ? 31 : (mNum <= 11 ? 30 : 30);
+                if (dNum < 1) dNum = 1;
+                if (dNum > maxDay) dNum = maxDay;
+                month.value = pad2(mNum);
+                day.value = pad2(dNum);
+                hidden.value = y + '/' + pad2(mNum) + '/' + pad2(dNum);
             } else {
                 hidden.value = '';
             }
         }
 
-        function limit(el, maxLen) {
-            if (el.value.length > maxLen) el.value = el.value.slice(0, maxLen);
+        function cleanInput(el, maxLen) {
+            var cleaned = normalizeDigits(el.value).replace(/\D/g, '');
+            if (cleaned.length > maxLen) cleaned = cleaned.slice(0, maxLen);
+            if (el.value !== cleaned) el.value = cleaned;
         }
 
         year.addEventListener('input', function () {
-            limit(year, 4);
+            cleanInput(year, 4);
             if (year.value.length === 4) month.focus();
         });
         month.addEventListener('input', function () {
-            limit(month, 2);
+            cleanInput(month, 2);
             if (month.value.length === 2) day.focus();
         });
         day.addEventListener('input', function () {
-            limit(day, 2);
+            cleanInput(day, 2);
         });
 
         group.addEventListener('input', combine);

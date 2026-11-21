@@ -1,15 +1,18 @@
 from django import template
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 import jdatetime
 import logging
-from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from purchases.numbering import request_number as request_number_for
 
 logger = logging.getLogger(__name__)
 
 register = template.Library()
+
+_PERSIAN_DIGITS = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
 def _as_local(value):
@@ -44,6 +47,7 @@ def iso_date(value):
     if not value:
         return ''
     try:
+        value = _as_local(value)
         if hasattr(value, 'strftime'):
             return value.strftime('%Y-%m-%d')
         return str(value)
@@ -56,14 +60,17 @@ def number_format(value):
     """
     Format a number with thousand separators (comma) and Persian numerals
     """
-    if value is None:
-        return '0'
+    if value is None or value == '':
+        return '۰'
 
     try:
-        formatted = "{:,.0f}".format(float(value))
-        persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
-        return formatted.translate(persian_digits)
-    except (ValueError, TypeError):
+        d = Decimal(str(value).replace(',', '').strip())
+        if not d.is_finite():
+            return str(value)
+        rounded = d.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        formatted = f"{rounded:,}"
+        return formatted.translate(_PERSIAN_DIGITS)
+    except (InvalidOperation, ValueError, TypeError):
         return str(value)
 
 
@@ -79,15 +86,13 @@ def jalali_date(value, format_string='%Y/%m/%d'):
     
     try:
         value = _as_local(value)
-        # Convert to jdatetime
-        if hasattr(value, 'date'):
-            # datetime object
+        if isinstance(value, datetime):
             jalali = jdatetime.datetime.fromgregorian(datetime=value)
+        elif isinstance(value, date):
+            jalali = jdatetime.date.fromgregorian(date=value)
         else:
-            # date object
             jalali = jdatetime.date.fromgregorian(date=value)
         
-        # Format with Persian month names
         months = {
             1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
             4: 'تیر', 5: 'مرداد', 6: 'شهریور',
@@ -101,9 +106,7 @@ def jalali_date(value, format_string='%Y/%m/%d'):
         result = result.replace('%d', str(jalali.day).zfill(2))
         result = result.replace('%B', months.get(jalali.month, ''))
         
-        # Convert numbers to Persian
-        persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
-        return result.translate(persian_digits)
+        return result.translate(_PERSIAN_DIGITS)
     except Exception:
         logger.exception('jalali_date filter error')
         return str(value)
@@ -112,7 +115,7 @@ def jalali_date(value, format_string='%Y/%m/%d'):
 @register.filter(name='jalali_datetime')
 def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
     """
-    Convert datetime to Jalali (Persian) date and time
+    Convert datetime or date to Jalali (Persian) date and time
     Usage: {{ datetime_field|jalali_datetime }}
     Usage: {{ datetime_field|jalali_datetime:"%d %B %Y ساعت %H:%M" }}
     """
@@ -121,10 +124,13 @@ def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
     
     try:
         value = _as_local(value)
-        # Convert to jdatetime
-        jalali = jdatetime.datetime.fromgregorian(datetime=value)
+        if isinstance(value, datetime):
+            jalali = jdatetime.datetime.fromgregorian(datetime=value)
+        elif isinstance(value, date):
+            jalali = jdatetime.datetime.fromgregorian(date=value)
+        else:
+            return str(value)
         
-        # Format with Persian month names
         months = {
             1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
             4: 'تیر', 5: 'مرداد', 6: 'شهریور',
@@ -141,9 +147,7 @@ def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
         result = result.replace('%M', str(jalali.minute).zfill(2))
         result = result.replace('%S', str(jalali.second).zfill(2))
         
-        # Convert numbers to Persian
-        persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
-        return result.translate(persian_digits)
+        return result.translate(_PERSIAN_DIGITS)
     except Exception:
         logger.exception('jalali_datetime filter error')
         return str(value)
@@ -162,15 +166,12 @@ def jalali_time(value, format_string='%H:%M'):
     try:
         value = _as_local(value)
         if hasattr(value, 'hour'):
-            # datetime or time object
             result = format_string
             result = result.replace('%H', str(value.hour).zfill(2))
             result = result.replace('%M', str(value.minute).zfill(2))
             result = result.replace('%S', str(value.second).zfill(2))
             
-            # Convert numbers to Persian
-            persian_digits = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
-            return result.translate(persian_digits)
+            return result.translate(_PERSIAN_DIGITS)
     except Exception:
         logger.exception('jalali_time filter error')
 
@@ -181,33 +182,33 @@ def jalali_time(value, format_string='%H:%M'):
 # Cafe URL Template Tags
 # =====================================================
 
-from django.urls import reverse
 
 @register.simple_tag(takes_context=True)
 def cafe_url(context, url_name, *args, **kwargs):
     """
-    Generate URL with cafe_code prefix.
+    Generate URL with cafe_code prefix when an active cafe context exists.
     Usage: {% cafe_url 'dashboard' %}
            {% cafe_url 'product_update' product_id=123 %}
     """
     request = context.get('request')
-    cafe_code = context.get('cafe_code')
+    cafe_code = context.get('cafe_code') or kwargs.pop('cafe_code', None)
     
-    # Try to get cafe_code from different sources
     if not cafe_code and request:
         if hasattr(request, 'cafe') and request.cafe:
             cafe_code = request.cafe.code
         elif hasattr(request, 'session') and request.session.get('selected_cafe_code'):
             cafe_code = request.session['selected_cafe_code']
-        elif hasattr(request, 'user') and request.user.is_authenticated and request.user.cafe:
+        elif hasattr(request, 'user') and request.user.is_authenticated and getattr(request.user, 'cafe', None):
             cafe_code = request.user.cafe.code
     
-    if not cafe_code:
-        # Fallback to 'local' if no cafe found
-        cafe_code = 'local'
-    
-    kwargs['cafe_code'] = cafe_code
-    return reverse(url_name, args=args, kwargs=kwargs)
+    if cafe_code:
+        kwargs['cafe_code'] = cafe_code
+        return reverse(url_name, args=args, kwargs=kwargs)
+
+    try:
+        return reverse(url_name, args=args, kwargs=kwargs)
+    except NoReverseMatch:
+        return '#'
 
 @register.filter
 def get_item(dictionary, key):
@@ -215,7 +216,7 @@ def get_item(dictionary, key):
     Get item from dictionary by key
     Usage: {{ my_dict|get_item:key_name }}
     """
-    if dictionary is None:
+    if not isinstance(dictionary, dict):
         return None
     return dictionary.get(key)
 
@@ -252,11 +253,16 @@ def div(value, divisor):
 @register.filter
 def num2(value):
     """Persian digits with thousands separators, up to 2 decimals (drops trailing zeros)."""
-    if value is None:
+    if value is None or value == '':
         return '—'
     try:
-        v = float(value)
-    except (TypeError, ValueError):
+        d = Decimal(str(value).replace(',', '').strip())
+        if not d.is_finite():
+            return str(value)
+        q = d.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError):
         return str(value)
-    text = f'{v:,.2f}'.rstrip('0').rstrip('.')
-    return text.translate(str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹'))
+    text = f'{q:,}'
+    if '.' in text:
+        text = text.rstrip('0').rstrip('.')
+    return text.translate(_PERSIAN_DIGITS)

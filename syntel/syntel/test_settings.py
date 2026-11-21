@@ -10,3 +10,12 @@ from .settings import *  # noqa: F401,F403
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_FILE_PATH = None
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}

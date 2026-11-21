@@ -265,31 +265,41 @@
             });
     }
 
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function renderTable(products) {
         var tbody = document.getElementById('productsTableBody');
         if (!products || products.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-500);">هیچ محصولی یافت نشد</td></tr>';
             return;
         }
-        tbody.innerHTML = products.map(function(p) {
+        tbody.replaceChildren();
+        products.forEach(function(p) {
             var change = p.change_percentage || 0;
             var changeClass = change > 0 ? 'up' : (change < 0 ? 'down' : 'stable');
             var changeIcon = change > 0 ? 'fa-arrow-up' : (change < 0 ? 'fa-arrow-down' : 'fa-minus');
-            return '<tr onclick="openPriceModal(' + (p.id || 0) + ',\'' + escapeStr(p.name) + '\')" style="cursor:pointer;">' +
-                '<td style="font-weight:600;color:var(--dark);">' + (p.name || '-') + '</td>' +
-                '<td>' + (p.category || '-') + '</td>' +
-                '<td>' + (p.supplier || '-') + '</td>' +
+            var tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', function() {
+                openPriceModal(Number(p.id) || 0, p.name || '');
+            });
+            tr.innerHTML =
+                '<td style="font-weight:600;color:var(--dark);">' + escapeHtml(p.name || '-') + '</td>' +
+                '<td>' + escapeHtml(p.category || '-') + '</td>' +
+                '<td>' + escapeHtml(p.supplier || '-') + '</td>' +
                 '<td>' + toFarsiNumber(formatNumber(Math.round(p.old_price || 0))) + '</td>' +
                 '<td>' + toFarsiNumber(formatNumber(Math.round(p.new_price || 0))) + '</td>' +
                 '<td><span class="price-change ' + changeClass + '"><i class="fas ' + changeIcon + '"></i> ' + toFarsiNumber(Math.abs(change).toFixed(1)) + '%</span></td>' +
-                '<td>' + (p.updated_at || '-') + '</td>' +
-            '</tr>';
-        }).join('');
-    }
-
-    function escapeStr(s) {
-        if (!s) return '';
-        return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                '<td>' + escapeHtml(p.updated_at || '-') + '</td>';
+            tbody.appendChild(tr);
+        });
     }
 
     function updateStats(products) {
@@ -344,7 +354,7 @@
                     legend: { rtl: true, labels: { font: { family: 'Vazir' } } },
                     tooltip: { rtl: true, textDirection: 'rtl',
                         callbacks: {
-                            label: function(ctx) { return toFarsiNumber(formatNumber(Math.round(ctx.parsed.y))) + ' تومان'; }
+                            label: function(ctx) { return toFarsiNumber(formatNumber(Math.round(ctx.parsed.y))) + ' ریال'; }
                         }
                     }
                 },

@@ -423,9 +423,18 @@ async function submitInventory() {
     btn.innerHTML = '<i class="fas fa-save"></i> ثبت نهایی انبارگردانی';
 }
 
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function openHistory(stockItemId, productName) {
     document.getElementById('historyModal').classList.add('open');
-    document.getElementById('historyTitle').innerHTML = `<i class="fas fa-history" style="color:var(--accent-indigo)"></i> سوابق: ${productName}`;
+    document.getElementById('historyTitle').innerHTML = `<i class="fas fa-history" style="color:var(--accent-indigo)"></i> سوابق: ${escapeHtml(productName)}`;
     document.getElementById('historyMeta').innerHTML = '';
     document.getElementById('historySpinner').classList.add('show');
     document.getElementById('movTableWrap').innerHTML = '';
@@ -439,8 +448,8 @@ function openHistory(stockItemId, productName) {
         if (!data.success) { showToast('خطا در بارگذاری سوابق', true); return; }
 
         document.getElementById('historyMeta').innerHTML = `
-            <span class="meta-chip"><i class="fas fa-box"></i> ${data.product_name}</span>
-            <span class="meta-chip"><i class="fas fa-balance-scale"></i> موجودی: ${data.current_qty} ${data.unit_name}</span>
+            <span class="meta-chip"><i class="fas fa-box"></i> ${escapeHtml(data.product_name)}</span>
+            <span class="meta-chip"><i class="fas fa-balance-scale"></i> موجودی: ${escapeHtml(data.current_qty)} ${escapeHtml(data.unit_name)}</span>
         `;
 
         document.getElementById('movTableWrap').innerHTML = buildMovementsTable(data.movements);
@@ -464,19 +473,19 @@ function buildMovementsTable(movements) {
             : (it.transaction_type === 'out' ? 'fa-arrow-up' : 'fa-scale-balanced');
         let source = '—';
         if (it.voucher) {
-            source = `<a href="/${CAFE_CODE}/vouchers/detail/${it.voucher.id}/" class="v-mini-link" target="_blank">${it.voucher.voucher_number}</a>`;
+            source = `<a href="/${encodeURIComponent(CAFE_CODE)}/vouchers/detail/${Number(it.voucher.id) || 0}/" class="v-mini-link" target="_blank">${escapeHtml(it.voucher.voucher_number)}</a>`;
         } else if (it.reference_type === 'warehouse_request') {
             source = `<span class="v-mini-link" style="color:#b45309"><i class="fas fa-truck-ramp-box"></i> تامین درخواست انبار</span>`;
         }
         return `
         <tr>
-            <td>${it.date}</td>
-            <td><span class="${txClass}"><i class="fas ${txIcon}"></i> ${it.type_display || TX_LABELS[it.transaction_type] || it.transaction_type}</span></td>
-            <td>${it.quantity} ${it.unit_name}</td>
-            <td>${it.prev_qty} ← ${it.new_qty}</td>
+            <td>${escapeHtml(it.date)}</td>
+            <td><span class="${txClass}"><i class="fas ${txIcon}"></i> ${escapeHtml(it.type_display || TX_LABELS[it.transaction_type] || it.transaction_type)}</span></td>
+            <td>${escapeHtml(it.quantity)} ${escapeHtml(it.unit_name)}</td>
+            <td>${escapeHtml(it.prev_qty)} ← ${escapeHtml(it.new_qty)}</td>
             <td>${source}</td>
-            <td>${it.description || '—'}</td>
-            <td>${it.created_by || '—'}</td>
+            <td>${escapeHtml(it.description || '—')}</td>
+            <td>${escapeHtml(it.created_by || '—')}</td>
         </tr>`;
     }).join('');
 
@@ -504,7 +513,7 @@ function showToast(msg, isError = false) {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
     t.className = `toast${isError ? ' error' : ''}`;
-    t.innerHTML = `<i class="fas fa-${isError ? 'times-circle' : 'check-circle'}" style="color:${isError ? '#ef4444' : '#10b981'}"></i> ${msg}`;
+    t.innerHTML = `<i class="fas fa-${isError ? 'times-circle' : 'check-circle'}" style="color:${isError ? '#ef4444' : '#10b981'}"></i> ${escapeHtml(msg)}`;
     c.appendChild(t);
     setTimeout(() => t.remove(), 3500);
 }

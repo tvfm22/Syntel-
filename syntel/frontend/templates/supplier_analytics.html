@@ -229,10 +229,12 @@
     </div>
 </div>
 
+{{ supplier_performance|json_script:"supplier-performance-data" }}
 <script>
 // Quality Ratings Chart
 const qualityCtx = document.getElementById('qualityChart').getContext('2d');
-const qualityData = {{ supplier_performance|safe }};
+let qualityData = JSON.parse(document.getElementById('supplier-performance-data').textContent || '[]');
+if (typeof qualityData === 'string') { try { qualityData = JSON.parse(qualityData); } catch (e) { qualityData = []; } }
 const qualityCounts = [0, 0, 0, 0, 0, 0]; // 0-5 stars
 
 qualityData.forEach(supplier => {

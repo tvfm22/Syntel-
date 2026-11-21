@@ -208,7 +208,7 @@
 
 <script>
 function markAsRead() {
-    fetch(`/notifications/{{ notification.id }}/mark-read/`, {
+    fetch("{% url 'mark_notification_read' cafe_code=cafe_code notification_id=notification.id %}", {
         method: 'POST',
         headers: {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
@@ -247,10 +247,12 @@ function showMessage(message, type) {
     // Simple message display
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+    alertDiv.textContent = message;
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close';
+    closeBtn.setAttribute('data-bs-dismiss', 'alert');
+    alertDiv.appendChild(closeBtn);
 
     const container = document.querySelector('.container-fluid');
     container.insertBefore(alertDiv, container.firstChild);

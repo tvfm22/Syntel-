@@ -209,6 +209,22 @@
     }
     .prep-line b { color: var(--text-primary); }
     .prep-line.is-prep { background: rgba(139,92,246,0.07); border-color: rgba(139,92,246,0.25); }
+    button.prep-line.is-clickable {
+        cursor: pointer; font-family: 'Vazir', sans-serif;
+        transition: all var(--transition-fast);
+    }
+    button.prep-line.is-clickable:hover {
+        background: rgba(139,92,246,0.16); border-color: var(--accent-indigo); color: var(--accent-indigo);
+    }
+    .cogs-open-link {
+        background: none; border: none; padding: 0; cursor: pointer;
+        font-family: 'Vazir', sans-serif; font-size: inherit; font-weight: 700;
+        color: var(--text-primary); text-align: right;
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        transition: color var(--transition-fast);
+    }
+    .cogs-open-link:hover { color: var(--accent-indigo); }
+    .cogs-open-link i { font-size: 0.68rem; color: var(--accent-indigo); opacity: 0.75; }
     .prep-sub { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 3px; }
     .hint-line {
         padding: 0.4rem var(--space-5) 0.9rem; font-size: 0.7rem; color: var(--text-muted);
@@ -243,6 +259,7 @@
         .filter-row .field select { min-width: 150px; }
     }
 </style>
+{% include "partials/cogs_recipe_editor_css.html" %}
 {% endblock %}
 
 {% block content %}
@@ -378,8 +395,8 @@
                         <tr>
                             <th style="width: 45%;">غذا</th>
                             <th>تعداد فروش</th>
-                            <th>بهای هر پرس (تومان)</th>
-                            <th>جمع (تومان)</th>
+                            <th>بهای هر پرس (ریال)</th>
+                            <th>جمع (ریال)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -388,7 +405,10 @@
                         {% for row in g.rows %}
                         <tr class="dish-row" data-menu="{{ g.label }}">
                             <td>
-                                {{ row.item.name }}
+                                <button type="button" class="cogs-open-link" data-open-recipe="{{ row.item.id }}" title="مشاهده اقلام بهای تمام شده «{{ row.item.name }}»">
+                                    <span>{{ row.item.name }}</span>
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </button>
                                 {% if row.item.is_custom %}<span class="cogs-muted" style="font-size:0.68rem;">(دستی)</span>{% endif %}
                             </td>
                             <td>
@@ -447,7 +467,7 @@
         <div class="stat-card success">
             <div class="stat-icon-circle"><i class="fas fa-coins"></i></div>
             <div class="stat-value">{{ total_cost|number_format }}</div>
-            <div class="stat-label">بهای تمام شده (تومان)</div>
+            <div class="stat-label">بهای تمام شده (ریال)</div>
             <div class="stat-note">مجموع هزینه مواد اولیه مصرفی</div>
         </div>
         <div class="stat-card info">
@@ -526,8 +546,8 @@
                         <th>بخش درخواست‌دهنده</th>
                         <th>مقدار مصرف</th>
                         <th>واحد</th>
-                        <th>بهای واحد (تومان)</th>
-                        <th>هزینه (تومان)</th>
+                        <th>بهای واحد (ریال)</th>
+                        <th>هزینه (ریال)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -590,14 +610,23 @@
                             <th style="width: 20%;">{{ pg.label }}</th>
                             <th>مقدار مصرف</th>
                             <th>واحد</th>
-                            <th>هزینه (تومان)</th>
+                            <th>هزینه (ریال)</th>
                             <th style="width: 46%;">مواد اولیهٔ حاصل از این بچ</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for r in pg.rows %}
                         <tr>
-                            <td>{{ r.item.name }}</td>
+                            <td>
+                                {% if r.item.kind != 'raw' and r.item.id %}
+                                <button type="button" class="cogs-open-link" data-open-recipe="{{ r.item.id }}" title="مشاهده اقلام «{{ r.item.name }}»">
+                                    <span>{{ r.item.name }}</span>
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </button>
+                                {% else %}
+                                {{ r.item.name }}
+                                {% endif %}
+                            </td>
                             <td class="cogs-num">{% if r.qty %}{{ r.qty|num2 }}{% else %}<span class="cogs-muted">—</span>{% endif %}</td>
                             <td>{{ r.unit }}</td>
                             <td class="cogs-num">{{ r.cost|number_format }}</td>
@@ -611,7 +640,13 @@
                                 {% elif r.direct_lines %}
                                 <div class="prep-lines">
                                     {% for sl in r.direct_lines %}
-                                    <span class="prep-line{% if sl.kind == 'prep' %} is-prep{% endif %}">{{ sl.name }} <b>{{ sl.qty|num2 }}</b> {{ sl.unit }}</span>
+                                    {% if sl.kind == 'prep' or sl.kind == 'dish' %}{% if sl.id %}
+                                    <button type="button" class="prep-line is-prep is-clickable" data-open-recipe="{{ sl.id }}" title="مشاهده اقلام «{{ sl.name }}»">{{ sl.name }} <b>{{ sl.qty|num2 }}</b> {{ sl.unit }}</button>
+                                    {% else %}
+                                    <span class="prep-line">{{ sl.name }} <b>{{ sl.qty|num2 }}</b> {{ sl.unit }}</span>
+                                    {% endif %}{% else %}
+                                    <span class="prep-line">{{ sl.name }} <b>{{ sl.qty|num2 }}</b> {{ sl.unit }}</span>
+                                    {% endif %}
                                     {% endfor %}
                                 </div>
                                 {% else %}
@@ -646,11 +681,20 @@
             </summary>
             <div class="table-wrap">
                 <table class="cogs-table">
-                    <thead><tr><th>قلم</th><th>واحد در رسپی</th><th>هزینه (تومان)</th></tr></thead>
+                    <thead><tr><th>قلم</th><th>واحد در رسپی</th><th>هزینه (ریال)</th></tr></thead>
                     <tbody>
                         {% for r in bad_rows %}
                         <tr>
-                            <td>{{ r.item.name }}</td>
+                            <td>
+                                {% if r.item.kind != 'raw' and r.item.id %}
+                                <button type="button" class="cogs-open-link" data-open-recipe="{{ r.item.id }}" title="مشاهده اقلام «{{ r.item.name }}»">
+                                    <span>{{ r.item.name }}</span>
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </button>
+                                {% else %}
+                                {{ r.item.name }}
+                                {% endif %}
+                            </td>
                             <td>{{ r.unit|default:'—' }}</td>
                             <td class="cogs-num">{{ r.cost|number_format }}</td>
                         </tr>
@@ -685,12 +729,17 @@
             <div class="table-wrap tall">
                 <table class="cogs-table">
                     <thead>
-                        <tr><th>غذا</th><th>تعداد فروش</th><th>بهای هر پرس (تومان)</th><th>جمع (تومان)</th></tr>
+                        <tr><th>غذا</th><th>تعداد فروش</th><th>بهای هر پرس (ریال)</th><th>جمع (ریال)</th></tr>
                     </thead>
                     <tbody>
                         {% for g in groups %}{% for row in g.rows %}{% if row.qty %}
                         <tr>
-                            <td>{{ row.item.name }}</td>
+                            <td>
+                                <button type="button" class="cogs-open-link" data-open-recipe="{{ row.item.id }}" title="مشاهده اقلام «{{ row.item.name }}»">
+                                    <span>{{ row.item.name }}</span>
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </button>
+                            </td>
                             <td class="cogs-num">{{ row.qty|num2 }}</td>
                             <td class="cogs-num">{{ row.cost_per|number_format }}</td>
                             <td class="cogs-num">{{ row.cost_total|number_format }}</td>
@@ -723,6 +772,7 @@
 
     {% endif %}
 </div>
+{% include "partials/cogs_recipe_editor.html" %}
 {% endblock %}
 
 {% block extra_js %}
@@ -875,6 +925,13 @@
     /* پیش‌نمایش بعد از محاسبه: تعدادهای واردشده در آدرس نوشته می‌شوند تا
        رفرش همان نتیجه را برگرداند و لینک قابل اشتراک باشد. */
     if (page && page.dataset.preview === '1') applyRawFilters(true);
+
+    document.addEventListener('click', e => {
+        const trigger = e.target.closest('[data-open-recipe]');
+        if (!trigger || !window.CogsRecipe) return;
+        const itemId = trigger.dataset.openRecipe;
+        if (itemId) window.CogsRecipe.open(itemId);
+    });
 })();
 </script>
 {% endblock %}

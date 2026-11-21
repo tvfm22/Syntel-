@@ -155,7 +155,7 @@ class AnalyticsApp {
                 const total = data.departments.reduce((sum, d) => sum + (d.current_expense || 0), 0);
                 const totalExpenseEl = document.getElementById('totalExpense');
                 if (totalExpenseEl) {
-                    totalExpenseEl.textContent = formatCurrency(total).replace(' تومان', '');
+                    totalExpenseEl.textContent = formatCurrency(total).replace(' ریال', '');
                 }
             }
 
@@ -194,7 +194,7 @@ class AnalyticsApp {
                 <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
                     <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                     <p>خطا در بارگذاری داده‌ها</p>
-                    <small>${error.message}</small>
+                    <small>${escapeHtml(error.message)}</small>
                     <br><br>
                     <button onclick="location.reload()" style="padding: 0.5rem 1rem; cursor: pointer;">
                         تلاش مجدد
@@ -296,7 +296,7 @@ class AnalyticsApp {
             );
 
             // Update breadcrumb
-            const deptName = data.department ? data.department.name : 'بخش';
+            const deptName = escapeHtml(data.department ? data.department.name : 'بخش');
             const breadcrumb = document.getElementById('breadcrumb');
             if (breadcrumb) {
                 breadcrumb.innerHTML = `
@@ -410,8 +410,8 @@ class AnalyticsApp {
             );
 
             // Update breadcrumb
-            const deptName = this.state.categoryData?.department?.name || 'بخش';
-            const catName = data.parent_category?.name || 'دسته‌بندی';
+            const deptName = escapeHtml(this.state.categoryData?.department?.name || 'بخش');
+            const catName = escapeHtml(data.parent_category?.name || 'دسته‌بندی');
             const breadcrumb = document.getElementById('breadcrumb');
             if (breadcrumb) {
                 breadcrumb.innerHTML = `
@@ -479,17 +479,19 @@ class AnalyticsApp {
             this.renderProductTable(data);
 
             // Update breadcrumb
-            const deptName = this.state.categoryData?.department?.name || 'بخش';
-            const catName = data.category?.name || 'دسته‌بندی';
+            const deptName = escapeHtml(this.state.categoryData?.department?.name || 'بخش');
+            const catName = escapeHtml(data.category?.name || 'دسته‌بندی');
             const breadcrumb = document.getElementById('breadcrumb');
             if (breadcrumb) {
                 if (this.state.subcategoryData) {
                     // Coming from subcategory view
-                    const parentCatName = this.state.subcategoryData.parent_category?.name || 'دسته‌بندی';
+                    const parentCatName = escapeHtml(this.state.subcategoryData.parent_category?.name || 'دسته‌بندی');
+                    const safeCatId = Number(this.state.selectedCategory) || 0;
+                    const safeDeptId = Number(deptId) || 0;
                     breadcrumb.innerHTML = `
                         <li><a href="#" onclick="app.showDepartmentView(); return false;">داشبورد</a></li>
                         <li><a href="#" onclick="app.showCategoryView(); return false;">${deptName}</a></li>
-                        <li><a href="#" onclick="app.loadSubcategoryChart(${this.state.selectedCategory}, ${deptId}); return false;">${parentCatName}</a></li>
+                        <li><a href="#" onclick="app.loadSubcategoryChart(${safeCatId}, ${safeDeptId}); return false;">${parentCatName}</a></li>
                         <li class="active">محصولات ${catName}</li>
                     `;
                 } else {
@@ -507,7 +509,7 @@ class AnalyticsApp {
             container.querySelector('.table-body').innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
                     <i class="fas fa-exclamation-circle"></i>
-                    خطا در بارگذاری محصولات: ${error.message}
+                    خطا در بارگذاری محصولات: ${escapeHtml(error.message)}
                 </div>
             `;
         }
@@ -571,15 +573,15 @@ class AnalyticsApp {
             rowsHtml += `
                 <tr>
                     <td>${index + 1}</td>
-                    <td>${product.name || 'نامشخص'}</td>
+                    <td>${escapeHtml(product.name || 'نامشخص')}</td>
                     <td>${formatNumber(product.quantity || 0)}</td>
                     <td>${formatCurrency(product.unit_price || 0)}</td>
                     <td>${formatCurrency(product.total_price || 0)}</td>
                     <td style="color: ${growthColor}; font-weight: 600;">
                         ${growthIcon} ${formatPercent(Math.abs(growthRate))}
                     </td>
-                    <td>${product.supplier || '-'}</td>
-                    <td>${toPersianDate(product.date || '')}</td>
+                    <td>${escapeHtml(product.supplier || '-')}</td>
+                    <td>${escapeHtml(toPersianDate(product.date || ''))}</td>
                 </tr>
             `;
         });
@@ -764,7 +766,7 @@ class AnalyticsApp {
         const breadcrumb = document.getElementById('breadcrumb');
         if (breadcrumb) {
             breadcrumb.innerHTML = `
-                <li><a href="/dashboard/">داشبورد</a></li>
+                <li><a href="/${encodeURIComponent(this.cafeCode)}/dashboard/">داشبورد</a></li>
                 <li class="active">دپارتمان‌ها</li>
             `;
         }
@@ -795,7 +797,7 @@ class AnalyticsApp {
         if (prodContainer) prodContainer.style.display = 'none';
         
         // Update breadcrumb
-        const deptName = this.state.categoryData?.department?.name || 'بخش';
+        const deptName = escapeHtml(this.state.categoryData?.department?.name || 'بخش');
         const breadcrumb = document.getElementById('breadcrumb');
         if (breadcrumb) {
             breadcrumb.innerHTML = `
@@ -822,6 +824,15 @@ class AnalyticsApp {
 }
 
 // Utility functions
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function getCsrfToken() {
     const name = 'csrftoken';
     let cookieValue = null;
@@ -839,9 +850,9 @@ function getCsrfToken() {
 }
 
 function formatCurrency(amount) {
-    if (amount === null || amount === undefined) return '۰ تومان';
+    if (amount === null || amount === undefined) return '۰ ریال';
     const formatted = Number(amount).toLocaleString('fa-IR');
-    return formatted + ' تومان';
+    return formatted + ' ریال';
 }
 
 function formatNumber(num) {

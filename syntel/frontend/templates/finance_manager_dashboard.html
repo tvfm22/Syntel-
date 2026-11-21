@@ -274,6 +274,15 @@
         });
     }
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function renderRecentPayments(payments) {
         const container = document.getElementById('recentPaymentsList');
         if (!payments || payments.length === 0) {
@@ -283,10 +292,10 @@
         container.innerHTML = payments.map((payment, index) => `
             <div class="list-item">
                 <div class="list-item-content">
-                    <div class="list-item-title">${index + 1}. فاکتور ${payment.invoice_number}</div>
-                    <div class="list-item-subtitle">${payment.payment_type} - ${payment.payment_date}</div>
+                    <div class="list-item-title">${index + 1}. فاکتور ${escapeHtml(payment.invoice_number)}</div>
+                    <div class="list-item-subtitle">${escapeHtml(payment.payment_type)} - ${escapeHtml(payment.payment_date)}</div>
                 </div>
-                <div><div class="badge badge-success"><i class="fas fa-money-bill-wave"></i> ${toFarsiNumber(formatNumber(Math.round(payment.amount)))} تومان</div></div>
+                <div><div class="badge badge-success"><i class="fas fa-money-bill-wave"></i> ${toFarsiNumber(formatNumber(Math.round(payment.amount)))} ریال</div></div>
             </div>
         `).join('');
     }
@@ -315,10 +324,10 @@
         container.innerHTML = invoices.map((invoice, index) => `
             <div class="list-item">
                 <div class="list-item-content">
-                    <div class="list-item-title">${index + 1}. ${invoice.invoice_number}</div>
-                    <div class="list-item-subtitle">${invoice.supplier_name} - ${invoice.invoice_date}</div>
+                    <div class="list-item-title">${index + 1}. ${escapeHtml(invoice.invoice_number)}</div>
+                    <div class="list-item-subtitle">${escapeHtml(invoice.supplier_name)} - ${escapeHtml(invoice.invoice_date)}</div>
                 </div>
-                <div><div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> ${toFarsiNumber(formatNumber(Math.round(invoice.total_amount)))} تومان</div></div>
+                <div><div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> ${toFarsiNumber(formatNumber(Math.round(invoice.total_amount)))} ریال</div></div>
             </div>
         `).join('');
     }

@@ -352,6 +352,23 @@
             .main-content {
                 padding: 1rem;
             }
+
+            .page-header {
+                position: relative;
+            }
+            .page-header .date-display {
+                padding: 0.2rem 0.55rem;
+                border-radius: 999px;
+                font-size: 0.72rem;
+                font-weight: 700;
+                gap: 0.28rem;
+                box-shadow: none;
+            }
+            .page-header .date-display i {
+                font-size: 0.68rem;
+                padding: 0;
+                background: none;
+            }
             
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -564,11 +581,11 @@
         // نمایش تاریخ شمسی
         function displayPersianDate() {
             const today = new Date();
-            const dateStr = today.toLocaleDateString('fa-IR', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric'
-            });
+            const isMobile = window.innerWidth < 1024;
+            const opts = isMobile
+                ? { month: 'long', day: 'numeric' }
+                : { year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = today.toLocaleDateString('fa-IR', opts);
             
             const dateElement = document.getElementById('persianDate');
             if (dateElement) {

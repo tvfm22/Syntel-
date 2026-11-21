@@ -1,7 +1,10 @@
 """بک‌اند احراز هویت با جستجوی غیرحساس به حروف بزرگ و کوچک برای نام کاربری."""
+import logging
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
+
+logger = logging.getLogger(__name__)
 
 
 class CaseInsensitiveModelBackend(ModelBackend):
@@ -27,13 +30,21 @@ class CaseInsensitiveModelBackend(ModelBackend):
             return None
 
         candidates = list(
-            manager.filter(**{f'{UserModel.USERNAME_FIELD}__iexact': lookup}).order_by('pk')
+            manager.filter(**{f'{UserModel.USERNAME_FIELD}__iexact': lookup}).order_by('pk')[:2]
         )
         if not candidates:
             UserModel().set_password(password)
             return None
 
-        for user in candidates:
-            if user.check_password(password) and self.user_can_authenticate(user):
-                return user
+        if len(candidates) > 1:
+            logger.warning(
+                "Ambiguous case-insensitive username login rejected for '%s' (multiple colliding accounts).",
+                lookup,
+            )
+            UserModel().set_password(password)
+            return None
+
+        user = candidates[0]
+        if user.check_password(password) and self.user_can_authenticate(user):
+            return user
         return None

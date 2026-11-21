@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.core.validators import MinValueValidator
 from .models import PurchaseRequest, PurchaseItem
@@ -5,9 +7,9 @@ from .models import PurchaseRequest, PurchaseItem
 class PurchaseItemForm(forms.ModelForm):
     quantity = forms.DecimalField(
         max_digits=12, decimal_places=4,
-        validators=[MinValueValidator(0)],
+        validators=[MinValueValidator(Decimal('0.0001'))],
         widget=forms.NumberInput(attrs={
-            'class': 'form-control', 'placeholder': 'مقدار', 'min': '0', 'step': 'any',
+            'class': 'form-control', 'placeholder': 'مقدار', 'min': '0.0001', 'step': 'any',
         }),
     )
 

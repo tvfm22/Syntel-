@@ -80,6 +80,8 @@ class MultiTenancyIsolationTests(TestCase):
         r1 = self.client.get(reverse('invoice_detail', kwargs={'cafe_code': 'cafe_a', 'invoice_id': self.inv_b.id}))
         self.assertEqual(r1.status_code, 404)
 
+        # Remove payment on inv_a so inv_a is not protected by Payment.invoice (PROTECT)
+        self.pay_a.delete()
         r2 = self.client.post(reverse('invoice_bulk_delete', kwargs={'cafe_code': 'cafe_a'}), {
             'invoice_ids': [str(self.inv_a.id), str(self.inv_b.id)]
         })

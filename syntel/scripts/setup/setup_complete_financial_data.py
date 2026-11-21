@@ -10,60 +10,47 @@
 - تقسیم بین انبار و خرید
 - بازه زمانی یک ماه
 """
+import argparse
 import os
-import django
-import random
+import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
-import sys
 from pathlib import Path
+import random
+import django
 
-sys.path.append(str(Path(__file__).resolve().parent))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
-django.setup()
 
 from django.utils import timezone
 from django.db import transaction
-from purchases.models import (
-    User, Category, Product, Supplier, Unit,
-    Invoice, InvoiceItem, PurchaseRequest, 
-    PurchaseItem, Requester, PaymentType, PaymentLocation,
-    PriceHistory, StockItem, Payment
-)
 
-# تاریخ شروع - یک ماه گذشته
 START_DATE = timezone.now() - timedelta(days=30)
 END_DATE = timezone.now()
+
 
 def get_random_date():
     """تولید تاریخ تصادفی در بازه یک ماهه"""
     days = random.randint(0, 30)
     return START_DATE + timedelta(days=days)
 
-def clear_old_data():
-    """پاکسازی داده‌های قبلی (خودکار)"""
+
+def clear_old_data(confirm_destructive=False):
+    """پاکسازی داده‌های قبلی فقط با پرچم --confirm-destructive"""
+    if not confirm_destructive:
+        raise RuntimeError("Destructive operation requires --confirm-destructive.")
+
+    from purchases.models import Invoice, Payment, PriceHistory, PurchaseRequest
+
     print("\n🗑️  پاکسازی داده‌های یک ماه اخیر...")
-    print("   توجه: فاکتورها، درخواست‌ها و تاریخچه قیمت یک ماه اخیر پاک می‌شود")
-    print("   داده‌های پایه (محصولات، دسته‌بندی‌ها) حفظ می‌شود")
-    
-    # همیشه پاک می‌کنیم
-    if True:
-        print("\n  در حال پاکسازی...")
-        one_month_ago = timezone.now() - timedelta(days=30)
-        
-        # پاک کردن پرداخت‌ها
-        Payment.objects.filter(created_at__gte=one_month_ago).delete()
-        
-        # پاک کردن تاریخچه قیمت
-        PriceHistory.objects.filter(date__gte=one_month_ago).delete()
-        
-        # پاک کردن فاکتورها (این آیتم‌ها را هم پاک می‌کند)
-        Invoice.objects.filter(created_at__gte=one_month_ago).delete()
-        
-        # پاک کردن درخواست‌ها (این آیتم‌ها را هم پاک می‌کند)
-        PurchaseRequest.objects.filter(created_at__gte=one_month_ago).delete()
-        
-        print("  ✓ داده‌های یک ماه اخیر پاک شد")
+    one_month_ago = timezone.now() - timedelta(days=30)
+
+    Payment.objects.filter(created_at__gte=one_month_ago).delete()
+    PriceHistory.objects.filter(date__gte=one_month_ago).delete()
+    Invoice.objects.filter(created_at__gte=one_month_ago).delete()
+    PurchaseRequest.objects.filter(created_at__gte=one_month_ago).delete()
+
+    print("  ✓ داده‌های یک ماه اخیر پاک شد")
 
 def create_units():
     """ایجاد واحدهای اندازه‌گیری"""
@@ -249,7 +236,11 @@ def create_users():
         }
     )
     if not user.has_usable_password():
-        user.set_password('123456')
+        seed_pw = os.environ.get('SYNTEL_SEED_PASSWORD', '')
+        if len(seed_pw) >= 8:
+            user.set_password(seed_pw)
+        else:
+            user.set_unusable_password()
         user.save()
     users['purchasing'] = user
     
@@ -661,59 +652,74 @@ def show_summary():
     print("✅ تمام داده‌ها آماده استفاده در نمودارهای آمار و تحلیل")
     print("=" * 70)
 
-@transaction.atomic
-def main():
+def main(confirm_destructive=False):
+    if not confirm_destructive:
+        raise RuntimeError("This script clears and re-seeds financial data; pass --confirm-destructive to run.")
+
+    django.setup()
+    global User, Category, Product, Supplier, Unit, Invoice, InvoiceItem, PurchaseRequest
+    global PurchaseItem, Requester, PaymentType, PaymentLocation, PriceHistory, StockItem, Payment
+    from purchases.models import (
+        User, Category, Product, Supplier, Unit,
+        Invoice, InvoiceItem, PurchaseRequest,
+        PurchaseItem, Requester, PaymentType, PaymentLocation,
+        PriceHistory, StockItem, Payment,
+    )
+
     print("=" * 70)
     print("🚀 راه‌اندازی کامل سیستم مالی از اول")
     print("=" * 70)
-    
+
     try:
-        # 0. پاکسازی (اختیاری)
-        clear_old_data()
-        
-        # 1. داده‌های پایه
-        print("\n" + "=" * 70)
-        print("📚 مرحله 1: ایجاد داده‌های پایه")
-        print("=" * 70)
-        units = create_units()
-        categories = create_categories()
-        products, main_products = create_products(categories, units)
-        suppliers = create_suppliers()
-        users = create_users()
-        requesters = create_requesters()
-        
-        # 2. درخواست‌های خرید
-        print("\n" + "=" * 70)
-        print("📝 مرحله 2: ایجاد درخواست‌های خرید (قبل از فاکتورها)")
-        print("=" * 70)
-        requests = create_purchase_requests(users, requesters, main_products)
-        
-        # 3. فاکتورها
-        print("\n" + "=" * 70)
-        print("🧾 مرحله 3: ایجاد فاکتورها (40 عدد)")
-        print("=" * 70)
-        invoices = create_invoices_with_requests(suppliers, main_products, users, requesters)
-        
-        # 4. داده‌های تحلیلی
-        print("\n" + "=" * 70)
-        print("📊 مرحله 4: ایجاد داده‌های تحلیلی")
-        print("=" * 70)
-        create_price_history(invoices)
-        create_stock_items(main_products)
-        create_payments(invoices, users)
-        
-        # 5. خلاصه
-        show_summary()
-        
+        with transaction.atomic():
+            clear_old_data(confirm_destructive=confirm_destructive)
+
+            print("\n" + "=" * 70)
+            print("📚 مرحله 1: ایجاد داده‌های پایه")
+            print("=" * 70)
+            units = create_units()
+            categories = create_categories()
+            products, main_products = create_products(categories, units)
+            suppliers = create_suppliers()
+            users = create_users()
+            requesters = create_requesters()
+
+            print("\n" + "=" * 70)
+            print("📝 مرحله 2: ایجاد درخواست‌های خرید (قبل از فاکتورها)")
+            print("=" * 70)
+            create_purchase_requests(users, requesters, main_products)
+
+            print("\n" + "=" * 70)
+            print("🧾 مرحله 3: ایجاد فاکتورها (40 عدد)")
+            print("=" * 70)
+            invoices = create_invoices_with_requests(suppliers, main_products, users, requesters)
+
+            print("\n" + "=" * 70)
+            print("📊 مرحله 4: ایجاد داده‌های تحلیلی")
+            print("=" * 70)
+            create_price_history(invoices)
+            create_stock_items(main_products)
+            create_payments(invoices, users)
+
+            show_summary()
+
         print("\n🎉 تمام عملیات با موفقیت انجام شد!")
-        
+
     except Exception as e:
         print(f"\n❌ خطا: {e}")
         import traceback
         traceback.print_exc()
         return False
-    
+
     return True
 
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Setup complete sample financial data (destructive).')
+    parser.add_argument(
+        '--confirm-destructive',
+        action='store_true',
+        help='Required flag to confirm deleting recent financial data and seeding.',
+    )
+    args = parser.parse_args()
+    main(confirm_destructive=args.confirm_destructive)

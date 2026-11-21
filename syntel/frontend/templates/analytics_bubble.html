@@ -544,10 +544,24 @@
             }
 
             .page-header {
+                position: relative;
                 flex-direction: column;
                 gap: 1rem;
                 text-align: center;
+                padding-top: 2.1rem;
             }
+            .page-header .current-date {
+                position: absolute;
+                top: 0.65rem;
+                left: 0.75rem;
+                padding: 0.18rem 0.52rem;
+                border-radius: 999px;
+                font-size: 0.7rem;
+                font-weight: 700;
+                border: 1px solid var(--border-color);
+                gap: 0.28rem;
+            }
+            .page-header .current-date i { font-size: 0.65rem; }
 
             .filters-grid {
                 grid-template-columns: 1fr;
@@ -769,7 +783,7 @@
                             <tr>
                                 <th>دسته‌بندی</th>
                                 <th>تعداد محصول</th>
-                                <th>کل خرید (تومان)</th>
+                                <th>کل خرید (ریال)</th>
                                 <th>درصد از کل</th>
                                 <th>میانگین قیمت</th>
                                 <th></th>
@@ -843,11 +857,11 @@
 
         function getPersianDate() {
             const date = new Date();
-            return new Intl.DateTimeFormat('fa-IR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }).format(date);
+            const isMobile = window.innerWidth < 1024;
+            const opts = isMobile
+                ? { month: 'long', day: 'numeric' }
+                : { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Intl.DateTimeFormat('fa-IR', opts).format(date);
         }
 
         function debounce(func, wait) {
@@ -885,7 +899,7 @@
                 
                 if (data.top_category) {
                     document.getElementById('topCategoryName').textContent = data.top_category.name;
-                    document.getElementById('topCategoryAmount').textContent = toFarsiNumber(formatNumber(data.top_category.amount)) + ' تومان';
+                    document.getElementById('topCategoryAmount').textContent = toFarsiNumber(formatNumber(data.top_category.amount)) + ' ریال';
                 }
             })
             .catch(error => console.error('Error loading stats:', error));
@@ -918,6 +932,15 @@
             });
         }
 
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('categoriesTableBody');
             
@@ -934,7 +957,7 @@
 
             tbody.innerHTML = data.map(cat => `
                 <tr>
-                    <td style="font-weight: 600; color: var(--dark-color);">${cat.name}</td>
+                    <td style="font-weight: 600; color: var(--dark-color);">${escapeHtml(cat.name)}</td>
                     <td>${toFarsiNumber(cat.product_count)}</td>
                     <td style="font-weight: 600;">${toFarsiNumber(formatNumber(cat.total_amount))}</td>
                     <td>
@@ -944,7 +967,7 @@
                     </td>
                     <td>${toFarsiNumber(formatNumber(cat.avg_price))}</td>
                     <td>
-                        <a href="#" onclick="showChart('${cat.name}', ${cat.id}); return false;" class="chart-link">
+                        <a href="#" data-cat-name="${escapeHtml(cat.name)}" data-cat-id="${Number(cat.id) || 0}" onclick="showChart(this.dataset.catName, Number(this.dataset.catId)); return false;" class="chart-link">
                             <i class="fas fa-chart-line"></i> نمودار
                         </a>
                     </td>
@@ -983,7 +1006,7 @@
                     data: {
                         labels: data.labels,
                         datasets: [{
-                            label: 'مبلغ خرید (تومان)',
+                            label: 'مبلغ خرید (ریال)',
                             data: data.values,
                             backgroundColor: 'rgba(99, 102, 241, 0.5)',
                             borderColor: 'rgba(99, 102, 241, 1)',
@@ -1003,7 +1026,7 @@
                                 beginAtZero: true,
                                 ticks: {
                                     callback: function(value) {
-                                        return formatNumber(value) + ' تومان';
+                                        return formatNumber(value) + ' ریال';
                                     }
                                 }
                             }

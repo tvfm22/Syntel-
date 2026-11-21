@@ -321,30 +321,47 @@
         loadProducts();
     }
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    const DASHBOARD_URLS = {
+        filters: "{% url 'api_dashboard_filters' cafe_code=cafe_code %}",
+        stats: "{% url 'api_dashboard_stats' cafe_code=cafe_code %}",
+        highIncrease: "{% url 'api_high_increase' cafe_code=cafe_code %}",
+        changes: "{% url 'api_product_changes' cafe_code=cafe_code %}",
+        historyTemplate: "{% url 'api_price_history' cafe_code=cafe_code pk=0 %}",
+        export: "{% url 'api_dashboard_export' cafe_code=cafe_code %}"
+    };
+
     // API Calls
     async function loadFilters() {
         try {
-            console.log('📡 بارگذاری فیلترها...');
-            const response = await axios.get('/api/dashboard/filters/');
-            console.log('✓ فیلترها دریافت شد:', response.data);
+            const response = await axios.get(DASHBOARD_URLS.filters);
             const { categories, suppliers } = response.data;
             
             const catSelect = document.getElementById('categoryFilter');
             categories.forEach(c => {
-                catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                catSelect.appendChild(opt);
             });
 
             const storeSelect = document.getElementById('storeFilter');
             suppliers.forEach(s => {
-                storeSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                storeSelect.appendChild(opt);
             });
-            console.log(`✓ ${categories.length} دسته و ${suppliers.length} فروشگاه بارگذاری شد`);
         } catch (error) {
             console.error('❌ خطا در بارگذاری فیلترها:', error);
-            if (error.response) {
-                console.error('   Status:', error.response.status);
-                console.error('   Data:', error.response.data);
-            }
         }
     }
 
@@ -356,10 +373,8 @@
                 days: document.getElementById('daysFilter').value
             };
             
-            console.log('📊 بارگذاری آمار با پارامترها:', params);
-            const response = await axios.get('/api/dashboard/stats/', { params });
+            const response = await axios.get(DASHBOARD_URLS.stats, { params });
             const data = response.data;
-            console.log('✓ آمار دریافت شد:', data);
             
             document.getElementById('increasedCount').textContent = data.increased_count;
             document.getElementById('decreasedCount').textContent = data.decreased_count;
@@ -374,10 +389,6 @@
             }
         } catch (error) {
             console.error('❌ خطا در بارگذاری آمار:', error);
-            if (error.response) {
-                console.error('   Status:', error.response.status);
-                console.error('   Data:', error.response.data);
-            }
         }
     }
 
@@ -389,9 +400,7 @@
                 days: document.getElementById('daysFilter').value
             };
             
-            console.log('⚠️ بارگذاری هشدارها با پارامترها:', params);
-            const response = await axios.get('/api/dashboard/products/high-increase/', { params });
-            console.log(`✓ ${response.data.length} هشدار دریافت شد`);
+            const response = await axios.get(DASHBOARD_URLS.highIncrease, { params });
             
             const tbody = document.getElementById('alertsTableBody');
             const section = document.getElementById('alertsSection');
@@ -400,27 +409,27 @@
             if (response.data.length > 0) {
                 section.style.display = 'block';
                 response.data.forEach(product => {
-                    const row = `
-                        <tr>
-                            <td>${product.name}</td>
-                            <td>${product.category_name || '-'}</td>
-                            <td style="color: #6b7280;">${formatPrice(product.previous_price)}</td>
-                            <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
-                            <td><span class="minimal-badge" style="background: #fef2f2; color: #dc2626;">+${parseFloat(product.percent_change).toFixed(1)}%</span></td>
-                            <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="minimal-link">نمودار</a></td>
-                        </tr>
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(product.name)}</td>
+                        <td>${escapeHtml(product.category_name || '-')}</td>
+                        <td style="color: #6b7280;">${escapeHtml(formatPrice(product.previous_price))}</td>
+                        <td style="font-weight: 600;">${escapeHtml(formatPrice(product.current_price))}</td>
+                        <td><span class="minimal-badge" style="background: #fef2f2; color: #dc2626;">+${parseFloat(product.percent_change).toFixed(1)}%</span></td>
+                        <td><a href="#" class="minimal-link js-history-link">نمودار</a></td>
                     `;
-                    tbody.innerHTML += row;
+                    const link = tr.querySelector('.js-history-link');
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showHistory(product.id, product.name);
+                    });
+                    tbody.appendChild(tr);
                 });
             } else {
                 section.style.display = 'none';
             }
         } catch (error) {
             console.error('❌ خطا در بارگذاری هشدارها:', error);
-            if (error.response) {
-                console.error('   Status:', error.response.status);
-                console.error('   Data:', error.response.data);
-            }
         }
     }
 
@@ -434,9 +443,7 @@
                 search: searchInput ? searchInput.value : ''
             };
 
-            console.log('📦 بارگذاری محصولات با پارامترها:', params);
-            const response = await axios.get('/api/dashboard/products/changes/', { params });
-            console.log(`✓ ${response.data.length} محصول دریافت شد`);
+            const response = await axios.get(DASHBOARD_URLS.changes, { params });
             
             const tbody = document.getElementById('productsTableBody');
             tbody.innerHTML = '';
@@ -451,17 +458,21 @@
                     badgeStyle = 'background: #f0fdf4; color: #059669;';
                 }
                 
-                const row = `
-                    <tr>
-                        <td style="font-weight: 500;">${product.name}</td>
-                        <td style="color: #6b7280;">${product.category_name || '-'}</td>
-                        <td style="color: #9ca3af; font-size: 0.8125rem;">${new Date(product.last_update).toLocaleDateString('fa-IR')}</td>
-                        <td style="font-weight: 600;">${formatPrice(product.current_price)}</td>
-                        <td><span class="minimal-badge" style="${badgeStyle}">${changeSign}${parseFloat(product.percent_change).toFixed(1)}%</span></td>
-                        <td><a href="#" onclick="showHistory(${product.id}, '${product.name}'); return false;" class="minimal-link">نمودار</a></td>
-                    </tr>
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: 500;">${escapeHtml(product.name)}</td>
+                    <td style="color: #6b7280;">${escapeHtml(product.category_name || '-')}</td>
+                    <td style="color: #9ca3af; font-size: 0.8125rem;">${escapeHtml(new Date(product.last_update).toLocaleDateString('fa-IR'))}</td>
+                    <td style="font-weight: 600;">${escapeHtml(formatPrice(product.current_price))}</td>
+                    <td><span class="minimal-badge" style="${badgeStyle}">${changeSign}${parseFloat(product.percent_change).toFixed(1)}%</span></td>
+                    <td><a href="#" class="minimal-link js-history-link">نمودار</a></td>
                 `;
-                tbody.innerHTML += row;
+                const link = tr.querySelector('.js-history-link');
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showHistory(product.id, product.name);
+                });
+                tbody.appendChild(tr);
             });
             
             if (response.data.length === 0) {
@@ -469,10 +480,6 @@
             }
         } catch (error) {
             console.error('❌ خطا در بارگذاری محصولات:', error);
-            if (error.response) {
-                console.error('   Status:', error.response.status);
-                console.error('   Data:', error.response.data);
-            }
         }
     }
 
@@ -482,7 +489,8 @@
         modal.style.display = 'flex';
 
         try {
-            const response = await axios.get(`/api/dashboard/products/${productId}/history/`);
+            const url = DASHBOARD_URLS.historyTemplate.replace('/0/', `/${Number(productId) || 0}/`);
+            const response = await axios.get(url);
             const history = response.data;
 
             const ctx = document.getElementById('priceChart').getContext('2d');
@@ -578,7 +586,7 @@
             days: document.getElementById('daysFilter').value,
             search: document.getElementById('searchInput').value
         });
-        window.location.href = `/api/dashboard/export/?${params.toString()}`;
+        window.location.href = `${DASHBOARD_URLS.export}?${params.toString()}`;
     }
 </script>
 {% endblock %}

@@ -167,11 +167,22 @@
     </form>
 </div>
 
+{{ products_json|json_script:"available-products-data" }}
 <script>
-const PRODUCTS = {{ products_json|safe }};
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+const rawProducts = JSON.parse(document.getElementById('available-products-data').textContent || '[]');
+const PRODUCTS = typeof rawProducts === 'string' ? JSON.parse(rawProducts) : rawProducts;
 let currentProduct = null;
 let currentWarehouse = null;
-let nextIdx = {{ submitted_rows|length }};
+let nextIdx = {{ submitted_rows|length|default:0 }};
 
 function renderProducts() {
     const container = document.getElementById('productList');
@@ -185,8 +196,8 @@ function renderProducts() {
         btn.type = 'button';
         btn.className = 'product-item';
         btn.innerHTML = `<div>
-            <div class="product-name">${p.name}</div>
-            <div class="product-meta">${p.warehouses.length} انبار دارای موجودی</div>
+            <div class="product-name">${escapeHtml(p.name)}</div>
+            <div class="product-meta">${Number(p.warehouses.length) || 0} انبار دارای موجودی</div>
         </div><span class="product-arrow"><i class="fas fa-chevron-left"></i></span>`;
         btn.onclick = (e) => selectProduct(p.id, e.currentTarget);
         container.appendChild(btn);
@@ -206,14 +217,14 @@ function selectProduct(productId, btnEl) {
     currentProduct.warehouses.forEach(w => {
         const row = document.createElement('div');
         row.className = 'wh-row';
-        const unitPart = w.unit ? ` ${w.unit}` : '';
+        const unitPart = w.unit ? ` ${escapeHtml(w.unit)}` : '';
         row.innerHTML = `
             <div class="wh-head">
-                <span class="wh-badge"><i class="fas fa-warehouse"></i> ${w.name}</span>
-                <span class="wh-avail">موجودی: ${w.available}${unitPart}</span>
+                <span class="wh-badge"><i class="fas fa-warehouse"></i> ${escapeHtml(w.name)}</span>
+                <span class="wh-avail">موجودی: ${escapeHtml(w.available)}${unitPart}</span>
             </div>
             <div class="wh-controls">
-                <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${w.unit || 'واحد'})">
+                <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${escapeHtml(w.unit || 'واحد')})">
                 <button type="button" class="add-btn">افزودن</button>
             </div>
             <div class="qty-warning"><i class="fas fa-triangle-exclamation"></i> مقدار وارد شده بیشتر از موجودی انبار است</div>`;
@@ -246,11 +257,11 @@ function addRow(wh, qty) {
 
     const tr = document.createElement('tr');
     tr.setAttribute('data-row-idx', nextIdx);
-    const unitPart = wh.unit ? ` ${wh.unit}` : '';
+    const unitPart = wh.unit ? ` ${escapeHtml(wh.unit)}` : '';
     tr.innerHTML = `
-        <td>${currentProduct.name}</td>
-        <td>${wh.name}</td>
-        <td>${qty}${unitPart}</td>
+        <td>${escapeHtml(currentProduct.name)}</td>
+        <td>${escapeHtml(wh.name)}</td>
+        <td>${escapeHtml(qty)}${unitPart}</td>
         <td>
             <select name="status" class="status-select">
                 <option value="from_stock" selected>تامین از انبار</option>
@@ -259,9 +270,9 @@ function addRow(wh, qty) {
             </select>
         </td>
         <td><button type="button" class="remove-btn" onclick="removeRow(this)"><i class="fas fa-xmark"></i></button></td>
-        <input type="hidden" name="product_id" value="${currentProduct.id}">
-        <input type="hidden" name="warehouse_id" value="${wh.id}">
-        <input type="hidden" name="qty" value="${qty}">`;
+        <input type="hidden" name="product_id" value="${escapeHtml(currentProduct.id)}">
+        <input type="hidden" name="warehouse_id" value="${escapeHtml(wh.id)}">
+        <input type="hidden" name="qty" value="${escapeHtml(qty)}">`;
     tbody.appendChild(tr);
     nextIdx++;
 }

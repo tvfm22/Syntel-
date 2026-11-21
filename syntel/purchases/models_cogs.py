@@ -80,6 +80,10 @@ class KukerItem(models.Model):
         verbose_name_plural = 'اقلام منوی کوکر'
         ordering            = ['kind', 'name']
         unique_together     = [['cafe', 'key']]
+        indexes             = [
+            models.Index(fields=['cafe', 'kind']),
+            models.Index(fields=['cafe', '-created_at']),
+        ]
 
     def __str__(self):
         return self.name
@@ -93,7 +97,7 @@ class KukerItem(models.Model):
 class KukerRecipeLine(models.Model):
     """یک سطر رسپی: برای ساخت یک (بچ) از item، از material به مقدار qty واحد نیاز است."""
     item     = models.ForeignKey(KukerItem, on_delete=models.CASCADE, related_name='lines', verbose_name='قلم')
-    material = models.ForeignKey(KukerItem, on_delete=models.CASCADE, related_name='used_in', verbose_name='ماده')
+    material = models.ForeignKey(KukerItem, on_delete=models.PROTECT, related_name='used_in', verbose_name='ماده')
     quantity = models.DecimalField(max_digits=14, decimal_places=3, verbose_name='مقدار')
     unit     = models.CharField(max_length=20, blank=True, verbose_name='واحد')
     fee      = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name='بهای واحد در رسپی (اکسل)')
@@ -102,6 +106,16 @@ class KukerRecipeLine(models.Model):
         verbose_name        = 'سطر رسپی کوکر'
         verbose_name_plural = 'سطرهای رسپی کوکر'
         indexes             = [models.Index(fields=['item'])]
+        constraints         = [
+            models.CheckConstraint(
+                check=~models.Q(item=models.F('material')),
+                name='chk_kuker_recipe_line_no_self_ref',
+            ),
+            models.CheckConstraint(
+                check=models.Q(quantity__gt=0),
+                name='chk_kuker_recipe_line_qty_gt_0',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.item.name} ← {self.material.name} {self.quantity} {self.unit}"
@@ -120,6 +134,15 @@ class CogsReport(models.Model):
         verbose_name        = 'گزارش بهای تمام شده'
         verbose_name_plural = 'گزارش‌های بهای تمام شده'
         ordering            = ['-created_at']
+        indexes             = [
+            models.Index(fields=['cafe', '-created_at']),
+        ]
+        constraints         = [
+            models.CheckConstraint(
+                check=models.Q(period_end__gte=models.F('period_start')),
+                name='chk_cogs_report_period_valid',
+            ),
+        ]
 
     def __str__(self):
         return f"بهای تمام شده {self.period_start} تا {self.period_end}"
@@ -128,7 +151,7 @@ class CogsReport(models.Model):
 class CogsReportLine(models.Model):
     """تعداد فروش هر غذا در یک گزارش."""
     report = models.ForeignKey(CogsReport, on_delete=models.CASCADE, related_name='lines', verbose_name='گزارش')
-    item   = models.ForeignKey(KukerItem, on_delete=models.CASCADE, related_name='sales_lines', verbose_name='غذا')
+    item   = models.ForeignKey(KukerItem, on_delete=models.PROTECT, related_name='sales_lines', verbose_name='غذا')
     qty    = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='تعداد فروش')
 
     class Meta:
@@ -160,7 +183,8 @@ class KukerItemCostHistory(models.Model):
         indexes             = [models.Index(fields=['item', '-recorded_at'])]
 
     def __str__(self):
-        return f'{self.item.name} = {self.cost_per_unit} @ {self.recorded_at:%Y-%m-%d %H:%M}'
+        ts = f'{self.recorded_at:%Y-%m-%d %H:%M}' if self.recorded_at else '—'
+        return f'{self.item.name} = {self.cost_per_unit} @ {ts}'
 
 
 class ProductPriceEntry(models.Model):
@@ -197,7 +221,10 @@ class ProductPriceEntry(models.Model):
         verbose_name        = 'تاریخچهٔ قیمت ماده اولیه'
         verbose_name_plural = 'تاریخچهٔ قیمت مواد اولیه'
         ordering            = ['-recorded_at', '-id']
-        indexes             = [models.Index(fields=['product', '-recorded_at'])]
+        indexes             = [
+            models.Index(fields=['product', '-recorded_at']),
+            models.Index(fields=['cafe', '-recorded_at']),
+        ]
 
     def __str__(self):
         return (f'{self.product.name}: {self.entered_amount} {self.entered_unit} '

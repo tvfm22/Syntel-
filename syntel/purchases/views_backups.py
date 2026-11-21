@@ -3,29 +3,41 @@ Backup, Data Export/Import, Health Checks, and System Monitoring Views.
 تفکیک‌شده از purchases/views.py برای بهبود ساختار معماری و نگهداری‌پذیری.
 """
 import csv
+from datetime import datetime, timedelta
+from functools import wraps
 import io
 import json
 import logging
 import os
+from pathlib import Path
 import platform
 import secrets
 import shutil
+import sqlite3
+import tempfile
 import threading
 import zipfile
-from datetime import datetime, timedelta
-from pathlib import Path
 
-import psutil
+import django
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.core.cache import cache
 from django.core.management import call_command
 from django.db import connections, transaction
-from django.db.models import Q
-from django.http import FileResponse, Http404, HttpResponse, HttpResponseNotAllowed, JsonResponse
+from django.db.models import Count, F, Q, Sum
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseNotAllowed,
+    JsonResponse,
+)
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+import psutil
 
 from . import drive_backup
 from .middleware import get_cafe_code
@@ -53,6 +65,43 @@ LOCK_SERVER_BACKUP = 'lock:server_backup_running'
 LOCK_DRIVE_BACKUP = 'lock:drive_backup_running'
 BACKUP_LOCK_TIMEOUT = 600
 
+_EXCLUDED_FOLDER_BACKUP_DIRS = {'backups', 'cache', 'logs', 'tmp', 'sessions'}
+_EXCLUDED_BACKUP_FILENAMES = {
+    'drive_token.json',
+    'drive_config.json',
+    'drive_autobackup.json',
+}
+_EXCLUDED_BACKUP_SUFFIXES = ('.key', '.pem')
+_ALLOWED_CSV_MODELS = {'products', 'suppliers', 'purchases', 'invoices'}
+_FIXTURE_EXCLUDED_MODELS = {'contenttypes.contenttype', 'auth.permission', 'sessions.session'}
+
+
+def _is_backup_authorized(user) -> bool:
+    """Only superusers or global admins (cafe=None, role='admin') can access backups/Drive."""
+    return bool(
+        user
+        and user.is_authenticated
+        and user.is_active
+        and (user.is_superuser or (user.cafe is None and getattr(user, 'role', None) == 'admin'))
+    )
+
+
+def _backup_admin_required(view_func):
+    """Enforce superuser/global-admin authorization, returning HTTP 403 for single-cafe managers."""
+
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not request.user.is_active:
+            logout(request)
+            return redirect('login')
+        if not _is_backup_authorized(request.user):
+            return HttpResponseForbidden('دسترسی فقط برای سوپرادمین یا ادمین کل مجاز است.')
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
 
 def _human_size(num_bytes):
     """Format a byte count into a human-readable string."""
@@ -64,35 +113,117 @@ def _human_size(num_bytes):
     return f'{size:.1f} TB'
 
 
+def _is_sqlite_engine():
+    return settings.DATABASES['default']['ENGINE'].endswith('sqlite3')
+
+
+def _sqlite_online_backup(src_path: Path, dst_path: Path) -> None:
+    """Create a consistent SQLite backup using the SQLite online backup API."""
+    dst_path = Path(dst_path)
+    dst_path.parent.mkdir(parents=True, exist_ok=True)
+    src_conn = sqlite3.connect(str(src_path))
+    try:
+        dst_conn = sqlite3.connect(str(dst_path))
+        try:
+            src_conn.backup(dst_conn)
+        finally:
+            dst_conn.close()
+    finally:
+        src_conn.close()
+
+
+def _atomic_replace_file(src_path: Path, dst_path: Path) -> None:
+    """Atomically replace dst_path with src_path (staging in dst_path.parent if cross-device)."""
+    src_path = Path(src_path)
+    dst_path = Path(dst_path)
+    dst_path.parent.mkdir(parents=True, exist_ok=True)
+    if src_path.parent.resolve() == dst_path.parent.resolve():
+        os.replace(src_path, dst_path)
+        return
+
+    fd, staging_name = tempfile.mkstemp(prefix=f'.{dst_path.name}.', dir=str(dst_path.parent))
+    os.close(fd)
+    staging_path = Path(staging_name)
+    try:
+        shutil.copyfile(src_path, staging_path)
+        os.replace(staging_path, dst_path)
+    finally:
+        if staging_path.exists():
+            try:
+                staging_path.unlink()
+            except OSError:
+                pass
+
+
 def _snapshot_db_before_restore():
-    """Copy the current SQLite DB to BACKUPS_DIR before a destructive restore."""
-    db_path = Path(settings.DATABASES['default']['NAME'])
+    """Copy the current SQLite DB to BACKUPS_DIR safely before a destructive restore."""
+    if not _is_sqlite_engine():
+        return None
+    raw_name = str(settings.DATABASES['default']['NAME'])
+    if raw_name == ':memory:' or raw_name.startswith('file:'):
+        return None
+    db_path = Path(raw_name)
     if not os.path.exists(db_path):
         return None
     os.makedirs(settings.BACKUPS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     snapshot_path = Path(settings.BACKUPS_DIR) / f'autorestore_{timestamp}.sqlite3'
-    shutil.copyfile(db_path, snapshot_path)
+    _sqlite_online_backup(db_path, snapshot_path)
     return snapshot_path
 
 
-def _is_sqlite_engine():
-    return settings.DATABASES['default']['ENGINE'].endswith('sqlite3')
-
-
-_EXCLUDED_FOLDER_BACKUP_DIRS = {'backups', 'cache', 'logs', 'tmp'}
+def _is_excluded_backup_file(filename: str) -> bool:
+    lower = filename.lower()
+    if lower in _EXCLUDED_BACKUP_FILENAMES:
+        return True
+    if lower.startswith('.env'):
+        return True
+    if lower.endswith(_EXCLUDED_BACKUP_SUFFIXES):
+        return True
+    return False
 
 
 def _build_data_folder_zip(zip_path):
-    """Zip the whole DATA_PATH folder (db, uploads, sessions, ...) into zip_path."""
+    """Zip DATA_PATH (db, uploads, ...) while excluding secrets, sessions, and transient dirs."""
     root = Path(settings.DATA_PATH)
+    is_sqlite = _is_sqlite_engine()
+    raw_db_name = str(settings.DATABASES['default']['NAME'])
+    live_db_path = None
+    if is_sqlite and raw_db_name != ':memory:' and not raw_db_name.startswith('file:'):
+        live_db_path = Path(raw_db_name).resolve()
+
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in _EXCLUDED_FOLDER_BACKUP_DIRS]
             rel_dir = Path(dirpath).relative_to(root)
             for fname in filenames:
+                if _is_excluded_backup_file(fname):
+                    continue
                 full_path = Path(dirpath) / fname
                 arcname = (rel_dir / fname).as_posix()
+
+                # Never copy raw SQLite WAL/SHM files or read live SQLite DB mid-write
+                if live_db_path is not None:
+                    resolved = full_path.resolve()
+                    if any(str(resolved) == str(live_db_path) + sfx for sfx in ('-wal', '-shm', '-journal')):
+                        continue
+                    if resolved == live_db_path:
+                        os.makedirs(settings.TMP_DIR, exist_ok=True)
+                        fd, tmp_db_name = tempfile.mkstemp(prefix='zip_db_', suffix='.sqlite3', dir=str(settings.TMP_DIR))
+                        os.close(fd)
+                        tmp_db = Path(tmp_db_name)
+                        try:
+                            _sqlite_online_backup(live_db_path, tmp_db)
+                            zf.write(tmp_db, arcname)
+                        except (OSError, sqlite3.Error):
+                            logger.exception("Failed online SQLite backup for zip archive")
+                        finally:
+                            try:
+                                os.remove(tmp_db)
+                            except OSError:
+                                pass
+                        continue
+
                 try:
                     zf.write(full_path, arcname)
                 except OSError:
@@ -125,7 +256,7 @@ class _TempBackupFile:
 
 def run_auto_backup_if_due():
     """If Drive is connected and the interval (default 12h) has passed,
-    automatically back up the whole data folder to Google Drive.
+    automatically back up the data folder to Google Drive.
     Returns (ran, message). Protected by cache lock to prevent concurrent executions."""
     if not drive_backup.is_configured() or not drive_backup.is_connected():
         return False, ''
@@ -171,8 +302,7 @@ def run_auto_backup_if_due():
 
 
 def trigger_auto_backup_async():
-    """Trigger run_auto_backup_if_due in a background daemon thread protected by cache lock.
-    Returns True if background worker thread was spawned, False otherwise."""
+    """Trigger run_auto_backup_if_due in a background daemon thread protected by cache lock."""
     if not drive_backup.is_configured() or not drive_backup.is_connected():
         return False
 
@@ -199,7 +329,7 @@ def trigger_auto_backup_async():
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def backup_management(request):
     cafe = get_cafe_from_request(request)
     pr_qs = PurchaseRequest.objects.all()
@@ -210,7 +340,6 @@ def backup_management(request):
         inv_qs = inv_qs.filter(cafe=cafe)
         sup_qs = sup_qs.filter(cafe=cafe)
 
-    # Decoupled from synchronous request flow: triggers in background daemon thread
     trigger_auto_backup_async()
 
     drive_cfg = drive_backup.load_config()
@@ -249,7 +378,7 @@ def backup_management(request):
         "total_payments": Payment.objects.count(),
         "total_suppliers": sup_qs.count(),
         "database_name": os.path.basename(db_path),
-        "database_host": settings.DATABASES['default']['HOST'] or 'localhost',
+        "database_host": settings.DATABASES['default'].get('HOST') or 'localhost',
         "database_type": 'SQLite' if is_sqlite else 'PostgreSQL',
         "database_path": str(db_path),
         "database_size": _human_size(db_size) if db_size else '-',
@@ -271,7 +400,7 @@ def backup_management(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def backup_database(request):
     """Create a server-side backup of the database (JSON dump) asynchronously. Accepts only POST."""
     if request.method != 'POST':
@@ -291,7 +420,13 @@ def backup_database(request):
             filepath = os.path.join(backup_dir, filename)
 
             with open(filepath, 'w', encoding='utf-8') as f:
-                call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=f)
+                call_command(
+                    'dumpdata',
+                    natural_foreign=True,
+                    natural_primary=True,
+                    exclude=['auth.permission', 'contenttypes', 'sessions'],
+                    stdout=f,
+                )
 
             logger.info("Server-side backup '%s' completed successfully.", filename)
         except Exception as e:
@@ -305,19 +440,36 @@ def backup_database(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def download_database_file(request):
-    """Download the actual SQLite database file as a full backup."""
+    """Download a consistent online snapshot of the SQLite database file."""
     if not _is_sqlite_engine():
         messages.error(request, "دانلود فایل دیتابیس فقط برای دیتابیس SQLite پشتیبانی می‌شود. برای PostgreSQL از دانلود JSON استفاده کنید.")
         return get_cafe_redirect_url('backup_management', request)
+
     db_path = Path(settings.DATABASES['default']['NAME'])
     if not os.path.exists(db_path):
         messages.error(request, "فایل دیتابیس یافت نشد.")
         return get_cafe_redirect_url('backup_management', request)
+
+    os.makedirs(settings.TMP_DIR, exist_ok=True)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    fd, tmp_name = tempfile.mkstemp(prefix='db_dl_', suffix='.sqlite3', dir=str(settings.TMP_DIR))
+    os.close(fd)
+    temp_db_path = Path(tmp_name)
+    try:
+        _sqlite_online_backup(db_path, temp_db_path)
+    except Exception as e:
+        try:
+            os.remove(temp_db_path)
+        except OSError:
+            pass
+        logger.exception("Failed to create online SQLite snapshot for download: %s", e)
+        messages.error(request, "خطا در تهیه نسخه پشتیبان دیتابیس.")
+        return get_cafe_redirect_url('backup_management', request)
+
     return FileResponse(
-        open(db_path, 'rb'),
+        _TempBackupFile(temp_db_path),
         content_type='application/x-sqlite3',
         as_attachment=True,
         filename=f'syntel_db_backup_{timestamp}.sqlite3',
@@ -325,69 +477,90 @@ def download_database_file(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def restore_database_file(request):
-    """Restore the database by uploading a SQLite database file (full restore)."""
+    """Restore the database by uploading a validated SQLite database file (full restore)."""
     if not _is_sqlite_engine():
-        messages.error(request, "بازیابی فایل دیتابیس فقط برای دیتابیس SQLite پشتیبانی می‌شود. برای PostgreSQL از بازیابی JSON استفاده کنید.")
+        messages.error(
+            request,
+            "بازیابی فایل SQLite برای دیتابیس PostgreSQL پشتیبانی نمی‌شود. برای PostgreSQL از بازیابی JSON استفاده کنید.",
+        )
         return get_cafe_redirect_url('backup_management', request)
 
-    if request.method == 'POST' and request.FILES.get('db_file'):
-        db_file = request.FILES['db_file']
+    if request.method != 'POST' or not request.FILES.get('db_file'):
+        messages.error(request, "فایلی انتخاب نشده است.")
+        return get_cafe_redirect_url('backup_management', request)
 
-        ext = Path(db_file.name).suffix.lower()
-        if ext not in ('.db', '.sqlite', '.sqlite3'):
-            messages.error(request, "فرمت فایل نامعتبر است. لطفاً فایل دیتابیس (.sqlite3 یا .db) انتخاب کنید.")
-            return get_cafe_redirect_url('backup_management', request)
-        header = db_file.read(16)
-        db_file.seek(0)
-        if header[:15] != b'SQLite format 3':
-            messages.error(request, "فایل انتخاب‌شده یک فایل دیتابیس SQLite معتبر نیست.")
+    db_file = request.FILES['db_file']
+
+    ext = Path(db_file.name).suffix.lower()
+    if ext not in ('.db', '.sqlite', '.sqlite3'):
+        messages.error(request, "فرمت فایل نامعتبر است. لطفاً فایل دیتابیس (.sqlite3 یا .db) انتخاب کنید.")
+        return get_cafe_redirect_url('backup_management', request)
+
+    header = db_file.read(16)
+    db_file.seek(0)
+    if header[:15] != b'SQLite format 3':
+        messages.error(request, "فایل انتخاب‌شده یک فایل دیتابیس SQLite معتبر نیست.")
+        return get_cafe_redirect_url('backup_management', request)
+
+    db_path = Path(settings.DATABASES['default']['NAME'])
+    os.makedirs(settings.TMP_DIR, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix='restore_db_', suffix='.sqlite3', dir=str(settings.TMP_DIR))
+    os.close(fd)
+    temp_path = Path(tmp_name)
+
+    try:
+        with open(temp_path, 'wb') as destination:
+            for chunk in db_file.chunks():
+                destination.write(chunk)
+
+        # Validate SQLite integrity before touching the live database
+        try:
+            check_conn = sqlite3.connect(str(temp_path))
+            try:
+                row = check_conn.execute('PRAGMA integrity_check').fetchone()
+            finally:
+                check_conn.close()
+        except sqlite3.Error:
+            row = None
+
+        if not row or str(row[0]).lower() != 'ok':
+            messages.error(request, "فایل دیتابیس خراب یا نامعتبر است (بررسی یکپارچگی ناموفق بود).")
             return get_cafe_redirect_url('backup_management', request)
 
-        db_path = Path(settings.DATABASES['default']['NAME'])
-        os.makedirs(settings.TMP_DIR, exist_ok=True)
-        temp_path = Path(settings.TMP_DIR) / f'restore_db_{datetime.now().strftime("%Y%m%d%H%M%S")}.sqlite3'
+        snapshot_path = _snapshot_db_before_restore()
+
+        connections.close_all()
+        for suffix in ('-wal', '-shm'):
+            stale = Path(str(db_path) + suffix)
+            if stale.exists():
+                stale.unlink()
+        _atomic_replace_file(temp_path, db_path)
 
         try:
-            with open(temp_path, 'wb+') as destination:
-                for chunk in db_file.chunks():
-                    destination.write(chunk)
-
-            snapshot_path = _snapshot_db_before_restore()
-
-            connections.close_all()
-            for suffix in ('-wal', '-shm'):
-                stale = Path(str(db_path) + suffix)
-                if stale.exists():
-                    stale.unlink()
-            shutil.copyfile(temp_path, db_path)
-
-            try:
-                call_command('migrate', verbosity=0, interactive=False)
-                note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
-                messages.success(request, f"دیتابیس با موفقیت بازیابی شد.{note}")
-            except Exception as e:
-                connections.close_all()
-                if snapshot_path and os.path.exists(snapshot_path):
-                    shutil.copyfile(snapshot_path, db_path)
-                messages.error(request, f"خطا در اعمال دیتابیس جدید ({e}). دیتابیس قبلی برگردانده شد.")
+            call_command('migrate', verbosity=0, interactive=False)
+            note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
+            messages.success(request, f"دیتابیس با موفقیت بازیابی شد.{note}")
         except Exception as e:
-            messages.error(request, f"خطا در بازیابی دیتابیس: {str(e)}")
-        finally:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
-        return get_cafe_redirect_url('backup_management', request)
-
-    messages.error(request, "فایلی انتخاب نشده است.")
+            connections.close_all()
+            if snapshot_path and os.path.exists(snapshot_path):
+                _atomic_replace_file(snapshot_path, db_path)
+            messages.error(request, f"خطا در اعمال دیتابیس جدید ({e}). دیتابیس قبلی برگردانده شد.")
+    except Exception as e:
+        logger.exception("Error restoring SQLite database: %s", e)
+        messages.error(request, f"خطا در بازیابی دیتابیس: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
     return get_cafe_redirect_url('backup_management', request)
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def download_backup_file(request, filename):
     """Download a server-side backup file from BACKUPS_DIR."""
     safe_name = os.path.basename(filename)
@@ -402,7 +575,7 @@ def download_backup_file(request, filename):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def delete_backup_file(request, filename):
     """Delete a server-side backup file."""
     if request.method == 'POST':
@@ -427,7 +600,7 @@ def _drive_back_to_backup(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def drive_connect(request):
     """Start the Google OAuth flow to connect Google Drive."""
     if not drive_backup.is_configured():
@@ -439,6 +612,8 @@ def drive_connect(request):
     return redirect(drive_backup.build_authorize_url(state, redirect_uri))
 
 
+@custom_login_required
+@_backup_admin_required
 def drive_callback(request):
     """OAuth callback — exchange the code and store the token."""
     error = request.GET.get('error')
@@ -464,7 +639,7 @@ def drive_callback(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def drive_save_config(request):
     """Save Google Drive credentials from the page (no server restart needed)."""
     if request.method == 'POST':
@@ -496,7 +671,7 @@ def drive_save_config(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def drive_disconnect(request):
     """Disconnect Google Drive (removes the stored token)."""
     if request.method == 'POST':
@@ -506,7 +681,7 @@ def drive_disconnect(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def drive_backup_now(request):
     """Send a fresh backup of the database to Google Drive asynchronously. Accepts only POST."""
     if request.method != 'POST':
@@ -526,32 +701,38 @@ def drive_backup_now(request):
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     def _worker():
+        temp_file = None
         try:
             if backup_type == 'folder':
                 os.makedirs(settings.TMP_DIR, exist_ok=True)
                 zip_path = Path(settings.TMP_DIR) / f'syntel_data_backup_{timestamp}.zip'
+                temp_file = zip_path
                 _build_data_folder_zip(zip_path)
                 filename = zip_path.name
-                with open(zip_path, 'rb') as f:
-                    payload = f.read()
-                try:
-                    os.remove(zip_path)
-                except OSError:
-                    pass
+                drive_backup.upload_file_to_drive(filename, zip_path)
             elif backup_type == 'db' and _is_sqlite_engine():
                 db_path = Path(settings.DATABASES['default']['NAME'])
                 if not os.path.exists(db_path):
                     raise ValueError('فایل دیتابیس یافت نشد.')
-                filename = f'syntel_db_backup_{timestamp}.sqlite3'
-                with open(db_path, 'rb') as f:
-                    payload = f.read()
+                os.makedirs(settings.TMP_DIR, exist_ok=True)
+                temp_db = Path(settings.TMP_DIR) / f'syntel_db_backup_{timestamp}.sqlite3'
+                temp_file = temp_db
+                _sqlite_online_backup(db_path, temp_db)
+                filename = temp_db.name
+                drive_backup.upload_file_to_drive(filename, temp_db)
             else:
                 buffer = io.StringIO()
-                call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=buffer)
+                call_command(
+                    'dumpdata',
+                    natural_foreign=True,
+                    natural_primary=True,
+                    exclude=['auth.permission', 'contenttypes', 'sessions'],
+                    stdout=buffer,
+                )
                 filename = f'syntel_export_{timestamp}.json'
                 payload = buffer.getvalue().encode('utf-8')
+                drive_backup.upload_backup(filename, payload)
 
-            drive_backup.upload_backup(filename, payload)
             drive_backup.set_auto_state(
                 last_auto=datetime.now().isoformat(timespec='seconds'),
                 status='ok',
@@ -562,6 +743,11 @@ def drive_backup_now(request):
             drive_backup.set_auto_state(status='error', last_error=str(e))
             logger.exception("Error uploading backup to Google Drive: %s", e)
         finally:
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except OSError:
+                    pass
             cache.delete(LOCK_DRIVE_BACKUP)
 
     threading.Thread(target=_worker, name="drive_backup_worker", daemon=True).start()
@@ -570,9 +756,9 @@ def drive_backup_now(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def export_data_folder(request):
-    """Download the whole DATA_PATH folder (db + uploads + sessions) as a ZIP."""
+    """Download the DATA_PATH folder (db + uploads, excluding sessions/secrets) as a ZIP."""
     os.makedirs(settings.TMP_DIR, exist_ok=True)
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     zip_path = Path(settings.TMP_DIR) / f'syntel_data_backup_{timestamp}.zip'
@@ -590,14 +776,20 @@ def export_data_folder(request):
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def export_data_json(request):
     """Download a full database backup as JSON."""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f'syntel_export_{timestamp}.json'
 
     buffer = io.StringIO()
-    call_command('dumpdata', exclude=['auth.permission', 'contenttypes', 'sessions'], stdout=buffer)
+    call_command(
+        'dumpdata',
+        natural_foreign=True,
+        natural_primary=True,
+        exclude=['auth.permission', 'contenttypes', 'sessions'],
+        stdout=buffer,
+    )
     buffer.seek(0)
 
     response = HttpResponse(buffer.getvalue(), content_type='application/json')
@@ -608,17 +800,22 @@ def export_data_json(request):
 @custom_login_required
 @role_required(["manager"])
 def export_data_csv(request):
-    """Export specific data models to CSV."""
-    model_name = request.GET.get('model', 'products')
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{model_name}_{timestamp}.csv"'
-    response.write(u'\ufeff'.encode('utf8'))
-    
-    writer = csv.writer(response)
+    """Export specific cafe-scoped data models to CSV."""
+    model_name = (request.GET.get('model') or 'products').strip()
+    if model_name not in _ALLOWED_CSV_MODELS:
+        return HttpResponse('Invalid model specified', status=400, content_type='text/plain; charset=utf-8')
+
     cafe = get_cafe_from_request(request)
-    
+    if not request.user.is_superuser and cafe is None:
+        return HttpResponseForbidden('ابتدا کافه را انتخاب کنید.')
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{model_name}_{timestamp}.csv"'
+    response.write(b'\xef\xbb\xbf')
+
+    writer = csv.writer(response)
+
     if model_name == 'products':
         writer.writerow(['ID', 'Name', 'Category', 'Unit', 'Price', 'Stock', 'Description'])
         products_qs = Product.objects.select_related('category', 'unit').all()
@@ -626,15 +823,15 @@ def export_data_csv(request):
             products_qs = products_qs.filter(cafe=cafe)
         for obj in products_qs:
             writer.writerow([
-                obj.id, 
-                obj.name, 
-                obj.category.name if obj.category else '', 
-                obj.unit.name if obj.unit else '', 
-                obj.current_price, 
-                obj.stock_quantity,
-                obj.description
+                obj.id,
+                obj.name,
+                obj.category.name if obj.category else '',
+                obj.unit.name if obj.unit else '',
+                getattr(obj, 'current_price', obj.base_unit_price if obj.base_unit_price is not None else 0),
+                getattr(obj, 'stock_quantity', obj.current_stock),
+                obj.description,
             ])
-            
+
     elif model_name == 'suppliers':
         writer.writerow(['ID', 'Name', 'Contact Person', 'Phone', 'Email', 'Address', 'Rating'])
         suppliers_qs = Supplier.objects.all()
@@ -642,29 +839,29 @@ def export_data_csv(request):
             suppliers_qs = suppliers_qs.filter(cafe=cafe)
         for obj in suppliers_qs:
             writer.writerow([
-                obj.id, 
-                obj.name, 
-                obj.contact_person, 
-                obj.phone, 
-                obj.email, 
+                obj.id,
+                obj.name,
+                obj.contact_person,
+                obj.phone,
+                obj.email,
                 obj.address,
-                obj.rating
+                obj.rating,
             ])
-            
+
     elif model_name == 'purchases':
         writer.writerow(['ID', 'Requester', 'Status', 'Date Created', 'Total Items'])
-        purchases_qs = PurchaseRequest.objects.select_related('requester').prefetch_related('items').all()
+        purchases_qs = PurchaseRequest.objects.select_related('user').prefetch_related('items').all()
         if cafe:
             purchases_qs = purchases_qs.filter(cafe=cafe)
         for obj in purchases_qs:
             writer.writerow([
-                obj.id, 
-                obj.requester.username, 
-                obj.get_status_display(), 
-                obj.created_at.strftime('%Y-%m-%d %H:%M'), 
-                obj.items.count()
+                obj.id,
+                obj.user.username if obj.user else '',
+                obj.get_status_display(),
+                obj.created_at.strftime('%Y-%m-%d %H:%M'),
+                obj.items.count(),
             ])
-            
+
     elif model_name == 'invoices':
         writer.writerow(['ID', 'Invoice Number', 'Supplier', 'Amount', 'Status', 'Date'])
         invoices_qs = Invoice.objects.select_related('supplier').all()
@@ -672,75 +869,83 @@ def export_data_csv(request):
             invoices_qs = invoices_qs.filter(cafe=cafe)
         for obj in invoices_qs:
             writer.writerow([
-                obj.id, 
-                obj.invoice_number, 
-                obj.supplier.name, 
-                obj.total_amount, 
-                obj.get_status_display(), 
-                obj.issue_date
+                obj.id,
+                obj.invoice_number,
+                obj.supplier.name if obj.supplier else (obj.store_name or ''),
+                obj.total_amount,
+                obj.get_status_display(),
+                obj.invoice_date,
             ])
-            
-    else:
-        writer.writerow(['Error', 'Invalid model specified'])
-        
+
     return response
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def import_data_json(request):
-    """Restore data from a JSON backup file (replaces all current data)."""
-    if request.method == 'POST' and request.FILES.get('backup_file'):
-        backup_file = request.FILES['backup_file']
-
-        temp_dir = settings.TMP_DIR
-        os.makedirs(temp_dir, exist_ok=True)
-        temp_path = os.path.join(temp_dir, f'restore_{datetime.now().strftime("%Y%m%d%H%M%S")}.json')
-
-        try:
-            with open(temp_path, 'wb+') as destination:
-                for chunk in backup_file.chunks():
-                    destination.write(chunk)
-
-            with open(temp_path, 'r', encoding='utf-8') as f:
-                fixture = json.load(f)
-            if not isinstance(fixture, list):
-                raise ValueError("فرمت فایل JSON نامعتبر است (لیست اشیاء مورد انتظار است).")
-
-            snapshot_path = _snapshot_db_before_restore()
-
-            with transaction.atomic():
-                call_command('flush', verbosity=0, interactive=False)
-                call_command('loaddata', temp_path, verbosity=0)
-
-            note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
-            messages.success(request, f"داده‌ها با موفقیت بازیابی شد و جایگزین داده‌های قبلی شد.{note}")
-        except Exception as e:
-            messages.error(request, f"خطا در بازیابی داده‌ها: {str(e)}")
-        finally:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
-
+    """Restore data from a JSON backup file (replaces current data safely)."""
+    if request.method != 'POST' or not request.FILES.get('backup_file'):
+        messages.error(request, "فایلی انتخاب نشده است.")
         return get_cafe_redirect_url('backup_management', request)
 
-    messages.error(request, "فایلی انتخاب نشده است.")
+    backup_file = request.FILES['backup_file']
+    temp_dir = settings.TMP_DIR
+    os.makedirs(temp_dir, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix='restore_', suffix='.json', dir=str(temp_dir))
+    os.close(fd)
+
+    try:
+        with open(temp_path, 'wb') as destination:
+            for chunk in backup_file.chunks():
+                destination.write(chunk)
+
+        with open(temp_path, 'r', encoding='utf-8') as f:
+            fixture = json.load(f)
+        if not isinstance(fixture, list):
+            raise ValueError("فرمت فایل JSON نامعتبر است (لیست اشیاء مورد انتظار است).")
+
+        # Strip contenttypes/auth.permission/sessions to prevent PK corruption on loaddata
+        sanitized_fixture = [
+            obj for obj in fixture
+            if isinstance(obj, dict) and str(obj.get('model', '')).lower() not in _FIXTURE_EXCLUDED_MODELS
+        ]
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            json.dump(sanitized_fixture, f)
+
+        try:
+            snapshot_path = _snapshot_db_before_restore()
+        except Exception as snap_err:
+            raise ValueError(f"امکان تهیه نسخه پشتیبان ایمن پیش از بازیابی وجود نداشت: {snap_err}") from snap_err
+
+        with transaction.atomic():
+            call_command('flush', verbosity=0, interactive=False)
+            call_command('loaddata', temp_path, verbosity=0)
+
+        note = f" نسخه قبلی قبل از بازیابی ذخیره شد: {snapshot_path.name}" if snapshot_path else ""
+        messages.success(request, f"داده‌ها با موفقیت بازیابی شد و جایگزین داده‌های قبلی شد.{note}")
+    except Exception as e:
+        logger.exception("Error importing JSON backup: %s", e)
+        messages.error(request, f"خطا در بازیابی داده‌ها: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
     return get_cafe_redirect_url('backup_management', request)
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def create_migration_script(request):
-    return render(request, "create_migration_script.html")
+    return HttpResponse("این قابلیت غیرفعال شده است.", status=410)
 
 
 @custom_login_required
-@role_required(["manager"])
+@_backup_admin_required
 def run_migration_script(request):
-    messages.success(request, "Migration executed")
-    return get_cafe_redirect_url("backup_management", request)
+    return HttpResponse("این قابلیت غیرفعال شده است.", status=410)
 
 
 @custom_login_required
@@ -749,63 +954,178 @@ def system_health_check(request):
     return render(request, "system_health.html", {"status": "healthy"})
 
 
-@custom_login_required
-@role_required(["manager"])
-def system_monitoring(request):
-    system_info = {
-        "os": platform.system(),
-        "os_version": platform.release(),
-        "hostname": platform.node(),
-        "python_version": platform.python_version(),
-        "django_version": "5.0",
-        "cpu_count": psutil.cpu_count(),
-        "total_memory": _human_size(psutil.virtual_memory().total),
-        "total_disk": _human_size(psutil.disk_usage("/").total),
-    }
+def _build_monitoring_metrics(cafe):
+    """Collect non-blocking system metrics, scoped business stats, and 7-day trends."""
+    cpu_pct = psutil.cpu_percent(interval=None)
+    mem = psutil.virtual_memory()
+    disk = psutil.disk_usage("/")
 
-    system_resources = {
-        "cpu_percent": psutil.cpu_percent(interval=1),
-        "memory_percent": psutil.virtual_memory().percent,
-        "memory_used": _human_size(psutil.virtual_memory().used),
-        "memory_free": _human_size(psutil.virtual_memory().available),
-        "disk_usage": psutil.disk_usage("/").percent,
-        "disk_used": _human_size(psutil.disk_usage("/").used),
-        "disk_free": _human_size(psutil.disk_usage("/").free),
-    }
-
-    cafe = get_cafe_from_request(request)
     act_qs = ActivityLog.objects.all()
     pr_qs = PurchaseRequest.objects.all()
     inv_qs = Invoice.objects.all()
     po_qs = PurchaseOrder.objects.all()
     pay_qs = Payment.objects.all()
+    sup_qs = Supplier.objects.all()
+    prod_qs = Product.objects.all()
+    user_qs = User.objects.all()
+
     if cafe:
         act_qs = act_qs.filter(request__cafe=cafe)
         pr_qs = pr_qs.filter(cafe=cafe)
         inv_qs = inv_qs.filter(cafe=cafe)
         po_qs = po_qs.filter(request__cafe=cafe)
         pay_qs = pay_qs.filter(Q(invoice__cafe=cafe) | Q(invoices__cafe=cafe)).distinct()
+        sup_qs = sup_qs.filter(cafe=cafe)
+        prod_qs = prod_qs.filter(cafe=cafe)
+        user_qs = user_qs.filter(cafe=cafe)
+
+    today = timezone.localdate()
+    since_24h = timezone.now() - timedelta(hours=24)
+
+    pending_invoices = inv_qs.exclude(status__in=['paid', 'cancelled']).count()
+    overdue_invoices = inv_qs.filter(due_date__lt=today).exclude(status__in=['paid', 'cancelled']).count()
+    unpaid_total = inv_qs.exclude(status__in=['paid', 'cancelled']).aggregate(total=Sum('total_amount'))['total'] or 0
+    paid_total = (
+        pay_qs.filter(payment_status='completed').aggregate(total=Sum('amount'))['total'] or 0
+    )
+    outstanding_payments = max(0, float(unpaid_total) - float(paid_total))
+
+    low_stock_products = prod_qs.filter(is_active=True, current_stock__lte=F('min_stock')).count()
+    inactive_suppliers = sup_qs.exclude(status='active').count()
+    active_connections = len(connections.all())
 
     recent_activity = {
-        "new_requests": pr_qs.count(),
-        "new_orders": po_qs.count(),
-        "new_invoices": inv_qs.count(),
-        "new_payments": pay_qs.count(),
+        "new_requests": pr_qs.filter(created_at__gte=since_24h).count(),
+        "new_orders": po_qs.filter(created_at__gte=since_24h).count(),
+        "new_invoices": inv_qs.filter(created_at__gte=since_24h).count(),
+        "new_payments": pay_qs.filter(created_at__gte=since_24h).count(),
     }
 
     health_status = {
         "database_status": "healthy",
         "overall_health": "good",
-        "pending_approvals": pr_qs.filter(status="pending").count(),
-        "overdue_invoices": 0,
+        "pending_approvals": pr_qs.filter(status__in=["pending", "pending_manager_approval"]).count(),
+        "pending_invoices": pending_invoices,
+        "overdue_invoices": overdue_invoices,
+        "outstanding_payments": outstanding_payments,
+        "active_connections": active_connections,
+        "low_stock_products": low_stock_products,
+        "inactive_suppliers": inactive_suppliers,
     }
 
-    context = {
-        "system_info": system_info,
+    system_resources = {
+        "cpu_percent": cpu_pct,
+        "cpu_usage": cpu_pct,
+        "memory_percent": mem.percent,
+        "memory_used": round(mem.used / (1024 * 1024), 1),
+        "memory_total": round(mem.total / (1024 * 1024), 1),
+        "memory_free": _human_size(mem.available),
+        "disk_usage": disk.percent,
+        "disk_percent": disk.percent,
+        "disk_used": round(disk.used / (1024 * 1024 * 1024), 2),
+        "disk_total": round(disk.total / (1024 * 1024 * 1024), 2),
+        "disk_free": _human_size(disk.free),
+    }
+
+    stats = {
+        "total_users": user_qs.count(),
+        "active_users": user_qs.filter(is_active=True).count(),
+        "total_requests": pr_qs.count(),
+        "pending_requests": pr_qs.filter(status__in=["pending", "pending_manager_approval"]).count(),
+        "total_orders": po_qs.count(),
+        "total_invoices": inv_qs.count(),
+        "paid_invoices": inv_qs.filter(status='paid').count(),
+        "total_payments": pay_qs.count(),
+        "total_suppliers": sup_qs.count(),
+        "total_products": prod_qs.count(),
+    }
+
+    # 7-day performance trends (JSON-serializable lists)
+    start_day = today - timedelta(days=6)
+    req_by_day = {
+        row['created_at__date']: row['c']
+        for row in pr_qs.filter(created_at__date__gte=start_day)
+        .values('created_at__date')
+        .annotate(c=Count('id'))
+    }
+    pay_by_day = {
+        row['payment_date']: (row['c'], float(row['total'] or 0))
+        for row in pay_qs.filter(payment_date__gte=start_day)
+        .values('payment_date')
+        .annotate(c=Count('id'), total=Sum('amount'))
+    }
+
+    daily_requests = []
+    daily_payments = []
+    daily_revenue = []
+    for offset in range(7):
+        day = start_day + timedelta(days=offset)
+        day_label = day.isoformat()
+        daily_requests.append({"date": day_label, "count": int(req_by_day.get(day, 0))})
+        p_count, p_total = pay_by_day.get(day, (0, 0.0))
+        daily_payments.append({"date": day_label, "count": int(p_count)})
+        daily_revenue.append({"date": day_label, "amount": p_total})
+
+    performance_trends = {
+        "daily_requests": daily_requests,
+        "daily_payments": daily_payments,
+        "daily_revenue": daily_revenue,
+    }
+
+    return {
         "system_resources": system_resources,
         "recent_activity": recent_activity,
         "health_status": health_status,
-        "active_connections": 1,
+        "stats": stats,
+        "performance_trends": performance_trends,
+        "active_connections": active_connections,
+        "act_qs": act_qs,
+    }
+
+
+@custom_login_required
+@role_required(["manager"])
+def system_monitoring(request):
+    cafe = get_cafe_from_request(request)
+    if not request.user.is_superuser and cafe is None:
+        return HttpResponseForbidden('ابتدا کافه را انتخاب کنید.')
+
+    db_cfg = settings.DATABASES['default']
+    is_sqlite = _is_sqlite_engine()
+    db_name = str(db_cfg.get('NAME', ''))
+    db_size_bytes = os.path.getsize(db_name) if is_sqlite and os.path.exists(db_name) else 0
+
+    system_info = {
+        "os": platform.system(),
+        "os_version": platform.release(),
+        "hostname": platform.node(),
+        "python_version": platform.python_version(),
+        "django_version": django.get_version(),
+        "cpu_count": psutil.cpu_count(),
+        "total_memory": _human_size(psutil.virtual_memory().total),
+        "total_disk": _human_size(psutil.disk_usage("/").total),
+    }
+
+    db_info = {
+        "database_name": os.path.basename(db_name) if is_sqlite else db_name,
+        "database_engine": db_cfg.get('ENGINE', ''),
+        "host": db_cfg.get('HOST') or 'localhost',
+        "port": db_cfg.get('PORT') or '-',
+    }
+
+    metrics = _build_monitoring_metrics(cafe)
+    context = {
+        "last_updated": timezone.now(),
+        "system_info": system_info,
+        "db_info": db_info,
+        "db_size": _human_size(db_size_bytes) if db_size_bytes else '-',
+        "system_resources": metrics["system_resources"],
+        "recent_activity": metrics["recent_activity"],
+        "health_status": metrics["health_status"],
+        "stats": metrics["stats"],
+        "performance_trends": metrics["performance_trends"],
+        "active_connections": metrics["active_connections"],
+        "alerts": [],
     }
     return render(request, "system_monitoring.html", context)
 
@@ -813,25 +1133,11 @@ def system_monitoring(request):
 @custom_login_required
 @role_required(["manager"])
 def system_monitoring_api(request):
-    system_resources = {
-        "cpu_percent": psutil.cpu_percent(interval=0.01),
-        "memory_percent": psutil.virtual_memory().percent,
-        "disk_usage": psutil.disk_usage("/").percent,
-    }
-
     cafe = get_cafe_from_request(request)
-    act_qs = ActivityLog.objects.all()
-    pr_qs = PurchaseRequest.objects.all()
-    inv_qs = Invoice.objects.all()
-    po_qs = PurchaseOrder.objects.all()
-    pay_qs = Payment.objects.all()
-    if cafe:
-        act_qs = act_qs.filter(request__cafe=cafe)
-        pr_qs = pr_qs.filter(cafe=cafe)
-        inv_qs = inv_qs.filter(cafe=cafe)
-        po_qs = po_qs.filter(request__cafe=cafe)
-        pay_qs = pay_qs.filter(Q(invoice__cafe=cafe) | Q(invoices__cafe=cafe)).distinct()
+    if not request.user.is_superuser and cafe is None:
+        return JsonResponse({"success": False, "error": "کافه فعال یافت نشد."}, status=403)
 
+    metrics = _build_monitoring_metrics(cafe)
     recent_activities = [
         {
             "id": act.id,
@@ -840,28 +1146,31 @@ def system_monitoring_api(request):
             "description": act.description,
             "timestamp": act.created_at.isoformat(),
         }
-        for act in act_qs.select_related("user").order_by("-created_at")[:10]
+        for act in metrics["act_qs"].select_related("user").order_by("-created_at")[:10]
     ]
 
-    recent_activity = {
-        "new_requests": pr_qs.count(),
-        "new_orders": po_qs.count(),
-        "new_invoices": inv_qs.count(),
-        "new_payments": pay_qs.count(),
+    resources_payload = {
+        "cpu_percent": metrics["system_resources"]["cpu_percent"],
+        "cpu_usage": metrics["system_resources"]["cpu_usage"],
+        "memory_percent": metrics["system_resources"]["memory_percent"],
+        "disk_usage": metrics["system_resources"]["disk_usage"],
+        "disk_percent": metrics["system_resources"]["disk_percent"],
     }
-
-    health_status = {
-        "database_status": "healthy",
-        "overall_health": "good",
-    }
+    health_payload = metrics["health_status"]
 
     data = {
-        "system_resources": system_resources,
-        "recent_activity": recent_activity,
+        "system_resources": resources_payload,
+        "resources": resources_payload,
+        "recent_activity": metrics["recent_activity"],
         "recent_activities": recent_activities,
-        "health_status": health_status,
-        "active_connections": 1,
+        "health_status": health_payload,
+        "health": health_payload,
+        "active_connections": metrics["active_connections"],
         "timestamp": timezone.now().isoformat(),
     }
-    from django.http import JsonResponse
-    return JsonResponse({"success": True, "data": data})
+    return JsonResponse({
+        "success": True,
+        "data": data,
+        "resources": resources_payload,
+        "health": health_payload,
+    })

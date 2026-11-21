@@ -149,10 +149,20 @@
     </div>
 </div>
 
+{{ status_counts|json_script:"status-counts-data" }}
+{{ dept_requests|json_script:"dept-requests-data" }}
+{{ monthly_trends|json_script:"monthly-trends-data" }}
 <script>
+function _parseJsonEl(id, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    let val = JSON.parse(el.textContent || 'null');
+    if (typeof val === 'string') { try { val = JSON.parse(val); } catch (e) {} }
+    return val == null ? fallback : val;
+}
 // Status Distribution Chart
 const statusCtx = document.getElementById('statusChart').getContext('2d');
-const statusData = {{ status_counts|safe }};
+const statusData = _parseJsonEl('status-counts-data', []);
 new Chart(statusCtx, {
     type: 'doughnut',
     data: {
@@ -177,7 +187,7 @@ new Chart(statusCtx, {
 
 // Department Chart
 const deptCtx = document.getElementById('departmentChart').getContext('2d');
-const deptData = {{ dept_requests|safe }};
+const deptData = _parseJsonEl('dept-requests-data', []);
 new Chart(deptCtx, {
     type: 'bar',
     data: {
@@ -201,7 +211,7 @@ new Chart(deptCtx, {
 
 // Monthly Trends Chart
 const trendsCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
-const trendsData = {{ monthly_trends|safe }};
+const trendsData = _parseJsonEl('monthly-trends-data', []);
 new Chart(trendsCtx, {
     type: 'line',
     data: {

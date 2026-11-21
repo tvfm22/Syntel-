@@ -155,7 +155,7 @@ class AnalyticsApp {
                 const total = data.departments.reduce((sum, d) => sum + (d.current_expense || 0), 0);
                 const totalExpenseEl = document.getElementById('totalExpense');
                 if (totalExpenseEl) {
-                    totalExpenseEl.textContent = formatCurrency(total).replace(' تومان', '');
+                    totalExpenseEl.textContent = formatCurrency(total).replace(' ریال', '');
                 }
             }
 
@@ -839,9 +839,9 @@ function getCsrfToken() {
 }
 
 function formatCurrency(amount) {
-    if (amount === null || amount === undefined) return '۰ تومان';
+    if (amount === null || amount === undefined) return '۰ ریال';
     const formatted = Number(amount).toLocaleString('fa-IR');
-    return formatted + ' تومان';
+    return formatted + ' ریال';
 }
 
 function formatNumber(num) {

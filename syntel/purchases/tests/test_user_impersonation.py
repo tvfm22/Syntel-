@@ -120,7 +120,7 @@ class UserImpersonationTests(TestCase):
         c = self.login_as(self.manager)
         url = reverse('user_impersonate', args=[self.cafe.code, self.cafeless.id])
         r = c.post(url)
-        self.assertEqual(r.status_code, 302)
+        self.assertIn(r.status_code, (302, 403))
         self.assertEqual(c.session['_auth_user_id'], str(self.manager.id))
         self.assertNotIn('impersonator_id', c.session)
 

@@ -146,7 +146,6 @@ class SecurityTests(TestCase):
             ],
             'manager': [
                 reverse('dashboard', kwargs={'cafe_code': CAFE_CODE}),
-                reverse('backup_management', kwargs={'cafe_code': CAFE_CODE}),
                 reverse('system_monitoring', kwargs={'cafe_code': CAFE_CODE}),
                 reverse('user_list', kwargs={'cafe_code': CAFE_CODE}),
                 reverse('finance_dashboard', kwargs={'cafe_code': CAFE_CODE}),
@@ -193,9 +192,9 @@ class SecurityTests(TestCase):
             restricted_urls = all_urls - set(allowed_urls)
             for url in restricted_urls:
                 response = self.client.get(url)
-                # Should be redirected (access denied) or 404
+                # Should be forbidden (403), redirected (302), or not found (404)
                 self.assertIn(
-                    response.status_code, [302, 404],
+                    response.status_code, [302, 403, 404],
                     f"{role_name} should not have access to {url}"
                 )
 

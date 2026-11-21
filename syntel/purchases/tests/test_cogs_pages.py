@@ -132,6 +132,21 @@ class CogsMenuListTest(CogsPagesBase):
         self.assertEqual(r.status_code, 200)
         self.assertIn('هنوز هیچ غذایی', r.content.decode())
 
+    def test_recipe_modal_exposes_sub_prep_drilldown(self):
+        html = self.client.get(self.url('cogs_menu_list')).content.decode()
+        self.assertIn('id="btnRecipeBack"', html)
+        self.assertIn('data-open-sub', html)
+
+        # باز کردن رسپی غذا، تشخیص نیمه‌آماده بودن سس و باز کردن رسپی خود سس
+        dish_data = self.client.get(self.url('cogs_recipe_api', item_id=self.dish.pk)).json()
+        self.assertEqual(dish_data['lines'][0]['material_id'], self.sauce.pk)
+        sauce_meta = next(m for m in dish_data['materials'] if m['id'] == self.sauce.pk)
+        self.assertEqual(sauce_meta['kind'], 'prep')
+
+        sauce_data = self.client.get(self.url('cogs_recipe_api', item_id=self.sauce.pk)).json()
+        self.assertEqual(sauce_data['item']['name'], 'سس پنیر')
+        self.assertEqual(sauce_data['lines'][0]['material_id'], self.cheese.pk)
+
 
 # ---------------------------------------------------------------------------
 # صفحه ۲ — قیمت‌گذاری کالاها
@@ -407,3 +422,26 @@ class CogsConsumptionTest(CogsPagesBase):
             cafe=self.other_cafe, period_start='2026-01-01', period_end='2026-01-30')
         r = self.client.get(self.url('cogs_consumption_calc') + f'?report={report.id}')
         self.assertEqual(r.status_code, 404)
+
+    def test_consumption_page_embeds_recipe_modal_and_clickable_sub_preps(self):
+        # نیمه‌آمادهٔ دوم با یک خط مستقیم بدون نرخ تبدیل تا direct_lines با لینک زیر-نیمه‌آماده هم رندر شود
+        from purchases.models import CogsReportLine
+        top_prep = KukerItem.objects.create(
+            cafe=self.cafe, name='سس ویژه', key='سسویژه', kind=KukerItem.KIND_PREP,
+            out_qty=1, out_unit='پرس', section=self.kitchen)
+        KukerRecipeLine.objects.create(
+            item=top_prep, material=self.sauce, quantity=1, unit='قاشق', fee=None)
+        KukerRecipeLine.objects.create(
+            item=self.dish, material=top_prep, quantity=1, unit='پرس', fee=None)
+
+        report = CogsReport.objects.create(
+            cafe=self.cafe, period_start='2026-01-01', period_end='2026-01-30')
+        CogsReportLine.objects.create(report=report, item=self.dish, qty=2)
+
+        html = self.client.get(
+            self.url('cogs_consumption_calc') + f'?report={report.id}').content.decode()
+        self.assertIn('id="recipeModal"', html)
+        self.assertIn('id="cogs-unit-choices"', html)
+        self.assertIn(f'data-open-recipe="{self.dish.pk}"', html)
+        self.assertIn(f'data-open-recipe="{top_prep.pk}"', html)
+        self.assertIn(f'data-open-recipe="{self.sauce.pk}"', html)

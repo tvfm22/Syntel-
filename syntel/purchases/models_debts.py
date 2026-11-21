@@ -27,7 +27,7 @@ class Debt(models.Model):
         max_digits=14, decimal_places=2, verbose_name='مبلغ بدهی',
         validators=[MinValueValidator(0)],
     )
-    debt_date = models.DateField(default=timezone.now, verbose_name='تاریخ بدهی')
+    debt_date = models.DateField(default=timezone.localdate, verbose_name='تاریخ بدهی')
     description = models.TextField(blank=True, verbose_name='توضیحات')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium', verbose_name='اولویت')
 
@@ -73,13 +73,15 @@ class Debt(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['priority']),
             models.Index(fields=['debt_date']),
+            models.Index(fields=['cafe', 'status']),
+            models.Index(fields=['cafe', '-created_at']),
         ]
 
 
 # هر ردیف پرداخت یک بدهی — یک بدهی می‌تواند چند پرداخت (پارشیال) داشته باشد
 class DebtPayment(models.Model):
     debt = models.ForeignKey(
-        Debt, on_delete=models.CASCADE, related_name='payments',
+        Debt, on_delete=models.PROTECT, related_name='payments',
         null=True, blank=True, verbose_name='بدهی',
     )
     company = models.CharField(max_length=200, verbose_name='نام تأمین‌کننده')
@@ -133,6 +135,7 @@ class DebtPayment(models.Model):
         indexes = [
             models.Index(fields=['paid_at']),
             models.Index(fields=['cafe']),
+            models.Index(fields=['cafe', '-created_at']),
         ]
 
 class PaymentAccount(models.Model):
@@ -156,5 +159,15 @@ class PaymentAccount(models.Model):
         verbose_name = 'حساب پرداخت'
         verbose_name_plural = 'حساب‌های پرداخت'
         ordering = ['bank_name']
+        indexes = [
+            models.Index(fields=['cafe', 'is_active']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cafe', 'bank_name', 'account_name', 'account_number'],
+                condition=models.Q(cafe__isnull=False),
+                name='uniq_payment_account_per_cafe',
+            ),
+        ]
 
 # Supplier Management System

@@ -1,13 +1,21 @@
-from django.core.management.base import BaseCommand
-from purchases.models import PaymentType
+from django.core.management.base import BaseCommand, CommandError
+
+from purchases.models import Cafe, PaymentType
+
 
 class Command(BaseCommand):
-    help = 'Populate database with sample payment types'
+    help = 'Populate database with sample payment types for a cafe'
+
+    def add_arguments(self, parser):
+        parser.add_argument('--cafe', required=True, help='Target cafe code')
 
     def handle(self, *args, **options):
-        self.stdout.write('Creating sample payment types...')
+        cafe = Cafe.objects.filter(code=options['cafe'], is_active=True).first()
+        if cafe is None:
+            raise CommandError(f'Active cafe "{options["cafe"]}" not found.')
 
-        # Create sample payment types
+        self.stdout.write(f'Creating sample payment types for cafe "{cafe.code}"...')
+
         payment_types_data = [
             {'name': 'نقدی', 'description': 'پرداخت نقدی'},
             {'name': 'کارت اعتباری', 'description': 'پرداخت با کارت اعتباری یا بانکی'},
@@ -22,17 +30,17 @@ class Command(BaseCommand):
         for pt_data in payment_types_data:
             payment_type, created = PaymentType.objects.get_or_create(
                 name=pt_data['name'],
+                cafe=cafe,
                 defaults={
                     'description': pt_data['description'],
                     'is_active': True,
-                }
+                },
             )
             if created:
                 self.stdout.write(f'Created payment type: {payment_type.name}')
 
-        self.stdout.write(self.style.SUCCESS('Successfully created sample payment types!'))
-
-        # Summary
-        total_payment_types = PaymentType.objects.count()
-        self.stdout.write(f'\nSummary:')
-        self.stdout.write(f'  - Total payment types: {total_payment_types}')
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Successfully created sample payment types for cafe "{cafe.code}"!'
+            )
+        )

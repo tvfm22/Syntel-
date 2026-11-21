@@ -117,41 +117,46 @@
             <p>{{ user.get_full_name|default:user.username }} — وضعیت اقلام خریداری‌شده، خریداری‌نشده و در انتظار خرید به تفکیک هر شخص</p>
         </div>
         <div class="date-nav">
-            <a href="?day={{ prev_date|date:'Y-m-d' }}{% if officer_filter %}&officer={{ officer_filter }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="date-arrow" title="روز قبل">‹</a>
+            <a href="?day={{ prev_date|date:'Y-m-d' }}{% if officer_filter %}&officer={{ officer_filter|urlencode }}{% endif %}{% if role_filter %}&role={{ role_filter|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="date-arrow" title="روز قبل">‹</a>
             <div class="date-display {% if not is_all_days %}active{% endif %}" onclick="var p=document.getElementById('posDatePicker'); if(p.showPicker){p.showPicker();}else{p.click();}" title="انتخاب تاریخ">
                 {% if is_all_days %}
                 <span class="date-jalali">همه تاریخ‌ها</span>
                 <span class="date-gregorian">کل سوابق</span>
                 {% else %}
-                <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                <span class="date-jalali date-jalali-full">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                <span class="date-jalali date-jalali-short">{{ selected_date|jalali_date:"%d %B" }}</span>
                 <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
                 {% endif %}
             </div>
             <input type="date" id="posDatePicker" value="{{ date_str }}" style="display:none;"
-                   onchange="if(this.value){ window.location.href='?day=' + this.value + '{% if officer_filter %}&officer={{ officer_filter }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}'; }">
-            <a href="?day={{ next_date|date:'Y-m-d' }}{% if officer_filter %}&officer={{ officer_filter }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="date-arrow" title="روز بعد">›</a>
+                   data-officer="{{ officer_filter }}"
+                   data-role="{{ role_filter }}"
+                   data-status="{{ status_filter }}"
+                   data-q="{{ q_filter }}"
+                   onchange="if(this.value){ var p=new URLSearchParams(); p.set('day', this.value); if(this.dataset.officer)p.set('officer', this.dataset.officer); if(this.dataset.role)p.set('role', this.dataset.role); if(this.dataset.status)p.set('status', this.dataset.status); if(this.dataset.q)p.set('q', this.dataset.q); window.location.search='?'+p.toString(); }">
+            <a href="?day={{ next_date|date:'Y-m-d' }}{% if officer_filter %}&officer={{ officer_filter|urlencode }}{% endif %}{% if role_filter %}&role={{ role_filter|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="date-arrow" title="روز بعد">›</a>
             {% if is_all_days or date_str != today_str %}
-            <a href="?day={{ today_str }}{% if officer_filter %}&officer={{ officer_filter }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="day-pill-btn">امروز</a>
+            <a href="?day={{ today_str }}{% if officer_filter %}&officer={{ officer_filter|urlencode }}{% endif %}{% if role_filter %}&role={{ role_filter|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="day-pill-btn">امروز</a>
             {% endif %}
-            <a href="?day=all{% if officer_filter %}&officer={{ officer_filter }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="day-pill-btn{% if is_all_days %} active{% endif %}">همه تاریخ‌ها</a>
+            <a href="?day=all{% if officer_filter %}&officer={{ officer_filter|urlencode }}{% endif %}{% if role_filter %}&role={{ role_filter|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}{% if q_filter %}&q={{ q_filter|urlencode }}{% endif %}" class="day-pill-btn{% if is_all_days %} active{% endif %}">همه تاریخ‌ها</a>
         </div>
     </div>
 
     <!-- Summary KPI Cards -->
     <div class="pos-stats">
-        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param }}&role={{ role_filter|default:'purchasing' }}" class="pos-stat">
+        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param|urlencode }}&role={{ role_filter|default:'purchasing'|urlencode }}" class="pos-stat">
             <div class="pos-stat-num">{{ stats.total }}</div>
             <div class="pos-stat-lbl">کل اقلام خرید</div>
         </a>
-        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param }}&role={{ role_filter|default:'purchasing' }}&status=purchased" class="pos-stat green">
+        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param|urlencode }}&role={{ role_filter|default:'purchasing'|urlencode }}&status=purchased" class="pos-stat green">
             <div class="pos-stat-num">{{ stats.purchased }}</div>
             <div class="pos-stat-lbl">خریداری شده</div>
         </a>
-        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param }}&role={{ role_filter|default:'purchasing' }}&status=not_purchased" class="pos-stat red">
+        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param|urlencode }}&role={{ role_filter|default:'purchasing'|urlencode }}&status=not_purchased" class="pos-stat red">
             <div class="pos-stat-num">{{ stats.not_purchased }}</div>
             <div class="pos-stat-lbl">خریداری نشده</div>
         </a>
-        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param }}&role={{ role_filter|default:'purchasing' }}&status=pending" class="pos-stat amber">
+        <a href="{% url 'purchase_orders_status' cafe_code=cafe_code %}?day={{ day_param|urlencode }}&role={{ role_filter|default:'purchasing'|urlencode }}&status=pending" class="pos-stat amber">
             <div class="pos-stat-num">{{ stats.pending }}</div>
             <div class="pos-stat-lbl">در انتظار بررسی</div>
         </a>

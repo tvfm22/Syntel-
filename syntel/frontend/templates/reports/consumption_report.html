@@ -901,18 +901,15 @@
             {% endif %}
         </div>
 
-        <input type="hidden" name="start_date" id="start_date_iso" value="{{ start_date }}">
-        <input type="hidden" name="end_date" id="end_date_iso" value="{{ end_date }}">
-
         <div class="cr-filter-grid">
             <div class="cr-field cr-col-date">
                 <label class="cr-field-label"><i class="fas fa-calendar-day"></i> از تاریخ</label>
-                {% include 'includes/jalali_date_group.html' with prefix='start' initial_year=start_year initial_month=start_month initial_day=start_day %}
+                {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='start_date_iso' jd_value=start_jalali %}
             </div>
 
             <div class="cr-field cr-col-date">
                 <label class="cr-field-label"><i class="fas fa-calendar-day"></i> تا تاریخ</label>
-                {% include 'includes/jalali_date_group.html' with prefix='end' initial_year=end_year initial_month=end_month initial_day=end_day %}
+                {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='end_date_iso' jd_value=end_jalali %}
             </div>
 
             <div class="cr-field cr-col-select">
@@ -956,9 +953,9 @@
                 <div class="cr-stat-label">تخمین کل هزینه مصرف بازه</div>
                 <div class="cr-stat-value">
                     {% if total_estimated_cost > 0 %}
-                        {{ total_estimated_cost|number_format }} <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">تومان</span>
+                        {{ total_estimated_cost|number_format }} <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">ریال</span>
                     {% else %}
-                        ۰ <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">تومان</span>
+                        ۰ <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">ریال</span>
                     {% endif %}
                 </div>
                 <div class="cr-stat-sub">
@@ -1045,7 +1042,7 @@
                 <div class="cr-sec-footer">
                     <span style="color:var(--text-secondary); font-weight:600;">تخمین هزینه سکشن:</span>
                     {% if s.has_cost %}
-                    <span class="cr-sec-cost">{{ s.estimated_cost|number_format }} تومان</span>
+                    <span class="cr-sec-cost">{{ s.estimated_cost|number_format }} ریال</span>
                     {% else %}
                     <span style="color:var(--text-muted); font-size:0.74rem;">قیمت کالاها ثبت نشده</span>
                     {% endif %}
@@ -1152,7 +1149,7 @@
                         </td>
                         <td class="cr-price-cell">
                             {% if r.has_price and r.unit_price is not None %}
-                                <div class="cr-price-val">{{ r.unit_price|number_format }} <span style="font-size:0.72rem; font-weight:500;">تومان</span></div>
+                                <div class="cr-price-val">{{ r.unit_price|number_format }} <span style="font-size:0.72rem; font-weight:500;">ریال</span></div>
                                 <div class="cr-price-unit">هر ۱ {{ r.price_unit }}</div>
                             {% else %}
                                 <span class="cr-no-price"><i class="fas fa-circle-minus"></i> ثبت نشده</span>
@@ -1162,7 +1159,7 @@
                             {% if r.has_price and r.estimated_cost is not None %}
                                 <span class="cr-est-cost">
                                     {{ r.estimated_cost|number_format }}
-                                    <span style="font-size:0.71rem; font-weight:600;">تومان</span>
+                                    <span style="font-size:0.71rem; font-weight:600;">ریال</span>
                                 </span>
                             {% else %}
                                 <span class="cr-no-price">نیازمند ثبت قیمت</span>
@@ -1276,15 +1273,10 @@
 <script src="{% static 'js/jalali_date_group.js' %}"></script>
 <script>
 (function () {
-    // ۱) اتصال انتخابگر تاریخ شمسی به فیلدهای ISO فرم
-    var sPicker = window.initJalaliDateGroup ? initJalaliDateGroup('start') : null;
-    var ePicker = window.initJalaliDateGroup ? initJalaliDateGroup('end') : null;
+    // ۱) راه‌اندازی انتخابگر تاریخ شمسی
     var form = document.getElementById('consumptionFilterForm');
-    if (form) {
-        form.addEventListener('submit', function () {
-            if (sPicker && sPicker.toISO()) document.getElementById('start_date_iso').value = sPicker.toISO();
-            if (ePicker && ePicker.toISO()) document.getElementById('end_date_iso').value = ePicker.toISO();
-        });
+    if (window.initJalaliDateGroups) {
+        window.initJalaliDateGroups(form || document);
     }
 
     // ۲) فیلتر سریع جدول کالاها در سمت کاربر
@@ -1373,13 +1365,13 @@
         document.getElementById('phDeliveryCount').textContent = (data.delivery_count || 0) + ' مرتبه';
 
         if (data.has_price && data.unit_price !== null) {
-            document.getElementById('phUnitPrice').textContent = fmtNumber(data.unit_price) + ' تومان / ' + (data.price_unit || data.unit_name || '');
+            document.getElementById('phUnitPrice').textContent = fmtNumber(data.unit_price) + ' ریال / ' + (data.price_unit || data.unit_name || '');
         } else {
             document.getElementById('phUnitPrice').textContent = 'ثبت نشده';
         }
 
         if (data.has_price && data.estimated_cost !== null) {
-            document.getElementById('phTotalCost').textContent = fmtNumber(data.estimated_cost) + ' تومان';
+            document.getElementById('phTotalCost').textContent = fmtNumber(data.estimated_cost) + ' ریال';
         } else {
             document.getElementById('phTotalCost').textContent = '—';
         }
@@ -1411,7 +1403,7 @@
         var html = '';
         records.forEach(function (rec) {
             var costHtml = (rec.estimated_cost !== null && rec.estimated_cost !== undefined)
-                ? '<span class="cr-est-cost" style="font-size:0.78rem; padding:0.15rem 0.5rem;">' + fmtNumber(rec.estimated_cost) + ' تومان</span>'
+                ? '<span class="cr-est-cost" style="font-size:0.78rem; padding:0.15rem 0.5rem;">' + fmtNumber(rec.estimated_cost) + ' ریال</span>'
                 : '<span class="cr-no-price">—</span>';
             var warehouseName = escapeHtml(rec.warehouse_name || '—');
             var reqInfo = escapeHtml(rec.requester_name || '—') + (rec.ref_label ? ' <span style="color:var(--text-muted); font-size:0.72rem;">[' + escapeHtml(rec.ref_label) + ']</span>' : '');

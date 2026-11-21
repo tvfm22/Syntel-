@@ -14,7 +14,7 @@ from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Avg, Count, DecimalField, F, Max, Min, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -53,6 +53,7 @@ from .views_helpers import (
     custom_login_required,
     get_cafe_from_request,
     get_cafe_redirect_url,
+    get_scoped_locked_object_or_404,
     get_scoped_object_or_404,
     role_required,
 )
@@ -62,17 +63,6 @@ logger = logging.getLogger(__name__)
 
 class _InsufficientStock(Exception):
     """موجودی انبار برای کسر درخواستی کافی نیست"""
-
-
-def _set_stock_quantity(stock_item_id, absolute):
-    """تنظیم مطلق موجودی انبار (انبارگردانی / ثبت اولیه) — داخل atomic اجرا شود.
-
-    بازگشت: (موجودی قبل, موجودی جدید)
-    """
-    row = StockItem.objects.filter(id=stock_item_id).first()
-    prev_qty = row.quantity if row else Decimal('0')
-    StockItem.objects.filter(id=stock_item_id).update(quantity=absolute)
-    return prev_qty, absolute
 
 
 # ---------------------------------------------------------------------------
@@ -90,10 +80,10 @@ def stock_list(request: HttpRequest) -> HttpResponse:
         warehouses_qs = warehouses_qs.filter(cafe=cafe)
 
     # فیلتر انبار انتخاب‌شده
-    warehouse_id = request.GET.get('warehouse')
+    warehouse_id = (request.GET.get('warehouse') or '').strip()
     selected_warehouse = None
-    if warehouse_id:
-        selected_warehouse = warehouses_qs.filter(id=warehouse_id).first()
+    if warehouse_id.isdigit():
+        selected_warehouse = warehouses_qs.filter(id=int(warehouse_id)).first()
 
     stock_items = StockItem.objects.select_related(
         'product', 'unit', 'warehouse', 'product__unit', 'product__category'
@@ -160,7 +150,7 @@ def stock_list(request: HttpRequest) -> HttpResponse:
 @role_required(['store', 'purchasing', 'manager', 'warehouse'])
 def stock_transactions(request: HttpRequest, stock_id: int) -> HttpResponse:
     """تاریخچه تراکنش‌های یک موجودی"""
-    stock_item = get_object_or_404(StockItem, id=stock_id)
+    stock_item = get_scoped_object_or_404(StockItem, request, id=stock_id)
     transactions = stock_item.transactions.select_related('created_by').all()
 
     # صفحه‌بندی
@@ -751,21 +741,22 @@ def voucher_list(request: HttpRequest) -> HttpResponse:
     date_to = _parse_jalali_date(f['date_to'])
     if date_to:
         vouchers = vouchers.filter(date__date__lte=date_to)
-    if f['source_warehouse']:
-        vouchers = vouchers.filter(source_warehouse_id=f['source_warehouse'])
-    if f['dest_warehouse']:
-        vouchers = vouchers.filter(destination_warehouse_id=f['dest_warehouse'])
-    if f['product']:
-        vouchers = vouchers.filter(items__product_id=f['product'])
-    if f['department']:
+    if f['source_warehouse'] and str(f['source_warehouse']).strip().isdigit():
+        vouchers = vouchers.filter(source_warehouse_id=int(f['source_warehouse']))
+    if f['dest_warehouse'] and str(f['dest_warehouse']).strip().isdigit():
+        vouchers = vouchers.filter(destination_warehouse_id=int(f['dest_warehouse']))
+    if f['product'] and str(f['product']).strip().isdigit():
+        vouchers = vouchers.filter(items__product_id=int(f['product']))
+    if f['department'] and str(f['department']).strip().isdigit():
+        dept_id_int = int(f['department'])
         # بخش گیرندهٔ مستقیمِ «تحویل مستقیم» یا بخشِ مرتبط با انبارِ مبدأ/مقصد
-        dept_wh_ids = Department.objects.filter(cafe=cafe, id=f['department']).values_list('warehouse_id', flat=True)
+        dept_wh_ids = Department.objects.filter(cafe=cafe, id=dept_id_int).values_list('warehouse_id', flat=True)
         vouchers = vouchers.filter(
-            Q(department_id=f['department'])
+            Q(department_id=dept_id_int)
             | Q(source_warehouse_id__in=dept_wh_ids)
             | Q(destination_warehouse_id__in=dept_wh_ids))
-    if f['creator']:
-        vouchers = vouchers.filter(created_by_id=f['creator'])
+    if f['creator'] and str(f['creator']).strip().isdigit():
+        vouchers = vouchers.filter(created_by_id=int(f['creator']))
     if f['search']:
         vouchers = vouchers.filter(voucher_number__icontains=f['search'])
 
@@ -832,6 +823,8 @@ def voucher_create(request: HttpRequest, voucher_type: str) -> HttpResponse:
             dept = get_scoped_object_or_404(Department, request, id=int(dept_id_str))
 
         lines, errors = _parse_voucher_lines(request, cafe, voucher_type)
+        if not lines and not errors:
+            errors.append('حداقل یک قلم کالا وارد کنید')
 
         # تاریخ فرم شمسی است؛ ساعتِ سند از لحظهٔ ثبت گرفته می‌شود
         date_str = request.POST.get('date', '').strip()
@@ -971,6 +964,8 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
             dept = get_scoped_object_or_404(Department, request, id=int(dept_id_str))
 
         lines, errors = _parse_voucher_lines(request, cafe, voucher.voucher_type)
+        if not lines and not errors:
+            errors.append('حداقل یک قلم کالا وارد کنید')
         if errors:
             for e in errors:
                 messages.error(request, e)
@@ -985,16 +980,27 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
             messages.error(request, 'تاریخ واردشده معتبر نیست — نمونهٔ درست: ۱۴۰۵/۰۸/۰۵')
             return redirect('voucher_edit', cafe_code=cafe.code, voucher_id=voucher.id)
 
-        with transaction.atomic():
-            voucher.source_warehouse = src_wh
-            voucher.destination_warehouse = dst_wh
-            voucher.department = dept
-            voucher.date = vdate
-            voucher.description = request.POST.get('description', '').strip()
-            voucher.save()
-            voucher.items.all().delete()
-            for line in lines:
-                WarehouseVoucherItem.objects.create(voucher=voucher, **line)
+        try:
+            with transaction.atomic():
+                locked_voucher = get_scoped_locked_object_or_404(WarehouseVoucher, request, id=voucher_id)
+                if locked_voucher.status != 'draft':
+                    messages.error(request, 'فقط پیش‌نویس قابل ویرایش است.')
+                    return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=locked_voucher.id)
+                locked_voucher.source_warehouse = src_wh
+                locked_voucher.destination_warehouse = dst_wh
+                locked_voucher.department = dept
+                locked_voucher.date = vdate
+                locked_voucher.description = request.POST.get('description', '').strip()
+                locked_voucher.full_clean(
+                    exclude=['voucher_number', 'status', 'created_by', 'approver', 'approved_at']
+                )
+                locked_voucher.save()
+                locked_voucher.items.all().delete()
+                for line in lines:
+                    WarehouseVoucherItem.objects.create(voucher=locked_voucher, **line)
+        except ValidationError as exc:
+            messages.error(request, f'سند ناسازگار است: {exc}')
+            return redirect('voucher_edit', cafe_code=cafe.code, voucher_id=voucher.id)
 
         messages.success(request, f'پیش‌نویس {voucher.voucher_number} به‌روزرسانی شد.')
         return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
@@ -1015,15 +1021,16 @@ def voucher_edit(request: HttpRequest, voucher_id: int) -> HttpResponse:
 def voucher_cancel(request: HttpRequest, voucher_id: int) -> HttpResponse:
     """لغو پیش‌نویس یا حوالهٔ ثبت‌شده (پیش از نهایی‌سازی)"""
     cafe = get_cafe_from_request(request)
-    voucher = get_scoped_object_or_404(WarehouseVoucher, request, id=voucher_id)
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'متد نامعتبر'}, status=405)
-    if voucher.status not in ('draft', 'submitted'):
-        messages.error(request, 'فقط پیش‌نویس یا حوالهٔ ثبت‌شدهٔ نهایی‌نشده قابل لغو است.')
-        return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
-    voucher.status = 'cancelled'
-    voucher.cancelled_at = timezone.now()
-    voucher.save()
+    with transaction.atomic():
+        voucher = get_scoped_locked_object_or_404(WarehouseVoucher, request, id=voucher_id)
+        if voucher.status not in ('draft', 'submitted'):
+            messages.error(request, 'فقط پیش‌نویس یا حوالهٔ ثبت‌شدهٔ نهایی‌نشده قابل لغو است.')
+            return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
+        voucher.status = 'cancelled'
+        voucher.cancelled_at = timezone.now()
+        voucher.save()
     messages.success(request, f'حوالهٔ {voucher.voucher_number} لغو شد.')
     return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
 
@@ -1034,16 +1041,16 @@ def voucher_approve(request: HttpRequest, voucher_id: int) -> HttpResponse:
     """تأیید و نهایی‌سازی حوالهٔ نیازمندِ تأیید (تعدیل) — اقدامِ مدیر = تأیید + اثر فوری"""
     cafe = get_cafe_from_request(request)
     voucher = get_scoped_object_or_404(WarehouseVoucher, request, id=voucher_id)
-    if voucher.status != 'submitted' or not (
-            voucher.voucher_type in WarehouseVoucher.APPROVAL_REQUIRED_TYPES
-            or voucher.requires_approval):
-        messages.error(request, 'این حواله در وضعیت نیازمند تأیید نیست.')
-        return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
 
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                v = WarehouseVoucher.objects.select_for_update().get(pk=voucher.pk)
+                v = get_scoped_locked_object_or_404(WarehouseVoucher, request, id=voucher_id)
+                if v.status != 'submitted' or not (
+                        v.voucher_type in WarehouseVoucher.APPROVAL_REQUIRED_TYPES
+                        or v.requires_approval):
+                    messages.error(request, 'این حواله در وضعیت نیازمند تأیید نیست.')
+                    return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=v.id)
                 v.status = 'approved'
                 v.approver = request.user
                 v.approved_at = timezone.now()
@@ -1053,6 +1060,12 @@ def voucher_approve(request: HttpRequest, voucher_id: int) -> HttpResponse:
             messages.error(request, f'تأیید انجام نشد: {exc}')
             return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
         messages.success(request, f'حوالهٔ {voucher.voucher_number} تأیید و نهایی‌سازی شد — اثر روی موجودی اعمال شد.')
+        return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
+
+    if voucher.status != 'submitted' or not (
+            voucher.voucher_type in WarehouseVoucher.APPROVAL_REQUIRED_TYPES
+            or voucher.requires_approval):
+        messages.error(request, 'این حواله در وضعیت نیازمند تأیید نیست.')
         return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
 
     return render(request, 'stock/voucher_approve.html', {
@@ -1068,6 +1081,10 @@ def voucher_reverse(request: HttpRequest, voucher_id: int) -> HttpResponse:
     """برگشت حوالهٔ نهایی‌شده — دلیلِ اجباری؛ حوالهٔ آینه‌ای ساخته و نهایی می‌شود"""
     cafe = get_cafe_from_request(request)
     voucher = get_scoped_object_or_404(WarehouseVoucher, request, id=voucher_id)
+    if (voucher.voucher_type == 'adjustment' or voucher.requires_approval) and not (
+        request.user.is_superuser or request.user.role in ('manager', 'admin', 'ceo')
+    ):
+        return HttpResponseForbidden('برگشت حواله تعدیل فقط توسط مدیر مجاز است.')
     if voucher.reverses_id:
         messages.error(request, 'حوالهٔ برگشتی قابل برگشت نیست — حوالهٔ اصلی را برگشت بزنید.')
         return redirect('voucher_detail', cafe_code=cafe.code, voucher_id=voucher.id)
@@ -1171,41 +1188,68 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
         data = json.loads(request.body)
     except Exception:
         return JsonResponse({'success': False, 'error': 'داده نامعتبر'}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({'success': False, 'error': 'داده نامعتبر'}, status=400)
 
     items = data.get('items', [])
+    if not isinstance(items, list):
+        return JsonResponse({'success': False, 'error': 'فهرست اقلام نامعتبر است'}, status=400)
 
-    # کل انبارگردانی یک تراکنش اتمیک — همهٔ تعدیل‌ها با هم اعمال می‌شوند یا هیچ‌کدام
+    # اعتبارسنجی اولیه و یکتاسازی شناسه‌های تکراری پیش از قفل‌کردن
+    parsed_by_id = {}
+    for item in items:
+        if not isinstance(item, dict):
+            return JsonResponse({'success': False, 'error': 'قالب قلم نامعتبر است'}, status=400)
+        stock_item_id_raw = item.get('stock_item_id')
+        physical_qty_str = str(item.get('physical_qty', '')).strip()
+        if not physical_qty_str:
+            continue
+
+        try:
+            si_id = int(stock_item_id_raw)
+        except (ValueError, TypeError):
+            return JsonResponse(
+                {'success': False, 'error': f'شناسه نامعتبر: {stock_item_id_raw}'},
+                status=400,
+            )
+
+        try:
+            physical_qty = Decimal(physical_qty_str)
+        except Exception:
+            return JsonResponse(
+                {'success': False, 'error': f'مقدار نامعتبر برای شناسه {si_id}'},
+                status=400,
+            )
+        if not physical_qty.is_finite() or physical_qty < 0:
+            return JsonResponse(
+                {'success': False, 'error': f'مقدار منفی یا نامعتبر برای شناسه {si_id} مجاز نیست'},
+                status=400,
+            )
+        parsed_by_id[si_id] = physical_qty
+
+    if not parsed_by_id:
+        return JsonResponse({'success': True, 'updated': 0, 'message': 'موجودی‌ها تغییری نکردند'})
+
+    # کل انبارگردانی یک تراکنش اتمیک با قفل ردیف‌ها به ترتیب id
     try:
         with transaction.atomic():
+            locked_items = list(
+                StockItem.objects.select_for_update()
+                .select_related('unit', 'product')
+                .filter(id__in=sorted(parsed_by_id.keys()), warehouse=warehouse)
+                .order_by('id')
+            )
+            locked_map = {si.id: si for si in locked_items}
             deltas = []
-            for item in items:
-                stock_item_id = item.get('stock_item_id')
-                physical_qty_str = str(item.get('physical_qty', '')).strip()
-
-                if not physical_qty_str:
-                    continue
-
-                try:
-                    physical_qty = Decimal(physical_qty_str)
-                except Exception as exc:
+            for si_id in sorted(parsed_by_id.keys()):
+                si = locked_map.get(si_id)
+                if si is None:
                     raise _InsufficientStock(
-                        f'مقدار نامعتبر برای شناسه {stock_item_id}') from exc
-                if physical_qty < 0:
-                    raise _InsufficientStock(
-                        f'مقدار منفی برای شناسه {stock_item_id} مجاز نیست')
-
-                # موجودی انبار فقط در همین انبار جستجو می‌شود — شناسه‌ای از انبار
-                # دیگر خطا می‌دهد و کل ثبت را برمی‌گرداند (رفع خطای انبارِ اشتباه)
-                try:
-                    si = StockItem.objects.select_related('unit').get(
-                        id=int(stock_item_id), warehouse=warehouse)
-                except (StockItem.DoesNotExist, ValueError) as exc:
-                    raise _InsufficientStock(
-                        f'موجودی انبار با شناسه {stock_item_id} در انبار «{warehouse.name}» یافت نشد') from exc
-
+                        f'موجودی انبار با شناسه {si_id} در انبار «{warehouse.name}» یافت نشد')
+                physical_qty = parsed_by_id[si_id]
                 delta = (physical_qty - si.quantity).quantize(Decimal('0.0001'))
                 if delta == 0:
-                    continue  # تغییری لازم نیست — حوالهٔ تعدیل مقدار صفر را نمی‌پذیرد
+                    continue
                 deltas.append((si, delta))
 
             if not deltas:
@@ -1235,8 +1279,6 @@ def warehouse_inventory_submit(request: HttpRequest, warehouse_id: int) -> HttpR
                     description=f'انبارگردانی - تعدیل موجودی از {si.quantity} به {si.quantity + delta}',
                 )
 
-            # نهایی‌سازی از سرویس مرکزی: اعتبارسنجی کامل، قفل، و ثبت تراکنش‌های
-            # تغییرناپذیر — هر خطایی کل ثبت را (حواله هم) برمی‌گرداند.
             finalize_voucher(voucher, finalized_by=request.user)
     except _InsufficientStock as exc:
         return JsonResponse({'success': False, 'error': str(exc)}, status=400)
@@ -1320,8 +1362,8 @@ def stock_movements(request: HttpRequest) -> HttpResponse:
         'date_to': _jalali_input_value(request.GET.get('date_to', '')),
         'search': request.GET.get('search', '').strip(),
     }
-    if f['warehouse']:
-        txs = txs.filter(stock_item__warehouse_id=f['warehouse'])
+    if f['warehouse'] and str(f['warehouse']).strip().isdigit():
+        txs = txs.filter(stock_item__warehouse_id=int(f['warehouse']))
     if f['tx_type']:
         txs = txs.filter(transaction_type=f['tx_type'])
     if f['voucher_type']:

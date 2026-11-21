@@ -235,6 +235,7 @@
 </div>
 
 <script>
+const NOTIF_MARK_READ_URL_TEMPLATE = "{% url 'mark_notification_read' cafe_code=cafe_code notification_id=0 %}";
 // Auto-refresh notifications every 30 seconds
 setInterval(refreshNotifications, 30000);
 
@@ -250,9 +251,10 @@ document.addEventListener('DOMContentLoaded', function() {
     notificationItems.forEach(item => {
         item.addEventListener('click', function() {
             const notificationId = this.dataset.notificationId;
-            if (notificationId) {
+            if (notificationId && /^\d+$/.test(notificationId)) {
                 // Mark as read via AJAX
-                fetch(`/notifications/${notificationId}/mark-read/`, {
+                const url = NOTIF_MARK_READ_URL_TEMPLATE.replace('/0/', `/${notificationId}/`);
+                fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,

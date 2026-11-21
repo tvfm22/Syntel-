@@ -33,6 +33,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -114,21 +115,24 @@ class _PlannedMovement:
         return self.stock_item.id
 
 
-def _change_stock_quantity(stock_item_id, delta):
+def _change_stock_quantity(stock_item_id, delta, allow_negative=False):
     """اعمال اتمیک دلتا روی موجودی انبار (واحد پایه).
 
     باید داخل transaction.atomic() اجرا شود. با یک دستور UPDATE و گارد کفایت
-    انجام می‌شود تا آپدیت همزمان دو کاربر (read-modify-write بدون قلم) گم نشود
+    انجام می‌شود تا آپدیت همزمان دو کاربر (read-modify-write بدون قفل) گم نشود
     و موجودی منفی نشود — روی SQLite و PostgreSQL هر دو امن است.
 
     بازگشت: (موفق, موجودی قبلی, موجودی جدید) — در عدم کفایت (False, None, None)
     """
+    now = timezone.now()
     qs = StockItem.objects.filter(id=stock_item_id)
-    if delta >= 0:
-        updated = qs.update(quantity=models.F('quantity') + delta)
+    if delta >= 0 or allow_negative:
+        updated = qs.update(quantity=models.F('quantity') + delta, last_updated=now)
     else:
         updated = qs.filter(quantity__gte=-delta).update(
-            quantity=models.F('quantity') + delta)
+            quantity=models.F('quantity') + delta,
+            last_updated=now,
+        )
     if not updated:
         return False, None, None
     fresh = StockItem.objects.select_related('product').get(id=stock_item_id)
@@ -137,24 +141,13 @@ def _change_stock_quantity(stock_item_id, delta):
 
 def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
                       reference_type='', reference_id=None, description=''):
-    """تنها نقطهٔ مجازِ تغییر موجودی خارج از جریان حواله.
-
-    مسیرهای «تامین از انبار» (درخواست انبار، لیست خرید، تحویل مستقیم، داشبورد
-    مسئول انبار) موجودی را مستقیم تغییر می‌دهند — نه از راه حواله. این تابع
-    همان کار را با همان گاردهای سرویس انجام می‌دهد:
-
-    - `cafe` اجباری است و از خودِ درخواست می‌آید؛ موجودیِ کافهٔ دیگر
-      (یا موجودیِ بدون انبار) رد می‌شود — بدون کافه هیچ فراخوانی‌ای ممکن نیست.
-    - دلتا و ردیف تراکنش هر دو در یک transaction.atomic() اتمیک‌اند و ردیف
-      ممیزی همیشه ساخته می‌شود (کسر و سند از هم جدا نمی‌شوند).
-    - موجودی منفی ممنوع است (گاردِ کفایت در `_change_stock_quantity`).
-
-    بازگشت: StockTransaction ساخته‌شده.
-    """
+    """تنها نقطهٔ مجازِ تغییر موجودی خارج از جریان حواله."""
     if cafe is None:
         raise StockScopeError('کافهٔ فعال یافت نشد؛ تغییر موجودی مجاز نیست.')
     if stock_item is None:
         raise StockScopeError('موجودی انبار تعیین نشده است.')
+    if delta is None or Decimal(str(delta)) == 0:
+        raise VoucherValidationError('مقدار تغییر موجودی نمی‌تواند صفر باشد.')
     if stock_item.warehouse_id is None:
         raise StockScopeError(
             f'موجودیِ «{stock_item.product.name}» به هیچ انباری متصل نیست.')
@@ -199,7 +192,7 @@ def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason=''):
 
     with transaction.atomic():
         locked_item = (
-            PurchaseItem.objects.select_for_update()
+            PurchaseItem.objects.select_for_update(of=('self',))
             .select_related('request')
             .get(pk=item.pk)
         )
@@ -209,7 +202,7 @@ def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason=''):
             raise ReopenNotAllowedError(
                 'دریافت این کالا توسط درخواست‌دهنده تأیید شده است؛ بازگشایی مجاز نیست.')
 
-        assignments_qs = OfficerAssignment.objects.select_for_update().filter(
+        assignments_qs = OfficerAssignment.objects.select_for_update(of=('self',)).filter(
             item=locked_item,
             target_role='warehouse',
             status__in=('fulfilled', 'returned', 'not_in_stock'),
@@ -222,25 +215,52 @@ def reopen_officer_assignments(item, *, cafe, reopened_by=None, reason=''):
             raise ReopenNotAllowedError(
                 'این کالا قبلاً بازگشایی شده یا برای بازگشایی آماده نیست.')
 
-        has_fulfilled = any(a.status == 'fulfilled' for a in assignments)
+        fulfilled_assigns = [a for a in assignments if a.status == 'fulfilled']
         original_txs = []
-        if has_fulfilled:
-            all_out_txs = list(
-                StockTransaction.objects.select_for_update().filter(
+        if fulfilled_assigns:
+            assign_ids = [a.id for a in assignments]
+            other_fulfilled = OfficerAssignment.objects.filter(
+                item=locked_item,
+                target_role='warehouse',
+                status='fulfilled',
+            ).exclude(id__in=assign_ids).exists()
+
+            base_out_qs = (
+                StockTransaction.objects.select_for_update(of=('self',))
+                .filter(
                     reference_type='officer_assignment',
                     reference_id=locked_item.id,
                     transaction_type='out',
                     stock_item__warehouse__cafe=cafe,
-                ).select_related('stock_item').order_by('id')
+                )
+                .select_related('stock_item')
+                .order_by('id')
             )
-            reopened_txs_count = StockTransaction.objects.filter(
+            base_reopen_qs = StockTransaction.objects.filter(
                 reference_type='officer_assignment_reopen',
                 reference_id=locked_item.id,
                 stock_item__warehouse__cafe=cafe,
-            ).count()
+            )
 
-            uncompensated_txs = all_out_txs[reopened_txs_count:]
-            if not uncompensated_txs and all_out_txs:
+            officer_ids = {a.assigned_to_id for a in fulfilled_assigns if a.assigned_to_id is not None}
+            has_unassigned = any(a.assigned_to_id is None for a in fulfilled_assigns)
+
+            if officer_ids and not has_unassigned:
+                matched_out = list(base_out_qs.filter(created_by_id__in=officer_ids))
+                if not matched_out and not other_fulfilled:
+                    matched_out = list(base_out_qs)
+                    reopened_count = base_reopen_qs.count()
+                else:
+                    reopened_count = base_reopen_qs.filter(created_by_id__in=officer_ids).count()
+            elif reopened_by is not None and other_fulfilled:
+                matched_out = list(base_out_qs.filter(created_by_id=reopened_by.id))
+                reopened_count = base_reopen_qs.filter(created_by_id=reopened_by.id).count()
+            else:
+                matched_out = list(base_out_qs)
+                reopened_count = base_reopen_qs.count()
+
+            uncompensated_txs = matched_out[reopened_count:]
+            if not uncompensated_txs and matched_out:
                 raise ReopenNotAllowedError('این کالا قبلاً بازگشایی شده است.')
             original_txs = uncompensated_txs
 
@@ -288,21 +308,23 @@ _VOUCHER_PREFIX = {
 
 
 def next_voucher_number(cafe_id, voucher_type):
-    """شمارهٔ یکتای حواله برای این کافه (پیشوند بر اساس نوع) — با retry روی برخورد.
-
-    شماره‌ها ترتیبی‌اند ولی فقط یکتایی تضمین می‌شود (حذف/برگشت ممکن است پرش
-    ایجاد کند). برخوردِ همزمانِ نادر، توسط unique_together مدل رد می‌شود و
-    درخواست‌کننده می‌تواند دوباره تلاش کند.
-    """
+    """شمارهٔ یکتای حواله برای این کافه (پیشوند بر اساس نوع) — با retry روی برخورد."""
     prefix = _VOUCHER_PREFIX.get(voucher_type, 'VC')
+    existing_nums = WarehouseVoucher.objects.filter(
+        cafe_id=cafe_id,
+        voucher_number__startswith=f'{prefix}-',
+    ).values_list('voucher_number', flat=True)
+    max_seq = 0
+    for num in existing_nums:
+        tail = num[len(prefix) + 1:]
+        if tail.isdigit():
+            max_seq = max(max_seq, int(tail))
     for attempt in range(10):
-        count = WarehouseVoucher.objects.filter(
-            cafe_id=cafe_id, voucher_type=voucher_type).count()
-        candidate = f'{prefix}-{count + 1 + attempt:05d}'
+        candidate = f'{prefix}-{max_seq + 1 + attempt:05d}'
         if not WarehouseVoucher.objects.filter(
                 cafe_id=cafe_id, voucher_number=candidate).exists():
             return candidate
-    return f'{prefix}-{timezone.now().strftime("%Y%m%d%H%M%S")}'
+    return f'{prefix}-{uuid.uuid4().hex[:10].upper()}'
 
 
 def _reversal_number(cafe_id, original_number):
@@ -378,11 +400,11 @@ def _plan_movements(v):
                 'حوالهٔ تعدیل باید انبارِ مبدأ (انبارِ موردِ تعدیل) داشته باشد.')
 
     # قفلِ قلم‌ها با حواله (ویرایشِ همزمانِ قلم‌ها با نهایی‌سازی تداخل نکند)
-    items = list(v.items.select_for_update().select_related(
+    items = list(v.items.select_for_update(of=('self',)).select_related(
         'product', 'unit',
         'stock_item__product',
         'stock_item__warehouse',
-    ))
+    ).order_by('id'))
     if not items:
         raise VoucherValidationError('حوالهٔ بدون قلم قابل نهایی‌سازی نیست.')
 
@@ -390,6 +412,8 @@ def _plan_movements(v):
     for wh in (v.source_warehouse, v.destination_warehouse):
         if wh and wh.cafe_id != cafe_id:
             raise VoucherValidationError(f'انبار «{wh.name}» متعلق به کافهٔ دیگری است.')
+    if v.department_id and v.department.cafe_id is not None and v.department.cafe_id != cafe_id:
+        raise VoucherValidationError(f'بخش «{v.department.name}» متعلق به کافهٔ دیگری است.')
 
     sign = -1 if v.reverses_id else 1
     plans: list[_PlannedMovement] = []
@@ -398,6 +422,8 @@ def _plan_movements(v):
         # ── پیوند محصول و موجودی ──
         if not (item.stock_item_id or item.product_id):
             raise VoucherValidationError(f'قلم «{item}» به محصول یا موجودیِ انبار متصل نیست.')
+        if item.product_id and item.product.cafe_id is not None and item.product.cafe_id != cafe_id:
+            raise VoucherValidationError(f'قلم «{item}»: محصول متعلق به کافهٔ دیگری است.')
         si = item.stock_item
         if item.product_id and si and si.product_id != item.product_id:
             raise VoucherValidationError(f'قلم «{item}»: محصول قلم با موجودیِ انبارِ انتخابی مطابقت ندارد.')
@@ -463,6 +489,9 @@ def _plan_movements(v):
             create_if_missing = delta > 0 and vt in ('receipt', 'return', 'direct_delivery')
             stock = _resolve_stock_item(item, wh, allow_explicit=allow_explicit,
                                         create_if_missing=create_if_missing)
+            if stock.unit_id and stock.unit_id != item.unit_id:
+                raise VoucherValidationError(
+                    f'قلم «{item}»: واحد قلم با واحدِ موجودیِ انبار مطابقت ندارد.')
             plans.append(_PlannedMovement(
                 item=item, stock_item=stock, delta=delta,
                 tx_type=_tx_type_for(vt, delta),
@@ -508,7 +537,7 @@ def finalize_voucher(voucher, finalized_by=None):
         raise VoucherValidationError('حوالهٔ ذخیره‌نشده قابل نهایی‌سازی نیست.')
 
     with transaction.atomic():
-        v = (WarehouseVoucher.objects.select_for_update()
+        v = (WarehouseVoucher.objects.select_for_update(of=('self',))
              .select_related('cafe', 'source_warehouse', 'destination_warehouse', 'reverses')
              .get(pk=voucher.pk))
 
@@ -532,8 +561,10 @@ def finalize_voucher(voucher, finalized_by=None):
         # ── حوالهٔ برگشتی: حوالهٔ اصلی را قفل و اعتبارسنجی کن ──
         original = None
         if v.reverses_id:
-            original = (WarehouseVoucher.objects.select_for_update()
+            original = (WarehouseVoucher.objects.select_for_update(of=('self',))
                         .select_related('cafe').get(pk=v.reverses_id))
+            if v.cafe_id != original.cafe_id:
+                raise VoucherValidationError('حوالهٔ برگشتی باید متعلق به همان کافهٔ حوالهٔ اصلی باشد.')
             if v.voucher_type != original.voucher_type:
                 raise VoucherValidationError('حوالهٔ برگشتی باید همان نوعِ حوالهٔ اصلی باشد.')
             if original.status != 'finalized':
@@ -554,16 +585,18 @@ def finalize_voucher(voucher, finalized_by=None):
             net[p.stock_item_id] = net.get(p.stock_item_id, Decimal('0')) + p.delta
         locked = {
             si.id: si
-            for si in StockItem.objects.select_for_update()
+            for si in StockItem.objects.select_for_update(of=('self',))
             .select_related('product', 'warehouse')
-            .filter(id__in=[p.stock_item_id for p in plans])
+            .filter(id__in=sorted(net.keys()))
+            .order_by('id')
         }
         if len(locked) != len(net):
             raise VoucherValidationError('برخی موجودی‌های انبارِ این حواله یافت نشدند.')
 
         # ── کفایت موجودی (پیش از هر نوشتن؛ تحت قلم) ──
+        allow_negative = v.voucher_type in ALLOW_NEGATIVE_STOCK
         for si_id, d in net.items():
-            if d < 0 and v.voucher_type not in ALLOW_NEGATIVE_STOCK:
+            if d < 0 and not allow_negative:
                 si = locked[si_id]
                 if si.quantity < -d:
                     raise InsufficientStockError(
@@ -577,7 +610,9 @@ def finalize_voucher(voucher, finalized_by=None):
         # اول اعمال شود تا از موجودیِ صفر هم قابل‌اجرا باشد (برای اصلی و برگشتی یکسان)
         ordered = sorted(plans, key=lambda p: (p.stock_item_id, p.delta < 0))
         for p in ordered:
-            ok, _prev, _new = _change_stock_quantity(p.stock_item_id, p.delta)
+            ok, _prev, _new = _change_stock_quantity(
+                p.stock_item_id, p.delta, allow_negative=allow_negative,
+            )
             if not ok:
                 # آخرین نگهبان؛ پس از اعتبارسنجی زیر قلم نباید رخ دهد
                 raise InsufficientStockError(
@@ -619,21 +654,13 @@ def finalize_voucher(voucher, finalized_by=None):
                               is_reversal=bool(v.reverses_id))
 
 
+_APPROVER_ROLES = frozenset({'manager', 'admin', 'ceo'})
+
+
 def reverse_voucher(voucher, created_by=None, description=None):
-    """برگشت یک حوالهٔ «نهایی‌شده» — اتمیک و قفل‌دار.
-
-    یک حوالهٔ آینه‌ای می‌سازد (همان نوع و همان اقلام؛ reverses → حوالهٔ اصلی) و
-    آن را نهایی می‌کند: اثر روی موجودی معکوسِ حوالهٔ اصلی است و حوالهٔ اصلی به
-    «برگشت‌خورده» می‌رود — همه در یک تراکنش.
-
-    - حوالهٔ برگشتیِ خودش قابل برگشت نیست (باید حوالهٔ اصلی برگشت بخورد).
-    - حوالهٔ تعدیل/نیازمندِ تأیید: خودِ اقدامِ برگشت، تأییدِ حوالهٔ آینه‌ای است
-      (approver = برگشت‌زننده) تا جریان یک‌گامه بماند.
-    - ایدمپوتنت: برگشتِ دوباره خطای VoucherStateError می‌دهد (برگشتِ دوم = خطا،
-      نه اعمالِ دوباره).
-    """
+    """برگشت یک حوالهٔ «نهایی‌شده» — اتمیک و قفل‌دار."""
     with transaction.atomic():
-        original = (WarehouseVoucher.objects.select_for_update()
+        original = (WarehouseVoucher.objects.select_for_update(of=('self',))
                     .select_related('cafe').get(pk=voucher.pk))
         if original.reverses_id:
             raise VoucherStateError(
@@ -647,6 +674,20 @@ def reverse_voucher(voucher, created_by=None, description=None):
             original.voucher_type in WarehouseVoucher.APPROVAL_REQUIRED_TYPES
             or original.requires_approval
         )
+        if approval_required:
+            if created_by is None:
+                raise VoucherStateError(
+                    'برای برگشت حوالهٔ نیازمند تأیید، کاربر تأییدکننده الزامی است.')
+            has_authority = bool(
+                getattr(created_by, 'is_superuser', False)
+                or getattr(created_by, 'role', None) in _APPROVER_ROLES
+                or getattr(created_by, 'secondary_role', None) in _APPROVER_ROLES
+                or (original.approver_id is not None and getattr(created_by, 'pk', None) == original.approver_id)
+            )
+            if not has_authority:
+                raise VoucherStateError(
+                    'فقط مدیر، ادمین یا مدیرعامل مجاز به تأیید خودکار برگشت این حواله است.')
+
         reversal = WarehouseVoucher(
             cafe=original.cafe,
             voucher_type=original.voucher_type,
@@ -661,7 +702,7 @@ def reverse_voucher(voucher, created_by=None, description=None):
             requires_approval=original.requires_approval,
         )
         if approval_required:
-            reversal.approver = created_by or original.created_by
+            reversal.approver = created_by
             reversal.approved_at = timezone.now()
         reversal.save()
 

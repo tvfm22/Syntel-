@@ -248,7 +248,7 @@
                                 const value = context.parsed;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} تومان (${toFarsiNumber(percentage)}%)`;
+                                return `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} ریال (${toFarsiNumber(percentage)}%)`;
                             }
                         }
                     }
@@ -272,6 +272,15 @@
         });
     }
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function renderPriceIncreases(data) {
         const container = document.getElementById('priceIncreasesList');
         if (!data.products || data.products.length === 0) {
@@ -281,8 +290,8 @@
         container.innerHTML = data.products.map((product, index) => `
             <div class="list-item">
                 <div class="list-item-content">
-                    <div class="list-item-title">${index + 1}. ${product.name}</div>
-                    <div class="list-item-subtitle">قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} تومان → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} تومان</div>
+                    <div class="list-item-title">${index + 1}. ${escapeHtml(product.name)}</div>
+                    <div class="list-item-subtitle">قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} ریال → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} ریال</div>
                 </div>
                 <div><div class="badge badge-danger"><i class="fas fa-arrow-up"></i> ${toFarsiNumber(product.increase_percentage.toFixed(1))}%</div></div>
             </div>

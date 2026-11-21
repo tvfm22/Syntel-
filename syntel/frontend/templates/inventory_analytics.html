@@ -248,10 +248,19 @@
     </div>
 </div>
 
+{{ stock_status|json_script:"stock-status-data" }}
+{{ top_categories|json_script:"top-categories-data" }}
 <script>
+function _parseJsonEl(id, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    let val = JSON.parse(el.textContent || 'null');
+    if (typeof val === 'string') { try { val = JSON.parse(val); } catch (e) {} }
+    return val == null ? fallback : val;
+}
 // Stock Status Chart
 const stockCtx = document.getElementById('stockStatusChart').getContext('2d');
-const stockData = {{ stock_status|safe }};
+const stockData = _parseJsonEl('stock-status-data', {});
 new Chart(stockCtx, {
     type: 'doughnut',
     data: {
@@ -276,7 +285,7 @@ new Chart(stockCtx, {
 
 // Category Chart
 const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-const categoryData = {{ top_categories|safe }};
+const categoryData = _parseJsonEl('top-categories-data', []);
 new Chart(categoryCtx, {
     type: 'bar',
     data: {

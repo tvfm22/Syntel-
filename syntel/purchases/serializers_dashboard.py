@@ -20,24 +20,33 @@ class ProductChangeSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     current_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     previous_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    percent_change = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
+    percent_change = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     last_update = serializers.DateTimeField(read_only=True)
     supplier_name = serializers.CharField(read_only=True)
     supplier_notes = serializers.CharField(read_only=True)
-    
+    supplier_display_name = serializers.SerializerMethodField()
+
+    def get_supplier_display_name(self, obj):
+        notes = getattr(obj, 'supplier_notes', None) or ''
+        if 'فروشگاه نقدی' in notes:
+            return 'فروشگاه نقدی'
+        return getattr(obj, 'supplier_name', None) or '-'
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # اگر فروشنده فروشگاه نقدی است، نام نمایشی را تغییر دهیم
         if data.get('supplier_notes') and 'فروشگاه نقدی' in data['supplier_notes']:
-            # نام واقعی فروشگاه را نگه می‌داریم
             data['supplier_display_name'] = 'فروشگاه نقدی'
         else:
-            data['supplier_display_name'] = data.get('supplier_name', '-')
+            data['supplier_display_name'] = data.get('supplier_name') or '-'
         return data
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category_name', 'current_price', 'previous_price', 'percent_change', 'last_update', 'supplier_name', 'supplier_notes']
+        fields = [
+            'id', 'name', 'category_name', 'current_price', 'previous_price',
+            'percent_change', 'last_update', 'supplier_name', 'supplier_notes',
+            'supplier_display_name',
+        ]
 
 
 # Serializers for Bubble Chart Analytics
@@ -45,7 +54,7 @@ class BubbleDataSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField(max_length=200)
     value = serializers.DecimalField(max_digits=15, decimal_places=2)
-    change_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
+    change_percent = serializers.DecimalField(max_digits=10, decimal_places=2)
     previous_value = serializers.DecimalField(max_digits=15, decimal_places=2)
     item_count = serializers.IntegerField(required=False)
     request_count = serializers.IntegerField(required=False)
@@ -70,8 +79,8 @@ class ProductDetailSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     category_name = serializers.CharField(max_length=200)
     total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
-    change_percent = serializers.DecimalField(max_digits=6, decimal_places=2)
-    quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
+    change_percent = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=4)
     unit = serializers.CharField(max_length=50)
     average_price = serializers.DecimalField(max_digits=12, decimal_places=2)
 

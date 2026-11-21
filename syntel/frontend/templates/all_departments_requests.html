@@ -202,7 +202,8 @@
             <div class="date-nav">
                 <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow" title="روز قبل">‹</a>
                 <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
-                    <span class="date-jalali">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="date-jalali date-jalali-full">{{ selected_date|jalali_date:"%d %B %Y" }}</span>
+                    <span class="date-jalali date-jalali-short">{{ selected_date|jalali_date:"%d %B" }}</span>
                     <span class="date-gregorian">({{ selected_date|date:"Y/m/d" }})</span>
                 </div>
                 <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
@@ -297,7 +298,7 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
                                     <button type="submit" name="action" value="delete_section" class="mini-link ml-delete"
-                                            onclick="return confirm('«{{ row.name }}» در بخش {{ s.dept }} حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
+                                            onclick="return confirm('«{{ row.name|escapejs }}» در بخش {{ s.dept|escapejs }} حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
                                 </form>
                             </div>
                             <div class="inline-edit" hidden>

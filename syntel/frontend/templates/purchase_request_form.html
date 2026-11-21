@@ -621,7 +621,12 @@
     document.getElementById('entryUnit').innerHTML = buildUnitOptions('عدد');
 
     function escapeHtml(str) {
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function escapeJs(str) {
@@ -953,7 +958,7 @@
                 ${p.category ? `<div class="ac-cat">${escapeHtml(p.category)}</div>` : ''}
             </div>`
         ).join('');
-        html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
+        html += `<div class="ac-item ac-add-new" data-q="${escapeHtml(q)}" onmousedown="openAddProductModal(this.dataset.q)">
             ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
         </div>`;
         drop.innerHTML = html;
@@ -1119,7 +1124,7 @@
             }).join('');
         }
         if (q) {
-            html += `<div class="ac-item ac-add-new" onmousedown="openAddProductModal('${escapeHtml(q)}')">
+            html += `<div class="ac-item ac-add-new" data-q="${escapeHtml(q)}" onmousedown="openAddProductModal(this.dataset.q)">
                 ➕ افزودن «${escapeHtml(q)}» به عنوان کالای جدید
             </div>`;
         }

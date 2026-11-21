@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import quote
@@ -26,6 +27,9 @@ AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
 DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
+# 4 MiB chunks (multiple of 256 KiB required by Google Drive resumable upload)
+UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024
+
 
 def _data_path():
     path = getattr(settings, 'DATA_PATH', None)
@@ -33,6 +37,27 @@ def _data_path():
         return Path(path)
     project_root = getattr(settings, 'PROJECT_ROOT', Path(settings.BASE_DIR).parent)
     return Path(project_root) / 'data'
+
+
+def _atomic_write_json(path: Path, data: dict) -> None:
+    """Atomically write JSON with restrictive (0o600 on POSIX) permissions."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=f'.{path.name}.', dir=str(path.parent))
+    try:
+        if os.name == 'posix':
+            os.chmod(tmp_path, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+        os.replace(tmp_path, path)
+        if os.name == 'posix':
+            os.chmod(path, 0o600)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def token_path():
@@ -60,14 +85,15 @@ def load_config() -> dict:
 
 
 def save_config(client_id: str, client_secret: str, folder_id: str = '') -> None:
-    """Persist runtime config so it takes effect without a restart."""
-    os.makedirs(_data_path(), exist_ok=True)
-    with open(_config_path(), 'w', encoding='utf-8') as f:
-        json.dump({
+    """Persist runtime config atomically so it takes effect without a restart."""
+    _atomic_write_json(
+        _config_path(),
+        {
             'client_id': client_id.strip(),
             'client_secret': client_secret.strip(),
             'folder_id': folder_id.strip(),
-        }, f)
+        },
+    )
 
 
 def clear_config() -> None:
@@ -112,9 +138,7 @@ def get_auto_state() -> dict:
 def set_auto_state(**kwargs) -> None:
     state = get_auto_state()
     state.update(kwargs)
-    os.makedirs(_data_path(), exist_ok=True)
-    with open(auto_state_path(), 'w', encoding='utf-8') as f:
-        json.dump(state, f)
+    _atomic_write_json(auto_state_path(), state)
 
 
 def auto_backup_interval_hours() -> int:
@@ -129,9 +153,7 @@ def is_connected() -> bool:
 
 
 def save_token(data: dict) -> None:
-    os.makedirs(_data_path(), exist_ok=True)
-    with open(token_path(), 'w', encoding='utf-8') as f:
-        json.dump(data, f)
+    _atomic_write_json(token_path(), data)
 
 
 def load_token():
@@ -168,17 +190,20 @@ def build_authorize_url(state: str, redirect_uri: str) -> str:
 
 def exchange_code(code: str, redirect_uri: str) -> dict:
     """Exchange the OAuth authorization code for tokens."""
-    resp = requests.post(TOKEN_URL, data={
-        'code': code,
-        'client_id': get_client_id(),
-        'client_secret': get_client_secret(),
-        'redirect_uri': redirect_uri,
-        'grant_type': 'authorization_code',
-    }, timeout=30)
+    resp = requests.post(
+        TOKEN_URL,
+        data={
+            'code': code,
+            'client_id': get_client_id(),
+            'client_secret': get_client_secret(),
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code',
+        },
+        timeout=30,
+    )
     resp.raise_for_status()
     data = resp.json()
     data['expires_at'] = time.time() + int(data.get('expires_in', 3600)) - 60
-    # Best-effort: remember the connected account email for display
     try:
         data['email'] = get_account_email(data['access_token'])
     except Exception:
@@ -200,12 +225,16 @@ def _refresh_access_token() -> str:
     token = load_token()
     if not token or not token.get('refresh_token'):
         raise ValueError('اتصال گوگل‌درایو منقضی شده است. دوباره اتصال را برقرار کنید.')
-    resp = requests.post(TOKEN_URL, data={
-        'refresh_token': token['refresh_token'],
-        'client_id': get_client_id(),
-        'client_secret': get_client_secret(),
-        'grant_type': 'refresh_token',
-    }, timeout=30)
+    resp = requests.post(
+        TOKEN_URL,
+        data={
+            'refresh_token': token['refresh_token'],
+            'client_id': get_client_id(),
+            'client_secret': get_client_secret(),
+            'grant_type': 'refresh_token',
+        },
+        timeout=30,
+    )
     resp.raise_for_status()
     data = resp.json()
     token['access_token'] = data['access_token']
@@ -223,8 +252,7 @@ def get_access_token() -> str:
     return token['access_token']
 
 
-def _upload_resumable(access_token: str, filename: str, data: bytes) -> str:
-    """Upload bytes to Drive using the resumable protocol; returns the file id."""
+def _start_resumable_session(session: requests.Session, access_token: str, filename: str, total_size: int) -> str:
     metadata = {
         'name': filename,
         'mimeType': 'application/octet-stream',
@@ -237,9 +265,8 @@ def _upload_resumable(access_token: str, filename: str, data: bytes) -> str:
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json; charset=UTF-8',
         'X-Upload-Content-Type': 'application/octet-stream',
-        'X-Upload-Content-Length': str(len(data)),
+        'X-Upload-Content-Length': str(total_size),
     }
-    session = requests.Session()
     start = session.post(
         f'{UPLOAD_URL}?uploadType=resumable',
         headers=headers,
@@ -247,7 +274,6 @@ def _upload_resumable(access_token: str, filename: str, data: bytes) -> str:
         timeout=30,
     )
     if start.status_code == 401:
-        # Token expired — refresh once and retry the whole upload
         access_token = _refresh_access_token()
         headers['Authorization'] = f'Bearer {access_token}'
         start = session.post(
@@ -260,10 +286,48 @@ def _upload_resumable(access_token: str, filename: str, data: bytes) -> str:
     upload_url = start.headers.get('Location')
     if not upload_url:
         raise ValueError('پاسخ نامعتبر از گوگل‌درایو دریافت شد.')
+    return upload_url
 
+
+def _upload_resumable(access_token: str, filename: str, data: bytes) -> str:
+    """Upload bytes to Drive using the resumable protocol; returns the file id."""
+    session = requests.Session()
+    upload_url = _start_resumable_session(session, access_token, filename, len(data))
     upload = session.put(upload_url, data=data, timeout=300)
     upload.raise_for_status()
     return upload.json().get('id', '')
+
+
+def _upload_resumable_file(access_token: str, filename: str, filepath: Path) -> str:
+    """Stream a file to Drive in fixed-size chunks without loading it all into RAM."""
+    total_size = os.path.getsize(filepath)
+    session = requests.Session()
+    upload_url = _start_resumable_session(session, access_token, filename, total_size)
+
+    if total_size == 0:
+        upload = session.put(upload_url, data=b'', timeout=300)
+        upload.raise_for_status()
+        return upload.json().get('id', '')
+
+    offset = 0
+    with open(filepath, 'rb') as f:
+        while offset < total_size:
+            chunk = f.read(UPLOAD_CHUNK_SIZE)
+            if not chunk:
+                break
+            end = offset + len(chunk) - 1
+            headers = {
+                'Content-Length': str(len(chunk)),
+                'Content-Range': f'bytes {offset}-{end}/{total_size}',
+            }
+            resp = session.put(upload_url, headers=headers, data=chunk, timeout=300)
+            if resp.status_code == 308:
+                offset += len(chunk)
+                continue
+            resp.raise_for_status()
+            return resp.json().get('id', '')
+
+    raise ValueError('آپلود فایل به گوگل‌درایو ناتمام ماند.')
 
 
 def upload_backup(filename: str, data: bytes) -> str:
@@ -273,10 +337,9 @@ def upload_backup(filename: str, data: bytes) -> str:
 
 
 def upload_file_to_drive(filename: str, filepath) -> str:
-    """Upload a local file to Google Drive; returns the remote file id."""
-    with open(filepath, 'rb') as f:
-        data = f.read()
-    return upload_backup(filename, data)
+    """Stream a local file to Google Drive in chunks; returns the remote file id."""
+    access_token = get_access_token()
+    return _upload_resumable_file(access_token, filename, Path(filepath))
 
 
 def get_account_email(access_token: str = '') -> str:

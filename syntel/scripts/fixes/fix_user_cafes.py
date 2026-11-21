@@ -1,100 +1,105 @@
 #!/usr/bin/env python
 """
-اصلاح سیستم کاربران برای چند کافه‌ای
+اصلاح سیستم کاربران برای چند کافه‌ای (نیازمند --confirm-destructive)
 
-منطق جدید:
-- کاربران عادی: باید cafe داشته باشند و فقط به همان کافه دسترسی دارند
-- کاربران ادمین (manager, finance_manager, accounting, ceo):
-  - اگر cafe=None: می‌توانند بین کافه‌ها انتخاب کنند (سوپر ادمین)
-  - اگر cafe مشخص: فقط به همان کافه دسترسی دارند
-
-کاربران موجود همه به کافه لوکال تعلق دارند.
-برای کاربران سوپر ادمین جدید، cafe=None تنظیم می‌شود.
+قواعد حفاظتی:
+- کاربران `is_superuser=True` و مدیران کل (role در ['ceo', 'admin'] با cafe=None)
+  هرگز به کافه لوکال محدود نمی‌شوند و `cafe=None` خود را حفظ می‌کنند.
 """
-
+import argparse
 import os
 import sys
 import django
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
-django.setup()
 
-from purchases.models import User, Cafe
 
 def show_users():
-    """نمایش وضعیت فعلی کاربران"""
+    from purchases.models import User
+
     print("\n" + "=" * 60)
     print("وضعیت فعلی کاربران")
     print("=" * 60)
-    
-    admin_roles = ['manager', 'finance_manager', 'accounting', 'ceo']
-    
+    admin_roles = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo']
     for user in User.objects.all().order_by('role', 'username'):
-        cafe_name = user.cafe.name if user.cafe else "بدون کافه (سوپر ادمین)"
-        is_admin = "✓" if user.role in admin_roles else ""
+        cafe_name = user.cafe.name if user.cafe else "بدون کافه (سراسری)"
+        is_admin = "✓" if (user.is_superuser or user.role in admin_roles) else ""
         print(f"  {user.username:<20} | نقش: {user.role:<15} | کافه: {cafe_name:<25} | ادمین: {is_admin}")
 
-def fix_users():
-    """اصلاح کاربران - همه کاربران موجود به کافه لوکال تعلق دارند"""
+
+def fix_users(confirm_destructive: bool = False):
+    """اختصاص کاربران غیرسراسریِ بدون کافه به کافه لوکال بدون تغییر سوپرادمین‌ها و مدیرعامل کل."""
+    if not confirm_destructive:
+        raise RuntimeError("This script modifies user cafe assignments; pass --confirm-destructive.")
+
+    from django.db import transaction
+    from purchases.models import Cafe, User
+
     local_cafe = Cafe.objects.filter(code='local').first()
-    
     if not local_cafe:
         print("❌ کافه لوکال یافت نشد!")
-        return
-    
-    # همه کاربران که cafe ندارند را به لوکال اختصاص بده
-    users_without_cafe = User.objects.filter(cafe__isnull=True)
-    count = users_without_cafe.count()
-    
-    if count > 0:
-        users_without_cafe.update(cafe=local_cafe)
-        print(f"✅ {count} کاربر به کافه لوکال اختصاص داده شد")
-    else:
-        print("✅ همه کاربران قبلاً کافه دارند")
+        return 0
 
-def create_super_admin():
-    """ایجاد یک کاربر سوپر ادمین برای هر دو کافه"""
-    # بررسی وجود سوپر ادمین
-    super_admin = User.objects.filter(username='superadmin').first()
-    
-    if super_admin:
-        super_admin.cafe = None  # دسترسی به هر دو کافه
-        super_admin.save()
-        print(f"✅ کاربر superadmin به‌روزرسانی شد (دسترسی به هر دو کافه)")
-    else:
-        # ایجاد سوپر ادمین جدید
-        super_admin = User.objects.create_user(
-            username='superadmin',
-            password='superadmin123',
-            role='ceo',
-            first_name='سوپر',
-            last_name='ادمین',
-            cafe=None  # دسترسی به هر دو کافه
+    with transaction.atomic():
+        users_without_cafe = (
+            User.objects.filter(cafe__isnull=True, is_superuser=False)
+            .exclude(role__in=['ceo', 'admin'])
         )
-        print(f"✅ کاربر superadmin ایجاد شد (رمز: superadmin123)")
+        count = users_without_cafe.count()
+        if count > 0:
+            users_without_cafe.update(cafe=local_cafe)
+            print(f"✅ {count} کاربر به کافه لوکال اختصاص داده شد (سوپرادمین‌ها و مدیرعامل کل حفظ شدند)")
+        else:
+            print("✅ هیچ کاربر نیازمند اصلاح یافت نشد")
+        return count
+
+
+def create_super_admin(password: str, confirm_destructive: bool = False):
+    """ایجاد/تنظیم کاربر superadmin با رمز معتبر (از --password یا SYNTEL_SEED_PASSWORD)."""
+    if not confirm_destructive:
+        raise RuntimeError("Creating/updating superadmin requires --confirm-destructive.")
+
+    from django.db import transaction
+    from purchases.models import User
+
+    with transaction.atomic():
+        super_admin = User.objects.filter(username='superadmin').first()
+        if super_admin:
+            if super_admin.cafe is not None:
+                super_admin.cafe = None
+                super_admin.save(update_fields=['cafe'])
+            print("✅ کاربر superadmin با دسترسی سراسری حفظ/به‌روزرسانی شد")
+        elif password and len(password) >= 8:
+            User.objects.create_user(
+                username='superadmin',
+                password=password,
+                role='ceo',
+                first_name='سوپر',
+                last_name='ادمین',
+                cafe=None,
+            )
+            print("✅ کاربر superadmin ایجاد شد")
+        else:
+            print("ℹ️ برای ایجاد کاربر جدید superadmin مقدار --password (>= 8 کاراکتر) را بدهید.")
+
 
 if __name__ == '__main__':
-    print("\n" + "=" * 60)
-    print("       اصلاح سیستم کاربران")
-    print("=" * 60)
-    
+    parser = argparse.ArgumentParser(description='Fix user cafe assignments safely.')
+    parser.add_argument(
+        '--confirm-destructive',
+        action='store_true',
+        help='Required flag to confirm modifying user records.',
+    )
+    parser.add_argument(
+        '--password',
+        default=os.environ.get('SYNTEL_SEED_PASSWORD', ''),
+        help='Password for creating superadmin if missing.',
+    )
+    args = parser.parse_args()
+
+    django.setup()
     show_users()
-    
-    print("\n" + "=" * 60)
-    print("اصلاحات...")
-    print("=" * 60)
-    
-    fix_users()
-    create_super_admin()
-    
+    fix_users(confirm_destructive=args.confirm_destructive)
+    create_super_admin(password=args.password, confirm_destructive=args.confirm_destructive)
     show_users()
-    
-    print("\n" + "=" * 60)
-    print("راهنما:")
-    print("=" * 60)
-    print("- کاربران با کافه مشخص: فقط به همان کافه دسترسی دارند")
-    print("- کاربر superadmin (بدون کافه): صفحه انتخاب کافه می‌بیند")
-    print("- فقط manager و ceo می‌توانند در حین کار کافه را عوض کنند")
-    print("=" * 60)

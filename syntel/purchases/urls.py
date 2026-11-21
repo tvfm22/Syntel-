@@ -1,23 +1,11 @@
 from django.urls import path, include
 from django.shortcuts import redirect
-from functools import wraps
 from . import views
 from . import views_dashboard
 from . import views_analytics
 from . import views_cogs
 from . import api_mobile
-
-
-def cafe_view(view_func):
-    """
-    Wrapper که پارامتر cafe_code را از kwargs حذف می‌کند.
-    اطلاعات کافه از middleware در request.cafe قرار دارد.
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        kwargs.pop('cafe_code', None)
-        return view_func(request, *args, **kwargs)
-    return wrapper
+from .views_helpers import cafe_view
 
 
 # Apply wrapper to all views
@@ -31,7 +19,6 @@ auth_urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('select-cafe/', views.select_cafe, name='select_cafe'),
-    path('health/', views.system_health_check, name='system_health_check'),
     # Google Drive OAuth callback — must be an exact, stable redirect URI (no cafe prefix)
     path('backup/drive/callback/', views.drive_callback, name='drive_callback'),
     # Mobile Android App DRF Authentication API
@@ -301,9 +288,6 @@ cafe_urlpatterns = [
     path('api/finance/recent-payments/', cv(views_analytics.api_finance_recent_payments), name='api_finance_recent_payments'),
     path('api/finance/pending-invoices/', cv(views_analytics.api_finance_pending_invoices), name='api_finance_pending_invoices'),
     
-    # Test page
-    path('test/filter/', cv(views.test_filter_page), name='test_filter_page'),
-    
     # System Monitoring URLs
     path('system/monitoring/', cv(views.system_monitoring), name='system_monitoring'),
     path('system/monitoring/api/', cv(views.system_monitoring_api), name='system_monitoring_api'),
@@ -317,7 +301,6 @@ cafe_urlpatterns = [
 
     # Price Dashboard Page
     path('dashboard/prices/', cv(views_dashboard.price_dashboard_view), name='price_dashboard'),
-    path('dashboard/prices/test/', cv(views_dashboard.price_test_view), name='price_test'),
 
     # Dashboard API URLs
     path('api/dashboard/products/changes/', cv(views_dashboard.ProductChangeListAPIView.as_view()), name='api_product_changes'),

@@ -22,7 +22,7 @@ class BackupViewsTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.manager = User.objects.create_user(
-            username='manager_backup', password='testpass123', role='manager')
+            username='manager_backup', password='testpass123', role='admin')
         self.kitchen = User.objects.create_user(
             username='kitchen_backup', password='testpass123', role='kitchen')
         Unit.objects.create(name='Kilogram', symbol='kg')
@@ -39,7 +39,7 @@ class BackupViewsTests(TestCase):
         # Kitchen user → denied
         self.client.login(username='kitchen_backup', password='testpass123')
         resp = self.client.get(reverse('backup_management', kwargs=CAFE_KW))
-        self.assertEqual(resp.status_code, 302)
+        self.assertIn(resp.status_code, (302, 403))
 
         # Manager → page renders with expected sections
         self.client.login(username='manager_backup', password='testpass123')

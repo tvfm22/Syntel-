@@ -4,7 +4,7 @@
 {% block title %}بدهی‌ها - موبایل{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
     /* ===== داشبورد موبایل بدهی‌ها — رابط لمسی تک‌ستونه ===== */
     .m-wrap { max-width: 640px; margin: 0 auto; padding-bottom: 2.5rem; }
@@ -338,8 +338,7 @@
             </div>
             <div class="m-form-group">
                 <label>تاریخ بدهی (شمسی)</label>
-                <input type="text" id="m-debt-date" name="debt_date" class="m-input"
-                       value="{{ today_jalali }}">
+                {% include 'includes/jalali_date_group.html' with jd_name='debt_date' jd_id='m-debt-date' jd_value=today_jalali %}
             </div>
             <div class="m-form-group">
                 <label>اولویت</label>
@@ -421,9 +420,9 @@
             <div class="m-debt-company">{{ debt.company }}</div>
             <i class="fas fa-chevron-left m-debt-chevron"></i>
         </div>
-        <div class="m-debt-amount">{{ debt.remaining|number_format }} <span class="unit">تومان</span></div>
-        {% if debt.paid_total > 0 %}
-        <div class="m-debt-date"><i class="fas fa-check-circle"></i>پرداخت شده: {{ debt.paid_total|number_format }} تومان</div>
+        <div class="m-debt-amount">{{ debt.remaining_amt|number_format }} <span class="unit">تومان</span></div>
+        {% if debt.paid_sum > 0 %}
+        <div class="m-debt-date"><i class="fas fa-check-circle"></i>پرداخت شده: {{ debt.paid_sum|number_format }} تومان</div>
         {% endif %}
         <div class="m-debt-date"><i class="fas fa-calendar-alt"></i>{{ debt.debt_date|jalali_date }}</div>
     </div>
@@ -484,9 +483,9 @@
         </div>
         <div class="m-sheet-rows">
             <div class="m-sheet-row"><span>مبلغ بدهی</span><b>{{ debt.amount|number_format }} تومان</b></div>
-            {% if debt.paid_total > 0 %}
-            <div class="m-sheet-row"><span>پرداخت شده</span><b>{{ debt.paid_total|number_format }} تومان</b></div>
-            <div class="m-sheet-row"><span>باقی‌مانده</span><b style="color:var(--accent-orange);">{{ debt.remaining|number_format }} تومان</b></div>
+            {% if debt.paid_sum > 0 %}
+            <div class="m-sheet-row"><span>پرداخت شده</span><b>{{ debt.paid_sum|number_format }} تومان</b></div>
+            <div class="m-sheet-row"><span>باقی‌مانده</span><b style="color:var(--accent-orange);">{{ debt.remaining_amt|number_format }} تومان</b></div>
             {% endif %}
             <div class="m-sheet-row"><span>تاریخ بدهی</span><b>{{ debt.debt_date|jalali_date }}</b></div>
             {% if debt.created_by %}
@@ -519,7 +518,7 @@
                 <i class="fas fa-edit"></i> ویرایش بدهی
             </a>
             <form method="post" action="{% url 'debt_delete' cafe_code=cafe_code debt_id=debt.id %}"
-                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
+                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company|escapejs }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
                 {% csrf_token %}
                 <button type="submit" class="m-btn-danger">
                     <i class="fas fa-trash"></i> حذف بدهی
@@ -630,7 +629,7 @@
 {% block extra_js %}
 {{ suppliers_data|json_script:"suppliers-data" }}
 <script src="{% static 'js/supplier_picker.js' %}"></script>
-<script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
+<script src="{% static 'js/jalali_date_group.js' %}"></script>
 <script>
     // شیت حساب‌های پرداخت (ادمین) — مستقل از بقیه اسکریپت‌ها:
     // حتی اگر بخش دیگری از صفحه خطا بدهد (مثلاً اسکریپت تقویم لود نشود) شیت باز می‌شود
@@ -688,27 +687,6 @@
             input.addEventListener('input', applyComma);
             applyComma.call(input);  // نمایش اولیه با کاما
         });
-
-        // تقویم شمسی برای فیلد تاریخ (فقط ادمین)
-        // اگر اسکریپت تقویم لود نشده باشد بقیه اسکریپت صفحه ادامه پیدا می‌کند
-        if (typeof persianDatepicker === 'function') {
-            document.querySelectorAll('#m-debt-date').forEach(function(input) {
-                new persianDatepicker(input, {
-                    format: 'YYYY/MM/DD',
-                    year: 1404,
-                    month: 1,
-                    day: 1,
-                    observer: true,
-                    altField: input,
-                    altFormat: 'YYYY/MM/DD',
-                    calendar: {
-                        persian: {
-                            locale: 'fa'
-                        }
-                    }
-                });
-            });
-        }
 
         // ---------- شیت جزئیات بدهی (الرت موبایل) ----------
         const backdrop = document.getElementById('sheetBackdrop');

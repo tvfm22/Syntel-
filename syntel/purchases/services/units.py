@@ -11,7 +11,7 @@ recipe quantities (grams, millilitres, pieces) multiply straight into a cost:
 Anything the caller does not recognise is passed through untouched, so an
 unknown unit never silently loses a factor of 1000.
 """
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 # Spelling variants (whitespace / ZWNJ stripped before matching)
 _KG_VARIANTS = {'کیلوگرم', 'کیلوگرام', 'کیلو', 'kg', 'kgs', 'kilogram'}
@@ -24,6 +24,7 @@ SMALLEST_UNIT_KG = 'گرم'
 SMALLEST_UNIT_LITER = 'میل'
 
 _THOUSAND = Decimal('1000')
+_DIGIT_TRANS = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
 
 
 def _squash(value):
@@ -36,18 +37,24 @@ def _squash(value):
     return s
 
 
+_KG_SQUASHED = frozenset(_squash(u) for u in _KG_VARIANTS)
+_LITER_SQUASHED = frozenset(_squash(u) for u in _LITER_VARIANTS)
+_GRAM_SQUASHED = frozenset(_squash(u) for u in _GRAM_VARIANTS)
+_MIL_SQUASHED = frozenset(_squash(u) for u in _MIL_VARIANTS)
+
+
 def _canonical_family(unit_name):
     """Return ('kg'|'liter'|'gram'|'mil'|None) for a unit name."""
     s = _squash(unit_name)
     if not s:
         return None
-    if s in {_squash(u) for u in _KG_VARIANTS}:
+    if s in _KG_SQUASHED:
         return 'kg'
-    if s in {_squash(u) for u in _LITER_VARIANTS}:
+    if s in _LITER_SQUASHED:
         return 'liter'
-    if s in {_squash(u) for u in _GRAM_VARIANTS}:
+    if s in _GRAM_SQUASHED:
         return 'gram'
-    if s in {_squash(u) for u in _MIL_VARIANTS}:
+    if s in _MIL_SQUASHED:
         return 'mil'
     return None
 
@@ -56,7 +63,19 @@ def _to_decimal(value):
     if value is None or value == '':
         return None
     try:
-        return Decimal(str(value).strip().replace(',', '').replace('،', ''))
+        cleaned = (
+            str(value)
+            .translate(_DIGIT_TRANS)
+            .strip()
+            .replace(',', '')
+            .replace('،', '')
+            .replace('٬', '')
+            .replace('٫', '.')
+        )
+        dec = Decimal(cleaned)
+        if not dec.is_finite():
+            return None
+        return dec
     except (InvalidOperation, ValueError, TypeError):
         return None
 
@@ -143,14 +162,18 @@ def unit_family(unit_name):
 def units_are_compatible(first, second):
     """True when two unit names measure the same thing.
 
-    Countable/unknown units are only compatible with each other, so a price
-    typed in کیلوگرم is rejected for a material whose base unit is عدد
-    instead of silently producing a nonsense per-piece price.
+    - Mass units (kg, gram) are compatible with each other.
+    - Volume units (liter, mil) are compatible with each other.
+    - Countable/unknown units require an exact squashed match (so 'عدد' vs 'کارتن' is False).
     """
     fam_a, fam_b = _canonical_family(first), _canonical_family(second)
-    if fam_a is None and fam_b is None:
+    if fam_a in ('kg', 'gram') and fam_b in ('kg', 'gram'):
         return True
-    return fam_a == fam_b
+    if fam_a in ('liter', 'mil') and fam_b in ('liter', 'mil'):
+        return True
+    if fam_a is None and fam_b is None:
+        return _squash(first) == _squash(second)
+    return False
 
 
 def normalize_package_price(amount, package_size, package_unit):
@@ -159,7 +182,7 @@ def normalize_package_price(amount, package_size, package_unit):
     A «بستهٔ ۵ کیلوگرمی» costing 1,750,000 becomes 350 per gram:
 
     >>> normalize_package_price(1750000, 5, 'کیلوگرم')
-    (Decimal('350.0'), 'گرم')
+    (Decimal('350.0000'), 'گرم')
     """
     quantity, smallest = convert_quantity_to_smallest_unit(package_size, package_unit)
     price = _to_decimal(amount)
@@ -167,4 +190,4 @@ def normalize_package_price(amount, package_size, package_unit):
         return None, smallest
     if quantity is None or quantity <= 0:
         return None, smallest
-    return price / quantity, smallest
+    return (price / quantity).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP), smallest

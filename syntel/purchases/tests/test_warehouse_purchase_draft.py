@@ -436,3 +436,17 @@ class WarehousePurchaseDraftTests(TestCase):
         self.assertContains(resp, 'نیاز به تایید مدیرعامل')
         self.assertContains(resp, 'ارسال مستقیم به واحد خرید')
         self.assertContains(resp, 'ویرایش')
+        self.assertContains(resp, 'draft-item-row')
+        self.assertContains(resp, 'id="draftItemSearch"')
+        self.assertNotContains(resp, 'class="hint-box"')
+
+    def test_cafe_switch_hidden_for_warehouse_officer(self):
+        """قابلیت تغییر کافه در داشبورد و صفحه درخواست خرید مسئول انبار نمایش داده نشود"""
+        self._login_as_warehouse()
+        dash_resp = self.client.get(reverse('warehouse_officer_dashboard', args=['testcafe']), follow=True)
+        self.assertEqual(dash_resp.status_code, 200)
+        self.assertNotContains(dash_resp, 'class="sidebar-switch-cafe"')
+
+        draft_resp = self.client.get(reverse('warehouse_purchase_draft', args=['testcafe']))
+        self.assertEqual(draft_resp.status_code, 200)
+        self.assertNotContains(draft_resp, 'class="sidebar-switch-cafe"')

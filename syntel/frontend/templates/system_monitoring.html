@@ -15,7 +15,7 @@
                         مانیتورینگ سیستم
                     </h4>
                     <div>
-                        <span class="badge badge-info">
+                        <span id="lastUpdatedBadge" class="badge badge-info">
                             آخرین به‌روزرسانی: {{ last_updated|date:"H:i:s Y-m-d" }}
                         </span>
                         <button class="btn btn-sm btn-outline-primary ml-2" onclick="location.reload()">
@@ -105,7 +105,7 @@
                                         </tr>
                                         <tr>
                                             <td><strong>اتصالات فعال:</strong></td>
-                                            <td>{{ active_connections }}</td>
+                                            <td id="activeConnectionsVal">{{ active_connections }}</td>
                                         </tr>
                                     </table>
                                 </div>
@@ -127,19 +127,19 @@
                                     <div class="row">
                                         <div class="col-md-4">
                                             <div class="text-center">
-                                                <h4 class="text-primary">{{ system_resources.cpu_usage }}%</h4>
+                                                <h4 id="cpuUsageText" class="text-primary">{{ system_resources.cpu_usage }}%</h4>
                                                 <p class="mb-0">استفاده از CPU</p>
                                                 <div class="progress mt-2">
-                                                    <div class="progress-bar bg-primary" style="width: {{ system_resources.cpu_usage }}%"></div>
+                                                    <div id="cpuUsageBar" class="progress-bar bg-primary" style="width: {{ system_resources.cpu_usage }}%"></div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4">
                                             <div class="text-center">
-                                                <h4 class="text-info">{{ system_resources.memory_percent }}%</h4>
+                                                <h4 id="memoryUsageText" class="text-info">{{ system_resources.memory_percent }}%</h4>
                                                 <p class="mb-0">استفاده از حافظه</p>
                                                 <div class="progress mt-2">
-                                                    <div class="progress-bar bg-info" style="width: {{ system_resources.memory_percent }}%"></div>
+                                                    <div id="memoryUsageBar" class="progress-bar bg-info" style="width: {{ system_resources.memory_percent }}%"></div>
                                                 </div>
                                                 <small class="text-muted">
                                                     {{ system_resources.memory_used|floatformat:"0" }} / {{ system_resources.memory_total|floatformat:"0" }} MB
@@ -148,10 +148,10 @@
                                         </div>
                                         <div class="col-md-4">
                                             <div class="text-center">
-                                                <h4 class="text-success">{{ system_resources.disk_percent }}%</h4>
+                                                <h4 id="diskUsageText" class="text-success">{{ system_resources.disk_percent }}%</h4>
                                                 <p class="mb-0">استفاده از دیسک</p>
                                                 <div class="progress mt-2">
-                                                    <div class="progress-bar bg-success" style="width: {{ system_resources.disk_percent }}%"></div>
+                                                    <div id="diskUsageBar" class="progress-bar bg-success" style="width: {{ system_resources.disk_percent }}%"></div>
                                                 </div>
                                                 <small class="text-muted">
                                                     {{ system_resources.disk_used|floatformat:"0" }} / {{ system_resources.disk_total|floatformat:"0" }} GB
@@ -236,25 +236,25 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-info">{{ recent_activity.new_requests }}</h4>
+                                                <h4 id="recentNewRequests" class="text-info">{{ recent_activity.new_requests }}</h4>
                                                 <p class="mb-0">درخواست جدید</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-success">{{ recent_activity.new_orders }}</h4>
+                                                <h4 id="recentNewOrders" class="text-success">{{ recent_activity.new_orders }}</h4>
                                                 <p class="mb-0">سفارش جدید</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-warning">{{ recent_activity.new_invoices }}</h4>
+                                                <h4 id="recentNewInvoices" class="text-warning">{{ recent_activity.new_invoices }}</h4>
                                                 <p class="mb-0">فاکتور جدید</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-danger">{{ recent_activity.new_payments }}</h4>
+                                                <h4 id="recentNewPayments" class="text-danger">{{ recent_activity.new_payments }}</h4>
                                                 <p class="mb-0">پرداخت جدید</p>
                                             </div>
                                         </div>
@@ -274,32 +274,32 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-warning">{{ health_status.pending_approvals }}</h4>
+                                                <h4 id="healthPendingInvoices" class="text-warning">{{ health_status.pending_approvals }}</h4>
                                                 <p class="mb-0">تأییدیه در انتظار</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-danger">{{ health_status.overdue_invoices }}</h4>
+                                                <h4 id="healthOverdueInvoices" class="text-danger">{{ health_status.overdue_invoices }}</h4>
                                                 <p class="mb-0">فاکتور سررسید گذشته</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-info">{{ health_status.low_stock_products }}</h4>
+                                                <h4 id="healthLowStockProducts" class="text-info">{{ health_status.low_stock_products }}</h4>
                                                 <p class="mb-0">محصول کم‌موجودی</p>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="text-center">
-                                                <h4 class="text-secondary">{{ health_status.inactive_suppliers }}</h4>
+                                                <h4 id="healthInactiveSuppliers" class="text-secondary">{{ health_status.inactive_suppliers }}</h4>
                                                 <p class="mb-0">تأمین‌کننده غیرفعال</p>
                                             </div>
                                         </div>
                                     </div>
                                     <hr>
                                     <div class="text-center">
-                                        <h5 class="text-danger">{{ health_status.outstanding_payments|floatformat:"0"|intcomma }} ریال</h5>
+                                        <h5 id="healthOutstandingPayments" class="text-danger">{{ health_status.outstanding_payments|floatformat:"0"|intcomma }} ریال</h5>
                                         <p class="mb-0">بدهی معوق کل</p>
                                     </div>
                                 </div>
@@ -428,11 +428,14 @@
 
 <!-- Chart.js for performance trends -->
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{{ performance_trends.daily_requests|json_script:"sm-daily-requests" }}
+{{ performance_trends.daily_payments|json_script:"sm-daily-payments" }}
+{{ performance_trends.daily_revenue|json_script:"sm-daily-revenue" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Requests Chart
     const requestsCtx = document.getElementById('requestsChart').getContext('2d');
-    const requestsData = {{ performance_trends.daily_requests|safe }};
+    const requestsData = JSON.parse(document.getElementById('sm-daily-requests').textContent || '[]');
     new Chart(requestsCtx, {
         type: 'line',
         data: {
@@ -458,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Payments Chart
     const paymentsCtx = document.getElementById('paymentsChart').getContext('2d');
-    const paymentsData = {{ performance_trends.daily_payments|safe }};
+    const paymentsData = JSON.parse(document.getElementById('sm-daily-payments').textContent || '[]');
     new Chart(paymentsCtx, {
         type: 'line',
         data: {
@@ -484,7 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Revenue Chart
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    const revenueData = {{ performance_trends.daily_revenue|safe }};
+    const revenueData = JSON.parse(document.getElementById('sm-daily-revenue').textContent || '[]');
     new Chart(revenueCtx, {
         type: 'line',
         data: {
@@ -525,11 +528,14 @@ function updateMonitoringData() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateSystemResources(data.data.system_resources);
-                updateActiveConnections(data.data.active_connections);
-                updateRecentActivity(data.data.recent_activity_counts || data.data.recent_activity);
-                updateHealthStatus(data.data.health_status);
-                updateTimestamp(data.data.timestamp);
+                const payload = data.data || {};
+                const resources = data.resources || payload.resources || payload.system_resources || {};
+                const health = data.health || payload.health || payload.health_status || {};
+                updateSystemResources(resources);
+                updateActiveConnections(health.active_connections ?? payload.active_connections);
+                updateRecentActivity(payload.recent_activity || payload.recent_activity_counts || {});
+                updateHealthStatus(health);
+                updateTimestamp(payload.timestamp);
             }
         })
         .catch(error => {
@@ -538,75 +544,72 @@ function updateMonitoringData() {
 }
 
 function updateSystemResources(resources) {
-    // Update CPU usage
-    const cpuElement = document.querySelector('.text-primary');
-    if (cpuElement && resources.cpu_usage !== 'N/A') {
-        cpuElement.textContent = resources.cpu_usage + '%';
-        const cpuProgress = cpuElement.nextElementSibling.querySelector('.progress-bar');
-        if (cpuProgress) {
-            cpuProgress.style.width = resources.cpu_usage + '%';
-        }
+    if (!resources) return;
+    const cpuPct = resources.cpu_percent ?? resources.cpu_usage;
+    const cpuElement = document.getElementById('cpuUsageText');
+    const cpuProgress = document.getElementById('cpuUsageBar');
+    if (cpuElement && cpuPct !== undefined && cpuPct !== 'N/A') {
+        cpuElement.textContent = cpuPct + '%';
+        if (cpuProgress) cpuProgress.style.width = cpuPct + '%';
     }
-    
-    // Update Memory usage
-    const memoryElement = document.querySelector('.text-info');
-    if (memoryElement && resources.memory_percent !== 'N/A') {
-        memoryElement.textContent = resources.memory_percent + '%';
-        const memoryProgress = memoryElement.nextElementSibling.querySelector('.progress-bar');
-        if (memoryProgress) {
-            memoryProgress.style.width = resources.memory_percent + '%';
-        }
+
+    const memPct = resources.memory_percent;
+    const memoryElement = document.getElementById('memoryUsageText');
+    const memoryProgress = document.getElementById('memoryUsageBar');
+    if (memoryElement && memPct !== undefined && memPct !== 'N/A') {
+        memoryElement.textContent = memPct + '%';
+        if (memoryProgress) memoryProgress.style.width = memPct + '%';
     }
-    
-    // Update Disk usage
-    const diskElement = document.querySelector('.text-success');
-    if (diskElement && resources.disk_percent !== 'N/A') {
-        diskElement.textContent = resources.disk_percent + '%';
-        const diskProgress = diskElement.nextElementSibling.querySelector('.progress-bar');
-        if (diskProgress) {
-            diskProgress.style.width = resources.disk_percent + '%';
-        }
+
+    const diskPct = resources.disk_usage ?? resources.disk_percent;
+    const diskElement = document.getElementById('diskUsageText');
+    const diskProgress = document.getElementById('diskUsageBar');
+    if (diskElement && diskPct !== undefined && diskPct !== 'N/A') {
+        diskElement.textContent = diskPct + '%';
+        if (diskProgress) diskProgress.style.width = diskPct + '%';
     }
 }
 
 function updateActiveConnections(connections) {
-    const connElement = document.querySelector('td:contains("اتصالات فعال")').nextElementSibling;
-    if (connElement) {
+    const connElement = document.getElementById('activeConnectionsVal');
+    if (connElement && connections !== undefined) {
         connElement.textContent = connections;
     }
 }
 
 function updateRecentActivity(activity) {
-    // Update recent activity numbers
-    const activityElements = document.querySelectorAll('.card-body .row .col-6 .text-center h4');
-    if (activityElements.length >= 4) {
-        activityElements[0].textContent = activity.new_requests;
-        activityElements[1].textContent = activity.new_orders;
-        activityElements[2].textContent = activity.new_invoices;
-        activityElements[3].textContent = activity.new_payments;
-    }
+    if (!activity) return;
+    const reqEl = document.getElementById('recentNewRequests');
+    const ordEl = document.getElementById('recentNewOrders');
+    const invEl = document.getElementById('recentNewInvoices');
+    const payEl = document.getElementById('recentNewPayments');
+    if (reqEl && activity.new_requests !== undefined) reqEl.textContent = activity.new_requests;
+    if (ordEl && activity.new_orders !== undefined) ordEl.textContent = activity.new_orders;
+    if (invEl && activity.new_invoices !== undefined) invEl.textContent = activity.new_invoices;
+    if (payEl && activity.new_payments !== undefined) payEl.textContent = activity.new_payments;
 }
 
 function updateHealthStatus(health) {
-    // Update health status numbers
-    const healthElements = document.querySelectorAll('.bg-danger .card-body .row .col-6 .text-center h4');
-    if (healthElements.length >= 4) {
-        healthElements[0].textContent = health.pending_approvals;
-        healthElements[1].textContent = health.overdue_invoices;
-        healthElements[2].textContent = health.low_stock_products || 'N/A';
-        healthElements[3].textContent = health.inactive_suppliers || 'N/A';
-    }
-    
-    // Update outstanding payments
-    const outstandingElement = document.querySelector('.text-danger');
-    if (outstandingElement) {
-        outstandingElement.textContent = health.outstanding_payments.toLocaleString('fa-IR') + ' ریال';
+    if (!health) return;
+    const pendEl = document.getElementById('healthPendingInvoices');
+    const overEl = document.getElementById('healthOverdueInvoices');
+    const lowEl = document.getElementById('healthLowStockProducts');
+    const inactEl = document.getElementById('healthInactiveSuppliers');
+    const pendingVal = health.pending_invoices ?? health.pending_approvals;
+    if (pendEl && pendingVal !== undefined) pendEl.textContent = pendingVal;
+    if (overEl && health.overdue_invoices !== undefined) overEl.textContent = health.overdue_invoices;
+    if (lowEl) lowEl.textContent = health.low_stock_products ?? 'N/A';
+    if (inactEl) inactEl.textContent = health.inactive_suppliers ?? 'N/A';
+
+    const outstandingElement = document.getElementById('healthOutstandingPayments');
+    if (outstandingElement && health.outstanding_payments !== undefined && health.outstanding_payments !== null) {
+        outstandingElement.textContent = Number(health.outstanding_payments).toLocaleString('fa-IR') + ' ریال';
     }
 }
 
 function updateTimestamp(timestamp) {
-    const timestampElement = document.querySelector('.badge-info');
-    if (timestampElement) {
+    const timestampElement = document.getElementById('lastUpdatedBadge');
+    if (timestampElement && timestamp) {
         const date = new Date(timestamp);
         timestampElement.textContent = 'آخرین به‌روزرسانی: ' + date.toLocaleString('fa-IR');
     }

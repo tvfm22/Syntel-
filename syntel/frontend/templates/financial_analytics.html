@@ -234,9 +234,7 @@
     </div>
 </div>
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -331,10 +329,19 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endblock %}
 
+{{ monthly_spending|json_script:"monthly-spending-data" }}
+{{ payment_locations|json_script:"payment-locations-data" }}
 <script>
+function _parseJsonEl(id, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    let val = JSON.parse(el.textContent || 'null');
+    if (typeof val === 'string') { try { val = JSON.parse(val); } catch (e) {} }
+    return val == null ? fallback : val;
+}
 // Monthly Spending Chart
 const spendingCtx = document.getElementById('monthlySpendingChart').getContext('2d');
-const spendingData = {{ monthly_spending|safe }};
+const spendingData = _parseJsonEl('monthly-spending-data', []);
 new Chart(spendingCtx, {
     type: 'line',
     data: {
@@ -385,7 +392,7 @@ new Chart(spendingCtx, {
 
 // Payment Methods Chart
 const paymentCtx = document.getElementById('paymentMethodsChart').getContext('2d');
-const paymentData = {{ payment_locations|safe }};
+const paymentData = _parseJsonEl('payment-locations-data', []);
 new Chart(paymentCtx, {
     type: 'pie',
     data: {

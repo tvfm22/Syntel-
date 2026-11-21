@@ -7,7 +7,11 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
-from django.db.models import Sum
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import DecimalField, Sum, Value
+from django.db.models.functions import Coalesce
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -18,6 +22,8 @@ from .views_helpers import (
     custom_login_required,
     get_cafe_from_request,
     get_cafe_redirect_url,
+    get_scoped_locked_object_or_404,
+    get_scoped_object_or_404,
     role_required,
 )
 
@@ -93,27 +99,25 @@ def _filter_debt_payments_by_period(queryset, request):
 
 
 def _get_payment_accounts(cafe):
-    """حساب‌های پرداخت فعال کافه — برای انتخاب بانک/حساب در ثبت پرداخت"""
-    accounts = PaymentAccount.objects.filter(is_active=True)
-    if cafe:
-        accounts = accounts.filter(cafe=cafe)
-    return accounts
+    """حساب‌های پرداخت فعال کافه — شکست بسته بدون کافه"""
+    if cafe is None:
+        return PaymentAccount.objects.none()
+    return PaymentAccount.objects.filter(is_active=True, cafe=cafe)
 
 
 def _parse_payment_account(request, cafe):
     """پارسه حساب پرداخت انتخابی فرم — فقط حساب فعال همان کافه پذیرفته می‌شود"""
-    account_id = request.POST.get("account_id")
-    if not account_id:
+    account_id = (request.POST.get("account_id") or "").strip()
+    if not account_id.isdigit():
         return None
-    return _get_payment_accounts(cafe).filter(id=account_id).first()
+    return _get_payment_accounts(cafe).filter(id=int(account_id)).first()
 
 
 def _get_active_suppliers(cafe):
-    """تأمین‌کنندگان فعال کافه — برای جستجو و انتخاب در فرم‌های ثبت بدهی"""
-    suppliers = Supplier.objects.filter(status='active')
-    if cafe:
-        suppliers = suppliers.filter(cafe=cafe)
-    return suppliers.order_by('name')
+    """تأمین‌کنندگان فعال کافه — شکست بسته بدون کافه"""
+    if cafe is None:
+        return Supplier.objects.none()
+    return Supplier.objects.filter(status='active', cafe=cafe).order_by('name')
 
 
 def _suppliers_list(cafe):
@@ -135,10 +139,27 @@ def _suppliers_list(cafe):
 
 def _parse_supplier(request, cafe):
     """پارسه تأمین‌کننده انتخابی فرم بدهی — فقط تأمین‌کننده فعال همان کافه پذیرفته می‌شود"""
-    supplier_id = request.POST.get("supplier_id")
-    if not supplier_id:
+    supplier_id = (request.POST.get("supplier_id") or "").strip()
+    if not supplier_id.isdigit():
         return None
-    return _get_active_suppliers(cafe).filter(id=supplier_id).first()
+    return _get_active_suppliers(cafe).filter(id=int(supplier_id)).first()
+
+
+def _annotate_pending_debts(debts_qs):
+    """بارگیری بدهی‌های در انتظار با مجموع پرداخت‌ها در یک کوئری (بدون N+1)."""
+    pending = list(
+        debts_qs.filter(status="pending").annotate(
+            paid_sum=Coalesce(
+                Sum("payments__amount"),
+                Value(Decimal("0"), output_field=DecimalField(max_digits=14, decimal_places=2)),
+            )
+        )
+    )
+    total_pending = Decimal("0")
+    for d in pending:
+        d.remaining_amt = max((d.amount or Decimal("0")) - (d.paid_sum or Decimal("0")), Decimal("0"))
+        total_pending += d.remaining_amt
+    return pending, total_pending
 
 
 @custom_login_required
@@ -148,6 +169,8 @@ def debt_list(request):
     cafe = get_cafe_from_request(request)
 
     if request.method == "POST":
+        if cafe is None:
+            raise Http404("کافهٔ فعال یافت نشد")
         company = request.POST.get("company", "").strip()
         supplier = _parse_supplier(request, cafe)
         if supplier:
@@ -160,7 +183,7 @@ def debt_list(request):
         errors = []
         if not company:
             errors.append("نام تأمین‌کننده الزامی است")
-        if amount is None or amount <= 0:
+        if amount is None or not amount.is_finite() or amount <= 0:
             errors.append("مبلغ بدهی معتبر نیست")
         if priority not in dict(Debt.PRIORITY_CHOICES):
             priority = "medium"
@@ -183,25 +206,27 @@ def debt_list(request):
     if is_mobile_request(request):
         return _redirect_preserving_query(request, "mobile_debt_dashboard")
 
-    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
-    if cafe:
-        debts = debts.filter(cafe=cafe)
+    if cafe is None:
+        debts = Debt.objects.none()
+        all_payments = DebtPayment.objects.none()
+    else:
+        debts = Debt.objects.filter(cafe=cafe).select_related("supplier", "paid_by", "created_by")
+        all_payments = DebtPayment.objects.filter(cafe=cafe).select_related(
+            "debt__account", "debt__supplier", "paid_by", "account"
+        )
 
-    pending_debts = list(debts.filter(status="pending"))
-    all_payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
-    if cafe:
-        all_payments = all_payments.filter(cafe=cafe)
+    pending_debts, total_pending_amount = _annotate_pending_debts(debts)
     payments, selected_period = _filter_debt_payments_by_period(all_payments, request)
     context = {
         "pending_debts": pending_debts,
         "payments": payments,
         "priority_choices": Debt.PRIORITY_CHOICES,
-        "today": timezone.now().date(),
+        "today": timezone.localdate(),
         "today_jalali": _today_jalali(),
         "selected_period": selected_period,
         "payment_accounts": _get_payment_accounts(cafe),
         "suppliers_data": _suppliers_list(cafe),
-        "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
+        "total_pending_amount": total_pending_amount,
         "total_paid_amount": payments.aggregate(total=Sum("amount"))["total"] or 0,
     }
     return render(request, "debt_list.html", context)
@@ -216,14 +241,16 @@ def ceo_debt_payments(request):
     if is_mobile_request(request):
         return _redirect_preserving_query(request, "mobile_debt_dashboard")
 
-    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
-    if cafe:
-        debts = debts.filter(cafe=cafe)
+    if cafe is None:
+        debts = Debt.objects.none()
+        all_payments = DebtPayment.objects.none()
+    else:
+        debts = Debt.objects.filter(cafe=cafe).select_related("supplier", "paid_by", "created_by")
+        all_payments = DebtPayment.objects.filter(cafe=cafe).select_related(
+            "debt__account", "debt__supplier", "paid_by", "account"
+        )
 
-    pending_debts = list(debts.filter(status="pending"))
-    all_payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
-    if cafe:
-        all_payments = all_payments.filter(cafe=cafe)
+    pending_debts, total_pending_amount = _annotate_pending_debts(debts)
     payments, selected_period = _filter_debt_payments_by_period(all_payments, request)
     context = {
         "pending_debts": pending_debts,
@@ -232,7 +259,7 @@ def ceo_debt_payments(request):
         "selected_period": selected_period,
         "payment_accounts": _get_payment_accounts(cafe),
         "suppliers_data": _suppliers_list(cafe),
-        "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
+        "total_pending_amount": total_pending_amount,
     }
     return render(request, "ceo_debt_payments.html", context)
 
@@ -242,28 +269,39 @@ def ceo_debt_payments(request):
 def debt_pay(request, debt_id):
     """ثبت پرداخت بدهی توسط مدیرعامل — مبلغ پرداختی، تصویر اختیاری و ثبت خودکار تاریخ سیستم"""
     cafe = get_cafe_from_request(request)
-    debt = get_object_or_404(Debt, id=debt_id)
-    if cafe and debt.cafe != cafe:
-        messages.error(request, "دسترسی غیرمجاز")
-        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
-    if debt.status != "pending":
-        messages.warning(request, "این بدهی قبلاً پرداخت شده است")
+    if request.method != "POST":
+        get_scoped_object_or_404(Debt, request, id=debt_id)
         return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
-    if request.method == "POST":
-        paid_amount = _parse_decimal(request.POST.get("paid_amount", ""))
-        if paid_amount is None or paid_amount <= 0:
-            messages.error(request, "مبلغ پرداختی معتبر نیست")
+    paid_amount = _parse_decimal(request.POST.get("paid_amount", ""))
+    if paid_amount is None or not paid_amount.is_finite() or paid_amount <= 0:
+        messages.error(request, "مبلغ پرداختی معتبر نیست")
+        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
+
+    account = _parse_payment_account(request, cafe)
+    photo = request.FILES.get("payment_photo")
+    close_remainder = request.POST.get("close_remainder") in ("1", "true", "on")
+
+    with transaction.atomic():
+        debt = get_scoped_locked_object_or_404(Debt, request, id=debt_id)
+        if debt.status != "pending":
+            messages.warning(request, "این بدهی قبلاً پرداخت شده است")
             return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
-        account = _parse_payment_account(request, cafe)
-        photo = request.FILES.get("payment_photo")
+        remaining_before = debt.remaining
+        if paid_amount > remaining_before:
+            messages.error(
+                request,
+                f"مبلغ پرداختی ({paid_amount:,}) از مانده بدهی ({remaining_before:,}) بیشتر است",
+            )
+            return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
-        DebtPayment.objects.create(
+        now_ts = timezone.now()
+        dp = DebtPayment.objects.create(
             debt=debt,
             company=debt.company,
             amount=paid_amount,
-            paid_at=timezone.now(),
+            paid_at=now_ts,
             paid_by=request.user,
             account=account,
             cafe=debt.cafe,
@@ -272,19 +310,27 @@ def debt_pay(request, debt_id):
         )
 
         total_paid = debt.paid_total
+        new_remaining = max(debt.amount - total_paid, Decimal("0"))
         debt.paid_amount = total_paid
-        debt.paid_at = timezone.now()
+        debt.paid_at = now_ts
         debt.paid_by = request.user
-        debt.account = account
-        if photo:
-            debt.payment_photo = photo
-        if debt.remaining <= 1_000_000:
+        if account is not None:
+            debt.account = account
+        if dp.payment_photo:
+            debt.payment_photo = dp.payment_photo.name
+
+        if new_remaining <= 0 or (
+            close_remainder
+            and debt.amount > Decimal("1000000")
+            and new_remaining <= Decimal("1000000")
+        ):
             debt.status = "paid"
         debt.save()
-        if debt.status == "paid":
-            messages.success(request, f"پرداخت بدهی تأمین‌کننده {debt.company} با موفقیت ثبت و تایید شد")
-        else:
-            messages.success(request, f"پرداخت جزئی تأمین‌کننده {debt.company} ثبت شد — باقی‌مانده: {debt.remaining:,} تومان")
+
+    if debt.status == "paid":
+        messages.success(request, f"پرداخت بدهی تأمین‌کننده {debt.company} با موفقیت ثبت و تایید شد")
+    else:
+        messages.success(request, f"پرداخت جزئی تأمین‌کننده {debt.company} ثبت شد — باقی‌مانده: {debt.remaining:,} تومان")
 
     return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
@@ -296,6 +342,8 @@ def debt_pay_offlist(request):
     cafe = get_cafe_from_request(request)
 
     if request.method == "POST":
+        if cafe is None:
+            raise Http404("کافهٔ فعال یافت نشد")
         company = request.POST.get("company", "").strip()
         supplier = _parse_supplier(request, cafe)
         if supplier:
@@ -304,42 +352,45 @@ def debt_pay_offlist(request):
         errors = []
         if not company:
             errors.append("نام تأمین‌کننده الزامی است")
-        if amount is None or amount <= 0:
+        if amount is None or not amount.is_finite() or amount <= 0:
             errors.append("مبلغ پرداختی معتبر نیست")
         if errors:
             messages.error(request, "؛ ".join(errors))
         else:
             photo = request.FILES.get("payment_photo")
             account = _parse_payment_account(request, cafe)
-            debt = Debt.objects.create(
-                company=company,
-                supplier=supplier,
-                amount=amount,
-                description=request.POST.get("description", "").strip(),
-                debt_date=timezone.now().date(),
-                status="paid",
-                paid_amount=amount,
-                paid_at=timezone.now(),
-                paid_by=request.user,
-                account=account,
-                is_off_list=True,
-                cafe=cafe,
-                created_by=request.user,
-            )
-            DebtPayment.objects.create(
-                debt=None,
-                company=company,
-                amount=amount,
-                paid_at=timezone.now(),
-                paid_by=request.user,
-                account=account,
-                cafe=cafe,
-                payment_photo=photo,
-                description=request.POST.get("description", "").strip(),
-            )
-            if photo:
-                debt.payment_photo = photo
-                debt.save(update_fields=["payment_photo"])
+            desc = request.POST.get("description", "").strip()
+            now_ts = timezone.now()
+            with transaction.atomic():
+                debt = Debt.objects.create(
+                    company=company,
+                    supplier=supplier,
+                    amount=amount,
+                    description=desc,
+                    debt_date=timezone.localdate(),
+                    status="paid",
+                    paid_amount=amount,
+                    paid_at=now_ts,
+                    paid_by=request.user,
+                    account=account,
+                    is_off_list=True,
+                    cafe=cafe,
+                    created_by=request.user,
+                )
+                dp = DebtPayment.objects.create(
+                    debt=debt,
+                    company=company,
+                    amount=amount,
+                    paid_at=now_ts,
+                    paid_by=request.user,
+                    account=account,
+                    cafe=cafe,
+                    payment_photo=photo,
+                    description=desc,
+                )
+                if dp.payment_photo:
+                    debt.payment_photo = dp.payment_photo.name
+                    debt.save(update_fields=["payment_photo"])
             messages.success(request, f"پرداخت خارج از لیست تأمین‌کننده {company} با موفقیت ثبت شد")
 
     return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
@@ -350,13 +401,16 @@ def debt_pay_offlist(request):
 def payment_accounts(request):
     """تعریف حساب‌های پرداخت کافه/رستوران توسط ادمین — دکمه در گوشه صفحه لیست بدهی"""
     cafe = get_cafe_from_request(request)
+    if cafe is None:
+        raise Http404("کافهٔ فعال یافت نشد")
 
     if request.method == "POST":
         action = request.POST.get("action", "create")
         if action == "delete":
-            account_id = request.POST.get("account_id")
-            PaymentAccount.objects.filter(id=account_id, cafe=cafe).update(is_active=False)
-            messages.success(request, "حساب پرداخت حذف شد")
+            account_id = (request.POST.get("account_id") or "").strip()
+            if account_id.isdigit():
+                PaymentAccount.objects.filter(id=int(account_id), cafe=cafe).update(is_active=False)
+                messages.success(request, "حساب پرداخت حذف شد")
         else:
             bank_name = request.POST.get("bank_name", "").strip()
             account_name = request.POST.get("account_name", "").strip()
@@ -380,10 +434,7 @@ def payment_accounts(request):
 def debt_edit(request, debt_id):
     """ویرایش بدهی توسط ادمین — تغییرات برای مدیرعامل هم اعمال می‌شود"""
     cafe = get_cafe_from_request(request)
-    debt = get_object_or_404(Debt, id=debt_id)
-    if cafe and debt.cafe != cafe:
-        messages.error(request, "دسترسی غیرمجاز")
-        return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
+    debt = get_scoped_object_or_404(Debt, request, id=debt_id)
 
     if request.method == "POST":
         company = request.POST.get("company", "").strip()
@@ -398,20 +449,33 @@ def debt_edit(request, debt_id):
         errors = []
         if not company:
             errors.append("نام تأمین‌کننده الزامی است")
-        if amount is None or amount <= 0:
+        if amount is None or not amount.is_finite() or amount <= 0:
             errors.append("مبلغ بدهی معتبر نیست")
         if priority not in dict(Debt.PRIORITY_CHOICES):
             priority = "medium"
         if errors:
             messages.error(request, "؛ ".join(errors))
         else:
-            debt.company = company
-            debt.supplier = supplier
-            debt.amount = amount
-            debt.debt_date = debt_date
-            debt.description = description
-            debt.priority = priority
-            debt.save()
+            with transaction.atomic():
+                locked_debt = get_scoped_locked_object_or_404(Debt, request, id=debt_id)
+                locked_debt.company = company
+                locked_debt.supplier = supplier
+                locked_debt.amount = amount
+                locked_debt.debt_date = debt_date
+                locked_debt.description = description
+                locked_debt.priority = priority
+                total_paid = locked_debt.paid_total
+                locked_debt.paid_amount = total_paid
+                new_remaining = max(amount - total_paid, Decimal("0"))
+                if new_remaining <= 0:
+                    locked_debt.status = "paid"
+                    if not locked_debt.paid_at:
+                        locked_debt.paid_at = timezone.now()
+                else:
+                    locked_debt.status = "pending"
+                    locked_debt.paid_at = None
+                    locked_debt.paid_by = None
+                locked_debt.save()
             messages.success(request, f"بدهی تأمین‌کننده {company} ویرایش شد و برای مدیرعامل هم اعمال شد")
         return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
 
@@ -436,19 +500,17 @@ def debt_edit(request, debt_id):
 @role_required(["admin"])
 def debt_delete(request, debt_id):
     """حذف بدهی توسط ادمین — بدهی‌هایی که پرداخت دارند قابل حذف نیستند"""
-    cafe = get_cafe_from_request(request)
-    debt = get_object_or_404(Debt, id=debt_id)
-    if cafe and debt.cafe != cafe:
-        messages.error(request, "دسترسی غیرمجاز")
-        return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
+    get_scoped_object_or_404(Debt, request, id=debt_id)
 
     if request.method == "POST":
-        if debt.payments.exists():
-            messages.error(request, f"بدهی تأمین‌کننده {debt.company} پرداخت شده است و قابل حذف نیست")
-        else:
-            name = debt.company
-            debt.delete()
-            messages.success(request, f"بدهی تأمین‌کننده {name} حذف شد و از داشبورد مدیرعامل هم حذف شد")
+        with transaction.atomic():
+            debt = get_scoped_locked_object_or_404(Debt, request, id=debt_id)
+            if debt.payments.exists():
+                messages.error(request, f"بدهی تأمین‌کننده {debt.company} پرداخت شده است و قابل حذف نیست")
+            else:
+                name = debt.company
+                debt.delete()
+                messages.success(request, f"بدهی تأمین‌کننده {name} حذف شد و از داشبورد مدیرعامل هم حذف شد")
     return _debt_redirect(request, "debt_list", mobile_url_name="mobile_debt_dashboard")
 
 
@@ -457,39 +519,42 @@ def debt_delete(request, debt_id):
 def debt_payment_edit(request, payment_id):
     """ویرایش پرداخت توسط مدیرعامل — مبلغ، حساب و توضیحات؛ وضعیت بدهی دوباره محاسبه می‌شود"""
     cafe = get_cafe_from_request(request)
-    payment = get_object_or_404(DebtPayment, id=payment_id)
-    if cafe and payment.cafe != cafe:
-        messages.error(request, "دسترسی غیرمجاز")
-        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
+    payment = get_scoped_object_or_404(DebtPayment, request, id=payment_id)
 
     if request.method == "POST":
         amount = _parse_decimal(request.POST.get("amount", ""))
-        if amount is None or amount <= 0:
+        if amount is None or not amount.is_finite() or amount <= 0:
             messages.error(request, "مبلغ پرداختی معتبر نیست")
             return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
-        payment.amount = amount
-        payment.description = request.POST.get("description", "").strip()
-        payment.account = _parse_payment_account(request, cafe)
-        photo = request.FILES.get("payment_photo")
-        if photo:
-            payment.payment_photo = photo
-        payment.save()
+        with transaction.atomic():
+            payment = get_scoped_locked_object_or_404(DebtPayment, request, id=payment_id)
+            payment.amount = amount
+            payment.description = request.POST.get("description", "").strip()
+            if "account_id" in request.POST and (request.POST.get("account_id") or "").strip():
+                parsed_acc = _parse_payment_account(request, cafe)
+                if parsed_acc is not None:
+                    payment.account = parsed_acc
+            photo = request.FILES.get("payment_photo")
+            if photo:
+                payment.payment_photo = photo
+            payment.save()
 
-        debt = payment.debt
-        if debt:
-            total_paid = debt.paid_total
-            debt.paid_amount = total_paid
-            debt.account = payment.account or debt.account
-            if debt.remaining <= 1_000_000:
-                debt.status = "paid"
-                debt.paid_at = timezone.now()
-                debt.paid_by = payment.paid_by
-            else:
-                debt.status = "pending"
-                debt.paid_at = None
-                debt.paid_by = None
-            debt.save()
+            debt = payment.debt
+            if debt:
+                debt = Debt.objects.select_for_update().get(pk=debt.pk)
+                total_paid = debt.paid_total
+                debt.paid_amount = total_paid
+                debt.account = payment.account or debt.account
+                if max(debt.amount - total_paid, Decimal("0")) <= 0:
+                    debt.status = "paid"
+                    debt.paid_at = debt.paid_at or payment.paid_at
+                    debt.paid_by = debt.paid_by or payment.paid_by
+                else:
+                    debt.status = "pending"
+                    debt.paid_at = None
+                    debt.paid_by = None
+                debt.save()
         messages.success(request, f"پرداخت تأمین‌کننده {payment.company} ویرایش شد")
         return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
 
@@ -502,40 +567,41 @@ def debt_payment_edit(request, payment_id):
 @custom_login_required
 @role_required(["ceo", "manager"])
 def debt_payment_delete(request, payment_id):
-    """حذف پرداخت توسط مدیرعامل — رسید آپلود شده هم حذف می‌شود؛ وضعیت بدهی دوباره محاسبه می‌شود"""
-    cafe = get_cafe_from_request(request)
-    payment = get_object_or_404(DebtPayment, id=payment_id)
-    if cafe and payment.cafe != cafe:
-        messages.error(request, "دسترسی غیرمجاز")
-        return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
+    """حذف پرداخت توسط مدیرعامل — رسید آپلود شده پس از commit حذف می‌شود؛ وضعیت بدهی دوباره محاسبه می‌شود"""
+    payment = get_scoped_object_or_404(DebtPayment, request, id=payment_id)
 
     if request.method == "POST":
-        debt = payment.debt
-        company = payment.company
+        with transaction.atomic():
+            payment = get_scoped_locked_object_or_404(DebtPayment, request, id=payment_id)
+            debt = payment.debt
+            company = payment.company
+            photo_storage = payment.payment_photo.storage if payment.payment_photo else None
+            photo_name = payment.payment_photo.name if payment.payment_photo else None
 
-        if payment.payment_photo:
-            payment.payment_photo.delete(save=False)
+            payment.delete()
 
-        payment.delete()
-
-        if debt:
-            total_paid = debt.paid_total
-            debt.paid_amount = total_paid
-            if debt.remaining <= 1_000_000 and total_paid > 0:
-                debt.status = "paid"
-                debt.paid_at = timezone.now()
+            if debt:
+                debt = Debt.objects.select_for_update().get(pk=debt.pk)
+                total_paid = debt.paid_total
+                debt.paid_amount = total_paid
                 last_payment = debt.payments.order_by('-paid_at').first()
-                if last_payment:
-                    debt.paid_by = last_payment.paid_by
-                    debt.account = last_payment.account
-                    debt.payment_photo = last_payment.payment_photo
-            else:
-                debt.status = "pending"
-                debt.paid_at = None
-                debt.paid_by = None
-                debt.account = None
-                debt.payment_photo = None
-            debt.save()
+                if max(debt.amount - total_paid, Decimal("0")) <= 0 and total_paid > 0:
+                    debt.status = "paid"
+                    debt.paid_at = debt.paid_at or (last_payment.paid_at if last_payment else timezone.now())
+                    if last_payment:
+                        debt.paid_by = last_payment.paid_by
+                        debt.account = last_payment.account
+                        debt.payment_photo = last_payment.payment_photo.name if last_payment.payment_photo else None
+                else:
+                    debt.status = "pending"
+                    debt.paid_at = None
+                    debt.paid_by = None
+                    debt.account = None
+                    debt.payment_photo = None
+                debt.save()
+
+            if photo_storage and photo_name:
+                transaction.on_commit(lambda s=photo_storage, n=photo_name: s.delete(n))
 
         messages.success(request, f"پرداخت تأمین‌کننده {company} حذف شد")
         return _debt_redirect(request, "ceo_debt_payments", mobile_url_name="mobile_debt_dashboard")
@@ -553,21 +619,29 @@ def mobile_debt_dashboard(request):
         return _redirect_preserving_query(request, target)
 
     cafe = get_cafe_from_request(request)
-    debts = Debt.objects.select_related("supplier", "paid_by", "created_by").all()
-    if cafe:
-        debts = debts.filter(cafe=cafe)
+    if cafe is None:
+        debts = Debt.objects.none()
+        payments_qs = DebtPayment.objects.none()
+    else:
+        debts = Debt.objects.filter(cafe=cafe).select_related("supplier", "paid_by", "created_by")
+        payments_qs = DebtPayment.objects.filter(cafe=cafe).select_related(
+            "debt__account", "debt__supplier", "paid_by", "account"
+        )
 
-    pending_debts = list(debts.filter(status="pending"))
-    payments = DebtPayment.objects.select_related("debt__account", "debt__supplier", "paid_by", "account")
-    if cafe:
-        payments = payments.filter(cafe=cafe)
+    pending_debts, total_pending_amount = _annotate_pending_debts(debts)
+    payments_filtered, selected_period = _filter_debt_payments_by_period(payments_qs, request)
+    paginator = Paginator(payments_filtered.order_by("-paid_at"), 50)
+    payments_page = paginator.get_page(request.GET.get("page"))
+
     context = {
         "pending_debts": pending_debts,
-        "payments": payments,
+        "payments": payments_page,
+        "page_obj": payments_page,
+        "selected_period": selected_period,
         "payment_accounts": _get_payment_accounts(cafe),
         "suppliers_data": _suppliers_list(cafe),
-        "total_pending_amount": sum((d.remaining for d in pending_debts), Decimal("0")),
-        "today": timezone.now().date(),
+        "total_pending_amount": total_pending_amount,
+        "today": timezone.localdate(),
         "today_jalali": _today_jalali(),
     }
     return render(request, "mobile_debt_dashboard.html", context)

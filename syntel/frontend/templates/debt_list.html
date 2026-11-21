@@ -4,7 +4,7 @@
 {% block title %}لیست بدهی تأمین‌کنندگان{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'vendor/persian-datepicker/persian-datepicker.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
     .debt-form-card { margin-bottom: 1.5rem; }
 
@@ -198,8 +198,7 @@
                 </div>
                 <div class="form-group">
                     <label for="debt_date">تاریخ بدهی (شمسی)</label>
-                    <input type="text" id="debt_date" name="debt_date" class="form-control"
-                           value="{{ today_jalali }}">
+                    {% include 'includes/jalali_date_group.html' with jd_name='debt_date' jd_id='debt_date' jd_value=today_jalali %}
                 </div>
                 <div class="form-group">
                     <label for="priority">اولویت</label>
@@ -256,9 +255,9 @@
                 <tr>
                     <td><strong>{{ debt.company }}</strong></td>
                     <td>
-                        <span class="amount" data-fa>{{ debt.remaining|floatformat:"0" }}</span>
-                        {% if debt.paid_total > 0 %}
-                        <div class="help-note" style="margin-top:0.15rem;">پرداخت شده: {{ debt.paid_total|floatformat:"0" }} تومان</div>
+                        <span class="amount" data-fa>{{ debt.remaining_amt|floatformat:"0" }}</span>
+                        {% if debt.paid_sum > 0 %}
+                        <div class="help-note" style="margin-top:0.15rem;">پرداخت شده: {{ debt.paid_sum|floatformat:"0" }} تومان</div>
                         {% endif %}
                     </td>
                     <td>{{ debt.debt_date|jalali_date }}</td>
@@ -275,7 +274,7 @@
                                 <i class="fas fa-edit"></i>
                             </a>
                             <form method="post" action="{% url 'debt_delete' cafe_code=cafe_code debt_id=debt.id %}"
-                                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
+                                  onsubmit="return confirm('بدهی تأمین‌کننده {{ debt.company|escapejs }} حذف شود؟ این تغییر برای مدیرعامل هم اعمال می‌شود.');">
                                 {% csrf_token %}
                                 <button type="submit" class="row-action danger" title="حذف بدهی">
                                     <i class="fas fa-trash"></i>
@@ -366,7 +365,7 @@
 {% block extra_js %}
 {{ suppliers_data|json_script:"suppliers-data" }}
 <script src="{% static 'js/supplier_picker.js' %}"></script>
-<script src="{% static 'vendor/persian-datepicker/persian-datepicker.min.js' %}"></script>
+<script src="{% static 'js/jalali_date_group.js' %}"></script>
 <script>
     // مودال تعریف حساب‌های پرداخت — مستقل از بقیه اسکریپت‌ها:
     // حتی اگر بخش دیگری از صفحه خطا بدهد (مثلاً اسکریپت تقویم لود نشود) مودال کار می‌کند
@@ -421,27 +420,6 @@
         amountInput.addEventListener('input', function() {
             const digits = this.value.replace(/\D/g, '');
             this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-        });
-    }
-
-    // تقویم شمسی برای فیلد تاریخ بدهی (مثل payment_form و invoice_list)
-    // اگر اسکریپت تقویم لود نشده باشد بقیه اسکریپت صفحه ادامه پیدا می‌کند
-    if (typeof persianDatepicker === 'function') {
-        document.querySelectorAll('#debt_date').forEach(function(input) {
-            new persianDatepicker(input, {
-                format: 'YYYY/MM/DD',
-                year: 1404,
-                month: 1,
-                day: 1,
-                observer: true,
-                altField: input,
-                altFormat: 'YYYY/MM/DD',
-                calendar: {
-                    persian: {
-                        locale: 'fa'
-                    }
-                }
-            });
         });
     }
 </script>

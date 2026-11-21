@@ -1,7 +1,7 @@
 """Root WSGI entry point for PaaS / S2I Django deployments without Docker."""
 import os
-import sys
 from pathlib import Path
+import sys
 
 _INNER_ROOT = str(Path(__file__).resolve().parent / 'syntel')
 if _INNER_ROOT not in sys.path:
@@ -9,6 +9,6 @@ if _INNER_ROOT not in sys.path:
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings_production')
 
 application = get_wsgi_application()

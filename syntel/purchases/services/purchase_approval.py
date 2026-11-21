@@ -1,11 +1,12 @@
 """قواعد تشخیص نیاز به تایید مدیرعامل برای اقلام «درخواست خرید» مسئول انبار.
 
 قانون: همهٔ کالاها نیازی به تایید مدیرعامل ندارند. یک قلم فقط در صورت
-برقراری دست‌کم یکی از چهار شرط زیر به تایید مدیرعامل نیاز دارد:
+برقراری دست‌کم یکی از شروط زیر به تایید مدیرعامل نیاز دارد:
 1. کالا در لیست کالاها تعریف نشده باشد (`product is None`).
 2. کالای جدید توسط کاربر تعریف شده باشد (`is_complete=False` یا دستهٔ «تحقیق و توسعه»).
-3. ارزش خرید تخمینی آن بیش از ۴۰۰٬۰۰۰٬۰۰۰ ریال (۴۰۰ میلیون ریال) شود.
-4. مقدار خرید آن بیش از ۳ برابر میانگین خریدهای قبلی همان کالا باشد.
+3. ارزش خرید تخمینی قلم، مجموع اقلام یک محصول یا جمع کل سبد بیش از آستانهٔ ۴۰۰٬۰۰۰٬۰۰۰ ریال شود.
+4. واحد سفارش با واحد مبنای کالا ناسازگار باشد (مثلاً سفارش کارتن/بسته برای کالای وزنی/حجمی) یا کالای بی‌قیمت بالای آستانهٔ ایمنی سفارش داده شود.
+5. مقدار خرید (تک‌قلم یا تجمیعیِ هم‌محصول در پیش‌نویس) بیش از ۳ برابر میانگین خریدهای قبلی همان کالا باشد.
 """
 from __future__ import annotations
 
@@ -20,12 +21,15 @@ from purchases.services.units import (
     _squash,
     convert_quantity_to_smallest_unit,
     unit_family,
+    units_are_compatible,
 )
 
 # آستانهٔ ارزش خرید نیازمند تایید مدیرعامل: ۴۰۰ میلیون ریال
 HIGH_VALUE_THRESHOLD_RIAL = Decimal('400000000')
 # ضریب آستانهٔ مقدار خرید نسبت به میانگین خرید قبلی
 HIGH_QTY_AVG_MULTIPLIER = Decimal('3')
+# آستانهٔ ایمنی مقدار برای کالای بی‌قیمتِ بدون سابقهٔ خرید قبلی
+UNPRICED_SAFE_QTY_THRESHOLD = Decimal('100')
 
 
 def _fmt_qty(value: Decimal) -> str:
@@ -64,18 +68,15 @@ def _item_unit_factor(unit_name: str) -> tuple[object, Decimal]:
     return ('unit', _squash(unit_name)), Decimal('1')
 
 
-def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int, dict[object, Decimal]]:
-    """محاسبهٔ میانگین مقدار خریدهای قبلی هر محصول به تفکیک گروه واحد.
-
-    منابع سابقهٔ خرید (بدون شمارش تکراری):
-    - اقلام درخواست خرید تاییدشده/ارسال‌شده به خرید یا خریداری‌شده (`PurchaseItem`)
-    - اقلام سفارش خرید (`PurchaseOrderItem`) غیرلغو و متصل‌نشده به قلم قبلی
-    - اقلام فاکتور خرید (`InvoiceItem`) غیرلغو و متصل‌نشده به سفارش قبلی
-    """
+def compute_product_avg_purchase_quantities(
+    product_ids, cafe=None, exclude_purchase_item_ids=None,
+) -> dict[int, dict[object, Decimal]]:
+    """محاسبهٔ میانگین مقدار خریدهای قبلی هر محصول به تفکیک گروه واحد."""
     pids = [pid for pid in set(product_ids or []) if pid]
     if not pids:
         return {}
 
+    excl_pi = {pid for pid in (exclude_purchase_item_ids or []) if pid}
     buckets: dict[int, dict[object, list[Decimal]]] = defaultdict(lambda: defaultdict(list))
 
     pi_qs = (
@@ -91,6 +92,8 @@ def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int,
         .select_related('product__unit')
         .distinct()
     )
+    if excl_pi:
+        pi_qs = pi_qs.exclude(id__in=excl_pi)
     if cafe is not None:
         pi_qs = pi_qs.filter(request__cafe=cafe)
 
@@ -108,6 +111,7 @@ def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int,
         PurchaseOrderItem.objects
         .filter(product_id__in=pids, quantity__gt=0)
         .exclude(order__status='cancelled')
+        .exclude(order__request__status='rejected')
         .select_related('product__unit', 'request_item')
     )
     if cafe is not None:
@@ -116,7 +120,7 @@ def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int,
     used_poi_ids = set()
     for poi in poi_qs:
         used_poi_ids.add(poi.id)
-        if poi.request_item_id in used_pi_ids:
+        if poi.request_item_id in used_pi_ids or poi.request_item_id in excl_pi:
             continue
         unit_name = (
             (poi.request_item.unit if poi.request_item else '')
@@ -137,7 +141,10 @@ def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int,
     for ii in inv_qs:
         if ii.order_item_id in used_poi_ids:
             continue
-        if ii.order_item_id and ii.order_item.request_item_id in used_pi_ids:
+        if ii.order_item_id and (
+            ii.order_item.request_item_id in used_pi_ids
+            or ii.order_item.request_item_id in excl_pi
+        ):
             continue
         unit_name = (ii.product.unit.name if ii.product and ii.product.unit else '').strip()
         group, norm_qty = _norm_group_and_qty(ii.quantity, unit_name)
@@ -154,16 +161,7 @@ def compute_product_avg_purchase_quantities(product_ids, cafe=None) -> dict[int,
 
 
 def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
-    """ارزیابی همهٔ اقلام پیش‌نویس برای تشخیص نیاز به تایید مدیرعامل.
-
-    خروجی نگاشت ``item.id -> dict`` شامل:
-    - ``needs_ceo``: bool
-    - ``reasons``: فهرست دلایل فارسی برای نمایش به کاربر
-    - ``reason_codes``: کدهای ماشینی (``unlisted``, ``new_product``, ``high_value``, ``high_qty_avg``)
-    - ``estimated_value``: ارزش خرید تخمینی (ریال) یا None
-    - ``unit_price``: قیمت تخمینی واحد (ریال) یا None
-    - ``avg_qty``: میانگین مقدار خرید قبلی در واحد قلم یا None
-    """
+    """ارزیابی همهٔ اقلام پیش‌نویس برای تشخیص نیاز به تایید مدیرعامل."""
     from purchases.views import _build_product_pricing_map, _estimate_consumption_cost
 
     items = list(draft_items or [])
@@ -172,18 +170,43 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
 
     products = [d.product for d in items if getattr(d, 'product_id', None) and getattr(d, 'product', None)]
     pricing_map = _build_product_pricing_map(products, cafe=cafe)
-    avg_map = compute_product_avg_purchase_quantities([p.id for p in products], cafe=cafe)
+    exclude_pi_ids = [d.id for d in items if isinstance(d, PurchaseItem) and getattr(d, 'id', None)]
+    avg_map = compute_product_avg_purchase_quantities(
+        [p.id for p in products], cafe=cafe, exclude_purchase_item_ids=exclude_pi_ids,
+    )
 
-    results: dict[int, dict] = {}
+    threshold_str = f'{HIGH_VALUE_THRESHOLD_RIAL:,.0f}'
+
+    # گذر اول: برآورد ارزش و مقدار نرمال‌شده هر ردیف و تجمیع در سطح محصول و کل پیش‌نویس
+    per_item = []
+    prod_total_value: dict[int, Decimal] = defaultdict(lambda: Decimal('0'))
+    draft_total_value = Decimal('0')
+
     for d in items:
-        reasons: list[tuple[str, str]] = []
-        est_cost = None
-        unit_price = None
-        avg_qty_in_unit = None
-
         prod = getattr(d, 'product', None) if getattr(d, 'product_id', None) else None
         qty_dec = Decimal(str(d.quantity or 0))
         item_unit = (d.unit or (prod.unit.name if prod and prod.unit else '') or '').strip()
+        est_cost = None
+        unit_price = None
+        p_info = None
+        if prod is not None:
+            p_info = pricing_map.get(prod.id)
+            est_cost, unit_price, _ = _estimate_consumption_cost(qty_dec, item_unit, p_info)
+            if est_cost is not None:
+                prod_total_value[prod.id] += est_cost
+                draft_total_value += est_cost
+        group, factor = _item_unit_factor(item_unit)
+        per_item.append((d, prod, qty_dec, item_unit, p_info, est_cost, unit_price, group, factor))
+
+    draft_exceeds_threshold = draft_total_value > HIGH_VALUE_THRESHOLD_RIAL
+
+    # گذر دوم: تشخیص دلایل مستقل هر خط
+    results: dict[int, dict] = {}
+    unflagged_qty_running: dict[tuple[int, object], Decimal] = defaultdict(lambda: Decimal('0'))
+
+    for d, prod, qty_dec, item_unit, p_info, est_cost, unit_price, group, factor in per_item:
+        reasons: list[tuple[str, str]] = []
+        avg_qty_in_unit = None
 
         if prod is None:
             reasons.append(('unlisted', 'تعریف‌نشده در لیست کالاها'))
@@ -192,21 +215,52 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
             if not prod.is_complete or cat_name == RD_CATEGORY_NAME:
                 reasons.append(('new_product', 'کالای جدید تعریف‌شده توسط کاربر'))
 
-            p_info = pricing_map.get(prod.id)
-            est_cost, unit_price, _ = _estimate_consumption_cost(qty_dec, item_unit, p_info)
-            if est_cost is not None and est_cost > HIGH_VALUE_THRESHOLD_RIAL:
-                reasons.append(('high_value', 'ارزش خرید بیش از ۴۰۰ میلیون ریال'))
+            basis_unit = ''
+            if p_info and p_info.get('has_price'):
+                basis_unit = (p_info.get('basis_unit') or '').strip()
+            if not basis_unit and prod.unit_id and prod.unit:
+                basis_unit = prod.unit.name.strip()
 
-            group, factor = _item_unit_factor(item_unit)
+            if (
+                unit_family(basis_unit) in ('kg', 'gram', 'liter', 'mil')
+                and item_unit
+                and not units_are_compatible(item_unit, basis_unit)
+            ):
+                reasons.append((
+                    'unit_mismatch',
+                    f'واحد سفارش («{item_unit}») با واحد مبنای کالا («{basis_unit}») هم‌خوان نیست',
+                ))
+
+            if (
+                (est_cost is not None and est_cost > HIGH_VALUE_THRESHOLD_RIAL)
+                or prod_total_value[prod.id] > HIGH_VALUE_THRESHOLD_RIAL
+                or (draft_exceeds_threshold and est_cost is not None and est_cost > 0)
+            ):
+                reasons.append(('high_value', f'ارزش خرید بیش از {threshold_str} ریال'))
+
             avg_norm = avg_map.get(prod.id, {}).get(group)
             if avg_norm is not None and avg_norm > 0:
                 avg_qty_in_unit = (avg_norm / factor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                if qty_dec > HIGH_QTY_AVG_MULTIPLIER * (avg_norm / factor):
+                line_limit = HIGH_QTY_AVG_MULTIPLIER * (avg_norm / factor)
+                individually_high = qty_dec > line_limit
+                norm_line_qty = qty_dec * factor
+                cumulative_high = (
+                    not individually_high
+                    and (unflagged_qty_running[(prod.id, group)] + norm_line_qty) > (HIGH_QTY_AVG_MULTIPLIER * avg_norm)
+                )
+                if individually_high or cumulative_high:
                     unit_suffix = f' {item_unit}' if item_unit else ''
                     reasons.append((
                         'high_qty_avg',
                         f'مقدار بیش از ۳ برابر میانگین خرید (میانگین: {_fmt_qty(avg_qty_in_unit)}{unit_suffix})',
                     ))
+                else:
+                    unflagged_qty_running[(prod.id, group)] += norm_line_qty
+            elif est_cost is None and qty_dec > UNPRICED_SAFE_QTY_THRESHOLD:
+                reasons.append((
+                    'unpriced_high_qty',
+                    f'کالای بدون قیمت با مقدار بیش از {_fmt_qty(UNPRICED_SAFE_QTY_THRESHOLD)}',
+                ))
 
         results[d.id] = {
             'needs_ceo': bool(reasons),

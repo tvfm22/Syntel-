@@ -3,6 +3,7 @@ Context Processors for Cafe Multi-Tenant Support
 """
 import logging
 
+from .middleware import _user_can_access_cafe
 from .models import Cafe
 
 logger = logging.getLogger(__name__)
@@ -19,54 +20,43 @@ def cafe_context(request):
         'all_cafes': [],
         'other_cafe': None,
     }
-    
+
     if not request.user.is_authenticated:
         return context
-    
-    # گرفتن کافه فعلی - روش‌های مختلف را امتحان کن
+
     cafe = None
     cafe_code = None
-    
+
     # 1. از request.cafe که middleware تنظیم کرده
-    if hasattr(request, 'cafe') and request.cafe:
+    if hasattr(request, 'cafe') and request.cafe and request.cafe.is_active:
         cafe = request.cafe
         cafe_code = request.cafe.code
-    
-    # 2. از session
+
+    # 2. از session (با بررسی دسترسی و فعال بودن کافه)
     elif request.session.get('selected_cafe_id'):
-        try:
-            cafe = Cafe.objects.get(id=request.session['selected_cafe_id'])
-            cafe_code = cafe.code
-        except Cafe.DoesNotExist:
-            pass
-    
+        session_cafe = Cafe.objects.filter(
+            id=request.session['selected_cafe_id'],
+            is_active=True,
+        ).first()
+        if session_cafe and _user_can_access_cafe(request.user, session_cafe):
+            cafe = session_cafe
+            cafe_code = session_cafe.code
+
     # 3. از کاربر (کاربران عادی)
-    if not cafe and request.user.cafe:
+    if not cafe and request.user.cafe and request.user.cafe.is_active:
         cafe = request.user.cafe
         cafe_code = request.user.cafe.code
-    
-    # 4. Fallback به local (اگر هیچ کدام نبود)
-    if not cafe_code:
-        try:
-            default_cafe = Cafe.objects.filter(code='local', is_active=True).first()
-            if default_cafe:
-                cafe = default_cafe
-                cafe_code = 'local'
-        except Exception:
-            logger.exception('Error fetching default cafe in context processor')
-    
+
     context['current_cafe'] = cafe
     context['cafe_code'] = cafe_code
-    
-    # بررسی امکان تغییر کافه (فقط سوپر ادمین‌ها)
-    context['can_switch_cafe'] = request.user.can_switch_cafe
-    
-    # لیست کافه‌ها برای کاربرانی که می‌توانند تغییر کافه دهند
-    if context['can_switch_cafe']:
+
+    can_switch = bool(request.user.is_superuser or request.user.can_switch_cafe)
+    context['can_switch_cafe'] = can_switch
+
+    if can_switch:
         cafes = list(Cafe.objects.filter(is_active=True))
         context['all_cafes'] = cafes
 
-        # کافه «دیگر» برای تغییر مستقیم کافه (بدون صفحه انتخاب) — اولین کافه‌ای که فعلی نیست
         if cafe:
             context['other_cafe'] = next(
                 (c for c in cafes if c.id != cafe.id), None

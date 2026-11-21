@@ -1,132 +1,78 @@
-from django.core.management.base import BaseCommand
-from purchases.models import User
+import os
+
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
+
+from purchases.models import Cafe, Department, User
+
 
 class Command(BaseCommand):
-    help = 'Check existing users and create default admin if none exist'
+    help = 'Create default users idempotently for a target cafe (dev/setup only)'
+
+    def add_arguments(self, parser):
+        parser.add_argument('--cafe', required=True, help='Target cafe code')
+        parser.add_argument('--password', help='Initial password (or set SYNTEL_SEED_PASSWORD)')
+        parser.add_argument('--force', action='store_true', help='Allow running when DEBUG is False')
 
     def handle(self, *args, **options):
-        users = User.objects.all()
-        self.stdout.write(f"Total users in database: {users.count()}")
+        if not settings.DEBUG and not options['force']:
+            raise CommandError('Refusing to run setup_users when DEBUG=False without --force.')
 
-        if users.count() > 0:
-            self.stdout.write("\nExisting users:")
-            for user in users:
-                self.stdout.write(f"  Username: {user.username}")
-                self.stdout.write(f"  Role: {user.role}")
-                self.stdout.write(f"  Active: {user.is_active}")
-                self.stdout.write(f"  Name: {user.first_name} {user.last_name}")
-                self.stdout.write("  ---")
-        else:
-            self.stdout.write("\nNo users found. Creating default users...")
+        password = options.get('password') or os.environ.get('SYNTEL_SEED_PASSWORD')
+        if not password or len(password) < 8:
+            raise CommandError('Provide a password >= 8 chars via --password or SYNTEL_SEED_PASSWORD.')
 
-            # Create admin user
-            try:
-                admin = User.objects.create_user(
-                    username='admin',
-                    password='admin123',
-                    first_name='مدیر',
-                    last_name='سیستم',
-                    role='manager'
-                )
-                self.stdout.write(self.style.SUCCESS("Created admin user:"))
-                self.stdout.write("  Username: admin")
-                self.stdout.write("  Password: admin123")
-                self.stdout.write("  Role: manager")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating admin: {e}"))
+        cafe = Cafe.objects.filter(code=options['cafe'], is_active=True).first()
+        if cafe is None:
+            raise CommandError(f'Active cafe "{options["cafe"]}" not found.')
 
-            # Create purchasing user
-            try:
-                purchasing = User.objects.create_user(
-                    username='purchasing',
-                    password='purchase123',
-                    first_name='مسئول',
-                    last_name='خرید',
-                    role='purchasing'
-                )
-                self.stdout.write(self.style.SUCCESS("Created purchasing user:"))
-                self.stdout.write("  Username: purchasing")
-                self.stdout.write("  Password: purchase123")
-                self.stdout.write("  Role: purchasing")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating purchasing user: {e}"))
+        dept_names = {
+            'kitchen': 'آشپزخانه',
+            'bar': 'بار',
+            'counter': 'کانتر',
+            'cashier': 'صندوق',
+            'facilities': 'تاسیسات',
+        }
+        departments = {}
+        for key, label in dept_names.items():
+            dept, _ = Department.objects.get_or_create(
+                name=label,
+                cafe=cafe,
+                defaults={'is_active': True},
+            )
+            departments[key] = dept
 
-            # Create kitchen user
-            try:
-                kitchen = User.objects.create_user(
-                    username='kitchen',
-                    password='kitchen123',
-                    first_name='سرآشپز',
-                    last_name='آشپزخانه',
-                    role='kitchen'
-                )
-                self.stdout.write(self.style.SUCCESS("Created kitchen user:"))
-                self.stdout.write("  Username: kitchen")
-                self.stdout.write("  Password: kitchen123")
-                self.stdout.write("  Role: kitchen")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating kitchen user: {e}"))
+        specs = [
+            ('manager', 'manager', 'مدیر', 'سیستم', None),
+            ('purchasing', 'purchasing', 'مسئول', 'خرید', None),
+            ('warehouse', 'warehouse', 'مسئول', 'انبار', None),
+            ('kitchen', 'requester', 'سرآشپز', 'آشپزخانه', departments['kitchen']),
+            ('bar', 'requester', 'مسئول', 'بار', departments['bar']),
+            ('counter', 'requester', 'مسئول', 'کانتر', departments['counter']),
+            ('cashier', 'requester', 'مسئول', 'صندوق', departments['cashier']),
+            ('facilities', 'requester', 'مسئول', 'تاسیسات', departments['facilities']),
+        ]
 
-            # Create bar user
-            try:
-                bar = User.objects.create_user(
-                    username='bar',
-                    password='bar123',
-                    first_name='مسئول',
-                    last_name='بار',
-                    role='bar'
-                )
-                self.stdout.write(self.style.SUCCESS("Created bar user:"))
-                self.stdout.write("  Username: bar")
-                self.stdout.write("  Password: bar123")
-                self.stdout.write("  Role: bar")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating bar user: {e}"))
+        created_count = 0
+        for base_name, role, first_name, last_name, dept in specs:
+            username = f'{cafe.code}_{base_name}'
+            user, created = User.objects.get_or_create(
+                username=username,
+                defaults={
+                    'role': role,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'cafe': cafe,
+                    'department': dept,
+                    'is_active': True,
+                },
+            )
+            if created:
+                user.set_password(password)
+                user.save(update_fields=['password'])
+                created_count += 1
+                self.stdout.write(self.style.SUCCESS(f'Created user: {username} ({role})'))
+            else:
+                self.stdout.write(f'User already exists: {username}')
 
-            # Create counter user
-            try:
-                counter = User.objects.create_user(
-                    username='counter',
-                    password='counter123',
-                    first_name='مسئول',
-                    last_name='کانتر',
-                    role='counter'
-                )
-                self.stdout.write(self.style.SUCCESS("Created counter user:"))
-                self.stdout.write("  Username: counter")
-                self.stdout.write("  Password: counter123")
-                self.stdout.write("  Role: counter")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating counter user: {e}"))
-
-            # Create cashier user
-            try:
-                cashier = User.objects.create_user(
-                    username='cashier',
-                    password='cashier123',
-                    first_name='مسئول',
-                    last_name='صندوق',
-                    role='cashier'
-                )
-                self.stdout.write(self.style.SUCCESS("Created cashier user:"))
-                self.stdout.write("  Username: cashier")
-                self.stdout.write("  Password: cashier123")
-                self.stdout.write("  Role: cashier")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating cashier user: {e}"))
-
-            # Create facilities user
-            try:
-                facilities = User.objects.create_user(
-                    username='facilities',
-                    password='facilities123',
-                    first_name='مسئول',
-                    last_name='تاسیسات',
-                    role='facilities'
-                )
-                self.stdout.write(self.style.SUCCESS("Created facilities user:"))
-                self.stdout.write("  Username: facilities")
-                self.stdout.write("  Password: facilities123")
-                self.stdout.write("  Role: facilities")
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error creating facilities user: {e}"))
+        self.stdout.write(self.style.SUCCESS(f'Done. Created {created_count} user(s) for cafe "{cafe.code}".'))

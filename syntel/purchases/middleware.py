@@ -1,149 +1,121 @@
 """
-Middleware سفارشی برای مدیریت بهتر خطاهای CSRF و انتخاب کافه
+Middleware برای مدیریت انتخاب و دسترسی به کافه (Multi-Tenant)
 """
-from django.shortcuts import redirect, get_object_or_404
-from django.contrib import messages
-from django.middleware.csrf import CsrfViewMiddleware
 from django.http import Http404
-from django.urls import resolve, Resolver404
+from django.shortcuts import redirect
+from django.urls import Resolver404, resolve
 
 
-class CustomCsrfViewMiddleware(CsrfViewMiddleware):
-    """
-    Middleware سفارشی که به جای نمایش خطای 403، 
-    کاربر را به صفحه لاگین هدایت می‌کند
-    """
-    
-    def process_view(self, request, callback, callback_args, callback_kwargs):
-        # اجرای middleware پیش‌فرض CSRF
-        result = super().process_view(request, callback, callback_args, callback_kwargs)
-        
-        # اگر خطای CSRF رخ داد (403)
-        if result is not None and result.status_code == 403:
-            # اگر درخواست از صفحه لاگین بود
-            if request.path == '/login/':
-                messages.error(request, 'نشست شما منقضی شده است. لطفاً دوباره تلاش کنید.')
-                return redirect('login')
-        
-        return result
+def _clear_cafe_session(request):
+    request.session.pop("selected_cafe_id", None)
+    request.session.pop("selected_cafe_code", None)
+
+
+def _user_can_access_cafe(user, cafe):
+    """Return True if authenticated `user` is authorized to access active `cafe`."""
+    if not user or not user.is_authenticated or not cafe or not cafe.is_active:
+        return False
+    if user.is_superuser:
+        return True
+    if user.cafe is None and user.role in CafeMiddleware.CAFE_SELECTION_ROLES:
+        return True
+    return user.cafe_id == cafe.id
 
 
 class CafeMiddleware:
     """
     Middleware برای مدیریت انتخاب و دسترسی به کافه
     - کاربران عادی فقط به کافه خودشان دسترسی دارند
-    - کاربران ادمین (manager, finance_manager, accounting, ceo) باید ابتدا کافه را انتخاب کنند
-    - فقط manager و ceo می‌توانند بین کافه‌ها جابجا شوند
+    - کاربران ادمین (admin, manager, finance_manager, accounting, ceo) با cafe=None و superuser ها باید ابتدا کافه را انتخاب کنند
+    - فقط superuser و کاربران با cafe=None و نقش مدیریتی می‌توانند بین کافه‌ها جابجا شوند
     """
-    
+
     # مسیرهایی که نیاز به کافه ندارند
     EXEMPT_PATHS = [
-        '/login/',
-        '/logout/',
-        '/select-cafe/',
-        '/admin/',
-        '/static/',
-        '/media/',
-        '/health/',
-        '/accounts/login/',
-        '/api/mobile/',
+        "/login/",
+        "/logout/",
+        "/select-cafe/",
+        "/admin/",
+        "/static/",
+        "/media/",
+        "/health/",
+        "/accounts/login/",
+        "/api/mobile/",
+        "/backup/drive/callback/",
     ]
-    
+
     # Role هایی که باید کافه انتخاب کنند
-    CAFE_SELECTION_ROLES = ['admin', 'manager', 'finance_manager', 'accounting', 'ceo']
-    
+    CAFE_SELECTION_ROLES = ["admin", "manager", "finance_manager", "accounting", "ceo"]
+
     def __init__(self, get_response):
         self.get_response = get_response
-    
+
     def __call__(self, request):
-        # Import here to avoid circular imports
         from .models import Cafe
-        
-        # بررسی مسیرهای exempt
+
         path = request.path
-        if any(path.startswith(exempt) for exempt in self.EXEMPT_PATHS) or '/api/mobile/' in path:
+        if any(path.startswith(exempt) for exempt in self.EXEMPT_PATHS) or "/api/mobile/" in path:
             return self.get_response(request)
-        
+
         # اگر کاربر لاگین نیست، اجازه بده ادامه بده (login_required خودش handle می‌کنه)
         if not request.user.is_authenticated:
             return self.get_response(request)
-        
-        # استخراج cafe_code از URL اگر وجود داره
+
         cafe_code = self._extract_cafe_code(request)
-        
+
         if cafe_code:
-            # اعتبارسنجی کافه
             cafe = self._validate_cafe_access(request, cafe_code, Cafe)
             if cafe is None:
-                # کافه معتبر نیست یا کاربر دسترسی ندارد
-                if request.user.needs_cafe_selection:
-                    return redirect('select_cafe')
-                else:
-                    raise Http404("کافه یافت نشد یا دسترسی ندارید")
-            
-            # ذخیره کافه در session و request
-            request.session['selected_cafe_id'] = cafe.id
-            request.session['selected_cafe_code'] = cafe.code
+                if request.user.is_superuser or request.user.needs_cafe_selection:
+                    _clear_cafe_session(request)
+                    return redirect("select_cafe")
+                _clear_cafe_session(request)
+                raise Http404("کافه یافت نشد یا دسترسی ندارید")
+
+            request.session["selected_cafe_id"] = cafe.id
+            request.session["selected_cafe_code"] = cafe.code
             request.cafe = cafe
         else:
-            # مسیر بدون cafe_code - فقط برای کاربران ادمین که هنوز کافه انتخاب نکردن
-            if request.user.needs_cafe_selection:
-                # اگر کافه در session نیست، به صفحه انتخاب کافه بفرست
-                if not request.session.get('selected_cafe_id'):
-                    return redirect('select_cafe')
-                else:
-                    # کافه در session هست، تنظیم کن
-                    try:
-                        request.cafe = Cafe.objects.get(id=request.session['selected_cafe_id'])
-                    except Cafe.DoesNotExist:
-                        del request.session['selected_cafe_id']
-                        return redirect('select_cafe')
+            if request.user.is_superuser or request.user.needs_cafe_selection:
+                selected_cafe_id = request.session.get("selected_cafe_id")
+                if not selected_cafe_id:
+                    return redirect("select_cafe")
+                cafe = Cafe.objects.filter(id=selected_cafe_id, is_active=True).first()
+                if cafe is None or not _user_can_access_cafe(request.user, cafe):
+                    _clear_cafe_session(request)
+                    return redirect("select_cafe")
+                request.cafe = cafe
             else:
-                # کاربر عادی باید کافه داشته باشه
-                if not request.user.cafe:
-                    # کاربر عادی بدون کافه - خطا
-                    raise Http404("کافه برای کاربر تعریف نشده است. با مدیر تماس بگیرید.")
-                
-                # تنظیم کافه کاربر
-                request.session['selected_cafe_id'] = request.user.cafe_id
-                request.session['selected_cafe_code'] = request.user.cafe.code
+                if not request.user.cafe or not request.user.cafe.is_active:
+                    _clear_cafe_session(request)
+                    raise Http404("کافه برای کاربر تعریف نشده یا غیرفعال است. با مدیر تماس بگیرید.")
+
+                request.session["selected_cafe_id"] = request.user.cafe_id
+                request.session["selected_cafe_code"] = request.user.cafe.code
                 request.cafe = request.user.cafe
-        
-        response = self.get_response(request)
-        return response
-    
+
+        return self.get_response(request)
+
     def _extract_cafe_code(self, request):
         """استخراج cafe_code از URL"""
         try:
             resolved = resolve(request.path)
-            return resolved.kwargs.get('cafe_code')
+            return resolved.kwargs.get("cafe_code")
         except Resolver404:
             return None
-    
+
     def _validate_cafe_access(self, request, cafe_code, Cafe):
         """
         اعتبارسنجی دسترسی کاربر به کافه
-        Returns: Cafe object if valid, None otherwise
-        
-        منطق:
-        - کاربران با cafe=None و نقش ادمین (سوپر ادمین): به همه کافه‌ها دسترسی دارند
-        - سایر کاربران: فقط به کافه خودشان دسترسی دارند
+        Returns: Cafe object if valid and active, None otherwise.
         """
         try:
             cafe = Cafe.objects.get(code=cafe_code, is_active=True)
         except Cafe.DoesNotExist:
             return None
-        
-        user = request.user
-        
-        # سوپر ادمین‌ها (cafe=None و نقش ادمین) به همه کافه‌ها دسترسی دارند
-        if user.cafe is None and user.role in self.CAFE_SELECTION_ROLES:
+
+        if _user_can_access_cafe(request.user, cafe):
             return cafe
-        
-        # سایر کاربران فقط به کافه خودشان دسترسی دارند
-        if user.cafe_id == cafe.id:
-            return cafe
-        
         return None
 
 
@@ -152,47 +124,54 @@ class CafeContextMiddleware:
     Middleware برای اضافه کردن اطلاعات کافه به context
     این باید بعد از CafeMiddleware باشه
     """
-    
+
     def __init__(self, get_response):
         self.get_response = get_response
-    
+
     def __call__(self, request):
-        # Import here to avoid circular imports
         from .models import Cafe
-        
-        # اضافه کردن cafe به request اگر وجود نداره
-        if not hasattr(request, 'cafe'):
-            cafe_id = request.session.get('selected_cafe_id')
-            if cafe_id:
-                try:
-                    request.cafe = Cafe.objects.get(id=cafe_id)
-                except Cafe.DoesNotExist:
-                    request.cafe = None
-            else:
+
+        if not hasattr(request, "cafe"):
+            user = getattr(request, "user", None)
+            if not user or not user.is_authenticated:
                 request.cafe = None
-        
-        response = self.get_response(request)
-        return response
+            else:
+                cafe_id = request.session.get("selected_cafe_id")
+                cafe = Cafe.objects.filter(id=cafe_id, is_active=True).first() if cafe_id else None
+                if cafe and _user_can_access_cafe(user, cafe):
+                    request.cafe = cafe
+                else:
+                    if cafe_id:
+                        _clear_cafe_session(request)
+                    request.cafe = None
+
+        return self.get_response(request)
 
 
 def get_current_cafe(request):
     """Helper function برای گرفتن کافه فعلی از request"""
     from .models import Cafe
-    
-    if hasattr(request, 'cafe'):
+
+    if hasattr(request, "cafe"):
         return request.cafe
-    
-    cafe_id = request.session.get('selected_cafe_id')
+
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return None
+
+    cafe_id = request.session.get("selected_cafe_id")
     if cafe_id:
-        try:
-            return Cafe.objects.get(id=cafe_id)
-        except Cafe.DoesNotExist:
-            return None
+        cafe = Cafe.objects.filter(id=cafe_id, is_active=True).first()
+        if cafe and _user_can_access_cafe(user, cafe):
+            return cafe
     return None
 
 
 def get_cafe_code(request):
     """Helper function برای گرفتن کد کافه از request"""
-    if hasattr(request, 'cafe') and request.cafe:
+    if hasattr(request, "cafe") and request.cafe:
         return request.cafe.code
-    return request.session.get('selected_cafe_code')
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return None
+    return request.session.get("selected_cafe_code")

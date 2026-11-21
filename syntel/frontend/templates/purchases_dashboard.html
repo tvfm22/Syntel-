@@ -455,10 +455,19 @@
     </div>
 
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    {{ monthly_requests|json_script:"monthly-requests-data" }}
+    {{ dept_stats|json_script:"dept-stats-data" }}
     <script>
+        function _parseJsonEl(id, fallback) {
+            const el = document.getElementById(id);
+            if (!el) return fallback;
+            let val = JSON.parse(el.textContent || 'null');
+            if (typeof val === 'string') { try { val = JSON.parse(val); } catch (e) {} }
+            return val == null ? fallback : val;
+        }
         // Monthly Requests Chart
         {% if monthly_requests %}
-        const monthlyData = {{ monthly_requests|safe }};
+        const monthlyData = _parseJsonEl('monthly-requests-data', []);
         const ctx = document.getElementById('monthlyRequestsChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -506,7 +515,7 @@
 
         // Department Chart
         {% if dept_stats %}
-        const deptData = {{ dept_stats|safe }};
+        const deptData = _parseJsonEl('dept-stats-data', []);
         const deptCtx = document.getElementById('departmentChart').getContext('2d');
         new Chart(deptCtx, {
             type: 'doughnut',

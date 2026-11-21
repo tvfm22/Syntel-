@@ -37,7 +37,10 @@ def bypasses_recipe_gate(user) -> bool:
         return False
     if getattr(user, 'is_superuser', False):
         return True
-    return getattr(user, 'role', '') in PRODUCT_MANAGER_ROLES
+    return (
+        getattr(user, 'role', '') in PRODUCT_MANAGER_ROLES
+        or getattr(user, 'secondary_role', '') in PRODUCT_MANAGER_ROLES
+    )
 
 
 def category_requires_recipe(category) -> bool:
@@ -52,11 +55,7 @@ def category_requires_recipe(category) -> bool:
 
 
 def recipe_required_category_ids(cafe=None) -> set:
-    """شناسهٔ همهٔ دسته‌های غذاییِ کافه (با ارث‌بری از والد).
-
-    دسته‌های بدون کافه (دادهٔ قدیمی) هم حساب می‌شوند؛ ``requires_recipe`` یک
-    پرچمِ داده است نه مرزِ امنیتی، پس محافظه‌کارانه‌تر است که شامل شود.
-    """
+    """شناسهٔ همهٔ دسته‌های غذاییِ کافه (با ارث‌بری از والد)."""
     qs = Category.objects.all()
     if cafe is not None:
         qs = qs.filter(Q(cafe=cafe) | Q(cafe__isnull=True))
@@ -68,7 +67,6 @@ def recipe_required_category_ids(cafe=None) -> set:
         if row['requires_recipe']:
             food_ids.add(row['id'])
             continue
-        # بالا رفتن از زنجیرهٔ والدها تا ریشه — با محافظِ حلقهٔ بسته
         seen = {row['id']}
         parent_id = row['parent_id']
         while parent_id and parent_id not in seen:
@@ -83,13 +81,15 @@ def recipe_required_category_ids(cafe=None) -> set:
     return food_ids
 
 
-def is_used_in_cogs_recipe(product) -> bool:
-    """آیا این کالا در دست‌کم یک سطر رسپیِ همین کافه به‌عنوان ماده مصرف می‌شود؟"""
+def is_used_in_cogs_recipe(product, cafe=None) -> bool:
+    """آیا این کالا در دست‌کم یک سطر رسپیِ همین کافه با مقدار مثبت مصرف می‌شود؟"""
     if product is None or product.pk is None:
         return False
+    target_cafe = cafe if cafe is not None else product.cafe
     return KukerRecipeLine.objects.filter(
         material__product=product,
-        item__cafe=product.cafe,
+        item__cafe=target_cafe,
+        quantity__gt=0,
     ).exists()
 
 
@@ -100,16 +100,14 @@ def annotate_recipe_usage(queryset):
             KukerRecipeLine.objects.filter(
                 material__product=OuterRef('pk'),
                 item__cafe=OuterRef('cafe'),
+                quantity__gt=0,
             )
         )
     )
 
 
 def filter_requestable_products(queryset, cafe=None):
-    """حذف کالاهای غذاییِ بدون رسپی از یک کوئریِ محصولات.
-
-    کالای بدون دسته و کالای دسته‌های غیرغذایی دست‌نخورده می‌مانند.
-    """
+    """حذف کالاهای غذاییِ بدون رسپی از یک کوئریِ محصولات."""
     qs = annotate_recipe_usage(queryset)
     food_ids = recipe_required_category_ids(cafe)
     if not food_ids:
@@ -129,16 +127,12 @@ def inactive_product_error(product):
 
 
 def recipe_gate_error(product, cafe=None):
-    """پیام خطای فارسی اگر این کالا نباید سفارش داده شود؛ در غیر این صورت None.
-
-    برای اعتبارسنجیِ سمت سرورِ فرم‌های درخواست استفاده می‌شود تا فیلترِ رابط
-    کاربری با فرستادن شناسهٔ خامِ کالا دور زده نشود.
-    """
+    """پیام خطای فارسی اگر این کالا نباید سفارش داده شود؛ در غیر این صورت None."""
     if product is None:
         return None
     if not category_requires_recipe(product.category):
         return None
-    if is_used_in_cogs_recipe(product):
+    if is_used_in_cogs_recipe(product, cafe=cafe):
         return None
     return (
         f'کالای «{product.name}» در هیچ رسپی منو مصرف نمی‌شود. '
@@ -168,16 +162,11 @@ def get_or_create_rd_category(cafe):
                 requires_recipe=False,
             )
     except IntegrityError:
-        # دو درخواست هم‌زمان — همان رکوردی که رقیب ساخته را برمی‌گردانیم
-        return qs.first() or Category.objects.filter(name=RD_CATEGORY_NAME).first()
+        return qs.filter(cafe=cafe).first() if cafe is not None else qs.filter(cafe__isnull=True).first()
 
 
 def assign_rd_category(product, cafe=None):
-    """کالای تازهٔ درخواست‌کننده را به «تحقیق و توسعه» می‌برد (همیشه، بی‌استثنا).
-
-    دستهٔ انتخابیِ کاربر عمداً نادیده گرفته می‌شود: کالای تعریف‌شده بیرون از
-    فهرست تا بررسی مدیریت در «تحقیق و توسعه» می‌ماند.
-    """
+    """کالای تازهٔ درخواست‌کننده را به «تحقیق و توسعه» می‌برد (همیشه، بی‌استثنا)."""
     category = get_or_create_rd_category(cafe if cafe is not None else product.cafe)
     if category is None:
         return None

@@ -16,9 +16,11 @@ from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
 from .units import (
+    _canonical_family,
     convert_quantity_to_smallest_unit,
     normalize_to_smallest_unit,
     smallest_unit_of,
+    units_are_compatible,
 )
 
 PREP_SHEETS = ['آماده سازی آشپزخانه', 'آماده سازی بار']
@@ -36,7 +38,7 @@ SHEET_LABELS = {
 }
 
 # Unit typos found in the workbook -> canonical unit
-UNIT_FIX = {'پوشن': 'پرس', 'پارت': 'پرس', 'سی ال': 'میل'}
+UNIT_FIX = {'پوشن': 'پرس', 'پارت': 'پرس'}
 
 # Name variants of defined (prep/dish) items -> canonical item name.
 # Built by matching each reference's stated unit fee against item costs
@@ -119,13 +121,51 @@ RAW_ALIASES = {normalize_name(k): normalize_name(v) for v, variants in _RAW_ALIA
                for k in variants}
 
 
-def _to_float(value):
-    try:
-        if value is None or value == '':
-            return None
-        return float(value)
-    except (TypeError, ValueError):
+def _dec(value):
+    if value is None or value == '':
         return None
+    if isinstance(value, Decimal):
+        return value if value.is_finite() else None
+    try:
+        dec = Decimal(str(value).strip())
+        return dec if dec.is_finite() else None
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
+def _is_cl_unit(unit):
+    if not unit:
+        return False
+    return str(unit).strip().replace('\u200c', '').replace(' ', '') == 'سیال'
+
+
+def _convert_cl_line(qty, unit, fee=None):
+    """Convert centilitres ('سی ال') × 10 to millilitres ('میل')."""
+    qty_dec = _dec(qty)
+    fee_dec = _dec(fee)
+    if _is_cl_unit(unit):
+        new_qty = (qty_dec * Decimal('10')) if qty_dec is not None else None
+        new_fee = (fee_dec / Decimal('10')) if fee_dec is not None else None
+        return new_qty, 'میل', new_fee
+    return qty_dec, (unit or ''), fee_dec
+
+
+def _convert_qty_between_units(qty, src_unit, dst_unit):
+    """Convert ``qty`` from ``src_unit`` to ``dst_unit`` when units are compatible."""
+    qty_dec, eff_src, _ = _convert_cl_line(qty, src_unit)
+    if qty_dec is None:
+        return Decimal('0')
+    if not eff_src or not dst_unit:
+        return qty_dec
+    if not units_are_compatible(eff_src, dst_unit):
+        return qty_dec
+    smallest_qty, _ = convert_quantity_to_smallest_unit(qty_dec, eff_src)
+    if smallest_qty is None:
+        return qty_dec
+    dst_fam = _canonical_family(dst_unit)
+    if dst_fam in ('kg', 'liter'):
+        return smallest_qty / Decimal('1000')
+    return smallest_qty
 
 
 def parse_workbook(workbook):
@@ -143,20 +183,20 @@ def parse_workbook(workbook):
             key = (normalize_name(name), sheet_role)
             if key in defs:
                 continue  # first definition wins (restaurants share identical menus)
+            raw_out_unit = str(ws.cell(row=4, column=c + 3).value or '').strip()
             d = {
                 'name': str(name).strip(), 'key': key, 'sheet': sheet, 'role': sheet_role,
                 'category': category,
-                'out_qty': _to_float(ws.cell(row=4, column=c + 1).value),
-                'out_unit': UNIT_FIX.get(str(ws.cell(row=4, column=c + 3).value or '').strip(),
-                                         str(ws.cell(row=4, column=c + 3).value or '').strip()),
+                'out_qty': _dec(ws.cell(row=4, column=c + 1).value),
+                'out_unit': UNIT_FIX.get(raw_out_unit, raw_out_unit),
                 'lines': [],
             }
             for r in range(6, ws.max_row + 1):
                 m = ws.cell(row=r, column=c).value
-                q = _to_float(ws.cell(row=r, column=c + 1).value)
+                q = _dec(ws.cell(row=r, column=c + 1).value)
                 u = str(ws.cell(row=r, column=c + 2).value or '').strip()
-                fee = _to_float(ws.cell(row=r, column=c + 3).value)
-                v2 = _to_float(ws.cell(row=r, column=c + 2).value)
+                fee = _dec(ws.cell(row=r, column=c + 3).value)
+                v2 = _dec(ws.cell(row=r, column=c + 2).value)
                 if m is None or not str(m).strip():
                     continue
                 mn = str(m).strip()
@@ -168,7 +208,9 @@ def parse_workbook(workbook):
                     continue
                 if q is None or q == 0:
                     continue
-                d['lines'].append((mn, q, UNIT_FIX.get(u, u), fee))
+                fixed_u = UNIT_FIX.get(u, u)
+                q, fixed_u, fee = _convert_cl_line(q, fixed_u, fee)
+                d['lines'].append((mn, q, fixed_u, fee))
             defs[key] = d
     return defs
 
@@ -179,10 +221,10 @@ def parse_master_lists(workbook):
     for r in workbook['مواد منو'].iter_rows(min_row=4, values_only=True):
         name, qty, unit, price = r[4], r[5], r[6], r[7]
         if name and qty and price:
-            try:
-                prices[normalize_name(name)] = (float(price) / float(qty), str(unit).strip())
-            except (TypeError, ValueError, ZeroDivisionError):
-                pass
+            q_dec = _dec(qty)
+            p_dec = _dec(price)
+            if q_dec and p_dec is not None:
+                prices[normalize_name(name)] = (p_dec / q_dec, str(unit).strip())
         if name and r[2]:
             groups[normalize_name(name)] = str(r[2]).strip()
     for r in workbook['مواد اولیه'].iter_rows(min_row=4, values_only=True):
@@ -190,15 +232,6 @@ def parse_master_lists(workbook):
         if name and code:
             codes.setdefault(normalize_name(name), str(code).strip())
     return prices, codes, groups
-
-
-def _dec(value):
-    if value is None:
-        return None
-    try:
-        return Decimal(str(value))
-    except (InvalidOperation, ValueError):
-        return None
 
 
 class MenuGraph:
@@ -272,8 +305,7 @@ class MenuGraph:
         for ln in lines_qs:
             item = graph.items.get(str(ln.item_id))
             if item is not None:
-                item['lines'].append((str(ln.material_id), float(ln.quantity), ln.unit,
-                                      float(ln.fee) if ln.fee is not None else None))
+                item['lines'].append((str(ln.material_id), ln.quantity, ln.unit, ln.fee))
         return graph
 
     # -- helpers ------------------------------------------------------------
@@ -334,14 +366,9 @@ class MenuGraph:
 
     # -- costs ---------------------------------------------------------------
     def _raw_line_cost(self, mkey, qty, unit):
-        """Cost of a raw-material line priced from the stored (smallest-unit) price.
-
-        The stored price is per 1 smallest unit, so the quantity is converted
-        first (0.3 کیلوگرم → 300 گرم) before multiplying. Returns
-        ``(cost, converted_quantity)``; an unpriced material costs 0 but keeps
-        its quantity so consumption reports stay truthful.
-        """
-        q_s, _smallest = convert_quantity_to_smallest_unit(qty, unit)
+        """Cost of a raw-material line priced from the stored (smallest-unit) price."""
+        qty_eff, eff_unit, _ = _convert_cl_line(qty, unit)
+        q_s, _smallest = convert_quantity_to_smallest_unit(qty_eff, eff_unit)
         q_dec = _dec(q_s) or Decimal('0')
         price = _dec(self.items[mkey].get('price'))
         if price is None:
@@ -365,131 +392,138 @@ class MenuGraph:
         total = Decimal('0')
         for mkey, qty, unit, fee in item['lines']:
             mat = self.items[mkey]
-            if fee is not None:
-                total += _dec(qty) * _dec(fee)
+            q_eff, u_eff, f_eff = _convert_cl_line(qty, unit, fee)
+            if f_eff is not None:
+                total += (q_eff or Decimal('0')) * f_eff
             elif mat['kind'] == 'raw':
-                line_cost, _q = self._raw_line_cost(mkey, qty, unit)
+                line_cost, _q = self._raw_line_cost(mkey, q_eff, u_eff)
                 total += line_cost
             else:
                 unit_price = self.unit_cost(mkey, stack) or _dec(mat.get('price')) or Decimal('0')
-                total += _dec(qty) * unit_price
+                conv_q = _convert_qty_between_units(q_eff, u_eff, mat.get('out_unit') or '')
+                total += conv_q * unit_price
         return total / _dec(item['out_qty'])
 
-    def computed_unit_cost(self, key, _stack=None, _cache=None):
-        """Cost rolled up from the recipe only — ignores the workbook's stated costs.
-
-        This is the number that moves when a raw-material price changes, so it is
-        what the cost-history snapshots compare. Results are memoized per call
-        tree: without the cache every dish re-walks its whole sub-recipe.
-        """
+    def _computed_unit_cost_inner(self, key, _stack, _cache):
+        """Returns (cost, hit_cycle) so cycle-truncated nodes are never cached."""
         item = self.items.get(key)
         if item is None:
-            return None
+            return None, False
         if item['kind'] == 'raw':
-            return _dec(item['price'])
-        if _cache is None:
-            _cache = {}
+            return _dec(item['price']), False
         if key in _cache:
-            return _cache[key]
-        if _stack is None:
-            _stack = set()
-        if key in _stack or not item.get('out_qty'):
-            return None
+            return _cache[key], False
+        if key in _stack:
+            return None, True
+        out_qty = _dec(item.get('out_qty'))
+        if not out_qty:
+            return None, False
         stack = _stack | {key}
         total = Decimal('0')
+        had_cycle = False
         for mkey, qty, unit, fee in item['lines']:
             mat = self.items.get(mkey)
             if mat is None:
                 continue
+            q_eff, u_eff, f_eff = _convert_cl_line(qty, unit, fee)
             if mat['kind'] == 'raw':
-                if fee is not None:
-                    total += _dec(qty) * _dec(fee)
-                else:
-                    line_cost, _q = self._raw_line_cost(mkey, qty, unit)
+                if mat.get('price') is not None:
+                    line_cost, _q = self._raw_line_cost(mkey, q_eff, u_eff)
                     total += line_cost
+                elif f_eff is not None:
+                    total += (q_eff or Decimal('0')) * f_eff
             else:
-                sub = self.computed_unit_cost(mkey, stack, _cache)
+                sub, sub_cycle = self._computed_unit_cost_inner(mkey, stack, _cache)
+                if sub_cycle:
+                    had_cycle = True
                 if sub is not None:
-                    total += _dec(qty) * sub
-                elif fee is not None:
-                    total += _dec(qty) * _dec(fee)
-        out_qty = _dec(item['out_qty'])
-        if not out_qty:
-            return None
+                    conv_q = _convert_qty_between_units(q_eff, u_eff, mat.get('out_unit') or '')
+                    total += conv_q * sub
+                elif f_eff is not None:
+                    total += (q_eff or Decimal('0')) * f_eff
         result = total / out_qty
-        _cache[key] = result
-        return result
+        if not had_cycle:
+            _cache[key] = result
+        return result, had_cycle
+
+    def computed_unit_cost(self, key, _stack=None, _cache=None):
+        """Cost rolled up from the recipe only — ignores the workbook's stated costs."""
+        if _cache is None:
+            _cache = {}
+        if _stack is None:
+            _stack = set()
+        cost, _ = self._computed_unit_cost_inner(key, _stack, _cache)
+        return cost
 
     def validate_against_workbook(self):
         """Every item stating a unit cost must match the computed one within 1%."""
         bad = []
+        cache = {}
         for key, item in self.items.items():
             if not item.get('stated_fee') or item['kind'] == 'raw':
                 continue
-            uc = self.unit_cost(key)
+            uc = self.computed_unit_cost(key, _cache=cache)
             if uc is None:
                 continue
             stated = _dec(item['stated_fee'])
+            if stated is None:
+                continue
             if abs(uc - stated) / max(abs(stated), Decimal('1e-9')) > Decimal('0.01'):
                 bad.append((item['name'], float(stated), float(uc)))
         return bad
 
     # -- per-unit consumption --------------------------------------------------
-    def unit_consumption(self, key, _cache=None, _stack=None):
-        """Raw-material usage per one output unit of `key`.
-
-        Returns {'raw': {(key, unit): [qty, cost]}, 'prep': {...},
-                  'bad': {...} (unit mismatch: cost only), 'warn': [...]}
-        """
-        if _cache is None:
-            _cache = {}
-        if _stack is None:
-            _stack = set()
+    def _unit_consumption_inner(self, key, _cache, _stack):
         item = self.items.get(key)
         if item is None or item['kind'] == 'raw':
-            return {'raw': {}, 'prep': {}, 'bad': {}, 'warn': []}
+            return {'raw': {}, 'prep': {}, 'bad': {}, 'warn': []}, False
         if key in _cache:
-            return _cache[key]
+            return _cache[key], False
         if key in _stack:
-            return {'raw': {}, 'prep': {}, 'bad': {}, 'warn': [f'چرخه در رسپی: {item["name"]}']}
+            return {'raw': {}, 'prep': {}, 'bad': {}, 'warn': [f'چرخه در رسپی: {item["name"]}']}, True
         stack = _stack | {key}
         out_qty = _dec(item.get('out_qty')) or Decimal('1')
         agg_raw, agg_prep, agg_bad, warns = {}, {}, {}, []
+        had_cycle = False
         for mkey, qty, unit, fee in item['lines']:
             mat = self.items[mkey]
+            q_eff, u_eff, f_eff = _convert_cl_line(qty, unit, fee)
             if mat['kind'] == 'raw':
-                # price is stored per smallest unit → convert the line quantity first
-                if fee is not None:
-                    line_unit = unit
-                    qty_eff = _dec(qty)
-                    cost = qty_eff * _dec(fee) / out_qty
+                if mat.get('price') is not None:
+                    line_cost, qty_conv = self._raw_line_cost(mkey, q_eff, u_eff)
+                    line_unit = smallest_unit_of(u_eff) or u_eff
+                    cost = line_cost / out_qty
+                elif f_eff is not None:
+                    line_unit = u_eff
+                    qty_conv = q_eff or Decimal('0')
+                    cost = qty_conv * f_eff / out_qty
                 else:
-                    line_cost, qty_eff = self._raw_line_cost(mkey, qty, unit)
-                    line_unit = smallest_unit_of(unit) or unit
+                    line_cost, qty_conv = self._raw_line_cost(mkey, q_eff, u_eff)
+                    line_unit = smallest_unit_of(u_eff) or u_eff
                     cost = line_cost / out_qty
                 slot = agg_raw.setdefault((mkey, line_unit), [Decimal('0'), Decimal('0')])
-                slot[0] += qty_eff / out_qty
+                slot[0] += qty_conv / out_qty
                 slot[1] += cost
                 continue
-            line_fee = fee if fee is not None else mat.get('price')
-            cost = _dec(qty) * (_dec(line_fee) or Decimal('0')) / out_qty
+
+            mat_out_unit = mat.get('out_unit') or ''
+            same_unit = (not u_eff) or (not mat_out_unit) or units_are_compatible(u_eff, mat_out_unit)
+            conv_qty = _convert_qty_between_units(q_eff, u_eff, mat_out_unit) if same_unit else (q_eff or Decimal('0'))
+            line_fee = f_eff if f_eff is not None else _dec(mat.get('price'))
+            cost = conv_qty * (line_fee or Decimal('0')) / out_qty
             uc = self.unit_cost(mkey, stack)
-            same_unit = (unit or '') == (mat.get('out_unit') or '')
-            if not same_unit and uc is not None and fee is not None:
-                if abs(_dec(fee) - uc) / max(abs(_dec(fee)), Decimal('1e-9')) < Decimal('0.01'):
-                    same_unit = True  # workbook prices it as a whole unit of the prep
+            if not same_unit and uc is not None and f_eff is not None:
+                if abs(f_eff - uc) / max(abs(f_eff), Decimal('1e-9')) < Decimal('0.01'):
+                    same_unit = True
+                    conv_qty = q_eff or Decimal('0')
+                    cost = conv_qty * f_eff / out_qty
             if same_unit and mat.get('out_qty'):
-                sub = self.unit_consumption(mkey, _cache, stack)
-                factor = _dec(qty) / out_qty
-                # The prep line is paid once (qty x fee). Its raw materials inherit
-                # quantities; the line fee is split between them proportionally so
-                # raw costs always add up to the workbook's own dish cost.
-                #
-                # A hand-made prep has no stated fee and no price of its own, so
-                # `cost` is zero — then the recursively computed raw costs are the
-                # truth and must be carried through as-is (otherwise every custom
-                # recipe would report a zero COGS).
+                sub, sub_cycle = self._unit_consumption_inner(mkey, _cache, stack)
+                if sub_cycle:
+                    had_cycle = True
+                factor = conv_qty / out_qty
                 sub_raw_cost = sum((sv[1] for sv in sub['raw'].values()), Decimal('0'))
+                sub_bad_cost = sum((sv[1] for sv in sub['bad'].values()), Decimal('0'))
                 split_fee = bool(cost) and sub_raw_cost > 0
                 for sk, sv in sub['raw'].items():
                     slot = agg_raw.setdefault(sk, [Decimal('0'), Decimal('0')])
@@ -505,20 +539,30 @@ class MenuGraph:
                 for sk, sv in sub['bad'].items():
                     slot = agg_bad.setdefault(sk, [Decimal('0'), Decimal('0')])
                     slot[1] += sv[1] * factor
-                pslot = agg_prep.setdefault((mkey, mat.get('out_unit') or unit or ''),
+                prep_cost = cost if split_fee else ((sub_raw_cost + sub_bad_cost) * factor)
+                pslot = agg_prep.setdefault((mkey, mat_out_unit or u_eff or ''),
                                             [Decimal('0'), Decimal('0')])
                 pslot[0] += factor
-                pslot[1] += cost
+                pslot[1] += prep_cost
                 warns.extend(sub['warn'])
             else:
-                # unit mismatch (e.g. slice vs portion): keep cost, quantity unknown
                 warns.append(
-                    f'«{mat["name"]}» در رسپی «{item["name"]}» با واحد «{unit or "؟"}» '
-                    f'مقابل خروجی «{mat.get("out_qty")} {mat.get("out_unit")}» آمده؛ '
+                    f'«{mat["name"]}» در رسپی «{item["name"]}» با واحد «{u_eff or "؟"}» '
+                    f'مقابل خروجی «{mat.get("out_qty")} {mat_out_unit}» آمده؛ '
                     f'هزینه با بهای کامل حساب شد، ولی مقدار دقیق آن محاسبه نشد.')
-                agg_bad.setdefault((mkey, unit), [Decimal('0'), Decimal('0')])[1] += cost
+                agg_bad.setdefault((mkey, u_eff), [Decimal('0'), Decimal('0')])[1] += cost
         result = {'raw': agg_raw, 'prep': agg_prep, 'bad': agg_bad, 'warn': warns}
-        _cache[key] = result
+        if not had_cycle:
+            _cache[key] = result
+        return result, had_cycle
+
+    def unit_consumption(self, key, _cache=None, _stack=None):
+        """Raw-material usage per one output unit of `key`."""
+        if _cache is None:
+            _cache = {}
+        if _stack is None:
+            _stack = set()
+        result, _ = self._unit_consumption_inner(key, _cache, _stack)
         return result
 
     def dishes(self):
@@ -634,18 +678,35 @@ def import_menu(path, cafe=None):
             obj.save()
             created[key] = obj
 
-        # اقلامی که دیگر در اکسل نیستند
-        KukerItem.objects.filter(cafe=cafe, is_custom=False).exclude(
-            pk__in=[obj.pk for obj in created.values()]).delete()
-
+        # ابتدا سطرهای رسپی قبلی حذف شوند (ماده دارای PROTECT است)
         line_count = 0
         KukerRecipeLine.objects.filter(item__cafe=cafe, item__is_custom=False).delete()
+        lines_to_create = []
         for key, it in graph.items.items():
             for mkey, qty, unit, fee in it['lines']:
-                KukerRecipeLine.objects.create(
-                    item=created[key], material=created[mkey],
-                    quantity=qty, unit=unit or '', fee=fee)
+                lines_to_create.append(
+                    KukerRecipeLine(
+                        item=created[key],
+                        material=created[mkey],
+                        quantity=qty,
+                        unit=unit or '',
+                        fee=fee,
+                    )
+                )
                 line_count += 1
+        KukerRecipeLine.objects.bulk_create(lines_to_create)
+
+        # اقلامی که دیگر در اکسل نیستند (فقط اگر در رسپی دستی یا گزارش COGS ارجاع نداشته باشند)
+        from ..models import CogsReportLine
+        obsolete_qs = KukerItem.objects.filter(cafe=cafe, is_custom=False).exclude(
+            pk__in=[obj.pk for obj in created.values()]
+        )
+        protected_ids = set(
+            KukerRecipeLine.objects.filter(material__in=obsolete_qs).values_list('material_id', flat=True)
+        ) | set(
+            CogsReportLine.objects.filter(item__in=obsolete_qs).values_list('item_id', flat=True)
+        )
+        obsolete_qs.exclude(pk__in=protected_ids).delete()
 
     # عکس‌برداری اولیه: بعد از ایمپورت، بهای همه غذاها تازه محاسبه شده است
     record_cost_snapshots_for_cafe(cafe, note='ایمپورت منو از اکسل')
@@ -674,28 +735,47 @@ def record_cost_snapshots_for_cafe(cafe, note=''):
     created = []
     checked = 0
     cost_cache = {}   # مشترک بین همه اقلام — هر زیررسپی یک بار حساب می‌شود
-    with transaction.atomic():   # یک commit برای همه ردیف‌ها (SQLite هر INSERT را fsync می‌کند)
-        for key, item in graph.items.items():
-            if item['kind'] not in (KukerItem.KIND_DISH, KukerItem.KIND_PREP):
-                continue
-            item_id = item.get('id')
-            if not item_id:
-                continue
-            checked += 1
-            cost = graph.computed_unit_cost(key, _cache=cost_cache)
-            if cost is None:
-                continue
-            cost = cost.quantize(Decimal('0.0001'))
-            last = (KukerItemCostHistory.objects
-                    .filter(item_id=item_id)
-                    .order_by('-recorded_at', '-id')
-                    .first())
-            if last is not None and last.cost_per_unit == cost:
-                continue
-            KukerItemCostHistory.objects.create(
-                item_id=item_id, cost_per_unit=cost,
-                note=note or 'محاسبه مجدد بهای تمام شده')
-            created.append((item_id, cost))
+    note_text = note or 'محاسبه مجدد بهای تمام شده'
+    candidate_ids = [
+        item['id']
+        for item in graph.items.values()
+        if item['kind'] in (KukerItem.KIND_DISH, KukerItem.KIND_PREP) and item.get('id')
+    ]
+    latest_by_item = {}
+    if candidate_ids:
+        for h in (
+            KukerItemCostHistory.objects.filter(item_id__in=candidate_ids)
+            .order_by('item_id', '-recorded_at', '-id')
+        ):
+            if h.item_id not in latest_by_item:
+                latest_by_item[h.item_id] = h.cost_per_unit
+
+    to_create = []
+    for key, item in graph.items.items():
+        if item['kind'] not in (KukerItem.KIND_DISH, KukerItem.KIND_PREP):
+            continue
+        item_id = item.get('id')
+        if not item_id:
+            continue
+        checked += 1
+        cost = graph.computed_unit_cost(key, _cache=cost_cache)
+        if cost is None:
+            continue
+        cost = cost.quantize(Decimal('0.0001'))
+        if latest_by_item.get(item_id) == cost:
+            continue
+        to_create.append(
+            KukerItemCostHistory(
+                item_id=item_id,
+                cost_per_unit=cost,
+                note=note_text,
+            )
+        )
+        created.append((item_id, cost))
+
+    if to_create:
+        with transaction.atomic():
+            KukerItemCostHistory.objects.bulk_create(to_create)
     return {'checked': checked, 'created': len(created), 'items': created}
 
 
@@ -754,8 +834,8 @@ def _prep_breakdown(row, graph, cache):
         material = graph.items.get(mkey)
         if material is None:
             continue
-        direct.append({'name': material['name'], 'qty': _dec(qty) * scale,
-                       'unit': unit, 'kind': material['kind']})
+        direct.append({'id': material.get('id'), 'name': material['name'],
+                       'qty': _dec(qty) * scale, 'unit': unit, 'kind': material['kind']})
 
     raws = []
     if key in graph.items:

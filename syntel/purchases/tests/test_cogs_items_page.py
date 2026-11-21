@@ -321,8 +321,8 @@ class PriceEntryTest(ItemsPageBase):
         self.assertTrue(data['ok'])
         self.assertEqual(Decimal(data['stored_price']), Decimal('350'))
         self.assertEqual(data['smallest_unit'], 'گرم')
-        self.assertIn('۳۵۰,۰۰۰ تومان برای ۱ کیلوگرم', data['entered_text'])
-        self.assertIn('۳۵۰ تومان به ازای هر ۱ گرم', data['stored_text'])
+        self.assertIn('۳۵۰,۰۰۰ ریال برای ۱ کیلوگرم', data['entered_text'])
+        self.assertIn('۳۵۰ ریال به ازای هر ۱ گرم', data['stored_text'])
 
     def test_preview_handles_custom_package_size(self):
         r = self.client.get(self.url('cogs_price_preview'), {
