@@ -105,7 +105,7 @@
         {% for item in wh_request.items.all %}
         <div class="item-card" id="card-{{ item.id }}">
             <div class="item-name">{{ item.name }}</div>
-            <div class="item-requested">مقدار درخواستی: {{ item.quantity }} {{ item.unit }}</div>
+            <div class="item-requested">مقدار درخواستی: {{ item.quantity|qty_comma }} {{ item.unit }}</div>
             {% if item.description %}
             <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">{{ item.description }}</div>
             {% endif %}
@@ -230,7 +230,7 @@
             rightDiv.style.textAlign = 'left';
             const qtySpan = document.createElement('span');
             qtySpan.className = 'stock-qty';
-            qtySpan.textContent = s.quantity;
+            qtySpan.textContent = window.SyntelComma ? window.SyntelComma.formatDisplayNumber(s.quantity) : s.quantity;
             const unitSpan = document.createElement('span');
             unitSpan.className = 'stock-warehouse';
             unitSpan.textContent = s.unit;
@@ -249,7 +249,7 @@
         document.getElementById('stock-item-id-' + itemId).value = stockId;
         document.getElementById('selected-info-' + itemId).style.display = 'block';
         document.getElementById('selected-name-' + itemId).textContent = name;
-        document.getElementById('selected-qty-' + itemId).textContent = qty;
+        document.getElementById('selected-qty-' + itemId).textContent = window.SyntelComma ? window.SyntelComma.formatDisplayNumber(qty) : qty;
         document.getElementById('selected-unit-' + itemId).textContent = unit;
         document.getElementById('selected-warehouse-' + itemId).textContent = warehouse;
         document.getElementById('qty-wrapper-' + itemId).style.display = 'block';

@@ -5,7 +5,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
-from purchases.views_dashboard import DashboardStatsAPIView
+from purchases.views.price_dashboard import DashboardStatsAPIView
 from rest_framework.test import APIRequestFactory
 from django.db.models import Q
 

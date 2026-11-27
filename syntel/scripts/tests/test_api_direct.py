@@ -5,7 +5,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
 django.setup()
 
-from purchases.views_dashboard import ProductChangeListAPIView, DashboardFiltersAPIView
+from purchases.views.price_dashboard import ProductChangeListAPIView, DashboardFiltersAPIView
 from rest_framework.test import APIRequestFactory
 from purchases.models import User
 

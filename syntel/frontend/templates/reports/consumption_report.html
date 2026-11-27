@@ -4,927 +4,57 @@
 {% block title %}گزارش مصرف کالاها - Kuker{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
-<style>
-    .cr-page {
-        max-width: 1380px;
-        margin: 0 auto;
-        padding-bottom: 2.5rem;
-    }
-
-    /* ── Header ── */
-    .cr-page .page-header {
-        height: auto;
-        min-height: 68px;
-        padding: var(--space-3) var(--space-5);
-        margin-bottom: 1.15rem;
-        flex-wrap: wrap;
-        gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
-    .cr-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.55rem;
-        flex-wrap: wrap;
-    }
-
-    .cr-period-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.4rem 0.85rem;
-        border-radius: 999px;
-        background: var(--primary-soft, #F5F3FF);
-        color: var(--primary-dark, #6D28D9);
-        border: 1px solid rgba(139, 92, 246, 0.22);
-        font-size: 0.78rem;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* ── Filter Panel ── */
-    .cr-filter-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        padding: 1.15rem 1.35rem;
-        margin-bottom: 1.25rem;
-        box-shadow: var(--shadow-xs);
-    }
-
-    .cr-presets-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.65rem;
-        padding-bottom: 0.9rem;
-        margin-bottom: 0.95rem;
-        border-bottom: 1px dashed var(--border-light);
-    }
-
-    .cr-presets-group {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-    }
-
-    .cr-presets-lbl {
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: var(--text-muted);
-        margin-left: 0.25rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    .cr-preset-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.32rem 0.78rem;
-        border-radius: 999px;
-        border: 1px solid var(--border-default);
-        background: var(--bg-subtle);
-        color: var(--text-secondary);
-        font-size: 0.76rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.16s ease;
-    }
-
-    .cr-preset-chip:hover {
-        border-color: var(--accent-indigo, #6366F1);
-        color: var(--accent-indigo, #4F46E5);
-        background: #EEF2FF;
-    }
-
-    .cr-preset-chip.active {
-        background: var(--accent-indigo, #4F46E5);
-        color: #fff;
-        border-color: var(--accent-indigo, #4F46E5);
-        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.22);
-    }
-
-    .cr-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(12, minmax(0, 1fr));
-        gap: 0.85rem;
-        align-items: end;
-    }
-
-    .cr-col-date { grid-column: span 3; }
-    .cr-col-select { grid-column: span 2; }
-    .cr-col-actions { grid-column: span 2; display: flex; gap: 0.45rem; }
-
-    .cr-field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        min-width: 0;
-    }
-
-    .cr-field-label {
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: var(--text-secondary);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    .cr-field-label i {
-        color: var(--text-muted);
-        font-size: 0.72rem;
-    }
-
-    .cr-select,
-    .cr-input {
-        width: 100%;
-        height: 40px;
-        padding: 0 0.75rem;
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-md, 10px);
-        background: var(--bg-input, #F8FAFC);
-        color: var(--text-primary);
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.83rem;
-        font-weight: 600;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-    }
-
-    .cr-select:focus,
-    .cr-input:focus {
-        outline: none;
-        border-color: var(--accent-indigo, #6366F1);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-    }
-
-    .cr-btn-submit {
-        flex: 1;
-        height: 40px;
-        border: none;
-        border-radius: var(--radius-md, 10px);
-        background: linear-gradient(135deg, #6366F1, #4F46E5);
-        color: #fff;
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.83rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.22);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .cr-btn-submit:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-    }
-
-    .cr-btn-reset {
-        height: 40px;
-        padding: 0 0.75rem;
-        border-radius: var(--radius-md, 10px);
-        border: 1px solid var(--border-default);
-        background: var(--bg-subtle);
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.3rem;
-        text-decoration: none;
-        transition: all 0.15s ease;
-    }
-
-    .cr-btn-reset:hover {
-        background: #FEF2F2;
-        color: #DC2626;
-        border-color: #FECACA;
-    }
-
-    /* ── KPI Stats Grid ── */
-    .cr-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.9rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .cr-stat-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-right: 4px solid var(--accent-indigo, #4F46E5);
-        border-radius: var(--radius-xl);
-        padding: 1rem 1.2rem;
-        box-shadow: var(--shadow-xs);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
-
-    .cr-stat-card.cost { border-right-color: #059669; }
-    .cr-stat-card.products { border-right-color: #4F46E5; }
-    .cr-stat-card.deliveries { border-right-color: #2563EB; }
-    .cr-stat-card.sections { border-right-color: #D97706; }
-
-    .cr-stat-label {
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: var(--text-secondary);
-        margin-bottom: 0.25rem;
-    }
-
-    .cr-stat-value {
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        font-variant-numeric: tabular-nums;
-        line-height: 1.15;
-    }
-
-    .cr-stat-sub {
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-top: 0.2rem;
-    }
-
-    .cr-stat-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.15rem;
-        flex-shrink: 0;
-        background: #EEF2FF;
-        color: #4F46E5;
-    }
-
-    .cr-stat-card.cost .cr-stat-icon { background: #ECFDF5; color: #059669; }
-    .cr-stat-card.deliveries .cr-stat-icon { background: #EFF6FF; color: #2563EB; }
-    .cr-stat-card.sections .cr-stat-icon { background: #FFFBEB; color: #D97706; }
-
-    /* ── Section Delivery Breakdown Cards ── */
-    .cr-panel {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-xs);
-        margin-bottom: 1.25rem;
-        overflow: hidden;
-    }
-
-    .cr-panel-header {
-        padding: 0.95rem 1.35rem;
-        border-bottom: 1px solid var(--border-light);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-
-    .cr-panel-title {
-        display: flex;
-        align-items: center;
-        gap: 0.55rem;
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .cr-panel-title i {
-        color: var(--accent-indigo, #4F46E5);
-    }
-
-    .cr-panel-sub {
-        font-size: 0.76rem;
-        color: var(--text-muted);
-        font-weight: 600;
-    }
-
-    .cr-sections-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
-        gap: 0.9rem;
-        padding: 1.15rem 1.35rem;
-    }
-
-    .cr-sec-card {
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg, 14px);
-        padding: 0.95rem 1.05rem;
-        background: var(--bg-subtle, #F8FAFC);
-        transition: all 0.18s ease;
-        cursor: pointer;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
-    }
-
-    .cr-sec-card:hover {
-        border-color: rgba(99, 102, 241, 0.45);
-        background: #fff;
-        box-shadow: var(--shadow-sm);
-        transform: translateY(-1px);
-    }
-
-    .cr-sec-card.active {
-        border-color: var(--accent-indigo, #4F46E5);
-        background: #EEF2FF;
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.16);
-    }
-
-    .cr-sec-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-    }
-
-    .cr-sec-name {
-        font-size: 0.92rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-    }
-
-    .cr-sec-name i {
-        color: var(--accent-indigo, #4F46E5);
-        font-size: 0.85rem;
-    }
-
-    .cr-sec-badges {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    .cr-sec-pill {
-        font-size: 0.71rem;
-        font-weight: 700;
-        padding: 0.15rem 0.55rem;
-        border-radius: 999px;
-        background: #fff;
-        color: var(--text-secondary);
-        border: 1px solid var(--border-light);
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-sec-units {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-    }
-
-    .cr-unit-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 8px;
-        background: #fff;
-        border: 1px solid var(--border-light);
-        font-size: 0.77rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-unit-tag span {
-        color: var(--text-muted);
-        font-weight: 600;
-        font-size: 0.72rem;
-    }
-
-    .cr-sec-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-        padding-top: 0.45rem;
-        border-top: 1px dashed var(--border-default);
-        font-size: 0.77rem;
-    }
-
-    .cr-sec-cost {
-        font-weight: 800;
-        color: #047857;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-sec-bar {
-        height: 5px;
-        background: var(--border-light);
-        border-radius: 999px;
-        overflow: hidden;
-    }
-
-    .cr-sec-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #6366F1, #10B981);
-        border-radius: 999px;
-    }
-
-    /* ── Product Consumption Table ── */
-    .cr-table-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        padding: 0.9rem 1.35rem;
-        background: var(--bg-subtle);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-    .cr-quick-search {
-        position: relative;
-        flex: 1;
-        min-width: 240px;
-        max-width: 380px;
-    }
-
-    .cr-quick-search i {
-        position: absolute;
-        right: 0.8rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted);
-        font-size: 0.82rem;
-        pointer-events: none;
-    }
-
-    .cr-quick-search input {
-        width: 100%;
-        height: 38px;
-        padding: 0 2.2rem 0 0.8rem;
-        border: 1px solid var(--border-default);
-        border-radius: 10px;
-        background: #fff;
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.82rem;
-        color: var(--text-primary);
-    }
-
-    .cr-quick-search input:focus {
-        outline: none;
-        border-color: var(--accent-indigo, #6366F1);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-    }
-
-    .cr-active-filter-pills {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-    }
-
-    .cr-filter-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.25rem 0.65rem;
-        border-radius: 999px;
-        background: #EEF2FF;
-        color: #4338CA;
-        border: 1px solid #C7D2FE;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    .cr-filter-pill button {
-        border: none;
-        background: none;
-        color: inherit;
-        cursor: pointer;
-        padding: 0;
-        font-size: 0.85rem;
-        line-height: 1;
-    }
-
-    .cr-product-row {
-        cursor: pointer;
-        transition: background 0.15s ease;
-    }
-
-    .cr-product-row:hover {
-        background: #F5F3FF !important;
-    }
-
-    .cr-prod-main {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-
-    .cr-prod-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: #EEF2FF;
-        color: #4F46E5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-        flex-shrink: 0;
-    }
-
-    .cr-prod-name {
-        font-weight: 800;
-        color: var(--text-primary);
-        font-size: 0.88rem;
-    }
-
-    .cr-cat-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 8px;
-        background: var(--bg-subtle);
-        color: var(--text-secondary);
-        border: 1px solid var(--border-light);
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .cr-qty-badge {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 0.3rem;
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-qty-unit {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-
-    .cr-sec-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-    }
-
-    .cr-sec-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.18rem 0.55rem;
-        border-radius: 7px;
-        background: #F1F5F9;
-        color: #334155;
-        border: 1px solid #E2E8F0;
-        font-size: 0.74rem;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-sec-chip strong {
-        color: #4F46E5;
-        font-weight: 800;
-    }
-
-    .cr-price-cell {
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-price-val {
-        font-weight: 700;
-        color: var(--text-primary);
-        font-size: 0.84rem;
-    }
-
-    .cr-price-unit {
-        font-size: 0.71rem;
-        color: var(--text-muted);
-    }
-
-    .cr-est-cost {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 0.25rem;
-        font-weight: 800;
-        color: #047857;
-        background: #ECFDF5;
-        border: 1px solid #A7F3D0;
-        padding: 0.22rem 0.65rem;
-        border-radius: 8px;
-        font-size: 0.84rem;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-no-price {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.74rem;
-        color: var(--text-muted);
-        background: var(--bg-subtle);
-        padding: 0.18rem 0.55rem;
-        border-radius: 6px;
-    }
-
-    .cr-history-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.32rem 0.7rem;
-        border-radius: 8px;
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        background: #EEF2FF;
-        color: #4F46E5;
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.76rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-
-    .cr-history-btn:hover {
-        background: #4F46E5;
-        color: #fff;
-        border-color: #4F46E5;
-    }
-
-    /* ── Product Delivery History Modal ── */
-    .cr-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.55);
-        backdrop-filter: blur(3px);
-        z-index: 2000;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .cr-modal-backdrop.open {
-        display: flex;
-    }
-
-    .cr-modal {
-        background: var(--bg-card, #fff);
-        border-radius: var(--radius-xl, 16px);
-        width: 100%;
-        max-width: 920px;
-        max-height: 88vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
-        border: 1px solid var(--border-light);
-        overflow: hidden;
-        animation: crModalIn 0.18s ease-out;
-    }
-
-    @keyframes crModalIn {
-        from { opacity: 0; transform: translateY(10px) scale(0.98); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .cr-modal-header {
-        padding: 1.1rem 1.35rem;
-        border-bottom: 1px solid var(--border-light);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        background: var(--bg-subtle, #F8FAFC);
-    }
-
-    .cr-modal-title-wrap {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .cr-modal-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: #EEF2FF;
-        color: #4F46E5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-
-    .cr-modal-title {
-        font-size: 1.02rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .cr-modal-subtitle {
-        font-size: 0.76rem;
-        color: var(--text-secondary);
-        margin-top: 0.15rem;
-    }
-
-    .cr-modal-close {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1px solid var(--border-default);
-        background: #fff;
-        color: var(--text-secondary);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: all 0.15s ease;
-    }
-
-    .cr-modal-close:hover {
-        background: #FEF2F2;
-        color: #DC2626;
-        border-color: #FECACA;
-    }
-
-    .cr-modal-body {
-        padding: 1.15rem 1.35rem;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .cr-modal-summary {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.75rem;
-    }
-
-    .cr-ms-box {
-        background: var(--bg-subtle, #F8FAFC);
-        border: 1px solid var(--border-light);
-        border-radius: 12px;
-        padding: 0.75rem 0.9rem;
-    }
-
-    .cr-ms-lbl {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: var(--text-muted);
-        margin-bottom: 0.2rem;
-    }
-
-    .cr-ms-val {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        font-variant-numeric: tabular-nums;
-    }
-
-    .cr-modal-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.65rem;
-    }
-
-    .cr-scope-tabs {
-        display: inline-flex;
-        background: var(--bg-subtle);
-        border: 1px solid var(--border-default);
-        border-radius: 10px;
-        padding: 0.2rem;
-        gap: 0.2rem;
-    }
-
-    .cr-scope-btn {
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        font-family: 'Vazir', sans-serif;
-        font-size: 0.76rem;
-        font-weight: 700;
-        padding: 0.35rem 0.75rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-
-    .cr-scope-btn.active {
-        background: #4F46E5;
-        color: #fff;
-        box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 1100px) {
-        .cr-col-date { grid-column: span 6; }
-        .cr-col-select { grid-column: span 4; }
-        .cr-col-actions { grid-column: span 4; }
-        .cr-stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 640px) {
-        .cr-col-date,
-        .cr-col-select,
-        .cr-col-actions { grid-column: span 12; }
-        .cr-stats-grid { grid-template-columns: 1fr; }
-        .cr-modal-summary { grid-template-columns: repeat(2, 1fr); }
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}?v=20261127a">
+<link rel="stylesheet" href="{% static 'css/consumption_report.css' %}?v=20261127a">
 {% endblock %}
 
 {% block content %}
 <div class="cr-page">
 
-    <!-- هدر صفحه -->
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-chart-pie"></i></div>
-            <div class="ph-title">
-                <h1>گزارش مصرف و تحویل کالاها</h1>
-                <div class="page-sub">مشاهده مقدار تحویلی هر سکشن، مصرف کالاها و تخمین هزینه بر اساس آخرین قیمت واردشده</div>
+    <!-- 1. هدر مینیمال بدون شلوغی -->
+    <header class="cr-topbar">
+        <div class="cr-heading">
+            <h1 class="cr-title">گزارش مصرف کالاها</h1>
+            <div class="cr-subtitle">
+                <span>{{ start_jalali }} تا {{ end_jalali }}</span>
+                <span class="cr-subtitle-dot"></span>
+                <span>{{ span_days }} روز</span>
+                {% if selected_section %}
+                    <span class="cr-subtitle-dot"></span>
+                    <span style="color:var(--primary-dark); font-weight:700;">سکشن {{ selected_section }}</span>
+                {% endif %}
             </div>
         </div>
-        <div class="cr-header-actions">
-            <span class="cr-period-badge" title="بازه زمانی فعال گزارش">
-                <i class="fas fa-calendar-check"></i>
-                <span>{{ start_jalali }} تا {{ end_jalali }}</span>
-                <span>({{ span_days }} روز)</span>
-            </span>
-            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-clock-rotate-left"></i> سوابق حرکت انبار
+        <div class="cr-topbar-actions">
+            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="cr-ghost-link">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>سوابق حرکت انبار</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- پنل فیلتر بازه زمانی، سکشن و دسته‌بندی کالا -->
-    <form method="get" id="consumptionFilterForm" class="cr-filter-card">
-        <div class="cr-presets-bar">
-            <div class="cr-presets-group">
-                <span class="cr-presets-lbl"><i class="fas fa-bolt"></i> بازه‌های سریع:</span>
+    <!-- 2. نوار کنترل یکپارچه: بازه سریع + دسته‌بندی + تاریخ دلخواه -->
+    <form method="get" id="consumptionFilterForm" class="cr-controls-card">
+        <!-- ورودی مخفی سکشن برای همگام‌سازی کارت‌های سکشن و فرم -->
+        <select name="section" id="sectionSelect" hidden aria-hidden="true">
+            <option value="">همه سکشن‌ها</option>
+            {% for sec in section_options %}
+            <option value="{{ sec.name }}" {% if selected_section == sec.name %}selected{% endif %}>{{ sec.name }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="cr-controls-row">
+            <div class="cr-segmented" role="navigation" aria-label="بازه‌های زمانی سریع">
                 {% for p in presets %}
                 <a href="?start_date={{ p.start }}&end_date={{ p.end }}{% if selected_section %}&section={{ selected_section|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
-                   class="cr-preset-chip {% if p.active %}active{% endif %}">
+                   class="cr-seg-item {% if p.active %}active{% endif %}">
                     {{ p.label }}
                 </a>
                 {% endfor %}
             </div>
-            {% if has_active_filters %}
-            <a href="?start_date={{ start_date }}&end_date={{ end_date }}" class="cr-btn-reset" style="height:30px; font-size:0.75rem;">
-                <i class="fas fa-filter-circle-xmark"></i> حذف فیلترهای بخش و دسته
-            </a>
-            {% endif %}
-        </div>
 
-        <div class="cr-filter-grid">
-            <div class="cr-field cr-col-date">
-                <label class="cr-field-label"><i class="fas fa-calendar-day"></i> از تاریخ</label>
-                {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='start_date_iso' jd_value=start_jalali %}
-            </div>
-
-            <div class="cr-field cr-col-date">
-                <label class="cr-field-label"><i class="fas fa-calendar-day"></i> تا تاریخ</label>
-                {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='end_date_iso' jd_value=end_jalali %}
-            </div>
-
-            <div class="cr-field cr-col-select">
-                <label class="cr-field-label" for="sectionSelect"><i class="fas fa-sitemap"></i> سکشن / بخش تحویل‌گیرنده</label>
-                <select name="section" id="sectionSelect" class="cr-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for sec in section_options %}
-                    <option value="{{ sec.name }}" {% if selected_section == sec.name %}selected{% endif %}>{{ sec.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="cr-field cr-col-select">
-                <label class="cr-field-label" for="categorySelect"><i class="fas fa-layer-group"></i> دسته‌بندی کالا</label>
-                <select name="category" id="categorySelect" class="cr-select">
+            <div class="cr-controls-right">
+                <select name="category" id="categorySelect" class="cr-inline-select" aria-label="فیلتر دسته‌بندی کالا">
                     <option value="">همه دسته‌بندی‌ها</option>
                     {% for cat in categories %}
                     <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>
@@ -933,244 +63,236 @@
                     {% endfor %}
                     <option value="none" {% if selected_category == 'none' %}selected{% endif %}>بدون دسته‌بندی</option>
                 </select>
-            </div>
 
-            <div class="cr-col-actions">
-                <button type="submit" class="cr-btn-submit">
-                    <i class="fas fa-magnifying-glass"></i> نمایش گزارش
+                <button type="button" id="toggleDateDrawerBtn" class="cr-date-toggle" aria-expanded="false" aria-controls="customDateDrawer">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>{{ start_jalali }} — {{ end_jalali }}</span>
+                    <i class="fas fa-chevron-down cr-date-chevron"></i>
                 </button>
-                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="cr-btn-reset" title="بازنشانی به ۳۰ روز اخیر">
-                    <i class="fas fa-rotate-left"></i>
+
+                {% if has_active_filters %}
+                <a href="?start_date={{ start_date }}&end_date={{ end_date }}" class="cr-clear-link" title="پاک کردن فیلتر سکشن و دسته‌بندی">
+                    <i class="fas fa-times"></i>
+                    <span>حذف فیلتر</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- کشوی بازه تاریخ دلخواه (فقط هنگام نیاز باز می‌شود) -->
+        <div class="cr-date-drawer" id="customDateDrawer">
+            <div class="cr-date-drawer-inner">
+                <div class="cr-field">
+                    <label class="cr-field-label">از تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='start_date_iso' jd_value=start_jalali %}
+                </div>
+                <div class="cr-field">
+                    <label class="cr-field-label">تا تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='end_date_iso' jd_value=end_jalali %}
+                </div>
+                <button type="submit" class="cr-btn-apply">
+                    <i class="fas fa-check"></i> اعمال بازه
+                </button>
+                <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="cr-btn-reset">
+                    <i class="fas fa-rotate-left"></i> ۳۰ روز اخیر
                 </a>
             </div>
         </div>
     </form>
 
-    <!-- شاخص‌های کلیدی عملکرد (KPI) -->
-    <div class="cr-stats-grid">
-        <div class="cr-stat-card cost">
-            <div>
-                <div class="cr-stat-label">تخمین کل هزینه مصرف بازه</div>
-                <div class="cr-stat-value">
-                    {% if total_estimated_cost > 0 %}
-                        {{ total_estimated_cost|number_format }} <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">ریال</span>
-                    {% else %}
-                        ۰ <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">ریال</span>
-                    {% endif %}
+    <!-- 3. نوار خلاصه آمار یکپارچه و مینیمال -->
+    <section class="cr-metrics-strip" aria-label="خلاصه آمار مصرف">
+        <div class="cr-metric-cell">
+            <span class="cr-metric-label">تخمین کل هزینه مصرف</span>
+            <div class="cr-metric-val accent">
+                {% if total_estimated_cost > 0 %}
+                    {{ total_estimated_cost|number_format }}<span class="cr-metric-unit">ریال</span>
+                {% else %}
+                    ۰<span class="cr-metric-unit">ریال</span>
+                {% endif %}
+            </div>
+            <span class="cr-metric-hint">{{ priced_products_count }} از {{ product_count }} کالا دارای قیمت ثبت‌شده</span>
+        </div>
+
+        <div class="cr-metric-cell">
+            <span class="cr-metric-label">تنوع کالا</span>
+            <div class="cr-metric-val">{{ product_count }}<span class="cr-metric-unit">قلم</span></div>
+            <span class="cr-metric-hint">کالای مصرف‌شده در بازه</span>
+        </div>
+
+        <div class="cr-metric-cell">
+            <span class="cr-metric-label">دفعات تحویل</span>
+            <div class="cr-metric-val">{{ txn_count }}<span class="cr-metric-unit">مرتبه</span></div>
+            <span class="cr-metric-hint">خروج ثبت‌شده از انبار</span>
+        </div>
+
+        <div class="cr-metric-cell">
+            <span class="cr-metric-label">سکشن‌های فعال</span>
+            <div class="cr-metric-val">{{ section_count }}<span class="cr-metric-unit">بخش</span></div>
+            <span class="cr-metric-hint">{% if selected_section %}نمایش: {{ selected_section }}{% else %}همه بخش‌ها{% endif %}</span>
+        </div>
+    </section>
+
+    <!-- 4. انتخاب سریع سکشن‌ها (برای فیلتر شفاف و یک‌کلیکی) -->
+    {% if section_rows %}
+    <section class="cr-sections-wrap" aria-label="فیلتر بر اساس سکشن">
+        <div class="cr-section-header">
+            <h2 class="cr-section-title">تفکیک سکشن‌ها</h2>
+            <span class="cr-section-hint">برای فیلتر جدول، روی هر سکشن کلیک کنید</span>
+        </div>
+        <div class="cr-sections-strip">
+            <!-- کارت «همه سکشن‌ها» برای شفافیت کامل نحوه بازگشت به حالت کل -->
+            <div class="cr-sec-card {% if not selected_section %}active{% endif %}"
+                 onclick="clearSectionFilter()"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();clearSectionFilter();}"
+                 role="button"
+                 tabindex="0">
+                <div class="cr-sec-top">
+                    <span class="cr-sec-name">همه سکشن‌ها</span>
+                    <span class="cr-sec-pct">۱۰۰٪</span>
                 </div>
-                <div class="cr-stat-sub">
-                    بر اساس آخرین قیمت ({{ priced_products_count }} از {{ product_count }} کالا قیمت‌دار)
+                <div class="cr-sec-cost">
+                    {% if total_estimated_cost > 0 %}{{ total_estimated_cost|number_format }} ریال{% else %}۰ ریال{% endif %}
                 </div>
-            </div>
-            <div class="cr-stat-icon"><i class="fas fa-coins"></i></div>
-        </div>
-
-        <div class="cr-stat-card products">
-            <div>
-                <div class="cr-stat-label">تنوع کالاهای مصرف‌شده</div>
-                <div class="cr-stat-value">{{ product_count }} <span style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">کالا</span></div>
-                <div class="cr-stat-sub">در بازه زمانی و فیلتر انتخابی</div>
-            </div>
-            <div class="cr-stat-icon"><i class="fas fa-boxes-stacked"></i></div>
-        </div>
-
-        <div class="cr-stat-card deliveries">
-            <div>
-                <div class="cr-stat-label">تعداد دفعات تحویل انبار</div>
-                <div class="cr-stat-value">{{ txn_count }} <span style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">مرتبه</span></div>
-                <div class="cr-stat-sub">خروج ثبت‌شده از انبار به سکشن‌ها</div>
-            </div>
-            <div class="cr-stat-icon"><i class="fas fa-dolly"></i></div>
-        </div>
-
-        <div class="cr-stat-card sections">
-            <div>
-                <div class="cr-stat-label">سکشن‌های تحویل‌گیرنده</div>
-                <div class="cr-stat-value">{{ section_count }} <span style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">سکشن</span></div>
-                <div class="cr-stat-sub">
-                    {% if selected_section %}فیلتر فعال: {{ selected_section }}{% else %}همه بخش‌های فعال در این بازه{% endif %}
+                <div class="cr-sec-meta">
+                    <span>{{ product_count }} کالا</span>
+                    <span>·</span>
+                    <span>{{ txn_count }} تحویل</span>
                 </div>
+                <div class="cr-sec-bar"><div class="cr-sec-bar-fill" style="width:100%;"></div></div>
             </div>
-            <div class="cr-stat-icon"><i class="fas fa-sitemap"></i></div>
-        </div>
-    </div>
 
-    <!-- بخش ۱: مقدار تحویلی و تخمین هزینه هر سکشن -->
-    <div class="cr-panel">
-        <div class="cr-panel-header">
-            <h2 class="cr-panel-title">
-                <i class="fas fa-building-user"></i>
-                مقدار تحویلی هر سکشن در بازه انتخابی
-            </h2>
-            <div class="cr-panel-sub">
-                با کلیک روی هر سکشن، جدول کالاها برای همان سکشن فیلتر می‌شود
-            </div>
-        </div>
-
-        {% if section_rows %}
-        <div class="cr-sections-grid">
             {% for s in section_rows %}
             <div class="cr-sec-card {% if s.is_selected %}active{% endif %}"
                  data-section-card="{{ s.name }}"
                  onclick="toggleSectionFilter('{{ s.name|escapejs }}')"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSectionFilter('{{ s.name|escapejs }}');}"
                  role="button"
                  tabindex="0"
-                 title="کلیک برای فیلتر کالاهای سکشن {{ s.name }}">
+                 title="کلیک برای مشاهده مصرف سکشن {{ s.name }}">
                 <div class="cr-sec-top">
-                    <span class="cr-sec-name">
-                        <i class="fas fa-layer-group"></i>
-                        {{ s.name }}
-                    </span>
-                    <div class="cr-sec-badges">
-                        <span class="cr-sec-pill">{{ s.product_count }} کالا</span>
-                        <span class="cr-sec-pill">{{ s.cnt }} تحویل</span>
-                    </div>
+                    <span class="cr-sec-name">{{ s.name }}</span>
+                    <span class="cr-sec-pct">{{ s.share_pct }}٪</span>
                 </div>
-
-                <div class="cr-sec-units">
-                    {% for u in s.unit_breakdown %}
-                    <span class="cr-unit-tag">
-                        {{ u.qty }} <span>{{ u.unit }}</span>
-                    </span>
-                    {% endfor %}
+                {% if s.has_cost %}
+                <div class="cr-sec-cost">{{ s.estimated_cost|number_format }} ریال</div>
+                {% else %}
+                <div class="cr-sec-cost muted">بدون قیمت ثبت‌شده</div>
+                {% endif %}
+                <div class="cr-sec-meta">
+                    <span>{{ s.product_count }} کالا</span>
+                    <span>·</span>
+                    <span>{{ s.cnt }} تحویل</span>
                 </div>
-
-                <div class="cr-sec-bar" title="سهم سکشن: {{ s.share_pct }}%">
-                    <div class="cr-sec-bar-fill" style="width: {{ s.share_pct }}%;"></div>
-                </div>
-
-                <div class="cr-sec-footer">
-                    <span style="color:var(--text-secondary); font-weight:600;">تخمین هزینه سکشن:</span>
-                    {% if s.has_cost %}
-                    <span class="cr-sec-cost">{{ s.estimated_cost|number_format }} ریال</span>
-                    {% else %}
-                    <span style="color:var(--text-muted); font-size:0.74rem;">قیمت کالاها ثبت نشده</span>
-                    {% endif %}
-                </div>
+                <div class="cr-sec-bar"><div class="cr-sec-bar-fill" style="width: {{ s.share_pct }}%;"></div></div>
             </div>
             {% endfor %}
         </div>
-        {% else %}
-        <div class="empty-state" style="padding: 2.2rem 1rem;">
-            <i class="fas fa-inbox"></i>
-            <p>در این بازه زمانی هیچ تحویلی به سکشن‌ها ثبت نشده است.</p>
-        </div>
-        {% endif %}
-    </div>
+    </section>
+    {% endif %}
 
-    <!-- بخش ۲: جدول کالاهای مصرف‌شده، تفکیک سکشن‌ها، تخمین قیمت و سوابق تحویل -->
-    <div class="cr-panel">
-        <div class="cr-panel-header">
-            <h2 class="cr-panel-title">
-                <i class="fas fa-boxes-packing"></i>
-                جزئیات مصرف کالاها و تخمین قیمت
-            </h2>
-            <div class="cr-panel-sub">
-                روی هر کالا کلیک کنید تا سوابق تحویلی آن در تاریخ‌های مختلف نمایش داده شود
-            </div>
-        </div>
-
+    <!-- 5. جدول ساده و خوانای کالاهای مصرف‌شده -->
+    <section class="cr-table-card">
         <div class="cr-table-toolbar">
-            <div class="cr-quick-search">
-                <i class="fas fa-search"></i>
-                <input type="text"
-                       id="productQuickSearch"
-                       value="{{ search_query }}"
-                       placeholder="جستجوی سریع نام کالا، دسته‌بندی یا سکشن..."
-                       aria-label="جستجوی سریع کالا">
+            <div class="cr-toolbar-left">
+                <div class="cr-quick-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text"
+                           id="productQuickSearch"
+                           value="{{ search_query }}"
+                           placeholder="جستجوی نام کالا، دسته‌بندی یا سکشن..."
+                           aria-label="جستجوی سریع کالا">
+                </div>
             </div>
 
-            <div class="cr-active-filter-pills">
+            <div class="cr-toolbar-right">
                 {% if selected_section %}
                 <span class="cr-filter-pill">
-                    <i class="fas fa-sitemap"></i> سکشن: {{ selected_section }}
-                    <button type="button" onclick="clearSectionFilter()" title="حذف فیلتر سکشن">&times;</button>
+                    <span>{{ selected_section }}</span>
+                    <button type="button" onclick="clearSectionFilter()" title="حذف فیلتر سکشن" aria-label="حذف فیلتر سکشن">&times;</button>
                 </span>
                 {% endif %}
-                <span style="font-size:0.78rem; font-weight:700; color:var(--text-secondary);">
-                    نمایش <strong id="visibleProductCount">{{ product_rows|length }}</strong> کالا
+
+                {% if product_rows %}
+                <select id="productSortSelect" class="cr-sort-select" aria-label="مرتب‌سازی کالاها">
+                    <option value="default">مرتب‌سازی پیش‌فرض</option>
+                    <option value="cost_desc">بیشترین هزینه</option>
+                    <option value="deliveries_desc">بیشترین دفعات تحویل</option>
+                    <option value="name_asc">نام کالا (الفبا)</option>
+                </select>
+                {% endif %}
+
+                <span class="cr-count-label">
+                    <strong id="visibleProductCount">{{ product_rows|length }}</strong> کالا
                 </span>
             </div>
         </div>
 
         {% if product_rows %}
-        <div style="overflow-x: auto;">
-            <table class="data-table" id="consumptionProductsTable">
+        <div style="overflow-x:auto;">
+            <table class="cr-table" id="consumptionProductsTable">
                 <thead>
                     <tr>
-                        <th style="width:44px;">#</th>
-                        <th>نام کالا</th>
-                        <th>دسته‌بندی</th>
-                        <th>مقدار کل مصرف</th>
-                        <th>مقدار تحویلی به تفکیک سکشن</th>
-                        <th>تعداد تحویل</th>
-                        <th>آخرین قیمت واحد</th>
-                        <th>تخمین هزینه مصرف</th>
-                        <th style="text-align:left;">سوابق تحویل</th>
+                        <th>کالا</th>
+                        <th>مقدار مصرف</th>
+                        <th>تفکیک سکشن‌ها</th>
+                        <th>قیمت واحد</th>
+                        <th>تخمین هزینه</th>
+                        <th style="text-align:left;">تاریخچه</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for r in product_rows %}
                     <tr class="cr-product-row"
                         data-product-id="{{ r.product_id }}"
+                        data-index="{{ forloop.counter0 }}"
+                        data-cost="{{ r.estimated_cost|default:0 }}"
+                        data-deliveries="{{ r.cnt|default:0 }}"
+                        data-name="{{ r.product_name }}"
                         data-search-text="{{ r.product_name }} {{ r.category_name }} {% for sb in r.section_breakdown %}{{ sb.section }} {% endfor %}"
                         onclick="openProductHistoryModal({{ r.product_id }})">
-                        <td style="color:var(--text-muted); font-weight:700;">{{ forloop.counter }}</td>
                         <td>
-                            <div class="cr-prod-main">
-                                <div class="cr-prod-icon"><i class="fas fa-box"></i></div>
-                                <div>
-                                    <div class="cr-prod-name">{{ r.product_name }}</div>
-                                </div>
-                            </div>
+                            <div class="cr-prod-name">{{ r.product_name }}</div>
+                            <div class="cr-prod-cat">{{ r.category_name }}</div>
                         </td>
                         <td>
-                            <span class="cr-cat-badge">{{ r.category_name }}</span>
-                        </td>
-                        <td>
-                            <div class="cr-qty-badge">
-                                <span>{{ r.qty_fmt }}</span>
+                            <div>
+                                <span class="cr-qty-main">{{ r.qty_fmt }}</span>
                                 <span class="cr-qty-unit">{{ r.unit_name }}</span>
                             </div>
+                            <div class="cr-qty-sub">{{ r.cnt }} مرتبه تحویل</div>
                         </td>
                         <td>
                             <div class="cr-sec-chips">
                                 {% for sb in r.section_breakdown %}
-                                <span class="cr-sec-chip" title="{{ sb.cnt }} مرتبه تحویل به {{ sb.section }} ({{ sb.share_pct }}%)">
-                                    <span>{{ sb.section }}:</span>
+                                <span class="cr-sec-chip" title="{{ sb.cnt }} مرتبه تحویل به {{ sb.section }} ({{ sb.share_pct }}٪)">
+                                    <span>{{ sb.section }}</span>
                                     <strong>{{ sb.qty_fmt }}</strong>
-                                    <span style="font-size:0.68rem; color:var(--text-muted);">{{ r.unit_name }}</span>
                                 </span>
                                 {% endfor %}
                             </div>
                         </td>
-                        <td style="font-weight:700; font-variant-numeric:tabular-nums;">
-                            {{ r.cnt }} <span style="font-size:0.74rem; color:var(--text-muted); font-weight:500;">مرتبه</span>
-                        </td>
-                        <td class="cr-price-cell">
+                        <td>
                             {% if r.has_price and r.unit_price is not None %}
-                                <div class="cr-price-val">{{ r.unit_price|number_format }} <span style="font-size:0.72rem; font-weight:500;">ریال</span></div>
-                                <div class="cr-price-unit">هر ۱ {{ r.price_unit }}</div>
+                                <div class="cr-price-val">{{ r.unit_price|number_format }} ریال</div>
+                                <div class="cr-price-unit">هر {{ r.price_unit }}</div>
                             {% else %}
-                                <span class="cr-no-price"><i class="fas fa-circle-minus"></i> ثبت نشده</span>
+                                <span class="cr-no-price">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if r.has_price and r.estimated_cost is not None %}
-                                <span class="cr-est-cost">
-                                    {{ r.estimated_cost|number_format }}
-                                    <span style="font-size:0.71rem; font-weight:600;">ریال</span>
-                                </span>
+                                <span class="cr-est-cost">{{ r.estimated_cost|number_format }}<span class="cr-est-cost-unit">ریال</span></span>
                             {% else %}
-                                <span class="cr-no-price">نیازمند ثبت قیمت</span>
+                                <span class="cr-no-price">ثبت نشده</span>
                             {% endif %}
                         </td>
                         <td style="text-align:left;" onclick="event.stopPropagation();">
                             <button type="button"
-                                    class="cr-history-btn"
+                                    class="cr-row-action"
                                     onclick="openProductHistoryModal({{ r.product_id }})">
-                                <i class="fas fa-clock-rotate-left"></i>
-                                سوابق ({{ r.cnt }})
+                                <span>جزئیات</span>
+                                <i class="fas fa-chevron-left" style="font-size:0.65rem;"></i>
                             </button>
                         </td>
                     </tr>
@@ -1179,26 +301,23 @@
             </table>
         </div>
         {% else %}
-        <div class="empty-state" style="padding: 3rem 1.5rem;">
-            <i class="fas fa-box-open"></i>
-            <p style="font-weight:700; color:var(--text-primary); margin-bottom:0.3rem;">هیچ مصرفی با این مشخصات یافت نشد</p>
-            <p style="font-size:0.82rem; color:var(--text-muted);">بازه زمانی، سکشن یا دسته‌بندی کالا را تغییر دهید و دوباره بررسی کنید.</p>
+        <div class="cr-empty">
+            <i class="fas fa-inbox"></i>
+            <div class="cr-empty-title">در این بازه مصرفی ثبت نشده است</div>
+            <div class="cr-empty-sub">بازه زمانی، دسته‌بندی یا سکشن انتخابی را تغییر دهید.</div>
         </div>
         {% endif %}
-    </div>
+    </section>
 
 </div>
 
-<!-- مودال سوابق تحویلی کالا در تاریخ‌های مختلف -->
+<!-- مودال سوابق تحویلی کالا -->
 <div class="cr-modal-backdrop" id="productHistoryModal" role="dialog" aria-modal="true" aria-labelledby="phModalTitle">
     <div class="cr-modal" onclick="event.stopPropagation();">
         <div class="cr-modal-header">
-            <div class="cr-modal-title-wrap">
-                <div class="cr-modal-icon"><i class="fas fa-clock-rotate-left"></i></div>
-                <div>
-                    <h3 class="cr-modal-title" id="phModalTitle">سوابق تحویلی کالا</h3>
-                    <div class="cr-modal-subtitle" id="phModalSubtitle">—</div>
-                </div>
+            <div>
+                <h3 class="cr-modal-title" id="phModalTitle">سوابق تحویلی کالا</h3>
+                <div class="cr-modal-subtitle" id="phModalSubtitle">—</div>
             </div>
             <button type="button" class="cr-modal-close" onclick="closeProductHistoryModal()" aria-label="بستن">
                 <i class="fas fa-times"></i>
@@ -1206,7 +325,6 @@
         </div>
 
         <div class="cr-modal-body">
-            <!-- خلاصه وضعیت مصرف کالا در مودال -->
             <div class="cr-modal-summary">
                 <div class="cr-ms-box">
                     <div class="cr-ms-lbl">مجموع تحویل‌شده</div>
@@ -1226,32 +344,29 @@
                 </div>
             </div>
 
-            <!-- تفکیک سکشن‌های تحویل‌گیرنده این کالا -->
-            <div id="phSectionsWrap" style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;"></div>
+            <div id="phSectionsWrap" style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;"></div>
 
-            <!-- تغییر دامنه نمایش: بازه انتخابی / کل تاریخچه کالا -->
             <div class="cr-modal-controls">
                 <div class="cr-scope-tabs">
                     <button type="button" class="cr-scope-btn active" id="phScopeRangeBtn" onclick="switchProductHistoryScope('range')">
                         در بازه انتخابی ({{ start_jalali }} تا {{ end_jalali }})
                     </button>
                     <button type="button" class="cr-scope-btn" id="phScopeAllBtn" onclick="switchProductHistoryScope('all')">
-                        کل سوابق تحویل در تمام تاریخ‌ها
+                        کل سوابق تحویل
                     </button>
                 </div>
-                <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;" id="phStatusNote"></div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;" id="phStatusNote"></div>
             </div>
 
-            <!-- جدول ریز سوابق تحویل در تاریخ‌های مختلف -->
-            <div style="overflow-x:auto; border:1px solid var(--border-light); border-radius:12px;">
-                <table class="data-table" style="margin:0;">
+            <div class="cr-modal-table-wrap">
+                <table class="cr-table" style="margin:0;">
                     <thead>
                         <tr>
                             <th>تاریخ و ساعت</th>
-                            <th>سکشن تحویل‌گیرنده</th>
-                            <th>مقدار تحویلی</th>
+                            <th>سکشن</th>
+                            <th>مقدار</th>
                             <th>انبار</th>
-                            <th>درخواست‌دهنده / مرجع</th>
+                            <th>مرجع / درخواست‌دهنده</th>
                             <th>تخمین هزینه</th>
                         </tr>
                     </thead>
@@ -1271,223 +386,11 @@
 
 {% block extra_js %}
 <script src="{% static 'js/jalali_date_group.js' %}"></script>
-<script>
-(function () {
-    // ۱) راه‌اندازی انتخابگر تاریخ شمسی
-    var form = document.getElementById('consumptionFilterForm');
-    if (window.initJalaliDateGroups) {
-        window.initJalaliDateGroups(form || document);
-    }
-
-    // ۲) فیلتر سریع جدول کالاها در سمت کاربر
-    var quickInput = document.getElementById('productQuickSearch');
-    var table = document.getElementById('consumptionProductsTable');
-    var visibleCountEl = document.getElementById('visibleProductCount');
-    if (quickInput && table) {
-        quickInput.addEventListener('input', function () {
-            var q = (quickInput.value || '').trim().toLowerCase();
-            var rows = table.querySelectorAll('tbody tr.cr-product-row');
-            var shown = 0;
-            rows.forEach(function (tr) {
-                var hay = (tr.getAttribute('data-search-text') || '').toLowerCase();
-                var match = !q || hay.indexOf(q) !== -1;
-                tr.style.display = match ? '' : 'none';
-                if (match) shown++;
-            });
-            if (visibleCountEl) visibleCountEl.textContent = shown;
-        });
-    }
-
-    // ۳) انتخاب/لغو فیلتر سکشن با کلیک روی کارت سکشن
-    window.toggleSectionFilter = function (sectionName) {
-        var select = document.getElementById('sectionSelect');
-        if (!select || !form) return;
-        if (select.value === sectionName) {
-            select.value = '';
-        } else {
-            // اگر گزینه در select نبود اضافه کن
-            var exists = Array.from(select.options).some(function (o) { return o.value === sectionName; });
-            if (!exists) {
-                var opt = document.createElement('option');
-                opt.value = sectionName;
-                opt.textContent = sectionName;
-                select.appendChild(opt);
-            }
-            select.value = sectionName;
-        }
-        if (sPicker && sPicker.toISO()) document.getElementById('start_date_iso').value = sPicker.toISO();
-        if (ePicker && ePicker.toISO()) document.getElementById('end_date_iso').value = ePicker.toISO();
-        form.submit();
-    };
-
-    window.clearSectionFilter = function () {
-        var select = document.getElementById('sectionSelect');
-        if (!select || !form) return;
-        select.value = '';
-        form.submit();
-    };
-
-    // ۴) مودال سوابق تحویلی کالا در تاریخ‌های مختلف
-    var historiesEl = document.getElementById('consumption-product-histories-data');
-    var preloadedHistories = {};
-    if (historiesEl) {
-        try {
-            preloadedHistories = JSON.parse(historiesEl.textContent || '{}');
-        } catch (e) {
-            preloadedHistories = {};
-        }
-    }
-
-    var currentProductId = null;
-    var currentScope = 'range';
-    var historyApiTemplate = "{% url 'consumption_product_history_api' cafe_code=cafe_code product_id=999999 %}";
-    var startIso = "{{ start_date|escapejs }}";
-    var endIso = "{{ end_date|escapejs }}";
-    var activeSection = "{{ selected_section|escapejs }}";
-
-    function fmtNumber(val) {
-        if (val === null || val === undefined || val === '') return '—';
-        var num = Number(String(val).replace(/,/g, ''));
-        if (isNaN(num)) return String(val);
-        return num.toLocaleString('en-US');
-    }
-
-    function escapeHtml(str) {
-        var div = document.createElement('div');
-        div.textContent = str === null || str === undefined ? '' : String(str);
-        return div.innerHTML;
-    }
-
-    function renderModalPayload(data) {
-        document.getElementById('phModalTitle').textContent = 'سوابق تحویلی: ' + (data.product_name || '');
-        document.getElementById('phModalSubtitle').textContent = 'دسته‌بندی: ' + (data.category_name || '—') + (data.price_source ? ' | منبع قیمت: ' + data.price_source : '');
-        document.getElementById('phTotalQty').textContent = (data.total_qty || '0') + ' ' + (data.unit_name || '');
-        document.getElementById('phDeliveryCount').textContent = (data.delivery_count || 0) + ' مرتبه';
-
-        if (data.has_price && data.unit_price !== null) {
-            document.getElementById('phUnitPrice').textContent = fmtNumber(data.unit_price) + ' ریال / ' + (data.price_unit || data.unit_name || '');
-        } else {
-            document.getElementById('phUnitPrice').textContent = 'ثبت نشده';
-        }
-
-        if (data.has_price && data.estimated_cost !== null) {
-            document.getElementById('phTotalCost').textContent = fmtNumber(data.estimated_cost) + ' ریال';
-        } else {
-            document.getElementById('phTotalCost').textContent = '—';
-        }
-
-        var secWrap = document.getElementById('phSectionsWrap');
-        secWrap.innerHTML = '';
-        if (data.sections && data.sections.length) {
-            var lbl = document.createElement('span');
-            lbl.style.cssText = 'font-size:0.75rem; font-weight:700; color:var(--text-secondary);';
-            lbl.textContent = 'تحویل به سکشن‌ها:';
-            secWrap.appendChild(lbl);
-
-            data.sections.forEach(function (s) {
-                var chip = document.createElement('span');
-                chip.className = 'cr-sec-chip';
-                var qtyText = s.qty_fmt !== undefined ? s.qty_fmt : s.qty;
-                chip.innerHTML = '<span>' + escapeHtml(s.section) + ':</span> <strong>' + escapeHtml(qtyText) + '</strong> <span>' + escapeHtml(data.unit_name || '') + ' (' + escapeHtml(s.cnt) + ' مرتبه)</span>';
-                secWrap.appendChild(chip);
-            });
-        }
-
-        var tbody = document.getElementById('phRecordsTbody');
-        var records = data.records || [];
-        if (!records.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.75rem; color:var(--text-muted);">هیچ سابقه تحویلی یافت نشد.</td></tr>';
-            return;
-        }
-
-        var html = '';
-        records.forEach(function (rec) {
-            var costHtml = (rec.estimated_cost !== null && rec.estimated_cost !== undefined)
-                ? '<span class="cr-est-cost" style="font-size:0.78rem; padding:0.15rem 0.5rem;">' + fmtNumber(rec.estimated_cost) + ' ریال</span>'
-                : '<span class="cr-no-price">—</span>';
-            var warehouseName = escapeHtml(rec.warehouse_name || '—');
-            var reqInfo = escapeHtml(rec.requester_name || '—') + (rec.ref_label ? ' <span style="color:var(--text-muted); font-size:0.72rem;">[' + escapeHtml(rec.ref_label) + ']</span>' : '');
-            html += '<tr>' +
-                '<td style="font-variant-numeric:tabular-nums; font-weight:700;">' + escapeHtml(rec.jalali_date) + ' <span style="color:var(--text-muted); font-size:0.74rem; margin-right:0.25rem;">' + escapeHtml(rec.time_str) + '</span></td>' +
-                '<td><span class="cr-sec-chip"><strong>' + escapeHtml(rec.section_name) + '</strong></span></td>' +
-                '<td style="font-weight:800; font-variant-numeric:tabular-nums;">' + escapeHtml(rec.quantity) + ' <span style="font-size:0.74rem; font-weight:600; color:var(--text-secondary);">' + escapeHtml(rec.unit_name) + '</span></td>' +
-                '<td>' + warehouseName + '</td>' +
-                '<td>' + reqInfo + '</td>' +
-                '<td>' + costHtml + '</td>' +
-                '</tr>';
-        });
-        tbody.innerHTML = html;
-    }
-
-    function fetchProductHistoryFromApi(productId, scope) {
-        var url = historyApiTemplate.replace('999999', String(productId)) + '?scope=' + encodeURIComponent(scope);
-        if (scope === 'range') {
-            url += '&start_date=' + encodeURIComponent(startIso) + '&end_date=' + encodeURIComponent(endIso);
-            if (activeSection) {
-                url += '&section=' + encodeURIComponent(activeSection);
-            }
-        }
-        var noteEl = document.getElementById('phStatusNote');
-        if (noteEl) noteEl.textContent = 'در حال دریافت سوابق...';
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (noteEl) noteEl.textContent = scope === 'all' ? 'نمایش کل تاریخچه تحویل کالا' : 'نمایش تحویل‌ها در بازه انتخابی';
-                if (data && data.success) {
-                    renderModalPayload(data);
-                }
-            })
-            .catch(function () {
-                if (noteEl) noteEl.textContent = '';
-            });
-    }
-
-    window.openProductHistoryModal = function (productId) {
-        currentProductId = productId;
-        currentScope = 'range';
-        document.getElementById('phScopeRangeBtn').classList.add('active');
-        document.getElementById('phScopeAllBtn').classList.remove('active');
-        document.getElementById('phStatusNote').textContent = 'نمایش تحویل‌ها در بازه انتخابی';
-
-        var modal = document.getElementById('productHistoryModal');
-        modal.classList.add('open');
-
-        var preloaded = preloadedHistories[String(productId)];
-        if (preloaded) {
-            renderModalPayload(preloaded);
-        } else {
-            fetchProductHistoryFromApi(productId, 'range');
-        }
-    };
-
-    window.switchProductHistoryScope = function (scope) {
-        if (!currentProductId) return;
-        currentScope = scope;
-        document.getElementById('phScopeRangeBtn').classList.toggle('active', scope === 'range');
-        document.getElementById('phScopeAllBtn').classList.toggle('active', scope === 'all');
-
-        if (scope === 'range' && preloadedHistories[String(currentProductId)]) {
-            document.getElementById('phStatusNote').textContent = 'نمایش تحویل‌ها در بازه انتخابی';
-            renderModalPayload(preloadedHistories[String(currentProductId)]);
-        } else {
-            fetchProductHistoryFromApi(currentProductId, scope);
-        }
-    };
-
-    window.closeProductHistoryModal = function () {
-        var modal = document.getElementById('productHistoryModal');
-        if (modal) modal.classList.remove('open');
-    };
-
-    var backdrop = document.getElementById('productHistoryModal');
-    if (backdrop) {
-        backdrop.addEventListener('click', function (e) {
-            if (e.target === backdrop) closeProductHistoryModal();
-        });
-    }
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeProductHistoryModal();
-    });
-})();
-</script>
+<div id="consumptionReportConfig"
+     data-history-api-template="{% url 'consumption_product_history_api' cafe_code=cafe_code product_id=999999 %}"
+     data-start-iso="{{ start_date }}"
+     data-end-iso="{{ end_date }}"
+     data-active-section="{{ selected_section }}"
+     hidden></div>
+<script src="{% static 'js/consumption_report.js' %}?v=20261127a"></script>
 {% endblock %}

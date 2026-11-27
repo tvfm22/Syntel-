@@ -57,9 +57,78 @@ def health_check_detailed(request):
 @login_required(login_url='/login/')
 @require_http_methods(["GET", "HEAD"])
 def protected_media_serve(request, path):
-    """Serve uploaded media files only to authenticated active users with safe path containment."""
+    """Serve uploaded media files only to authenticated active users with tenant isolation."""
     if not request.user.is_active:
         return HttpResponse(status=403)
+
+    norm_path = path.lstrip('/').replace('\\', '/')
+    if (
+        norm_path.startswith('invoices/')
+        or norm_path.startswith('debts/payments/')
+        or norm_path.startswith('assets/')
+    ):
+        from django.db.models import Q
+        from purchases.models import (
+            AssetAuditItem,
+            AssetCatalog,
+            AssetMovement,
+            AssetUnit,
+            Debt,
+            DebtPayment,
+            PurchaseInvoice,
+            User,
+        )
+
+        is_global = request.user.is_superuser or (
+            request.user.cafe_id is None
+            and getattr(request.user, 'role', None) in User.CAFE_SELECTION_ROLES
+        )
+        if not is_global:
+            user_cafe_id = getattr(request.user, 'cafe_id', None)
+            if user_cafe_id is None:
+                return HttpResponse(status=403)
+            if norm_path.startswith('invoices/'):
+                inv = (
+                    PurchaseInvoice.objects.filter(invoice_file=norm_path)
+                    .select_related('request')
+                    .first()
+                )
+                if inv is None:
+                    raise Http404("Media file not found")
+                if inv.request.cafe_id != user_cafe_id:
+                    return HttpResponse(status=403)
+            elif norm_path.startswith('assets/'):
+                cafe_ids = (
+                    list(
+                        AssetCatalog.objects.filter(
+                            Q(image=norm_path) | Q(thumbnail=norm_path)
+                        ).values_list('cafe_id', flat=True)
+                    )
+                    + list(
+                        AssetUnit.objects.filter(photo=norm_path).values_list('cafe_id', flat=True)
+                    )
+                    + list(
+                        AssetMovement.objects.filter(evidence_photo=norm_path).values_list('cafe_id', flat=True)
+                    )
+                    + list(
+                        AssetAuditItem.objects.filter(evidence_photo=norm_path).values_list('audit__cafe_id', flat=True)
+                    )
+                )
+                if not cafe_ids:
+                    raise Http404("Media file not found")
+                if user_cafe_id not in cafe_ids:
+                    return HttpResponse(status=403)
+            else:
+                cafe_ids = list(
+                    Debt.objects.filter(payment_photo=norm_path).values_list('cafe_id', flat=True)
+                ) + list(
+                    DebtPayment.objects.filter(payment_photo=norm_path).values_list('cafe_id', flat=True)
+                )
+                if not cafe_ids:
+                    raise Http404("Media file not found")
+                if user_cafe_id not in cafe_ids:
+                    return HttpResponse(status=403)
+
     try:
         full_path = Path(safe_join(str(settings.MEDIA_ROOT), path))
     except SuspiciousFileOperation:

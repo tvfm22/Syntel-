@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
 django.setup()
 
-from purchases.views_analytics import (
+from purchases.views.analytics_helpers import (
     get_date_range, 
     _invoice_items_for_period, 
     calculate_growth_rate,

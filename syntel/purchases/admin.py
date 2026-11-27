@@ -2,12 +2,19 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     ActivityLog,
+    AssetAudit,
+    AssetAuditItem,
+    AssetCatalog,
+    AssetCategory,
+    AssetMovement,
+    AssetUnit,
     Cafe,
     Category,
     CogsReport,
     Debt,
     DebtPayment,
     Department,
+    DepartmentAssetStock,
     Invoice,
     InvoiceItem,
     KukerItem,
@@ -264,8 +271,8 @@ class ActivityLogAdmin(admin.ModelAdmin):
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'cafe', 'is_active', 'is_supply_enabled')
-    list_filter = ('cafe', 'is_active', 'is_supply_enabled')
+    list_display = ('name', 'code', 'cafe', 'is_active', 'is_supply_enabled', 'allow_negative_stock')
+    list_filter = ('cafe', 'is_active', 'is_supply_enabled', 'allow_negative_stock')
     list_select_related = ('cafe',)
     search_fields = ('name', 'code')
     ordering = ('cafe', 'name')
@@ -368,3 +375,70 @@ class CogsReportAdmin(admin.ModelAdmin):
     list_select_related = ('cafe', 'created_by')
     raw_id_fields = ('created_by',)
     date_hierarchy = 'created_at'
+
+
+@admin.register(AssetCategory)
+class AssetCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'cafe', 'parent', 'is_active', 'created_at')
+    list_filter = ('cafe', 'is_active')
+    list_select_related = ('cafe', 'parent')
+    raw_id_fields = ('parent',)
+    search_fields = ('name', 'description')
+    ordering = ('cafe', 'name')
+
+
+@admin.register(AssetCatalog)
+class AssetCatalogAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'cafe', 'category', 'tracking_mode', 'estimated_unit_value', 'is_active')
+    list_filter = ('cafe', 'tracking_mode', 'is_active', 'category')
+    list_select_related = ('cafe', 'category')
+    raw_id_fields = ('category',)
+    search_fields = ('name', 'code', 'brand_model')
+    ordering = ('cafe', 'name')
+
+
+@admin.register(DepartmentAssetStock)
+class DepartmentAssetStockAdmin(admin.ModelAdmin):
+    list_display = ('department', 'asset', 'cafe', 'quantity_healthy', 'quantity_damaged', 'min_expected_quantity', 'updated_at')
+    list_filter = ('cafe', 'department')
+    list_select_related = ('cafe', 'department', 'asset')
+    raw_id_fields = ('department', 'asset')
+    search_fields = ('department__name', 'asset__name', 'asset__code', 'location_note')
+
+
+@admin.register(AssetUnit)
+class AssetUnitAdmin(admin.ModelAdmin):
+    list_display = ('asset_tag', 'asset', 'cafe', 'department', 'status', 'custodian', 'purchase_date')
+    list_filter = ('cafe', 'status', 'department')
+    list_select_related = ('cafe', 'asset', 'department', 'custodian', 'invoice')
+    raw_id_fields = ('asset', 'department', 'invoice', 'custodian')
+    search_fields = ('asset_tag', 'serial_number', 'asset__name')
+
+
+@admin.register(AssetMovement)
+class AssetMovementAdmin(admin.ModelAdmin):
+    list_display = ('id', 'movement_type', 'status', 'asset', 'asset_unit', 'from_department', 'to_department', 'quantity', 'created_at')
+    list_filter = ('cafe', 'movement_type', 'status', 'condition_bucket', 'created_at')
+    list_select_related = ('cafe', 'asset', 'asset_unit', 'from_department', 'to_department', 'created_by', 'approved_by')
+    raw_id_fields = ('asset', 'asset_unit', 'from_department', 'to_department', 'invoice', 'audit', 'created_by', 'approved_by', 'received_by')
+    search_fields = ('asset__name', 'asset_unit__asset_tag', 'reason')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(AssetAudit)
+class AssetAuditAdmin(admin.ModelAdmin):
+    list_display = ('title', 'department', 'cafe', 'audit_type', 'status', 'blind_count', 'created_at')
+    list_filter = ('cafe', 'audit_type', 'status', 'blind_count', 'created_at')
+    list_select_related = ('cafe', 'department', 'created_by', 'counted_by', 'reviewed_by')
+    raw_id_fields = ('department', 'created_by', 'counted_by', 'reviewed_by')
+    search_fields = ('title', 'department__name', 'notes')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(AssetAuditItem)
+class AssetAuditItemAdmin(admin.ModelAdmin):
+    list_display = ('audit', 'asset', 'asset_unit', 'expected_healthy', 'counted_healthy', 'is_counted', 'needs_recount', 'is_unexpected_item')
+    list_filter = ('is_counted', 'needs_recount', 'is_unexpected_item')
+    list_select_related = ('audit', 'asset', 'asset_unit')
+    raw_id_fields = ('audit', 'asset', 'asset_unit')
+    search_fields = ('audit__title', 'asset__name', 'asset_unit__asset_tag')

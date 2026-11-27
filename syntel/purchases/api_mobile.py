@@ -17,7 +17,7 @@ from decimal import Decimal
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -62,17 +62,20 @@ from .services.inventory import (
     finalize_voucher,
     next_voucher_number,
     reopen_officer_assignments,
+    save_voucher_with_number,
 )
 from .services.purchase_approval import evaluate_draft_items_ceo_status
 from .services.receipt_gate import pending_receipt_count, receipt_gate_message
 from .services.recipe_gate import (
+    RD_CATEGORY_NAME,
     annotate_recipe_usage,
     bypasses_recipe_gate,
     inactive_product_error,
     recipe_gate_error,
     recipe_required_category_ids,
 )
-from .views_helpers import _fmt2, _parse_decimal, resolve_api_cafe
+from .views.catalog import _filter_products_for_user
+from .views.helpers import _fmt2, _parse_decimal, resolve_api_cafe
 
 REQUESTER_ROLES = {"kitchen", "bar", "counter", "cashier", "facilities", "requester"}
 MOBILE_REQUESTER_ROLES = REQUESTER_ROLES | {"store", "purchasing", "manager", "ceo", "admin"}
@@ -287,10 +290,12 @@ def mobile_requester_products(request, cafe_code: str):
 
     qs = (
         Product.objects.filter(cafe=cafe, is_active=True, is_complete=True)
+        .exclude(category__name=RD_CATEGORY_NAME)
         .select_related("unit", "category")
         .prefetch_related("departments")
         .order_by("name")
     )
+    qs = _filter_products_for_user(qs, request.user, cafe)
     q = (request.query_params.get("q") or "").strip()
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(category__name__icontains=q))
@@ -302,8 +307,19 @@ def mobile_requester_products(request, cafe_code: str):
     else:
         food_cat_ids = set()
 
+    product_list = list(qs[:500])
+    product_ids = [p.id for p in product_list]
+    stock_totals = {}
+    if product_ids:
+        stock_totals = dict(
+            StockItem.objects.filter(warehouse__cafe=cafe, product_id__in=product_ids)
+            .values("product_id")
+            .annotate(total=Sum("quantity"))
+            .values_list("product_id", "total")
+        )
+
     products = []
-    for p in qs[:500]:
+    for p in product_list:
         blocked_reason = ""
         if not bypass and p.category_id and p.category_id in food_cat_ids and not p.used_in_cogs_recipe:
             blocked_reason = (
@@ -316,7 +332,7 @@ def mobile_requester_products(request, cafe_code: str):
             "name": p.name,
             "unit_name": p.unit.name if p.unit else "عدد",
             "category_name": p.category.name if p.category else "عمومی",
-            "current_stock": p.current_stock,
+            "current_stock": stock_totals.get(p.id) or Decimal("0"),
             "is_blocked": bool(blocked_reason),
             "blocked_reason": blocked_reason,
         })
@@ -355,16 +371,28 @@ def _validate_requester_items(raw_items, cafe, user):
 
         if not name:
             return None, Response({"detail": "نام کالا در تمام ردیف‌ها الزامی است."}, status=status.HTTP_400_BAD_REQUEST)
-        if qty_val is None or not qty_val.is_finite() or qty_val <= 0 or qty_val > 99999999:
+        if len(name) > 100:
+            return None, Response({"detail": "نام کالا نباید بیش از ۱۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(unit_val) > 20:
+            return None, Response({"detail": "نام واحد نباید بیش از ۲۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(desc_val) > 1000:
+            return None, Response({"detail": "توضیحات قلم نباید بیش از ۱۰۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+        if qty_val is None or not qty_val.is_finite() or qty_val <= 0 or qty_val > Decimal("99999999"):
             return None, Response({"detail": f"مقدار معتبر برای «{name}» وارد کنید."}, status=status.HTTP_400_BAD_REQUEST)
 
+        accessible_qs = _filter_products_for_user(
+            Product.objects.filter(cafe=cafe, is_active=True, is_complete=True)
+            .exclude(category__name=RD_CATEGORY_NAME),
+            user,
+            cafe,
+        )
         item_product = None
         if product_id and str(product_id).isdigit():
-            candidate = Product.objects.filter(id=int(product_id), cafe=cafe).first()
+            candidate = accessible_qs.filter(id=int(product_id)).first()
             if candidate is not None and candidate.name.strip().lower() == name.lower():
                 item_product = candidate
         if item_product is None:
-            item_product = Product.objects.filter(name__iexact=name, cafe=cafe).first()
+            item_product = accessible_qs.filter(name__iexact=name).first()
 
         if item_product is None and not bypass:
             return None, Response(
@@ -694,7 +722,11 @@ def mobile_warehouse_dashboard(request, cafe_code: str):
     total_stock_map = defaultdict(Decimal)
     if scope_pids:
         sis = (
-            StockItem.objects.filter(product_id__in=scope_pids, quantity__gt=0, warehouse__cafe=cafe)
+            StockItem.objects.filter(
+                Q(quantity__gt=0) | Q(warehouse__allow_negative_stock=True, warehouse__is_active=True),
+                product_id__in=scope_pids,
+                warehouse__cafe=cafe,
+            )
             .select_related("warehouse", "unit")
             .order_by("warehouse__name")
         )
@@ -870,7 +902,7 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                     return Response({"detail": "ساختار تخصیص انبار نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
                 sid = alloc.get("stock_item_id")
                 qty = _parse_decimal(str(alloc.get("quantity", "")))
-                if not str(sid or "").isdigit() or qty is None or not qty.is_finite() or qty <= 0:
+                if not str(sid or "").isdigit() or qty is None or not qty.is_finite() or qty <= 0 or qty > Decimal("99999999"):
                     return Response({"detail": "موجودی انبار و مقدار معتبر انتخاب کنید."}, status=status.HTTP_400_BAD_REQUEST)
                 merged[int(sid)] += qty
 
@@ -890,7 +922,7 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                     return Response({"detail": "موجودی انبار و مقدار معتبر انتخاب کنید."}, status=status.HTTP_400_BAD_REQUEST)
                 if si.product_id != item.product_id:
                     return Response({"detail": "موجودی انتخاب‌شده با کالا مطابقت ندارد."}, status=status.HTTP_400_BAD_REQUEST)
-                if qty > si.quantity:
+                if not (si.warehouse and si.warehouse.allow_negative_stock) and qty > si.quantity:
                     return Response(
                         {"detail": f"موجودی «{si.product.name}» ({_fmt2(si.quantity)}) کمتر از مقدار انتخابی است."},
                         status=status.HTTP_400_BAD_REQUEST,
@@ -915,6 +947,8 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                     if idx == 0:
                         if assignment is None:
                             assignment = _assign_item(item, "warehouse", request.user, request.user)
+                        elif assignment.assigned_to_id is None:
+                            assignment.assigned_to = request.user
                         assignment.status = "fulfilled"
                         assignment.stock_item = si
                         assignment.supplied_quantity = qty
@@ -932,6 +966,9 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                 transaction.set_rollback(True)
                 return Response({"detail": f"موجودی کافی نیست: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
 
+            item.supply_status = "from_stock"
+            item.purchased_quantity = total_qty
+            item.save(update_fields=["supply_status", "purchased_quantity"])
             _remove_from_purchase_drafts(item)
             _sync_request_status(item.request)
             return Response({"detail": f"«{item.name}» با موفقیت از انبار تامین شد."})
@@ -941,6 +978,8 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                 return Response({"detail": "این قلم قبلاً پردازش شده است."}, status=status.HTTP_400_BAD_REQUEST)
             if assignment is None:
                 assignment = _assign_item(item, "warehouse", request.user, request.user)
+            elif assignment.assigned_to_id is None:
+                assignment.assigned_to = request.user
             assignment.status = "returned"
             assignment.completed_at = timezone.now()
             assignment.notes = (assignment.notes or "") + " ارجاع به درخواست خرید."
@@ -965,20 +1004,30 @@ def mobile_warehouse_item_action(request, cafe_code: str, item_id: int):
                 return Response({"detail": "این قلم قبلاً پردازش شده است."}, status=status.HTTP_400_BAD_REQUEST)
             if assignment is None:
                 assignment = done_assigns.order_by("-assigned_at").first() or _assign_item(item, "warehouse", request.user, request.user)
+            if assignment.assigned_to_id is None:
+                assignment.assigned_to = request.user
             assignment.status = "not_in_stock"
             assignment.completed_at = timezone.now()
             assignment.notes = (assignment.notes or "") + " عدم امکان تأمین ثبت شد."
             assignment.save()
+            item.supply_status = "not_supplied"
+            item.purchased_quantity = Decimal("0")
+            item.save(update_fields=["supply_status", "purchased_quantity"])
             _remove_from_purchase_drafts(item)
             _sync_request_status(item.request)
             return Response({"detail": f"برای «{item.name}» عدم موجودی ثبت شد."})
 
         # reopen
         reason = (request.data.get("reason") or "").strip()
+        if len(reason) > 500:
+            return Response({"detail": "دلیل بازگشایی نباید بیش از ۵۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             reopen_officer_assignments(item, cafe=cafe, reopened_by=request.user, reason=reason)
         except (ReopenNotAllowedError, StockScopeError, InsufficientStockError) as exc:
             return Response({"detail": f"بازگشایی ناموفق بود: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+        item.supply_status = "pending"
+        item.purchased_quantity = None
+        item.save(update_fields=["supply_status", "purchased_quantity"])
         _remove_from_purchase_drafts(item)
         _sync_request_status(item.request)
         return Response({"detail": f"«{item.name}» بازگشایی شد و به صف انبار برگشت."})
@@ -1050,11 +1099,17 @@ def mobile_warehouse_draft_add(request, cafe_code: str):
     item_product = _resolve_draft_product(cafe, product_id, name)
     if item_product is None and not name:
         return Response({"detail": "نام کالا را وارد کنید."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(name) > 100:
+        return Response({"detail": "نام کالا نباید بیش از ۱۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(unit) > 20:
+        return Response({"detail": "نام واحد نباید بیش از ۲۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(description) > 1000:
+        return Response({"detail": "توضیحات نباید بیش از ۱۰۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
     inactive_err = inactive_product_error(item_product)
     if inactive_err:
         return Response({"detail": inactive_err}, status=status.HTTP_400_BAD_REQUEST)
-    if qty is None or qty <= 0:
-        return Response({"detail": "مقدار باید عدد مثبت باشد."}, status=status.HTTP_400_BAD_REQUEST)
+    if qty is None or not qty.is_finite() or qty <= 0 or qty > Decimal("99999999"):
+        return Response({"detail": "مقدار باید عدد مثبت معتبر باشد."}, status=status.HTTP_400_BAD_REQUEST)
 
     draft = _get_or_create_purchase_draft(cafe, request.user)
     resolved_unit = unit or (item_product.unit.name if item_product and item_product.unit else "عدد")
@@ -1075,29 +1130,63 @@ def mobile_warehouse_draft_add(request, cafe_code: str):
 @authentication_classes(MOBILE_AUTH)
 @permission_classes([IsAuthenticated])
 def mobile_warehouse_draft_item_detail(request, cafe_code: str, item_id: int):
+    from .views import _item_sent_to_ceo, _sync_request_status
+
     cafe, err = _resolve_mobile_cafe(request, cafe_code)
     if err:
         return err
     if not _ensure_warehouse_access(request.user):
         return Response({"detail": "دسترسی به بخش انبار ندارید."}, status=status.HTTP_403_FORBIDDEN)
 
+    if request.method == "DELETE":
+        with transaction.atomic():
+            d_item = get_object_or_404(
+                PurchaseDraftItem.objects.select_for_update(),
+                id=item_id,
+                draft__cafe=cafe,
+                draft__created_by=request.user,
+            )
+            draft = d_item.draft
+            name = d_item.name
+            if d_item.source_item_id:
+                src_item = d_item.source_item
+                if _item_sent_to_ceo(src_item) is not None:
+                    return Response(
+                        {"detail": f"«{name}» در لیست خرید ثبت شده و برای تایید مدیرعامل ارسال شده است."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                try:
+                    reopen_officer_assignments(
+                        src_item,
+                        cafe=cafe,
+                        reopened_by=request.user,
+                        reason="حذف از لیست خرید و بازگشت به لیست انبار",
+                    )
+                    src_item.supply_status = "pending"
+                    src_item.purchased_quantity = None
+                    src_item.save(update_fields=["supply_status", "purchased_quantity"])
+                except ReopenNotAllowedError:
+                    pass
+                except (StockScopeError, InsufficientStockError) as exc:
+                    return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+                _sync_request_status(src_item.request)
+            d_item.delete()
+            if not draft.items.exists():
+                draft.delete()
+        return Response({"detail": f"«{name}» از پیش‌نویس حذف شد."})
+
     d_item = get_object_or_404(
         PurchaseDraftItem, id=item_id, draft__cafe=cafe, draft__created_by=request.user
     )
-    if request.method == "DELETE":
-        draft = d_item.draft
-        name = d_item.name
-        d_item.delete()
-        if not draft.items.exists():
-            draft.delete()
-        return Response({"detail": f"«{name}» از پیش‌نویس حذف شد."})
-
     qty = _parse_decimal(str(request.data.get("quantity", "")))
-    if qty is None or qty <= 0:
-        return Response({"detail": "مقدار باید عدد مثبت باشد."}, status=status.HTTP_400_BAD_REQUEST)
+    if qty is None or not qty.is_finite() or qty <= 0 or qty > Decimal("99999999"):
+        return Response({"detail": "مقدار باید عدد مثبت معتبر باشد."}, status=status.HTTP_400_BAD_REQUEST)
     d_item.quantity = qty
     if "description" in request.data:
-        d_item.description = (request.data.get("description") or "").strip()
+        desc_val = (request.data.get("description") or "").strip()
+        if len(desc_val) > 1000:
+            return Response({"detail": "توضیحات نباید بیش از ۱۰۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
+        d_item.description = desc_val
     d_item.save(update_fields=["quantity", "description"])
     return Response({"detail": f"«{d_item.name}» به‌روزرسانی شد."})
 
@@ -1302,6 +1391,8 @@ def mobile_warehouse_vouchers(request, cafe_code: str):
     src_wh = Warehouse.objects.filter(id=int(src_id), cafe=cafe).first() if str(src_id or "").isdigit() else None
     dst_wh = Warehouse.objects.filter(id=int(dst_id), cafe=cafe).first() if str(dst_id or "").isdigit() else None
     description = (request.data.get("description") or "").strip()
+    if len(description) > 1000:
+        return Response({"detail": "توضیحات نباید بیش از ۱۰۰۰ کاراکتر باشد."}, status=status.HTTP_400_BAD_REQUEST)
     raw_items = request.data.get("items") or []
 
     if not isinstance(raw_items, list) or not raw_items:
@@ -1309,7 +1400,7 @@ def mobile_warehouse_vouchers(request, cafe_code: str):
 
     try:
         with transaction.atomic():
-            voucher = WarehouseVoucher.objects.create(
+            voucher = WarehouseVoucher(
                 cafe=cafe,
                 voucher_type=v_type,
                 status="submitted",
@@ -1319,14 +1410,18 @@ def mobile_warehouse_vouchers(request, cafe_code: str):
                 description=description,
                 created_by=request.user,
             )
-            voucher.full_clean()
+            voucher.full_clean(exclude=["voucher_number"])
+            save_voucher_with_number(voucher, cafe.id, v_type)
             for row in raw_items:
                 if not isinstance(row, dict):
                     raise VoucherValidationError("ساختار ردیف حواله نامعتبر است.")
                 pid = row.get("product_id")
                 qty = _parse_decimal(str(row.get("quantity", "")))
+                row_desc = (row.get("description") or "").strip()
+                if len(row_desc) > 500:
+                    raise VoucherValidationError("توضیح ردیف حواله نباید بیش از ۵۰۰ کاراکتر باشد.")
                 product = Product.objects.select_related("unit").filter(id=int(pid), cafe=cafe).first() if str(pid or "").isdigit() else None
-                if product is None or qty is None or not qty.is_finite() or qty <= 0:
+                if product is None or qty is None or not qty.is_finite() or qty <= 0 or qty > Decimal("99999999"):
                     raise VoucherValidationError("محصول و مقدار معتبر برای ردیف حواله الزامی است.")
                 if product.unit is None:
                     raise VoucherValidationError(f"کالای «{product.name}» فاقد واحد شمارش است.")
@@ -1335,7 +1430,7 @@ def mobile_warehouse_vouchers(request, cafe_code: str):
                     product=product,
                     unit=product.unit,
                     base_quantity=qty,
-                    description=(row.get("description") or "").strip(),
+                    description=row_desc,
                 )
             finalize_voucher(voucher, finalized_by=request.user)
     except (InventoryServiceError, VoucherValidationError, ValidationError) as exc:
@@ -1499,16 +1594,38 @@ def mobile_purchasing_action(request, cafe_code: str):
             if action == "purchased":
                 a.status = "purchased"
                 a.notes = (a.notes or "") + f" خریداری شد توسط {actor_name}{suffix}."
+                a.item.supply_status = "purchased"
+                a.item.purchased_quantity = a.item.quantity
+                a.item.save(update_fields=["supply_status", "purchased_quantity"])
             elif action == "not_purchased":
                 a.status = "not_purchased"
                 a.notes = (a.notes or "") + f" خریداری نشد توسط {actor_name}{suffix}."
+                a.item.supply_status = "not_supplied"
+                a.item.purchased_quantity = Decimal("0")
+                a.item.save(update_fields=["supply_status", "purchased_quantity"])
             else:
                 a.status = "returned"
                 target_lbl = "انبار" if is_self_buy else "درخواست‌ها"
                 a.notes = (a.notes or "") + f" بازگشت به {target_lbl} توسط {actor_name}{suffix}."
+                a.item.supply_status = "not_supplied"
+                a.item.purchased_quantity = Decimal("0")
+                a.item.save(update_fields=["supply_status", "purchased_quantity"])
             a.completed_at = timezone.now()
             a.save(update_fields=["status", "completed_at", "assigned_to", "notes"])
-            _sync_request_status(a.item.request)
+            copy_req = a.item.request
+            if (
+                action == "return"
+                and copy_req.source == "warehouse_purchase"
+                and not OfficerAssignment.objects.filter(
+                    item__request=copy_req,
+                    target_role="purchasing",
+                    status__in=("pending", "purchased"),
+                ).exists()
+            ):
+                copy_req.status = "rejected"
+                copy_req.save(update_fields=["status"])
+            else:
+                _sync_request_status(copy_req)
             processed.append(a.item.name)
 
     verb = {"purchased": "خریداری شد", "not_purchased": "خریداری‌نشده ثبت شد", "return": "برگشت داده شد"}[action]

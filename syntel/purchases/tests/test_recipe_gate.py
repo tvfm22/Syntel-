@@ -538,7 +538,7 @@ class ProductActiveStatusOrderingTests(RecipeGateBase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, '<th>وضعیت</th>')
         self.assertContains(r, 'name="is_active"')
-        self.assertContains(r, '۱,۰۸۱')
+        self.assertContains(r, '1,081')
         self.assertContains(r, 'ریال')
         self.assertNotContains(r, '1081.08')
 

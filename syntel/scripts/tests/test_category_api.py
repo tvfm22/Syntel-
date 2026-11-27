@@ -5,7 +5,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syntel.settings')
 django.setup()
 
 from django.test import RequestFactory
-from purchases.views_analytics import api_invoice_subcategories
+from purchases.views.analytics_api import api_invoice_subcategories
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

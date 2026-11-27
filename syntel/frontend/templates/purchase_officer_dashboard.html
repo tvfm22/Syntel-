@@ -192,14 +192,14 @@
             <div class="row-head">
                 <div class="row-name">{{ row.name }}</div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                    <div class="row-qty">جمع کل: {{ row.total_qty|trim_decimal }} {{ row.unit }}</div>
+                    <div class="row-qty">جمع کل: {{ row.total_qty|qty_comma }} {{ row.unit }}</div>
                     {% if row.assignments|length > 1 %}
                     <div class="row-bulk-actions">
                         <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="item_ids" value="{{ row.assignment_ids_csv }}">
                             <button type="submit" name="action" value="purchased" class="po-btn po-btn-green"
-                                    onclick="return confirm('کل جمع «{{ row.name|escapejs }}» ({{ row.total_qty|trim_decimal|escapejs }} {{ row.unit|escapejs }}) خریداری شد؟');">
+                                    onclick="return confirm('کل جمع «{{ row.name|escapejs }}» ({{ row.total_qty|qty_comma|escapejs }} {{ row.unit|escapejs }}) خریداری شد؟');">
                                 <i class="fas fa-check-double"></i> خریداری شد (همه)
                             </button>
                         </form>
@@ -218,14 +218,14 @@
 
             <div class="dept-pills">
                 {% for s in row.sections %}
-                <span class="dept-pill"><i class="fas fa-building"></i> {{ s.name }}: {{ s.qty|trim_decimal }} {{ row.unit }}</span>
+                <span class="dept-pill"><i class="fas fa-building"></i> {{ s.name }}: {{ s.qty|qty_comma }} {{ row.unit }}</span>
                 {% endfor %}
             </div>
 
             {% for a in row.assignments %}
             <div class="item-line">
                 <div class="item-line-info">
-                    <b>{{ row.name }}</b> — <span class="item-line-qty">{{ a.item.quantity|trim_decimal }} {{ row.unit }}</span>
+                    <b>{{ row.name }}</b> — <span class="item-line-qty">{{ a.item.quantity|qty_comma }} {{ row.unit }}</span>
                     <span>
                         {% with src_item=a.item.source_item|default:a.item %}
                         (بخش: <b>{{ src_item.request.user.department.name|default:src_item.request.user.get_role_display }}</b>)

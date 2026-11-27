@@ -138,7 +138,7 @@
                         <tr data-row-idx="{{ forloop.counter0 }}">
                             <td>{{ row.product.name }}</td>
                             <td>{{ row.warehouse.name }}</td>
-                            <td>{{ row.qty|trim_decimal }}{% if row.product.unit %} {{ row.product.unit.name }}{% endif %}</td>
+                            <td>{{ row.qty|qty_comma }}{% if row.product.unit %} {{ row.product.unit.name }}{% endif %}</td>
                             <td>
                                 <select name="status" class="status-select">
                                     <option value="from_stock" {% if row.status == 'from_stock' %}selected{% endif %}>تامین از انبار</option>
@@ -221,7 +221,7 @@ function selectProduct(productId, btnEl) {
         row.innerHTML = `
             <div class="wh-head">
                 <span class="wh-badge"><i class="fas fa-warehouse"></i> ${escapeHtml(w.name)}</span>
-                <span class="wh-avail">موجودی: ${escapeHtml(w.available)}${unitPart}</span>
+                <span class="wh-avail">موجودی: ${escapeHtml(window.SyntelComma ? window.SyntelComma.formatDisplayNumber(w.available) : w.available)}${unitPart}</span>
             </div>
             <div class="wh-controls">
                 <input type="number" class="qty-input" min="0.01" step="any" placeholder="مقدار (${escapeHtml(w.unit || 'واحد')})">
@@ -261,7 +261,7 @@ function addRow(wh, qty) {
     tr.innerHTML = `
         <td>${escapeHtml(currentProduct.name)}</td>
         <td>${escapeHtml(wh.name)}</td>
-        <td>${escapeHtml(qty)}${unitPart}</td>
+        <td>${escapeHtml(window.SyntelComma ? window.SyntelComma.formatDisplayNumber(qty) : qty)}${unitPart}</td>
         <td>
             <select name="status" class="status-select">
                 <option value="from_stock" selected>تامین از انبار</option>

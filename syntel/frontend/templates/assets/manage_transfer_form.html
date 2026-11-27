@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ثبت انتقال اموال - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:820px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-exchange-alt"></i></div>
+            <div class="ph-title">
+                <h1>ثبت انتقال مال به سکشن دیگر</h1>
+                <div class="page-sub">پس از ثبت، بخش مقصد باید تحویل را تأیید کند</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" style="display:grid; gap:1rem;">
+                {% csrf_token %}
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
+                    <div class="filter-group">
+                        <label class="filter-label">بخش مبدأ *</label>
+                        {% if is_manager %}
+                        <select name="from_department_id" class="filter-select" required>
+                            {% for d in departments %}
+                            <option value="{{ d.id }}" {% if pre_from == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input type="text" class="form-control" value="{{ user_dept.name }}" readonly>
+                        {% endif %}
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">بخش مقصد *</label>
+                        <select name="to_department_id" class="filter-select" required>
+                            <option value="">انتخاب کنید...</option>
+                            {% for d in departments %}
+                            <option value="{{ d.id }}">{{ d.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">کالای اموال *</label>
+                        <select name="asset_id" class="filter-select" required>
+                            <option value="">انتخاب کنید...</option>
+                            {% for a in assets %}
+                            <option value="{{ a.id }}" {% if pre_asset == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }} ({{ a.get_tracking_mode_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">تعداد (برای اقلام تعدادی)</label>
+                        <input type="number" name="quantity" min="1" value="1" class="form-control">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">پلاک (فقط برای اقلام پلاک‌دار)</label>
+                        <select name="asset_unit_id" class="filter-select">
+                            <option value="">بدون پلاک (اقلام تعدادی)</option>
+                            {% for u in units %}
+                            <option value="{{ u.id }}">{{ u.asset_tag }} — {{ u.asset.name }} ({{ u.department.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% if is_manager %}
+                <label style="display:flex; align-items:center; gap:0.45rem; font-weight:700;">
+                    <input type="checkbox" name="require_handshake" value="1" checked>
+                    نیازمند تأیید تحویل دوطرفه توسط بخش مقصد باشد
+                </label>
+                {% endif %}
+                <div class="filter-group">
+                    <label class="filter-label">علت / توضیحات</label>
+                    <textarea name="reason" rows="2" class="form-control" placeholder="توضیح انتقال..."></textarea>
+                </div>
+                <div style="display:flex; gap:0.65rem;">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> ثبت درخواست انتقال</button>
+                    <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

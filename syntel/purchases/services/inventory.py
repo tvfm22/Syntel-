@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -47,6 +47,7 @@ from purchases.models import (
     PurchaseItem,
     StockItem,
     StockTransaction,
+    Warehouse,
     WarehouseVoucher,
     WarehouseVoucherItem,
 )
@@ -156,7 +157,15 @@ def apply_stock_delta(stock_item, delta, *, cafe, created_by=None,
             f'موجودی «{stock_item.product.name}» متعلق به کافهٔ دیگری است.')
 
     with transaction.atomic():
-        ok, prev_qty, new_qty = _change_stock_quantity(stock_item.id, delta)
+        allow_negative = (
+            Decimal(str(delta)) < 0
+            and Warehouse.objects.filter(
+                id=stock_item.warehouse_id, allow_negative_stock=True
+            ).exists()
+        )
+        ok, prev_qty, new_qty = _change_stock_quantity(
+            stock_item.id, delta, allow_negative=allow_negative
+        )
         if not ok:
             raise InsufficientStockError(stock_item.product.name)
         return StockTransaction.objects.create(
@@ -338,6 +347,24 @@ def _reversal_number(cafe_id, original_number):
     return number
 
 
+def save_voucher_with_number(voucher, cafe_id=None, voucher_type=None, *, max_attempts=5):
+    """ذخیرهٔ حوالهٔ جدید با تولید شمارهٔ یکتا و retry روی برخورد IntegrityError."""
+    c_id = cafe_id if cafe_id is not None else voucher.cafe_id
+    v_type = voucher_type or voucher.voucher_type
+    last_exc = None
+    for attempt in range(max_attempts):
+        if not voucher.voucher_number or attempt > 0:
+            voucher.voucher_number = next_voucher_number(c_id, v_type)
+        try:
+            with transaction.atomic():
+                voucher.save()
+            return voucher
+        except IntegrityError as exc:
+            last_exc = exc
+            voucher.voucher_number = ''
+    raise last_exc
+
+
 def _resolve_stock_item(item, warehouse, allow_explicit, create_if_missing=False):
     """موجودی انبارِ هدف یک حرکت را تعیین می‌کند.
 
@@ -483,10 +510,13 @@ def _plan_movements(v):
             # موجودیِ صریح قلم = «الان کجاست» → فقط سمتِ مبدأ؛ سمتِ مقصدِ انتقال
             # همیشه با محصول/برند در انبارِ مقصد یافت می‌شود.
             allow_explicit = not (vt == 'transfer' and wh.id != v.source_warehouse_id)
-            # سمتِ «ورود» (رسید/برگشتی/تحویل مستقیم): اگر موجودیِ انباری ثبت
-            # نشده، نهایی‌سازی خودکار می‌سازدش — همهٔ محصولات برای ورود به انبار
-            # قابل‌قبول‌اند (کالای تازه‌خریدِ تحویل مستقیم هم همین‌طور).
-            create_if_missing = delta > 0 and vt in ('receipt', 'return', 'direct_delivery')
+            # سمتِ «ورود» (رسید/برگشتی/تحویل مستقیم) یا انباری که موجودی منفی
+            # را مجاز کرده: اگر موجودی انباری ثبت نشده، نهایی‌سازی خودکار با مقدار
+            # صفر می‌سازدش تا بدون نیاز به ورود اولیه بتوان حواله ثبت کرد.
+            create_if_missing = (
+                (delta > 0 and vt in ('receipt', 'return', 'direct_delivery'))
+                or bool(wh.allow_negative_stock)
+            )
             stock = _resolve_stock_item(item, wh, allow_explicit=allow_explicit,
                                         create_if_missing=create_if_missing)
             if stock.unit_id and stock.unit_id != item.unit_id:
@@ -594,11 +624,14 @@ def finalize_voucher(voucher, finalized_by=None):
             raise VoucherValidationError('برخی موجودی‌های انبارِ این حواله یافت نشدند.')
 
         # ── کفایت موجودی (پیش از هر نوشتن؛ تحت قلم) ──
-        allow_negative = v.voucher_type in ALLOW_NEGATIVE_STOCK
         for si_id, d in net.items():
-            if d < 0 and not allow_negative:
+            if d < 0:
                 si = locked[si_id]
-                if si.quantity < -d:
+                allow_negative = (
+                    v.voucher_type in ALLOW_NEGATIVE_STOCK
+                    or bool(si.warehouse and si.warehouse.allow_negative_stock)
+                )
+                if not allow_negative and si.quantity < -d:
                     raise InsufficientStockError(
                         f'موجودی «{si.product.name}» در انبار «{si.warehouse.name}» کافی نیست '
                         f'(نیاز: {-d}، موجودی: {si.quantity}).')
@@ -610,6 +643,11 @@ def finalize_voucher(voucher, finalized_by=None):
         # اول اعمال شود تا از موجودیِ صفر هم قابل‌اجرا باشد (برای اصلی و برگشتی یکسان)
         ordered = sorted(plans, key=lambda p: (p.stock_item_id, p.delta < 0))
         for p in ordered:
+            si_locked = locked[p.stock_item_id]
+            allow_negative = (
+                v.voucher_type in ALLOW_NEGATIVE_STOCK
+                or bool(si_locked.warehouse and si_locked.warehouse.allow_negative_stock)
+            )
             ok, _prev, _new = _change_stock_quantity(
                 p.stock_item_id, p.delta, allow_negative=allow_negative,
             )
@@ -704,7 +742,18 @@ def reverse_voucher(voucher, created_by=None, description=None):
         if approval_required:
             reversal.approver = created_by
             reversal.approved_at = timezone.now()
-        reversal.save()
+        last_exc = None
+        for attempt in range(5):
+            if attempt > 0:
+                reversal.voucher_number = _reversal_number(original.cafe_id, original.voucher_number)
+            try:
+                with transaction.atomic():
+                    reversal.save()
+                break
+            except IntegrityError as exc:
+                last_exc = exc
+        else:
+            raise last_exc
 
         for item in original.items.all():
             WarehouseVoucherItem.objects.create(

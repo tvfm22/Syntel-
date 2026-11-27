@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}اموال پلاک‌دار و تجهیزات - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:1360px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-microchip"></i></div>
+            <div class="ph-title">
+                <h1>مدیریت تجهیزات پلاک‌دار (Serialized)</h1>
+                <div class="page-sub">پیگیری تک‌تک دستگاه‌ها، گارانتی، وضعیت سلامت و تعمیرات</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.55rem;">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_unit_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> ثبت پلاک جدید</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">جستجو</label>
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="کد پلاک، سریال یا نام تجهیز...">
+            </div>
+            {% if is_manager %}
+            <div class="filter-group">
+                <label class="filter-label">سکشن</label>
+                <select name="department" class="filter-select">
+                    <option value="">همه سکشن‌ها</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if selected_dept == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="filter-group">
+                <label class="filter-label">وضعیت</label>
+                <select name="status" class="filter-select">
+                    <option value="">همه</option>
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </div>
+    </form>
+
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست تجهیزات پلاک‌دار ({{ units|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>کد پلاک</th><th>تجهیز</th><th>سکشن</th><th>سریال</th><th>پایان گارانتی</th><th>وضعیت</th><th>جزئیات</th></tr></thead>
+                <tbody>
+                    {% for u in units %}
+                    <tr>
+                        <td><span class="badge badge-primary">{{ u.asset_tag }}</span></td>
+                        <td><strong>{{ u.asset.name }}</strong></td>
+                        <td>{{ u.department.name|default:'—' }}</td>
+                        <td>{{ u.serial_number|default:'—' }}</td>
+                        <td>{% if u.warranty_until %}{{ u.warranty_until|jalali_date }}{% else %}—{% endif %}</td>
+                        <td><span class="badge {% if u.status == 'active' %}badge-success{% elif u.status in 'lost,disposed' %}badge-danger{% else %}badge-warning{% endif %}">{{ u.get_status_display }}</span></td>
+                        <td><a href="{% url 'asset_unit_detail' cafe_code=cafe_code pk=u.id %}" class="btn btn-secondary" style="height:32px; font-size:0.78rem;">مشاهده</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" style="text-align:center; padding:1.5rem;">پلاکی ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

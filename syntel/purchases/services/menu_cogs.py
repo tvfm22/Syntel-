@@ -376,33 +376,19 @@ class MenuGraph:
         return q_dec * price, q_dec
 
     def unit_cost(self, key, _stack=None):
-        """Cost of one output unit of `key` (workbook's own stated cost when present)."""
+        """Cost of one output unit of `key` (live computed recipe cost first, stated cost as fallback)."""
         item = self.items[key]
         if item['kind'] == 'raw':
             return _dec(item['price'])
+        if item.get('lines') and item.get('out_qty'):
+            computed = self.computed_unit_cost(key, _stack=_stack)
+            if computed is not None and (computed > 0 or not (item.get('stated_fee') or item.get('stated_total'))):
+                return computed
         if item.get('stated_fee'):
             return _dec(item['stated_fee'])
         if item.get('stated_total') and item.get('out_qty'):
             return _dec(item['stated_total']) / _dec(item['out_qty'])
-        if _stack is None:
-            _stack = set()
-        if key in _stack or not item.get('out_qty'):
-            return None
-        stack = _stack | {key}
-        total = Decimal('0')
-        for mkey, qty, unit, fee in item['lines']:
-            mat = self.items[mkey]
-            q_eff, u_eff, f_eff = _convert_cl_line(qty, unit, fee)
-            if f_eff is not None:
-                total += (q_eff or Decimal('0')) * f_eff
-            elif mat['kind'] == 'raw':
-                line_cost, _q = self._raw_line_cost(mkey, q_eff, u_eff)
-                total += line_cost
-            else:
-                unit_price = self.unit_cost(mkey, stack) or _dec(mat.get('price')) or Decimal('0')
-                conv_q = _convert_qty_between_units(q_eff, u_eff, mat.get('out_unit') or '')
-                total += conv_q * unit_price
-        return total / _dec(item['out_qty'])
+        return None
 
     def _computed_unit_cost_inner(self, key, _stack, _cache):
         """Returns (cost, hit_cycle) so cycle-truncated nodes are never cached."""
@@ -509,8 +495,12 @@ class MenuGraph:
             mat_out_unit = mat.get('out_unit') or ''
             same_unit = (not u_eff) or (not mat_out_unit) or units_are_compatible(u_eff, mat_out_unit)
             conv_qty = _convert_qty_between_units(q_eff, u_eff, mat_out_unit) if same_unit else (q_eff or Decimal('0'))
-            line_fee = f_eff if f_eff is not None else _dec(mat.get('price'))
-            cost = conv_qty * (line_fee or Decimal('0')) / out_qty
+            if f_eff is not None:
+                # f_eff is denominated in u_eff, so multiply by q_eff (not conv_qty) to avoid 1000x unit errors.
+                cost = (q_eff or Decimal('0')) * f_eff / out_qty
+            else:
+                mat_price = _dec(mat.get('price'))
+                cost = conv_qty * (mat_price or Decimal('0')) / out_qty
             uc = self.unit_cost(mkey, stack)
             if not same_unit and uc is not None and f_eff is not None:
                 if abs(f_eff - uc) / max(abs(f_eff), Decimal('1e-9')) < Decimal('0.01'):
@@ -524,14 +514,11 @@ class MenuGraph:
                 factor = conv_qty / out_qty
                 sub_raw_cost = sum((sv[1] for sv in sub['raw'].values()), Decimal('0'))
                 sub_bad_cost = sum((sv[1] for sv in sub['bad'].values()), Decimal('0'))
-                split_fee = bool(cost) and sub_raw_cost > 0
+                has_live_sub_cost = (sub_raw_cost + sub_bad_cost) > 0
                 for sk, sv in sub['raw'].items():
                     slot = agg_raw.setdefault(sk, [Decimal('0'), Decimal('0')])
                     slot[0] += sv[0] * factor
-                    if split_fee:
-                        slot[1] += cost * (sv[1] / sub_raw_cost)
-                    else:
-                        slot[1] += sv[1] * factor
+                    slot[1] += sv[1] * factor
                 for sk, sv in sub['prep'].items():
                     slot = agg_prep.setdefault(sk, [Decimal('0'), Decimal('0')])
                     slot[0] += sv[0] * factor
@@ -539,17 +526,27 @@ class MenuGraph:
                 for sk, sv in sub['bad'].items():
                     slot = agg_bad.setdefault(sk, [Decimal('0'), Decimal('0')])
                     slot[1] += sv[1] * factor
-                prep_cost = cost if split_fee else ((sub_raw_cost + sub_bad_cost) * factor)
+                prep_cost = ((sub_raw_cost + sub_bad_cost) * factor) if has_live_sub_cost else cost
                 pslot = agg_prep.setdefault((mkey, mat_out_unit or u_eff or ''),
                                             [Decimal('0'), Decimal('0')])
                 pslot[0] += factor
                 pslot[1] += prep_cost
                 warns.extend(sub['warn'])
             else:
-                warns.append(
-                    f'«{mat["name"]}» در رسپی «{item["name"]}» با واحد «{u_eff or "؟"}» '
-                    f'مقابل خروجی «{mat.get("out_qty")} {mat_out_unit}» آمده؛ '
-                    f'هزینه با بهای کامل حساب شد، ولی مقدار دقیق آن محاسبه نشد.')
+                if f_eff is None and not cost:
+                    fallback_uc = self.computed_unit_cost(mkey, _stack=stack)
+                    if fallback_uc is not None:
+                        cost = (q_eff or Decimal('0')) * fallback_uc / out_qty
+                if cost > 0:
+                    warns.append(
+                        f'«{mat["name"]}» در رسپی «{item["name"]}» با واحد «{u_eff or "؟"}» '
+                        f'مقابل خروجی «{mat.get("out_qty")} {mat_out_unit}» آمده؛ '
+                        f'هزینه با بهای کامل حساب شد، ولی مقدار دقیق آن محاسبه نشد.')
+                else:
+                    warns.append(
+                        f'«{mat["name"]}» در رسپی «{item["name"]}» با واحد «{u_eff or "؟"}» '
+                        f'مقابل خروجی «{mat.get("out_qty")} {mat_out_unit}» آمده؛ '
+                        f'به دلیل ناسازگاری واحد و نبود قیمت، هزینه و مقدار دقیق آن محاسبه نشد.')
                 agg_bad.setdefault((mkey, u_eff), [Decimal('0'), Decimal('0')])[1] += cost
         result = {'raw': agg_raw, 'prep': agg_prep, 'bad': agg_bad, 'warn': warns}
         if not had_cycle:

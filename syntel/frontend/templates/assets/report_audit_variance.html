@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}گزارش مغایرت انبارگردانی اموال - Kuker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
+<style>
+    .rvar-wrap { max-width: 1360px; margin: 0 auto; }
+    .rvar-chart-wrap { height: 260px; position: relative; }
+    .rvar-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
+        display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .rvar-modal-backdrop.is-open { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rvar-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon red"><i class="fas fa-balance-scale"></i></div>
+            <div class="ph-title">
+                <h1>گزارش مغایرت انبارگردانی‌ها</h1>
+                <div class="page-sub">بازه {{ start_jalali }} تا {{ end_jalali }} — مقایسه موجودی سیستم با شمارش ثبت‌شده</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> خروجی Excel
+            </a>
+            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> خروجی PDF
+            </a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">از تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='var_start_date' jd_value=start_jalali %}
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">تا تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='var_end_date' jd_value=end_jalali %}
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">سکشن / بخش</label>
+                <select name="department" class="filter-select">
+                    <option value="">همه سکشن‌ها</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">جلسه انبارگردانی</label>
+                <select name="audit" class="filter-select">
+                    <option value="">همه جلسات</option>
+                    {% for a in audits %}
+                    <option value="{{ a.id }}" {% if selected_audit == a.id|stringformat:"s" %}selected{% endif %}>{{ a.title }} ({{ a.department.name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" style="display:flex; align-items:center; gap:0.45rem; cursor:pointer; height:44px;">
+                    <input type="checkbox" name="only_discrepancies" value="1" {% if only_discrepancies %}checked{% endif %}>
+                    <span>فقط ردیف‌های دارای مغایرت</span>
+                </label>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">فیلتر</button>
+                <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+            </div>
+        </div>
+    </form>
+
+    <div class="stats-grid" style="margin-bottom:1.25rem;">
+        <div class="stat-card">
+            <div class="stat-value warning">{{ discrepancy_rows_count }}</div>
+            <div class="stat-label">تعداد ردیف‌های مغایر</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value danger">{{ total_shortage_val|number_format }} ریال</div>
+            <div class="stat-label">ارزش کسری و خسارت</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value success">{{ total_surplus_val|number_format }} ریال</div>
+            <div class="stat-label">ارزش اضافی یافت‌شده</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value primary">{{ net_variance_val|number_format }} ریال</div>
+            <div class="stat-label">خالص اختلاف ریالی</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-chart-bar"></i> ارزش خسارت/کسری انبارگردانی به تفکیک سکشن</div>
+        </div>
+        <div class="card-body">
+            <div class="rvar-chart-wrap"><canvas id="varianceChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-list"></i> ریز مغایرت‌ها ({{ rows|length }} ردیف)</div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>تاریخ</th>
+                        <th>جلسه / سکشن</th>
+                        <th>کالا / پلاک</th>
+                        <th>موجودی سیستم</th>
+                        <th>شمارش‌شده</th>
+                        <th>مغایرت</th>
+                        <th>ارزش اختلاف (ریال)</th>
+                        <th>توضیحات و مدرک</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td>{{ r.audit_date_jalali }}</td>
+                        <td>
+                            <div style="font-weight:700;">{{ r.department_name }}</div>
+                            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=r.audit.id %}" style="font-size:0.74rem; color:var(--accent-indigo);">
+                                {{ r.audit.title }}
+                            </a>
+                        </td>
+                        <td>
+                            <strong>{{ r.asset_name }}</strong>
+                            {% if r.asset_tag %}<div style="font-size:0.74rem; color:var(--text-muted);">پلاک: {{ r.asset_tag }}</div>{% endif %}
+                        </td>
+                        <td>{{ r.expected_text }}</td>
+                        <td><strong>{{ r.counted_text }}</strong></td>
+                        <td>
+                            <span class="badge {% if r.diff_qty < 0 %}badge-danger{% elif r.diff_qty > 0 %}badge-info{% elif r.has_diff %}badge-warning{% else %}badge-success{% endif %}">
+                                {{ r.diff_label }}
+                            </span>
+                        </td>
+                        <td style="font-weight:700; color:{% if r.variance_value < 0 %}#DC2626{% elif r.variance_value > 0 %}#059669{% else %}#64748B{% endif %};">
+                            {{ r.variance_value|number_format }}
+                        </td>
+                        <td>
+                            {% if r.note %}<div>{{ r.note }}</div>{% endif %}
+                            {% if r.evidence_url %}
+                            <button type="button" class="btn btn-secondary" style="height:30px; padding:0 0.6rem; font-size:0.74rem;"
+                                    onclick="openVarLightbox('{{ r.evidence_url|escapejs }}', '{{ r.asset_name|escapejs }}')">
+                                <i class="fas fa-image"></i> عکس مدرک
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" style="text-align:center; padding:2rem;">موردی در این بازه ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="varLightbox" class="rvar-modal-backdrop" onclick="this.classList.remove('is-open')">
+    <div style="background:#fff; padding:1rem; border-radius:16px; max-width:520px; text-align:center;" onclick="event.stopPropagation();">
+        <div id="varLightboxTitle" style="font-weight:800; margin-bottom:0.5rem;"></div>
+        <img id="varLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jalali_date_group.js' %}"></script>
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+Chart.defaults.font.family = 'Vazir, sans-serif';
+var varData = {{ chart_data_json|safe }};
+var ctx = document.getElementById('varianceChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: varData.labels,
+            datasets: [{
+                label: 'ارزش خسارت / کسری (ریال)',
+                data: varData.values,
+                backgroundColor: 'rgba(239, 68, 68, 0.78)',
+                borderRadius: 8
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+function openVarLightbox(url, title) {
+    document.getElementById('varLightboxImg').src = url;
+    document.getElementById('varLightboxTitle').textContent = title;
+    document.getElementById('varLightbox').classList.add('is-open');
+}
+</script>
+{% endblock %}

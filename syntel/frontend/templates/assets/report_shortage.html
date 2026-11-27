@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}گزارش کسری نسبت به استاندارد سکشن - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rs-wrap { max-width: 1360px; margin: 0 auto; }
+    .rs-chart-wrap { height: 280px; position: relative; }
+    .rs-thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rs-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="ph-title">
+                <h1>گزارش کسری اموال نسبت به حد استاندارد سکشن</h1>
+                <div class="page-sub">اقلامی که موجودی سالم آن‌ها کمتر از حداقل استاندارد (min_expected_quantity) است</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+        </a>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">سکشن / بخش</label>
+                <select name="department" class="filter-select">
+                    <option value="">همه سکشن‌ها</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">دسته‌بندی</label>
+                <select name="category" class="filter-select">
+                    <option value="">همه دسته‌بندی‌ها</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">نمایش</button>
+                <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+            </div>
+        </div>
+    </form>
+
+    <div class="stats-grid" style="margin-bottom:1.25rem;">
+        <div class="stat-card">
+            <div class="stat-value warning">{{ rows|length }}</div>
+            <div class="stat-label">تعداد ردیف‌های دارای کسری</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value danger">{{ total_shortage_qty|number_format }}</div>
+            <div class="stat-label">مجموع تعداد کسری</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value primary">{{ total_estimated_cost|number_format }} ریال</div>
+            <div class="stat-label">برآورد بودجه جایگزینی</div>
+        </div>
+    </div>
+
+    {% if rows %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-chart-bar"></i> مقایسه موجودی سالم با حد استاندارد</div>
+        </div>
+        <div class="card-body">
+            <div class="rs-chart-wrap"><canvas id="shortageChart"></canvas></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-list-ol"></i> فهرست کسری‌ها و اقدام خرید جایگزین</div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>سکشن</th>
+                        <th>کالا</th>
+                        <th>موجودی سالم فعلی</th>
+                        <th>حد استاندارد سکشن</th>
+                        <th>میزان کسری</th>
+                        <th>برآورد هزینه جایگزینی</th>
+                        <th>اقدام</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td><strong>{{ r.department.name }}</strong></td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:0.55rem;">
+                                {% if r.thumb_url %}
+                                <img src="{{ r.thumb_url }}" alt="" class="rs-thumb">
+                                {% endif %}
+                                <div>
+                                    <div style="font-weight:700;">{{ r.asset.name }}</div>
+                                    <div style="font-size:0.73rem; color:var(--text-muted);">{{ r.asset.code }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ r.stock.quantity_healthy }}</td>
+                        <td>{{ r.stock.min_expected_quantity }}</td>
+                        <td><span class="badge badge-danger">{{ r.shortage_qty }}</span></td>
+                        <td>{{ r.estimated_cost|number_format }} ریال</td>
+                        <td>
+                            {% if replacement_request_url %}
+                            <form method="post" action="{{ replacement_request_url }}" style="margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="department_id" value="{{ r.department.id }}">
+                                <input type="hidden" name="stock_id" value="{{ r.stock.id }}">
+                                <input type="hidden" name="asset_id" value="{{ r.asset.id }}">
+                                <input type="hidden" name="quantity" value="{{ r.shortage_qty }}">
+                                <input type="hidden" name="name" value="{{ r.asset.name }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-primary" style="height:36px; font-size:0.78rem;">
+                                    <i class="fas fa-cart-plus"></i> ایجاد درخواست خرید جایگزین
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="badge badge-neutral">مسیر خرید جایگزین در حال اتصال</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" style="text-align:center; padding:2rem;">تمام اقلام مطابق حد استاندارد هستند و کسری وجود ندارد.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+Chart.defaults.font.family = 'Vazir, sans-serif';
+var shData = {{ chart_data_json|safe }};
+var ctx = document.getElementById('shortageChart');
+if (ctx && shData.labels && shData.labels.length) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: shData.labels,
+            datasets: [
+                { label: 'موجودی سالم فعلی', data: shData.healthy, backgroundColor: '#10B981' },
+                { label: 'حد استاندارد', data: shData.expected, backgroundColor: '#8B5CF6' }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+</script>
+{% endblock %}

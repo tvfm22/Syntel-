@@ -1,0 +1,199 @@
+{% load static %}
+<div id="audit-item-card-{{ card.id }}"
+     class="audit-item-card {% if card.obj.needs_recount %}is-recount{% elif card.obj.is_counted %}is-counted{% endif %}"
+     data-counted="{{ card.obj.is_counted|yesno:'1,0' }}"
+     data-recount="{{ card.obj.needs_recount|yesno:'1,0' }}"
+     data-search="{{ card.obj.asset.name|lower }} {{ card.obj.asset.code|lower }} {% if card.obj.asset_unit %}{{ card.obj.asset_unit.asset_tag|lower }}{% endif %}">
+
+    <div class="aic-top">
+        <div class="aic-media">
+            {% if card.thumb_url %}
+            <button type="button" class="aic-thumb-btn"
+                    onclick="openImageLightbox('{{ card.full_image_url|escapejs }}', '{{ card.obj.asset.name|escapejs }}')"
+                    title="بزرگنمایی تصویر کالا">
+                <img src="{{ card.thumb_url }}" alt="{{ card.obj.asset.name }}" loading="lazy">
+                <span class="aic-zoom-hint"><i class="fas fa-search-plus"></i></span>
+            </button>
+            {% else %}
+            <div class="aic-thumb-placeholder">
+                <i class="fas fa-cube"></i>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="aic-info">
+            <div class="aic-title">{{ card.obj.asset.name }}</div>
+            <div class="aic-sub">
+                {% if card.obj.asset.category %}
+                <span>{{ card.obj.asset.category.name }}</span>
+                <span>•</span>
+                {% endif %}
+                <span>کد: {{ card.obj.asset.code }}</span>
+            </div>
+
+            <div class="aic-badges">
+                {% if card.obj.asset_unit %}
+                <span class="aic-badge aic-badge-tag">
+                    <i class="fas fa-tag"></i> پلاک: {{ card.obj.asset_unit.asset_tag }}
+                </span>
+                {% endif %}
+                {% if card.obj.is_unexpected_item %}
+                <span class="aic-badge aic-badge-unexpected">خارج از لیست</span>
+                {% endif %}
+                {% if card.obj.needs_recount %}
+                <span class="aic-badge aic-badge-recount">
+                    <i class="fas fa-redo"></i> نیازمند بازشماری
+                </span>
+                {% endif %}
+                {% if saved_just_now %}
+                <span class="aic-badge aic-badge-saved">
+                    <i class="fas fa-check-circle"></i> ذخیره شد
+                </span>
+                {% elif card.obj.is_counted %}
+                <span class="aic-badge aic-badge-counted">
+                    <i class="fas fa-check"></i> شمارش شده
+                </span>
+                {% else %}
+                <span class="aic-badge aic-badge-pending">شمارش‌نشده</span>
+                {% endif %}
+            </div>
+
+            {% if include_expected %}
+            <div class="aic-system-hint">
+                {% if card.is_serialized %}
+                    وضعیت ثبت‌شده در سیستم: <strong>{{ card.expected_status_label }}</strong>
+                {% else %}
+                    موجودی سیستم: سالم <strong>{{ card.expected_healthy_val }}</strong> | معیوب <strong>{{ card.expected_damaged_val }}</strong>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error_message %}
+    <div class="aic-error-banner">
+        <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+    </div>
+    {% endif %}
+
+    <form hx-post="{% url 'asset_audit_save_item' cafe_code=cafe_code audit_id=audit.id item_id=card.id %}"
+          hx-target="#audit-item-card-{{ card.id }}"
+          hx-swap="outerHTML"
+          hx-encoding="multipart/form-data"
+          class="aic-form">
+        {% csrf_token %}
+
+        {% if card.is_serialized %}
+        <div class="aic-condition-grid">
+            {% for val, label in condition_choices %}
+            <label class="aic-cond-option {% if card.counted_status_val == val %}is-selected cond-{{ val }}{% endif %}">
+                <input type="radio"
+                       name="counted_status"
+                       value="{{ val }}"
+                       {% if card.counted_status_val == val %}checked{% endif %}
+                       {% if not can_edit %}disabled{% endif %}
+                       onchange="submitAuditCardForm(this.form)">
+                <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="aic-steppers">
+            <div class="aic-stepper-box healthy">
+                <div class="aic-stepper-label">تعداد سالم</div>
+                <div class="aic-stepper-controls">
+                    <button type="button" class="aic-step-btn minus"
+                            {% if not can_edit %}disabled{% endif %}
+                            onclick="adjustAuditStepper(this, -1)" aria-label="کاهش تعداد سالم">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <input type="number" min="0" inputmode="numeric"
+                           name="counted_healthy"
+                           value="{{ card.counted_healthy_val }}"
+                           {% if not can_edit %}readonly{% endif %}
+                           class="aic-qty-input"
+                           onchange="submitAuditCardForm(this.form)">
+                    <button type="button" class="aic-step-btn plus"
+                            {% if not can_edit %}disabled{% endif %}
+                            onclick="adjustAuditStepper(this, 1)" aria-label="افزایش تعداد سالم">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="aic-stepper-box damaged">
+                <div class="aic-stepper-label">معیوب / لب‌پر</div>
+                <div class="aic-stepper-controls">
+                    <button type="button" class="aic-step-btn minus"
+                            {% if not can_edit %}disabled{% endif %}
+                            onclick="adjustAuditStepper(this, -1)" aria-label="کاهش تعداد معیوب">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <input type="number" min="0" inputmode="numeric"
+                           name="counted_damaged"
+                           value="{{ card.counted_damaged_val }}"
+                           {% if not can_edit %}readonly{% endif %}
+                           class="aic-qty-input"
+                           onchange="submitAuditCardForm(this.form)">
+                    <button type="button" class="aic-step-btn plus"
+                            {% if not can_edit %}disabled{% endif %}
+                            onclick="adjustAuditStepper(this, 1)" aria-label="افزایش تعداد معیوب">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="aic-extra-row">
+            <input type="text" name="note" value="{{ card.obj.note }}"
+                   class="aic-note-input"
+                   {% if not can_edit %}readonly{% endif %}
+                   placeholder="توضیح کوتاه (علت شکستگی، محل قرارگیری و...)"
+                   oninput="scheduleAuditCardSubmit(this.form)">
+        </div>
+
+        <div class="aic-footer-row">
+            <label class="aic-upload-btn {% if not can_edit %}is-disabled{% endif %}">
+                <i class="fas fa-camera"></i>
+                <span>{% if card.obj.evidence_photo %}تغییر عکس مدرک{% else %}آپلود عکس مدرک{% endif %}</span>
+                <input type="file" name="evidence_photo" accept="image/*"
+                       {% if not can_edit %}disabled{% endif %}
+                       style="display:none;"
+                       onchange="submitAuditCardForm(this.form)">
+            </label>
+
+            {% if card.obj.evidence_photo %}
+            <button type="button" class="aic-evidence-preview"
+                    onclick="openImageLightbox('{{ card.obj.evidence_photo.url|escapejs }}', 'مدرک {{ card.obj.asset.name|escapejs }}')">
+                <img src="{{ card.obj.evidence_photo.url }}" alt="عکس مدرک">
+                <span>مشاهده مدرک</span>
+            </button>
+            {% endif %}
+
+            {% if can_edit %}
+            <button type="submit" class="aic-save-btn">
+                <i class="fas fa-save"></i> ذخیره
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if oob_progress %}
+<div id="auditProgressHeader" hx-swap-oob="true" class="am-progress-card"
+     data-uncounted="{{ progress.uncounted_items }}">
+    <div class="am-progress-meta">
+        <strong>{{ progress.counted_items }} از {{ progress.total_items }} قلم شمارش شده</strong>
+        <span>{{ progress.progress_pct }}%</span>
+    </div>
+    <div class="am-progress-track">
+        <div class="am-progress-fill" style="width: {{ progress.progress_pct }}%;"></div>
+    </div>
+    {% if progress.recount_items > 0 %}
+    <div class="am-recount-pill">
+        <i class="fas fa-redo"></i> {{ progress.recount_items }} قلم نیازمند بازشماری
+    </div>
+    {% endif %}
+</div>
+{% endif %}

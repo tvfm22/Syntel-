@@ -58,18 +58,17 @@ def iso_date(value):
 @register.filter
 def number_format(value):
     """
-    Format a number with thousand separators (comma) and Persian numerals
+    Format a number with thousand separators (comma) and English numerals
     """
     if value is None or value == '':
-        return '۰'
+        return '0'
 
     try:
         d = Decimal(str(value).replace(',', '').strip())
         if not d.is_finite():
             return str(value)
         rounded = d.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
-        formatted = f"{rounded:,}"
-        return formatted.translate(_PERSIAN_DIGITS)
+        return f"{rounded:,}"
     except (InvalidOperation, ValueError, TypeError):
         return str(value)
 
@@ -106,7 +105,7 @@ def jalali_date(value, format_string='%Y/%m/%d'):
         result = result.replace('%d', str(jalali.day).zfill(2))
         result = result.replace('%B', months.get(jalali.month, ''))
         
-        return result.translate(_PERSIAN_DIGITS)
+        return result
     except Exception:
         logger.exception('jalali_date filter error')
         return str(value)
@@ -147,7 +146,7 @@ def jalali_datetime(value, format_string='%Y/%m/%d %H:%M'):
         result = result.replace('%M', str(jalali.minute).zfill(2))
         result = result.replace('%S', str(jalali.second).zfill(2))
         
-        return result.translate(_PERSIAN_DIGITS)
+        return result
     except Exception:
         logger.exception('jalali_datetime filter error')
         return str(value)
@@ -171,7 +170,7 @@ def jalali_time(value, format_string='%H:%M'):
             result = result.replace('%M', str(value.minute).zfill(2))
             result = result.replace('%S', str(value.second).zfill(2))
             
-            return result.translate(_PERSIAN_DIGITS)
+            return result
     except Exception:
         logger.exception('jalali_time filter error')
 
@@ -240,6 +239,31 @@ def trim_decimal(value, places=2):
 
 
 @register.filter
+def qty_comma(value, places=2):
+    """
+    نمایش مقدار تا حداکثر `places` رقم اعشار بدون صفرهای اضافی با جداکنندهٔ سه‌رقمی (کاما) و ارقام انگلیسی
+    5000.0000 → '5,000'، 1500.4000 → '1,500.4'
+    """
+    if value is None or value == '':
+        return '0'
+    try:
+        d = Decimal(str(value).replace(',', '').strip()).quantize(
+            Decimal('0.1') ** int(places), rounding=ROUND_HALF_UP
+        )
+        if not d.is_finite():
+            return str(value)
+        s = format(d.normalize(), 'f')
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        whole, _, frac = s.partition('.')
+        if whole.lstrip('-').isdigit():
+            whole = f'{int(whole):,}'
+        return f'{whole}.{frac}' if frac else whole
+    except (InvalidOperation, ValueError, TypeError, ArithmeticError):
+        return str(value)
+
+
+@register.filter
 def div(value, divisor):
     """تقسیم مقدار بر مقسوم‌علیه - برگرداندن Decimal"""
     if value is None or divisor in (None, '', 0):
@@ -265,4 +289,4 @@ def num2(value):
     text = f'{q:,}'
     if '.' in text:
         text = text.rstrip('0').rstrip('.')
-    return text.translate(_PERSIAN_DIGITS)
+    return text

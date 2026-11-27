@@ -253,10 +253,10 @@
                         <td style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
                         <td style="font-weight:700">{{ it.product.name|default:'—' }}</td>
                         <td style="font-size:0.78rem;color:var(--text-secondary)">
-                            {% if it.stock_item %}{{ it.stock_item.warehouse.name }} ({{ it.stock_item.quantity|trim_decimal }}){% else %}—{% endif %}
+                            {% if it.stock_item %}{{ it.stock_item.warehouse.name }} ({{ it.stock_item.quantity|qty_comma }}){% else %}—{% endif %}
                         </td>
                         <td>{{ it.unit.name|default:'—' }}</td>
-                        <td>{{ it.base_quantity|trim_decimal }}</td>
+                        <td>{{ it.base_quantity|qty_comma }}</td>
                         <td>{{ it.unit_price|number_format }}</td>
                         <td style="font-weight:700">{{ it.total_price|number_format }}</td>
                         <td style="font-size:0.78rem;color:var(--text-secondary);max-width:160px">{{ it.description|default:'—' }}</td>
@@ -295,10 +295,10 @@
                                 {{ tx_type_labels|get_item:m.transaction_type }}
                             </span>
                         </td>
-                        <td style="font-weight:700">{{ m.quantity|trim_decimal }} {{ m.unit.name|default:'' }}</td>
-                        <td>{{ m.previous_quantity|trim_decimal }}</td>
+                        <td style="font-weight:700">{{ m.quantity|qty_comma }} {{ m.unit.name|default:'' }}</td>
+                        <td>{{ m.previous_quantity|qty_comma }}</td>
                         <td style="color:var(--text-muted)">←</td>
-                        <td style="font-weight:700">{{ m.new_quantity|trim_decimal }}</td>
+                        <td style="font-weight:700">{{ m.new_quantity|qty_comma }}</td>
                         <td style="font-size:0.78rem;color:var(--text-secondary)">{% if m.created_by %}{{ m.created_by.get_full_name|default:m.created_by.username }}{% else %}—{% endif %}</td>
                     </tr>
                     {% empty %}
@@ -368,6 +368,18 @@
             <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
                 <i class="fas fa-pen"></i> ویرایش پیش‌نویس
             </a>
+            {% if items %}
+            <form method="post" action="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
+                  onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number|escapejs }} ثبت و نهایی شود؟');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="submit">
+                <input type="hidden" name="quick_submit" value="1">
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="fas fa-check-double"></i>
+                    {% if voucher.voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher.voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
+                </button>
+            </form>
+            {% endif %}
             {% endif %}
             {% if can_cancel %}
             <form method="post" action="{% url 'voucher_cancel' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"

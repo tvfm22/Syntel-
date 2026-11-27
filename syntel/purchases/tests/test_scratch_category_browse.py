@@ -164,3 +164,75 @@ class TestProductUpdateCompletes(CategoryBrowseBase):
         })
         p.refresh_from_db()
         self.assertTrue(p.is_complete, 'product_update باید کالای ناقص را کامل کند')
+
+
+@override_settings(SESSION_COOKIE_SAMESITE='Lax')
+class TestPurchaseRequestVisibleCategories(CategoryBrowseBase):
+    def test_hides_categories_with_no_accessible_products_for_requester(self):
+        from purchases.models import Department
+
+        bar_dep = Department.objects.create(name='بار', cafe=self.cafe)
+        kitchen_dep = Department.objects.create(name='آشپزخانه', cafe=self.cafe)
+        bar_user = User.objects.create_user(
+            username='bar_req', password='x', role='requester',
+            department=bar_dep, cafe=self.cafe,
+        )
+
+        # دسته‌ای که کالای قابل دسترس برای بار دارد -> باید نمایش داده شود
+        cat_ok = Category.objects.create(name='قهوه و دمنوش', cafe=self.cafe)
+        p_ok = Product.objects.create(name='اسپرسو', category=cat_ok, cafe=self.cafe, is_complete=True)
+        p_ok.departments.add(bar_dep)
+
+        # دسته‌ای که فقط کالای آشپزخانه دارد -> نباید به بار نمایش داده شود
+        cat_kitchen = Category.objects.create(name='پروتئین', cafe=self.cafe)
+        p_kitchen = Product.objects.create(name='گوشت', category=cat_kitchen, cafe=self.cafe, is_complete=True)
+        p_kitchen.departments.add(kitchen_dep)
+
+        # دسته‌ای که فقط کالای ناقص یا غیرفعال دارد -> نباید نمایش داده شود
+        cat_incomplete = Category.objects.create(name='ادویه ناقص', cafe=self.cafe)
+        Product.objects.create(name='فلفل', category=cat_incomplete, cafe=self.cafe, is_complete=False)
+        cat_inactive_prod = Category.objects.create(name='لوازم غیرفعال', cafe=self.cafe)
+        Product.objects.create(name='لیوان', category=cat_inactive_prod, cafe=self.cafe, is_complete=True, is_active=False)
+
+        # دسته خالی -> نباید نمایش داده شود
+        cat_empty = Category.objects.create(name='دسته خالی', cafe=self.cafe)
+
+        # دسته والد بدون کالای مستقیم ولی دارای زیردسته فعال با کالای قابل دسترس -> والد و زیردسته نمایش داده شوند
+        cat_parent_ok = Category.objects.create(name='نوشیدنی سرد', cafe=self.cafe)
+        cat_child_ok = Category.objects.create(name='سیروپ', parent=cat_parent_ok, cafe=self.cafe)
+        cat_child_blocked = Category.objects.create(name='سس آشپزخانه', parent=cat_parent_ok, cafe=self.cafe)
+        Product.objects.create(name='سیروپ وانیل', category=cat_child_ok, cafe=self.cafe, is_complete=True, usage_location='general')
+        p_blocked_child = Product.objects.create(name='سس تند', category=cat_child_blocked, cafe=self.cafe, is_complete=True)
+        p_blocked_child.departments.add(kitchen_dep)
+
+        # دسته والد که هیچ‌کدام از زیردسته‌هایش کالای قابل دسترس ندارند -> نباید نمایش داده شود
+        cat_parent_blocked = Category.objects.create(name='مواد پخت', cafe=self.cafe)
+        cat_child_kitchen = Category.objects.create(name='آرد و خمیر', parent=cat_parent_blocked, cafe=self.cafe)
+        p_dough = Product.objects.create(name='آرد سفید', category=cat_child_kitchen, cafe=self.cafe, is_complete=True)
+        p_dough.departments.add(kitchen_dep)
+
+        self.client.force_login(bar_user)
+        resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'cb'}))
+        self.assertEqual(resp.status_code, 200)
+        visible_ids = set(resp.context['all_categories'].values_list('id', flat=True))
+
+        self.assertIn(cat_ok.id, visible_ids)
+        self.assertIn(cat_parent_ok.id, visible_ids)
+        self.assertIn(cat_child_ok.id, visible_ids)
+
+        self.assertNotIn(cat_kitchen.id, visible_ids)
+        self.assertNotIn(cat_incomplete.id, visible_ids)
+        self.assertNotIn(cat_inactive_prod.id, visible_ids)
+        self.assertNotIn(cat_empty.id, visible_ids)
+        self.assertNotIn(cat_child_blocked.id, visible_ids)
+        self.assertNotIn(cat_parent_blocked.id, visible_ids)
+        self.assertNotIn(cat_child_kitchen.id, visible_ids)
+
+    def test_hides_food_category_without_recipe_for_requester(self):
+        cat_food = Category.objects.create(name='مواد غذایی بدون رسپی', cafe=self.cafe, requires_recipe=True)
+        Product.objects.create(name='پنیر پیتزا', category=cat_food, cafe=self.cafe, is_complete=True, usage_location='general')
+
+        resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'cb'}))
+        self.assertEqual(resp.status_code, 200)
+        visible_ids = set(resp.context['all_categories'].values_list('id', flat=True))
+        self.assertNotIn(cat_food.id, visible_ids)

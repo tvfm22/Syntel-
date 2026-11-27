@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}دسته‌بندی‌های اموال - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-sitemap"></i></div>
+            <div class="ph-title">
+                <h1>دسته‌بندی‌های اموال و اثاثیه</h1>
+                <div class="page-sub">تعریف ساختار درختی دسته‌بندی اموال برای کافه {{ cafe.name }}</div>
+            </div>
+        </div>
+        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+    </div>
+
+    <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-header"><div class="card-title"><i class="fas fa-plus"></i> افزودن دسته‌بندی جدید</div></div>
+        <div class="card-body">
+            <form method="post" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem; align-items:end;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="filter-group">
+                    <label class="filter-label">نام دسته‌بندی *</label>
+                    <input type="text" name="name" class="form-control" required placeholder="مثلاً ظروف سرو، تجهیزات برقی...">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">دسته‌بندی والد (اختیاری)</label>
+                    <select name="parent_id" class="filter-select">
+                        <option value="">بدون والد (دسته اصلی)</option>
+                        {% for p in parent_options %}
+                        <option value="{{ p.id }}">{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">توضیحات</label>
+                    <input type="text" name="description" class="form-control" placeholder="توضیح کوتاه...">
+                </div>
+                <button type="submit" class="btn btn-primary" style="height:42px;">ثبت دسته‌بندی</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست دسته‌بندی‌ها ({{ categories|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>عنوان کامل</th><th>توضیحات</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+                <tbody>
+                    {% for c in categories %}
+                    <tr>
+                        <td><strong>{{ c }}</strong></td>
+                        <td>{{ c.description|default:'—' }}</td>
+                        <td><span class="badge {% if c.is_active %}badge-success{% else %}badge-neutral{% endif %}">{% if c.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
+                        <td>
+                            <form method="post" style="margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="category_id" value="{{ c.id }}">
+                                <button type="submit" class="btn btn-secondary" style="height:32px; font-size:0.78rem;">{% if c.is_active %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center; padding:1.5rem;">هنوز دسته‌بندی تعریف نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -180,6 +180,7 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
     # گذر اول: برآورد ارزش و مقدار نرمال‌شده هر ردیف و تجمیع در سطح محصول و کل پیش‌نویس
     per_item = []
     prod_total_value: dict[int, Decimal] = defaultdict(lambda: Decimal('0'))
+    prod_group_total_norm: dict[tuple[int, object], Decimal] = defaultdict(lambda: Decimal('0'))
     draft_total_value = Decimal('0')
 
     for d in items:
@@ -189,20 +190,20 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
         est_cost = None
         unit_price = None
         p_info = None
+        group, factor = _item_unit_factor(item_unit)
         if prod is not None:
             p_info = pricing_map.get(prod.id)
             est_cost, unit_price, _ = _estimate_consumption_cost(qty_dec, item_unit, p_info)
             if est_cost is not None:
                 prod_total_value[prod.id] += est_cost
                 draft_total_value += est_cost
-        group, factor = _item_unit_factor(item_unit)
+            prod_group_total_norm[(prod.id, group)] += qty_dec * factor
         per_item.append((d, prod, qty_dec, item_unit, p_info, est_cost, unit_price, group, factor))
 
     draft_exceeds_threshold = draft_total_value > HIGH_VALUE_THRESHOLD_RIAL
 
     # گذر دوم: تشخیص دلایل مستقل هر خط
     results: dict[int, dict] = {}
-    unflagged_qty_running: dict[tuple[int, object], Decimal] = defaultdict(lambda: Decimal('0'))
 
     for d, prod, qty_dec, item_unit, p_info, est_cost, unit_price, group, factor in per_item:
         reasons: list[tuple[str, str]] = []
@@ -243,10 +244,8 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
                 avg_qty_in_unit = (avg_norm / factor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                 line_limit = HIGH_QTY_AVG_MULTIPLIER * (avg_norm / factor)
                 individually_high = qty_dec > line_limit
-                norm_line_qty = qty_dec * factor
                 cumulative_high = (
-                    not individually_high
-                    and (unflagged_qty_running[(prod.id, group)] + norm_line_qty) > (HIGH_QTY_AVG_MULTIPLIER * avg_norm)
+                    prod_group_total_norm[(prod.id, group)] > (HIGH_QTY_AVG_MULTIPLIER * avg_norm)
                 )
                 if individually_high or cumulative_high:
                     unit_suffix = f' {item_unit}' if item_unit else ''
@@ -254,8 +253,6 @@ def evaluate_draft_items_ceo_status(draft_items, cafe=None) -> dict[int, dict]:
                         'high_qty_avg',
                         f'مقدار بیش از ۳ برابر میانگین خرید (میانگین: {_fmt_qty(avg_qty_in_unit)}{unit_suffix})',
                     ))
-                else:
-                    unflagged_qty_running[(prod.id, group)] += norm_line_qty
             elif est_cost is None and qty_dec > UNPRICED_SAFE_QTY_THRESHOLD:
                 reasons.append((
                     'unpriced_high_qty',

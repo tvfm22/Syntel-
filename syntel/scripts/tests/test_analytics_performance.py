@@ -26,10 +26,12 @@ from purchases.models import (
     Requester, Category, Product, Unit,
     PurchaseRequest, Invoice, InvoiceItem
 )
-from purchases.views_analytics import (
+from purchases.views.analytics import (
     api_department_expenses,
     api_department_categories,
     api_category_products,
+)
+from purchases.views.analytics_helpers import (
     calculate_growth_rate,
     get_color_by_growth
 )

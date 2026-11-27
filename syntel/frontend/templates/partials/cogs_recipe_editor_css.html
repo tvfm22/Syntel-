@@ -1,167 +1,320 @@
 {% comment %}
 استایل مشترک مودال‌ها، فرم رسپی و دکمهٔ btn-sm —
-در بلوک extra_css هر دو صفحهٔ بهای تمام شده include می‌شود.
+در بلوک extra_css صفحات بهای تمام شده include می‌شود.
 {% endcomment %}
 <style>
-
-    /* ═══ پوستهٔ مشترک مودال‌های بهای تمام شده ═══ */
+    /* ═══ پوستهٔ مشترک مودال‌های بهای تمام شده (هماهنگ با سیستم مینیمال مدرن) ═══ */
     .cogs-modal {
-        display: none; position: fixed; inset: 0; z-index: 1200;
-        background: rgba(15,23,42,0.45); backdrop-filter: blur(2px);
-        padding: var(--space-6); overflow-y: auto;
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(15, 23, 42, 0.42);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        padding: 1.25rem;
+        overflow-y: auto;
     }
-    .cogs-modal.is-open { display: flex; align-items: flex-start; justify-content: center; }
+    .cogs-modal.is-open {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+    }
     .cogs-modal-box {
-        background: var(--bg-card); border-radius: var(--radius-2xl);
-        box-shadow: var(--shadow-xl); width: 100%; max-width: 940px;
-        margin: auto; overflow: hidden;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 18px;
+        box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+        width: 100%;
+        max-width: 920px;
+        margin: auto;
+        overflow: hidden;
+        animation: cgModalIn 0.16s ease-out;
     }
-    .cogs-modal-box.is-narrow { max-width: 560px; }
-    .cogs-modal-box.is-medium { max-width: 760px; }
-    .cogs-modal-box.is-wide { max-width: 1040px; }
+    @keyframes cgModalIn {
+        from { opacity: 0; transform: translateY(8px) scale(0.985); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .cogs-modal-box.is-narrow { max-width: 540px; }
+    .cogs-modal-box.is-medium { max-width: 740px; }
+    .cogs-modal-box.is-wide   { max-width: 1020px; }
+
     .cogs-modal-head {
-        display: flex; align-items: center; gap: var(--space-3);
-        padding: var(--space-4) var(--space-5);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1.05rem 1.35rem;
         border-bottom: 1px solid var(--border-light);
     }
-    .cogs-modal-head h3 { font-size: 0.98rem; font-weight: 800; margin: 0; }
-    .cogs-modal-head .modal-sub { font-size: 0.75rem; color: var(--text-secondary); }
-    .cogs-modal-close {
-        margin-inline-start: auto; background: none; border: none; cursor: pointer;
-        width: 30px; height: 30px; border-radius: var(--radius-sm);
-        color: var(--text-secondary); font-size: 0.95rem;
+    .cogs-modal-head h3 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
     }
-    .cogs-modal-close:hover { background: var(--gray-100); color: var(--danger); }
-    .cogs-modal-body { padding: var(--space-5); max-height: calc(100vh - 220px); overflow-y: auto; }
+    .cogs-modal-head .modal-sub {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.12rem;
+    }
+    .cogs-modal-close {
+        margin-inline-start: auto;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid var(--border-default);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.15s ease;
+    }
+    .cogs-modal-close:hover {
+        background: var(--gray-100);
+        color: var(--text-primary);
+    }
+    .cogs-modal-body {
+        padding: 1.2rem 1.35rem;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+    }
     .cogs-modal-foot {
-        display: flex; align-items: center; gap: var(--space-3);
-        padding: var(--space-3) var(--space-5);
-        border-top: 1px solid var(--border-light); background: var(--bg-subtle);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1.35rem;
+        border-top: 1px solid var(--border-light);
+        background: var(--gray-50);
     }
     .cogs-modal-foot .spacer { margin-inline-start: auto; }
+    .cogs-modal-foot .btn {
+        height: 36px;
+        padding: 0 1rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+    }
 
-    /* دکمهٔ کوچک داخل مودال‌ها */
+    /* دکمهٔ کوچک داخل مودال‌ها و بخش‌ها */
     .btn-sm {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        height: 32px; padding: 0 0.7rem; border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default); background: var(--bg-card);
-        color: var(--text-secondary); cursor: pointer;
-        font-family: 'Vazir', sans-serif; font-size: 0.74rem; font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.32rem;
+        height: 32px;
+        padding: 0 0.72rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-default);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.74rem;
+        font-weight: 600;
+        transition: all 0.15s ease;
     }
-    .btn-sm:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .btn-sm:hover {
+        border-color: var(--primary-light);
+        color: var(--primary-dark);
+        background: rgba(139, 92, 246, 0.05);
+    }
     .btn-sm.is-primary {
-        background: var(--accent-indigo); border-color: var(--accent-indigo); color: #fff;
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #FFFFFF;
+        font-weight: 700;
     }
-    .btn-sm.is-primary:hover { background: var(--primary-dark); color: #fff; }
+    .btn-sm.is-primary:hover {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
+        color: #FFFFFF;
+    }
 
     /* ═══ فرم رسپی ═══ */
     .recipe-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
-        margin-bottom: var(--space-4);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.1rem;
     }
-    .recipe-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
-    .recipe-field label { font-size: 0.74rem; font-weight: 700; color: var(--text-secondary); }
-    .recipe-field input, .recipe-field select {
-        height: 38px; padding: 0 0.6rem; width: 100%;
-        border: 1px solid var(--border-default); border-radius: var(--radius-md);
-        background: var(--bg-card); color: var(--text-primary);
-        font-family: 'Vazir', sans-serif; font-size: 0.82rem;
+    .recipe-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-width: 0;
     }
-    .recipe-field input:focus, .recipe-field select:focus {
-        outline: none; border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
+    .recipe-field label {
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+    }
+    .recipe-field input,
+    .recipe-field select {
+        height: 36px;
+        padding: 0 0.7rem;
+        width: 100%;
+        border: 1px solid var(--border-default);
+        border-radius: 10px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.81rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .recipe-field input:focus,
+    .recipe-field select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
 
     .recipe-lines-head {
-        display: flex; align-items: center; gap: var(--space-3);
-        margin-bottom: var(--space-2);
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 0.55rem;
     }
-    .recipe-lines-head h4 { font-size: 0.82rem; font-weight: 800; margin: 0; }
-    .recipe-lines { display: flex; flex-direction: column; gap: 6px; }
+    .recipe-lines-head h4 {
+        font-size: 0.83rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .recipe-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
     .recipe-line {
         display: grid;
-        grid-template-columns: minmax(0, 1.75fr) 84px 84px 108px 34px;
-        gap: 6px; align-items: center;
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        border-radius: var(--radius-md); padding: 6px;
+        grid-template-columns: minmax(0, 1.75fr) 84px 84px 108px 32px;
+        gap: 0.45rem;
+        align-items: center;
+        background: var(--gray-50);
+        border: 1px solid var(--border-light);
+        border-radius: 11px;
+        padding: 0.45rem 0.55rem;
     }
-    .recipe-line select, .recipe-line input {
-        height: 34px; padding: 0 0.5rem; width: 100%;
-        border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-        background: var(--bg-card); color: var(--text-primary);
-        font-family: 'Vazir', sans-serif; font-size: 0.79rem;
+    .recipe-line select,
+    .recipe-line input {
+        height: 34px;
+        padding: 0 0.55rem;
+        width: 100%;
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.79rem;
     }
-    .recipe-line select:focus, .recipe-line input:focus {
-        outline: none; border-color: var(--accent-indigo);
+    .recipe-line select:focus,
+    .recipe-line input:focus {
+        outline: none;
+        border-color: var(--primary);
     }
     .recipe-line .line-material { flex: 1 1 0; min-width: 0; }
     .recipe-line .line-cost {
-        text-align: center; font-size: 0.79rem; font-weight: 800;
-        color: var(--accent-green); font-variant-numeric: tabular-nums;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #047857;
+        font-variant-numeric: tabular-nums;
     }
     .recipe-line .line-cost.is-empty { color: var(--text-muted); font-weight: 600; }
     .line-del {
-        background: none; border: none; cursor: pointer; color: var(--text-muted);
-        width: 28px; height: 28px; border-radius: var(--radius-sm); font-size: 0.8rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        transition: background 0.15s ease, color 0.15s ease;
     }
-    .line-del:hover { background: rgba(239,68,68,0.10); color: var(--danger); }
+    .line-del:hover { background: #FEF2F2; color: #DC2626; }
+
     .line-badge {
-        display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
-        font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 999px;
-        margin-inline-start: 4px; white-space: nowrap;
-        border: 1px solid transparent; font-family: 'Vazir', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        flex-shrink: 0;
+        font-size: 0.64rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 999px;
+        margin-inline-start: 4px;
+        white-space: nowrap;
+        border: 1px solid transparent;
+        font-family: 'Vazir', sans-serif;
     }
-    .line-badge.is-raw { background: rgba(59,130,246,0.10); color: var(--accent-blue); }
-    .line-badge.is-prep { background: rgba(249,115,22,0.12); color: var(--accent-orange); }
-    .line-badge.is-dish { background: rgba(139,92,246,0.12); color: var(--accent-indigo); }
-    button.line-badge.is-link {
-        cursor: pointer; transition: all var(--transition-fast);
-    }
-    button.line-badge.is-prep.is-link { border-color: rgba(249,115,22,0.35); }
-    button.line-badge.is-prep.is-link:hover {
-        background: rgba(249,115,22,0.22); border-color: var(--accent-orange);
-    }
-    button.line-badge.is-dish.is-link { border-color: rgba(139,92,246,0.35); }
-    button.line-badge.is-dish.is-link:hover {
-        background: rgba(139,92,246,0.22); border-color: var(--accent-indigo);
-    }
+    .line-badge.is-raw  { background: #EFF6FF; color: #2563EB; }
+    .line-badge.is-prep { background: #FFFBEB; color: #B45309; }
+    .line-badge.is-dish { background: rgba(139, 92, 246, 0.10); color: var(--primary-dark); }
+    button.line-badge.is-link { cursor: pointer; transition: all 0.15s ease; }
+    button.line-badge.is-prep.is-link { border-color: #FDE68A; }
+    button.line-badge.is-prep.is-link:hover { background: #FEF3C7; border-color: #F59E0B; }
+    button.line-badge.is-dish.is-link { border-color: rgba(139, 92, 246, 0.30); }
+    button.line-badge.is-dish.is-link:hover { background: rgba(139, 92, 246, 0.18); border-color: var(--primary); }
+
     .recipe-back-btn {
-        display: none; align-items: center; gap: 0.35rem;
-        height: 30px; padding: 0 0.65rem; border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default); background: var(--bg-subtle);
-        color: var(--text-primary); cursor: pointer;
-        font-family: 'Vazir', sans-serif; font-size: 0.74rem; font-weight: 700;
-        flex-shrink: 0; transition: all var(--transition-fast);
+        display: none;
+        align-items: center;
+        gap: 0.35rem;
+        height: 30px;
+        padding: 0 0.68rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-default);
+        background: var(--gray-50);
+        color: var(--text-primary);
+        cursor: pointer;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.74rem;
+        font-weight: 700;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
     }
     .recipe-back-btn.is-visible { display: inline-flex; }
-    .recipe-back-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
+    .recipe-back-btn:hover { border-color: var(--primary); color: var(--primary-dark); }
     .recipe-lines-hint { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
 
     .recipe-total {
-        display: flex; align-items: center; gap: var(--space-4);
-        margin-top: var(--space-4); padding: var(--space-3) var(--space-4);
-        background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.22);
-        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding: 0.85rem 1.1rem;
+        background: #ECFDF5;
+        border: 1px solid #D1FAE5;
+        border-radius: 12px;
     }
-    .recipe-total .rt-label { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); }
+    .recipe-total .rt-label { font-size: 0.76rem; font-weight: 700; color: #065F46; }
     .recipe-total .rt-value {
-        font-size: 1.25rem; font-weight: 900; color: var(--accent-green);
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #047857;
         font-variant-numeric: tabular-nums;
     }
-    .recipe-total .rt-unit { font-size: 0.75rem; color: var(--text-secondary); }
-    .recipe-total .rt-note { margin-inline-start: auto; font-size: 0.7rem; color: var(--text-muted); }
+    .recipe-total .rt-unit { font-size: 0.75rem; color: #065F46; }
+    .recipe-total .rt-note { margin-inline-start: auto; font-size: 0.71rem; color: #047857; opacity: 0.85; }
 
     .recipe-alert {
-        display: none; margin-bottom: var(--space-3); padding: 0.6rem 0.85rem;
-        border-radius: var(--radius-md); font-size: 0.79rem; font-weight: 600;
-        background: rgba(239,68,68,0.08); color: var(--danger);
-        border: 1px solid rgba(239,68,68,0.22);
+        display: none;
+        margin-bottom: 0.75rem;
+        padding: 0.6rem 0.85rem;
+        border-radius: 10px;
+        font-size: 0.79rem;
+        font-weight: 600;
+        background: #FEF2F2;
+        color: #B91C1C;
+        border: 1px solid #FECACA;
     }
     .recipe-alert.is-open { display: block; }
 
     @media (max-width: 900px) {
         .recipe-grid { grid-template-columns: repeat(2, 1fr); }
-        .recipe-line { grid-template-columns: minmax(0,1fr) 70px 70px 34px; }
+        .recipe-line { grid-template-columns: minmax(0, 1fr) 70px 70px 32px; }
         .recipe-line .line-cost { display: none; }
     }
 </style>

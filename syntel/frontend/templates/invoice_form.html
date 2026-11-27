@@ -739,22 +739,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Format number with commas
     function formatNumber(num) {
-        if (!num) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        if (num === null || num === undefined || num === '') return '0';
+        const n = Number(num);
+        if (!isFinite(n) || n === 0) return '0';
+        return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
     
     // Parse number from formatted string
     function parseNumber(str) {
         if (!str) return 0;
-        return parseFloat(str.toString().replace(/,/g, '')) || 0;
+        const clean = window.SyntelComma
+            ? window.SyntelComma.stripCommas(str)
+            : str.toString().replace(/[,،٬\s]/g, '');
+        return parseFloat(clean) || 0;
     }
     
     // Setup money input formatting
     function setupMoneyInputs() {
         document.querySelectorAll('.money-input').forEach(input => {
             // Format existing value
-            const value = parseNumber(input.value);
-            input.value = formatNumber(value);
+            if (input.value && input.value.trim() !== '') {
+                if (window.SyntelComma) {
+                    window.SyntelComma.applyCommaToInput(input);
+                } else {
+                    input.value = formatNumber(parseNumber(input.value));
+                }
+            }
             
             // Remove existing listeners
             input.removeEventListener('input', handleMoneyInput);
@@ -767,19 +777,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function handleMoneyInput(e) {
-        const cursorPos = e.target.selectionStart;
-        const oldLength = e.target.value.length;
-        const value = parseNumber(e.target.value);
-        e.target.value = formatNumber(value);
-        const newLength = e.target.value.length;
-        const newPos = cursorPos + (newLength - oldLength);
-        e.target.setSelectionRange(newPos, newPos);
+        if (window.SyntelComma) {
+            window.SyntelComma.applyCommaToInput(e.target);
+        } else {
+            const value = parseNumber(e.target.value);
+            e.target.value = e.target.value.trim() === '' ? '' : formatNumber(value);
+        }
         calculateTotals();
     }
     
     function handleMoneyBlur(e) {
-        const value = parseNumber(e.target.value);
-        e.target.value = formatNumber(value);
+        if (!e.target.value || e.target.value.trim() === '') return;
+        if (window.SyntelComma) {
+            window.SyntelComma.applyCommaToInput(e.target);
+        } else {
+            e.target.value = formatNumber(parseNumber(e.target.value));
+        }
     }
     
     // Calculate totals

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}کاتالوگ اموال و اثاثیه - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .acl-thumb { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default); }
+    .acl-placeholder { width: 48px; height: 48px; border-radius: 10px; background: #F1F5F9; display:flex; align-items:center; justify-content:center; color:#94A3B8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:1360px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
+            <div class="ph-title">
+                <h1>کاتالوگ اموال و اثاثیه</h1>
+                <div class="page-sub">تعریف اقلام تعدادی و پلاک‌دار همراه با تصویر و ارزش تخمینی</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> افزودن کالای جدید</a>
+        </div>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">جستجو</label>
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="نام، کد یا برند...">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">دسته‌بندی</label>
+                <select name="category" class="filter-select">
+                    <option value="">همه دسته‌بندی‌ها</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">روش ردیابی</label>
+                <select name="tracking_mode" class="filter-select">
+                    <option value="">همه</option>
+                    <option value="quantity" {% if selected_mode == 'quantity' %}selected{% endif %}>تعدادی</option>
+                    <option value="serialized" {% if selected_mode == 'serialized' %}selected{% endif %}>پلاک‌دار</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">فیلتر</button>
+                <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> کالاهای کاتالوگ ({{ assets|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>تصویر</th>
+                        <th>نام و کد</th>
+                        <th>دسته‌بندی</th>
+                        <th>روش ردیابی</th>
+                        <th>ارزش واحد</th>
+                        <th>مجموع موجودی کافه</th>
+                        <th>وضعیت</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assets %}
+                    <tr>
+                        <td>
+                            {% if a.thumbnail %}
+                            <img src="{{ a.thumbnail.url }}" alt="{{ a.name }}" class="acl-thumb">
+                            {% elif a.image %}
+                            <img src="{{ a.image.url }}" alt="{{ a.name }}" class="acl-thumb">
+                            {% else %}
+                            <div class="acl-placeholder"><i class="fas fa-image"></i></div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ a.name }}</strong>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">{{ a.code }}{% if a.brand_model %} • {{ a.brand_model }}{% endif %}</div>
+                        </td>
+                        <td>{{ a.category|default:'—' }}</td>
+                        <td><span class="badge {% if a.tracking_mode == 'serialized' %}badge-primary{% else %}badge-neutral{% endif %}">{{ a.get_tracking_mode_display }}</span></td>
+                        <td>{{ a.estimated_unit_value|number_format }} ریال</td>
+                        <td>سالم: <strong>{{ a.total_healthy }}</strong> | معیوب: <strong>{{ a.total_damaged }}</strong></td>
+                        <td><span class="badge {% if a.is_active %}badge-success{% else %}badge-danger{% endif %}">{% if a.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
+                        <td>
+                            <a href="{% url 'asset_catalog_edit' cafe_code=cafe_code pk=a.id %}" class="btn btn-secondary" style="height:34px; font-size:0.78rem;"><i class="fas fa-edit"></i> ویرایش</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" style="text-align:center; padding:2rem;">کالایی در کاتالوگ ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

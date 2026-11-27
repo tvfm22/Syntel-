@@ -418,7 +418,7 @@
                         <!-- موجودی کل -->
                         <td>
                             <span class="stk-qty {% if group.is_low_stock %}low{% endif %}">
-                                {{ group.total_quantity|trim_decimal }}
+                                <span dir="ltr" style="display:inline-block">{{ group.total_quantity|qty_comma }}</span>
                                 <small>{% if group.product.unit %}{{ group.product.unit.name }}{% endif %}</small>
                             </span>
                         </td>
@@ -427,7 +427,7 @@
                         <td>
                             {% if group.total_min_quantity > 0 %}
                             <span class="stk-min">
-                                {{ group.total_min_quantity|trim_decimal }}
+                                {{ group.total_min_quantity|qty_comma }}
                                 <small>{% if group.product.unit %}{{ group.product.unit.name }}{% endif %}</small>
                             </span>
                             {% else %}
@@ -437,7 +437,11 @@
 
                         <!-- وضعیت -->
                         <td>
-                            {% if group.is_low_stock %}
+                            {% if group.total_quantity < 0 %}
+                            <span class="badge badge-danger">
+                                <i class="fas fa-minus-circle"></i> موجودی منفی
+                            </span>
+                            {% elif group.is_low_stock %}
                             <span class="badge badge-danger">
                                 <i class="fas fa-triangle-exclamation"></i> کمبود
                             </span>

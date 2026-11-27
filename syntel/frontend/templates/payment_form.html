@@ -51,8 +51,8 @@
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label" for="id_amount">مبلغ پرداخت <span class="required">*</span></label>
-                <input type="text" name="amount" id="id_amount" class="form-input"
-                       value="{% if request.POST.amount %}{{ request.POST.amount }}{% elif default_amount %}{{ default_amount|floatformat:2 }}{% elif invoice %}{{ invoice.remaining_amount }}{% endif %}"
+                <input type="text" name="amount" id="id_amount" class="form-input js-comma" inputmode="decimal"
+                       value="{% if request.POST.amount %}{{ request.POST.amount }}{% elif default_amount %}{{ default_amount|trim_decimal:2 }}{% elif invoice %}{{ invoice.remaining_amount|trim_decimal:2 }}{% endif %}"
                        placeholder="مبلغ را وارد کنید" required>
             </div>
 
@@ -103,20 +103,15 @@
 </div>
 
 <script>
-// Format number inputs
-document.getElementById('id_amount').addEventListener('input', function(e) {
-    let value = e.target.value.replace(/,/g, '');
-    if (!isNaN(value) && value !== '') {
-        e.target.value = parseFloat(value).toLocaleString('fa-IR');
-    }
-});
-
 // Form validation
 document.querySelector('.payment-form').addEventListener('submit', function(e) {
-    const amount = document.getElementById('id_amount').value.replace(/,/g, '');
+    const rawAmount = document.getElementById('id_amount').value;
+    const amount = window.SyntelComma
+        ? window.SyntelComma.stripCommas(rawAmount)
+        : rawAmount.replace(/[,،٬\s]/g, '');
     const paymentMethod = document.getElementById('id_payment_location').value;
 
-    if (!amount || parseFloat(amount) <= 0) {
+    if (!amount || parseFloat(amount) <= 0 || isNaN(parseFloat(amount))) {
         alert('لطفاً مبلغ معتبر وارد کنید.');
         e.preventDefault();
         return;
@@ -127,9 +122,6 @@ document.querySelector('.payment-form').addEventListener('submit', function(e) {
         e.preventDefault();
         return;
     }
-
-    // Convert formatted number back to plain number for submission
-    document.getElementById('id_amount').value = amount;
 });
 </script>
 {% endblock %}

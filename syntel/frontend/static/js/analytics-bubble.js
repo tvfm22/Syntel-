@@ -133,9 +133,9 @@ function handleBreadcrumbClick(index, departmentId) {
 // Update stats
 function updateStats(summary) {
     document.getElementById('totalExpense').textContent = 
-        new Intl.NumberFormat('fa-IR').format(summary.total_expense) + ' ریال';
+        new Intl.NumberFormat('en-US').format(summary.total_expense) + ' ریال';
     document.getElementById('totalItems').textContent = 
-        new Intl.NumberFormat('fa-IR').format(summary.total_items);
+        new Intl.NumberFormat('en-US').format(summary.total_items);
     
     const change = summary.change_percent || 0;
     const changeEl = document.getElementById('changePercent');
@@ -198,8 +198,8 @@ function renderBubbleChart(data, level) {
                         label: function(context) {
                             const data = context.raw;
                             return [
-                                `هزینه: ${new Intl.NumberFormat('fa-IR').format(data.expense)} ریال`,
-                                `تعداد: ${new Intl.NumberFormat('fa-IR').format(data.count)}`,
+                                `هزینه: ${new Intl.NumberFormat('en-US').format(data.expense)} ریال`,
+                                `تعداد: ${new Intl.NumberFormat('en-US').format(data.count)}`,
                                 `تغییرات: ${data.change > 0 ? '+' : ''}${data.change.toFixed(1)}%`
                             ];
                         }
@@ -214,7 +214,7 @@ function renderBubbleChart(data, level) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return new Intl.NumberFormat('fa-IR', {
+                            return new Intl.NumberFormat('en-US', {
                                 notation: 'compact',
                                 compactDisplay: 'short'
                             }).format(value);
@@ -279,9 +279,9 @@ function renderProductTable(products) {
         <tr>
             <td>${product.code}</td>
             <td>${product.name}</td>
-            <td>${new Intl.NumberFormat('fa-IR').format(product.purchase_count)}</td>
-            <td>${new Intl.NumberFormat('fa-IR').format(product.total_expense)} ریال</td>
-            <td>${new Intl.NumberFormat('fa-IR').format(product.avg_price)} ریال</td>
+            <td>${new Intl.NumberFormat('en-US').format(product.purchase_count)}</td>
+            <td>${new Intl.NumberFormat('en-US').format(product.total_expense)} ریال</td>
+            <td>${new Intl.NumberFormat('en-US').format(product.avg_price)} ریال</td>
             <td>
                 <span class="badge ${product.change_percent > 0 ? 'badge-danger' : 'badge-success'}">
                     ${product.change_percent > 0 ? '+' : ''}${product.change_percent.toFixed(1)}%

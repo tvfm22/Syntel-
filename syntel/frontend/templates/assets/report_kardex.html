@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}کاردکس و تاریخچه حرکات اموال - Kuker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
+<style>
+    .rk-wrap { max-width: 1400px; margin: 0 auto; }
+    .rk-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
+        display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .rk-modal-backdrop.is-open { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rk-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon green"><i class="fas fa-history"></i></div>
+            <div class="ph-title">
+                <h1>کاردکس و تاریخچه کامل حرکات اموال</h1>
+                <div class="page-sub">بازه {{ start_jalali }} تا {{ end_jalali }} — مجموع {{ total_movements }} سند گردش</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{% url 'asset_report_kardex_export' cafe_code=cafe_code %}?{{ request.GET.urlencode }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> خروجی Excel
+            </a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">از تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='kardex_start_date' jd_value=start_jalali %}
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">تا تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='kardex_end_date' jd_value=end_jalali %}
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">سکشن / بخش</label>
+                <select name="department" class="filter-select">
+                    <option value="">همه سکشن‌ها</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">کالای اموال</label>
+                <select name="asset" class="filter-select">
+                    <option value="">همه کالاها</option>
+                    {% for a in assets %}
+                    <option value="{{ a.id }}" {% if selected_asset == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }} ({{ a.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">نوع حرکت</label>
+                <select name="movement_type" class="filter-select">
+                    <option value="">همه انواع</option>
+                    {% for val, label in movement_types %}
+                    <option value="{{ val }}" {% if selected_type == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">وضعیت سند</label>
+                <select name="status" class="filter-select">
+                    <option value="">همه وضعیت‌ها</option>
+                    {% for val, label in movement_statuses %}
+                    <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">جستجو</button>
+                <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-exchange-alt"></i> سوابق گردش اموال</div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>تاریخ</th>
+                        <th>نوع گردش</th>
+                        <th>وضعیت</th>
+                        <th>کالا / پلاک</th>
+                        <th>از سکشن ← به سکشن</th>
+                        <th>تعداد</th>
+                        <th>مرجع مرتبط</th>
+                        <th>توضیحات و مدرک</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mv in page_obj %}
+                    <tr>
+                        <td>{{ mv.created_at|jalali_datetime }}</td>
+                        <td><span class="badge badge-primary">{{ mv.get_movement_type_display }}</span></td>
+                        <td>
+                            <span class="badge {% if mv.status == 'approved' %}badge-success{% elif mv.status == 'rejected' or mv.status == 'cancelled' %}badge-danger{% else %}badge-warning{% endif %}">
+                                {{ mv.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ mv.asset.name }}</strong>
+                            {% if mv.asset_unit %}<div style="font-size:0.73rem; color:var(--text-muted);">پلاک: {{ mv.asset_unit.asset_tag }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ mv.from_department.name|default:'—' }}
+                            <i class="fas fa-arrow-left" style="font-size:0.7rem; color:var(--text-muted); margin:0 0.25rem;"></i>
+                            {{ mv.to_department.name|default:'—' }}
+                        </td>
+                        <td style="font-weight:800; color:{% if mv.quantity < 0 %}#DC2626{% else %}#059669{% endif %};">
+                            {{ mv.quantity }} ({{ mv.get_condition_bucket_display }})
+                        </td>
+                        <td>
+                            {% if mv.audit %}
+                            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=mv.audit.id %}" style="color:var(--accent-indigo); font-weight:700;">
+                                <i class="fas fa-clipboard-check"></i> {{ mv.audit.title }}
+                            </a>
+                            {% elif mv.invoice %}
+                            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=mv.invoice.id %}" style="color:#059669; font-weight:700;">
+                                <i class="fas fa-file-invoice"></i> فاکتور #{{ mv.invoice.id }}
+                            </a>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mv.reason %}<div>{{ mv.reason }}</div>{% endif %}
+                            {% if mv.evidence_photo %}
+                            <button type="button" class="btn btn-secondary" style="height:30px; padding:0 0.6rem; font-size:0.74rem;"
+                                    onclick="openKardexLightbox('{{ mv.evidence_photo.url|escapejs }}', '{{ mv.asset.name|escapejs }}')">
+                                <i class="fas fa-image"></i> عکس مدرک
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" style="text-align:center; padding:2rem;">گردشی با این فیلترها یافت نشد.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div style="display:flex; justify-content:center; gap:0.5rem; padding:1rem;">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&start_date={{ start_jalali }}&end_date={{ end_jalali }}&department={{ selected_department }}&asset={{ selected_asset }}&movement_type={{ selected_type }}&status={{ selected_status }}" class="btn btn-secondary">قبلی</a>
+            {% endif %}
+            <span style="display:inline-flex; align-items:center; padding:0 0.75rem; font-weight:700;">
+                صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+            </span>
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&start_date={{ start_jalali }}&end_date={{ end_jalali }}&department={{ selected_department }}&asset={{ selected_asset }}&movement_type={{ selected_type }}&status={{ selected_status }}" class="btn btn-secondary">بعدی</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="kardexLightbox" class="rk-modal-backdrop" onclick="this.classList.remove('is-open')">
+    <div style="background:#fff; padding:1rem; border-radius:16px; max-width:520px; text-align:center;" onclick="event.stopPropagation();">
+        <div id="kardexLightboxTitle" style="font-weight:800; margin-bottom:0.5rem;"></div>
+        <img id="kardexLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jalali_date_group.js' %}"></script>
+<script>
+function openKardexLightbox(url, title) {
+    document.getElementById('kardexLightboxImg').src = url;
+    document.getElementById('kardexLightboxTitle').textContent = title;
+    document.getElementById('kardexLightbox').classList.add('is-open');
+}
+</script>
+{% endblock %}

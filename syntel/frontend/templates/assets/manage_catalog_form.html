@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}ویرایش{% else %}ثبت{% endif %} کالای اموالی - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:860px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-box"></i></div>
+            <div class="ph-title">
+                <h1>{% if is_edit %}ویرایش «{{ asset.name }}»{% else %}تعریف کالای اموالی جدید{% endif %}</h1>
+                <div class="page-sub">تصویر کالا به‌صورت خودکار فشرده و بهینه ذخیره می‌شود</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" style="display:grid; gap:1rem;">
+                {% csrf_token %}
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
+                    <div class="filter-group">
+                        <label class="filter-label">نام کالا *</label>
+                        <input type="text" name="name" class="form-control" required value="{{ asset.name|default:'' }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">کد یکتا *</label>
+                        <input type="text" name="code" class="form-control" required value="{{ asset.code|default:'' }}" placeholder="مثلاً CUP-01">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">دسته‌بندی</label>
+                        <select name="category_id" class="filter-select">
+                            <option value="">بدون دسته‌بندی</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if asset.category_id == cat.id %}selected{% endif %}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">روش ردیابی *</label>
+                        <select name="tracking_mode" class="filter-select">
+                            {% for val, label in tracking_choices %}
+                            <option value="{{ val }}" {% if asset.tracking_mode == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">برند / مدل</label>
+                        <input type="text" name="brand_model" class="form-control" value="{{ asset.brand_model|default:'' }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">ارزش تخمینی واحد (ریال)</label>
+                        <input type="number" step="1" min="0" name="estimated_unit_value" class="form-control" value="{{ asset.estimated_unit_value|default:'0'|floatformat:0 }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">عمر مفید (ماه)</label>
+                        <input type="number" min="1" name="expected_life_months" class="form-control" value="{{ asset.expected_life_months|default:'' }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">تصویر کالا</label>
+                        <input type="file" name="image" id="assetImageInput" accept="image/*" class="form-control" onchange="previewAssetImage(this)">
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                    <img id="assetImagePreview"
+                         src="{% if asset and asset.thumbnail %}{{ asset.thumbnail.url }}{% elif asset and asset.image %}{{ asset.image.url }}{% endif %}"
+                         alt="پیش‌نمایش"
+                         style="width:110px; height:110px; object-fit:cover; border-radius:12px; border:1px solid var(--border-default); {% if not asset or not asset.image and not asset.thumbnail %}display:none;{% endif %}">
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-weight:700;">
+                        <input type="checkbox" name="is_active" value="1" {% if not is_edit or asset.is_active %}checked{% endif %}>
+                        کالا فعال باشد
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">توضیحات</label>
+                    <textarea name="description" rows="3" class="form-control">{{ asset.description|default:'' }}</textarea>
+                </div>
+
+                <div style="display:flex; gap:0.65rem;">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ذخیره کالا</button>
+                    <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewAssetImage(input) {
+    var img = document.getElementById('assetImagePreview');
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) { img.src = e.target.result; img.style.display = 'block'; };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

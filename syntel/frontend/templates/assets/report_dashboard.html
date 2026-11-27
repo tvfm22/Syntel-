@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}مرکز گزارش‌های اموال - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ard-wrap { max-width: 1360px; margin: 0 auto; }
+    .ard-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .ard-kpi {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-right: 4px solid var(--accent-indigo); border-radius: var(--radius-xl);
+        padding: 1.15rem; box-shadow: var(--shadow-xs);
+    }
+    .ard-kpi.green { border-right-color: #10B981; }
+    .ard-kpi.orange { border-right-color: #F97316; }
+    .ard-kpi.red { border-right-color: #EF4444; }
+    .ard-kpi-val { font-size: 1.45rem; font-weight: 800; color: var(--text-primary); }
+    .ard-kpi-lbl { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem; font-weight: 600; }
+
+    .ard-reports-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .ard-report-card {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); padding: 1.2rem; box-shadow: var(--shadow-sm);
+        display: flex; flex-direction: column; gap: 0.55rem; text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .ard-report-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent-indigo); }
+    .ard-rc-icon {
+        width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
+        justify-content: center; font-size: 1.15rem; background: #EEF2FF; color: #4F46E5;
+    }
+    .ard-rc-title { font-weight: 800; font-size: 0.96rem; color: var(--text-primary); }
+    .ard-rc-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+    .ard-charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.25rem; }
+    .ard-chart-box { height: 320px; position: relative; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ard-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-chart-pie"></i></div>
+            <div class="ph-title">
+                <h1>مرکز گزارش‌های تحلیلی اموال و اثاثیه</h1>
+                <div class="page-sub">پایش ارزش سرمایه، مغایرت انبارگردانی، شکستگی، کسری استاندارد، تعمیرات و کاردکس</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-primary">
+            <i class="fas fa-clipboard-check"></i> جلسات انبارگردانی
+        </a>
+    </div>
+
+    <div class="ard-grid">
+        <div class="ard-kpi green">
+            <div class="ard-kpi-val">{{ total_value|number_format }} ریال</div>
+            <div class="ard-kpi-lbl">ارزش تخمینی کل اموال کافه</div>
+        </div>
+        <div class="ard-kpi">
+            <div class="ard-kpi-val">{{ total_healthy|number_format }} / {{ total_damaged|number_format }}</div>
+            <div class="ard-kpi-lbl">تعداد کل اموال (سالم / معیوب)</div>
+        </div>
+        <div class="ard-kpi orange">
+            <div class="ard-kpi-val">{{ shortage_count }}</div>
+            <div class="ard-kpi-lbl">اقلام دارای کسری نسبت به استاندارد</div>
+        </div>
+        <div class="ard-kpi red">
+            <div class="ard-kpi-val">{{ repairs_count }} / {{ expiring_warranty_count }}</div>
+            <div class="ard-kpi-lbl">در تعمیر یا نیازمند تعمیر / گارانتی رو به اتمام</div>
+        </div>
+    </div>
+
+    <div class="ard-reports-grid">
+        <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon"><i class="fas fa-coins"></i></div>
+            <div class="ard-rc-title">۱. صورتبرداری و ارزش ریالی سکشن‌ها</div>
+            <div class="ard-rc-desc">ارزش کل اموال سالم و معیوب به تفکیک کافه، سکشن و دسته‌بندی با خروجی Excel و PDF</div>
+        </a>
+        <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon" style="background:#FEF2F2; color:#DC2626;"><i class="fas fa-balance-scale"></i></div>
+            <div class="ard-rc-title">۲. گزارش مغایرت انبارگردانی‌ها</div>
+            <div class="ard-rc-desc">مقایسه موجودی سیستم و شمارش واقعی، ارزش ریالی خسارت و عکس‌های مدرک</div>
+        </a>
+        <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon" style="background:#FFF7ED; color:#EA580C;"><i class="fas fa-chart-line"></i></div>
+            <div class="ard-rc-title">۳. روند شکستگی و مفقودی ماهانه</div>
+            <div class="ard-rc-desc">تحلیل ۳، ۶ یا ۱۲ ماهه تلفات اموال به تفکیک سکشن و ۱۰ کالای پرشکستگی</div>
+        </a>
+        <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon" style="background:#FEFCE8; color:#CA8A04;"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="ard-rc-title">۴. گزارش کسری نسبت به استاندارد</div>
+            <div class="ard-rc-desc">اقلام کمتر از حد نرمال سکشن و ثبت مستقیم درخواست خرید جایگزین</div>
+        </a>
+        <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon" style="background:#EFF6FF; color:#2563EB;"><i class="fas fa-tools"></i></div>
+            <div class="ard-rc-title">۵. وضعیت تعمیرات و گارانتی</div>
+            <div class="ard-rc-desc">پایش تجهیزات نیازمند تعمیر، در تعمیرگاه و گارانتی‌های نزدیک به انقضا یا منقضی</div>
+        </a>
+        <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ard-report-card">
+            <div class="ard-rc-icon" style="background:#ECFDF5; color:#059669;"><i class="fas fa-history"></i></div>
+            <div class="ard-rc-title">۶. کاردکس و تاریخچه حرکات</div>
+            <div class="ard-rc-desc">ردیابی کامل تمام ورود، انتقال، شکستگی، تعمیر و تعدیل‌های انبارگردانی با خروجی Excel</div>
+        </a>
+    </div>
+
+    <div class="ard-charts-grid">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-bar"></i> ارزش اموال به تفکیک سکشن (ریال)</div>
+            </div>
+            <div class="card-body">
+                <div class="ard-chart-box"><canvas id="dashValuationChart"></canvas></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-area"></i> روند شکستگی و کسری ۶ ماه اخیر</div>
+            </div>
+            <div class="card-body">
+                <div class="ard-chart-box"><canvas id="dashTrendChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+    Chart.defaults.font.family = 'Vazir, sans-serif';
+    var valData = {{ valuation_chart_json|safe }};
+    var trData = {{ trend_chart_json|safe }};
+
+    var ctx1 = document.getElementById('dashValuationChart');
+    if (ctx1) {
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: valData.labels,
+                datasets: [{
+                    label: 'ارزش کل (ریال)',
+                    data: valData.values,
+                    backgroundColor: 'rgba(139, 92, 246, 0.78)',
+                    borderRadius: 8
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    var ctx2 = document.getElementById('dashTrendChart');
+    if (ctx2) {
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: trData.labels,
+                datasets: [{
+                    label: 'تعداد شکستگی / مفقودی',
+                    data: trData.values,
+                    borderColor: '#EC4899',
+                    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+})();
+</script>
+{% endblock %}

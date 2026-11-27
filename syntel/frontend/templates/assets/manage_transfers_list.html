@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}انتقال اموال بین سکشن‌ها - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:1300px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-exchange-alt"></i></div>
+            <div class="ph-title">
+                <h1>انتقال اموال بین سکشن‌ها (تأیید دوطرفه)</h1>
+                <div class="page-sub">جابجایی اقلام با تأیید تحویل توسط بخش مقصد برای جلوگیری از مغایرت</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.55rem;">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+            <a href="{% url 'asset_transfer_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> ثبت انتقال جدید</a>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست انتقال‌ها ({{ transfers|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>تاریخ</th><th>کالا / پلاک</th><th>از بخش</th><th>به بخش</th><th>تعداد</th><th>وضعیت</th><th>اقدام</th></tr></thead>
+                <tbody>
+                    {% for tr in transfers %}
+                    <tr>
+                        <td>{{ tr.created_at|jalali_datetime }}</td>
+                        <td><strong>{{ tr.asset.name }}</strong>{% if tr.asset_unit %} ({{ tr.asset_unit.asset_tag }}){% endif %}</td>
+                        <td>{{ tr.from_department.name|default:'—' }}</td>
+                        <td>{{ tr.to_department.name|default:'—' }}</td>
+                        <td>{{ tr.quantity }}</td>
+                        <td><span class="badge {% if tr.status == 'approved' %}badge-success{% elif tr.status == 'rejected' %}badge-danger{% else %}badge-warning{% endif %}">{{ tr.get_status_display }}</span></td>
+                        <td style="display:flex; gap:0.4rem;">
+                            {% if tr.can_confirm %}
+                            <form method="post" action="{% url 'asset_transfer_confirm' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success" style="height:34px; font-size:0.78rem;">تأیید تحویل</button>
+                            </form>
+                            {% endif %}
+                            {% if tr.can_reject %}
+                            <form method="post" action="{% url 'asset_transfer_reject' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger" style="height:34px; font-size:0.78rem;">رد</button>
+                            </form>
+                            {% endif %}
+                            {% if not tr.can_confirm and not tr.can_reject %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" style="text-align:center; padding:1.5rem;">انتقالی ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

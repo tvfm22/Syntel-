@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}انبارگردانی - {{ warehouse.name }} - Kuker{% endblock %}
 
@@ -250,12 +250,12 @@
                             <span class="badge-green">{{ d.stock_item.unit.name }}</span>
                             {% else %}<span class="badge-gray">—</span>{% endif %}
                         </td>
-                        <td class="num-cell num-in">{{ d.in_count }}</td>
-                        <td class="num-cell num-in">{{ d.in_total }}</td>
-                        <td class="num-cell num-out">{{ d.out_count }}</td>
-                        <td class="num-cell num-out">{{ d.out_total }}</td>
-                        <td class="num-cell num-initial">{{ d.initial_qty }}</td>
-                        <td class="num-cell num-system">{{ d.system_qty }}</td>
+                        <td class="num-cell num-in">{{ d.in_count|qty_comma }}</td>
+                        <td class="num-cell num-in">{{ d.in_total|qty_comma }}</td>
+                        <td class="num-cell num-out">{{ d.out_count|qty_comma }}</td>
+                        <td class="num-cell num-out">{{ d.out_total|qty_comma }}</td>
+                        <td class="num-cell num-initial">{{ d.initial_qty|qty_comma }}</td>
+                        <td class="num-cell num-system"><span dir="ltr" style="display:inline-block">{{ d.system_qty|qty_comma }}</span></td>
                         <td style="text-align:center">
                             <input type="number"
                                    class="qty-input"
@@ -333,15 +333,15 @@ function onInputChange(input) {
         input.classList.add('filled');
         const diff = physicalQty - systemQty;
         if (diff > 0) {
-            diffEl.innerHTML = `<span class="diff-badge diff-pos">+${diff.toLocaleString('fa-IR')}</span>`;
+            diffEl.innerHTML = `<span class="diff-badge diff-pos">+${diff.toLocaleString('en-US')}</span>`;
             input.classList.add('diff-positive');
             input.classList.remove('diff-negative');
         } else if (diff < 0) {
-            diffEl.innerHTML = `<span class="diff-badge diff-neg">${diff.toLocaleString('fa-IR')}</span>`;
+            diffEl.innerHTML = `<span class="diff-badge diff-neg">${diff.toLocaleString('en-US')}</span>`;
             input.classList.add('diff-negative');
             input.classList.remove('diff-positive');
         } else {
-            diffEl.innerHTML = '<span class="diff-badge diff-zero">۰</span>';
+            diffEl.innerHTML = '<span class="diff-badge diff-zero">0</span>';
             input.classList.remove('diff-positive','diff-negative');
         }
         if (diff !== 0) row.classList.add('changed');
@@ -368,7 +368,8 @@ function updateStats() {
 
 function fillAllWithSystem() {
     document.querySelectorAll('.qty-input').forEach(inp => {
-        inp.value = inp.dataset.system;
+        const sys = parseFloat(inp.dataset.system || 0);
+        inp.value = sys < 0 ? '0' : inp.dataset.system;
         onInputChange(inp);
     });
 }
@@ -481,8 +482,8 @@ function buildMovementsTable(movements) {
         <tr>
             <td>${escapeHtml(it.date)}</td>
             <td><span class="${txClass}"><i class="fas ${txIcon}"></i> ${escapeHtml(it.type_display || TX_LABELS[it.transaction_type] || it.transaction_type)}</span></td>
-            <td>${escapeHtml(it.quantity)} ${escapeHtml(it.unit_name)}</td>
-            <td>${escapeHtml(it.prev_qty)} ← ${escapeHtml(it.new_qty)}</td>
+            <td>${escapeHtml(window.SyntelComma ? window.SyntelComma.formatDisplayNumber(it.quantity) : it.quantity)} ${escapeHtml(it.unit_name)}</td>
+            <td>${escapeHtml(window.SyntelComma ? window.SyntelComma.formatDisplayNumber(it.prev_qty) : it.prev_qty)} ← ${escapeHtml(window.SyntelComma ? window.SyntelComma.formatDisplayNumber(it.new_qty) : it.new_qty)}</td>
             <td>${source}</td>
             <td>${escapeHtml(it.description || '—')}</td>
             <td>${escapeHtml(it.created_by || '—')}</td>

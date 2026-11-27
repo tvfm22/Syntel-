@@ -403,3 +403,68 @@ class ProductMultiSectionTests(TestCase):
         self.client.force_login(req_bar)
         no_sec = {r['name'] for r in self.client.get(auto_url, {'q': 'دوغ'}).json()['results']}
         self.assertEqual(no_sec, set())
+
+    def test_general_scope_split_visibility_and_filters(self):
+        self.dep_kitchen.is_recipe_department = True
+        self.dep_kitchen.save(update_fields=['is_recipe_department'])
+        self.dep_bar.is_recipe_department = True
+        self.dep_bar.save(update_fields=['is_recipe_department'])
+        # self.dep_hall has is_recipe_department=False
+
+        self.client.force_login(self.manager)
+        create_url = reverse('product_create', kwargs={'cafe_code': self.cafe.code})
+
+        for name, scope in [
+            ('دستکش یکبار مصرف', 'general'),
+            ('فویل آلومینیومی', 'general_kitchen_bar'),
+            ('اسپری سالن عمومی', 'general_other'),
+        ]:
+            resp = self.client.post(
+                create_url,
+                {
+                    'name': name,
+                    'category': str(self.cat.id),
+                    'unit': str(self.unit.id),
+                    'departments_present': '1',
+                    'usage_general': scope,
+                    'is_active_present': '1',
+                    'is_active': 'on',
+                },
+                follow=True,
+            )
+            self.assertEqual(resp.status_code, 200)
+
+        p_all = Product.objects.get(cafe=self.cafe, name='دستکش یکبار مصرف')
+        p_kb = Product.objects.get(cafe=self.cafe, name='فویل آلومینیومی')
+        p_other = Product.objects.get(cafe=self.cafe, name='اسپری سالن عمومی')
+        self.assertEqual(p_all.usage_location, 'general')
+        self.assertEqual(p_kb.usage_location, 'general_kitchen_bar')
+        self.assertEqual(p_other.usage_location, 'general_other')
+        self.assertEqual(p_all.request_section_labels, ['عمومی کل'])
+        self.assertEqual(p_kb.request_section_labels, ['عمومی آشپزخانه و بار'])
+        self.assertEqual(p_other.request_section_labels, ['عمومی سایر بخش‌ها'])
+
+        cat_url = reverse('category_products_api', kwargs={'cafe_code': self.cafe.code, 'category_id': self.cat.id})
+
+        self.client.force_login(self.req_kitchen)
+        k_names = {r['name'] for r in self.client.get(cat_url).json()['results']}
+        self.assertIn('دستکش یکبار مصرف', k_names)
+        self.assertIn('فویل آلومینیومی', k_names)
+        self.assertNotIn('اسپری سالن عمومی', k_names)
+
+        self.client.force_login(self.req_hall)
+        h_names = {r['name'] for r in self.client.get(cat_url).json()['results']}
+        self.assertIn('دستکش یکبار مصرف', h_names)
+        self.assertNotIn('فویل آلومینیومی', h_names)
+        self.assertIn('اسپری سالن عمومی', h_names)
+
+        # Product list filters for the 3 general scopes
+        self.client.force_login(self.manager)
+        list_url = reverse('product_list', kwargs={'cafe_code': self.cafe.code})
+        r_kb = self.client.get(list_url, {'department': 'general_kitchen_bar'})
+        self.assertContains(r_kb, 'فویل آلومینیومی')
+        self.assertNotContains(r_kb, 'اسپری سالن عمومی')
+
+        r_other = self.client.get(list_url, {'department': 'general_other'})
+        self.assertContains(r_other, 'اسپری سالن عمومی')
+        self.assertNotContains(r_other, 'فویل آلومینیومی')

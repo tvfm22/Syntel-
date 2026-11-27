@@ -146,7 +146,7 @@ SESSION_COOKIE_SECURE = _https_security_enabled
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', 86400))
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False
 
 REDIS_URL = (os.environ.get('REDIS_URL') or '').strip()
 if REDIS_URL:
@@ -158,16 +158,7 @@ if REDIS_URL:
     }
     SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
     SESSION_FILE_PATH = None
-elif os.environ.get('USE_DB_SESSIONS', '').strip().lower() in ('1', 'true', 'yes'):
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-            'LOCATION': str(CACHE_DIR),
-        }
-    }
-    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-    SESSION_FILE_PATH = None
-else:
+elif os.environ.get('USE_FILE_SESSIONS', '').strip().lower() in ('1', 'true', 'yes'):
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
@@ -176,6 +167,15 @@ else:
     }
     SESSION_ENGINE = 'django.contrib.sessions.backends.file'
     SESSION_FILE_PATH = str(SESSIONS_DIR)
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': str(CACHE_DIR),
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+    SESSION_FILE_PATH = None
 
 
 # Application definition

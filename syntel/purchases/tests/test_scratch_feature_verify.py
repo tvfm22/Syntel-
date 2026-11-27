@@ -139,8 +139,8 @@ class FeatureVerifyTests(TestCase):
         resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'main'}))
         self.assertEqual(resp.status_code, 200)
         content = resp.content.decode('utf-8')
-        # IS_REQUESTER constant must be true for this user
-        self.assertIn('const IS_REQUESTER = true', content)
+        # IS_REQUESTER flag must be true for this user (passed via data-is-requester to external JS)
+        self.assertIn('data-is-requester="true"', content)
         # collapsible delivery box is present with a preselected default
         self.assertIn('deliverySection', content)
         self.assertIn('delivery-toggle', content)
@@ -149,4 +149,4 @@ class FeatureVerifyTests(TestCase):
         self.login(self.purchasing)
         resp = self.client.get(reverse('purchase_request', kwargs={'cafe_code': 'main'}))
         content = resp.content.decode('utf-8')
-        self.assertIn('const IS_REQUESTER = false', content)
+        self.assertIn('data-is-requester="false"', content)

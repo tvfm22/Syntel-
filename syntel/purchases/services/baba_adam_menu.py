@@ -20,7 +20,7 @@ from django.conf import settings
 from django.db import transaction
 
 from ..models import Cafe, Category, Department, Product, ProductPriceEntry, Unit
-from ..models_cogs import CogsReportLine, KukerItem, KukerItemCostHistory, KukerRecipeLine, MenuSection
+from ..models.cogs import CogsReportLine, KukerItem, KukerItemCostHistory, KukerRecipeLine, MenuSection
 from .menu_cogs import (
     MenuGraph,
     UNIT_FIX,

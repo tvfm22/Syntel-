@@ -333,7 +333,7 @@
             </div>
             <div class="m-form-group">
                 <label>مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
-                <input type="text" id="m-debt-amount" name="amount" class="m-input" required
+                <input type="text" id="m-debt-amount" name="amount" class="m-input js-comma" required
                        inputmode="numeric" placeholder="مبلغ بدهی — مثلاً ۱٬۵۰۰٬۰۰۰">
             </div>
             <div class="m-form-group">
@@ -669,25 +669,6 @@
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ بدهی — سرور کاماها را حذف می‌کند
-        const debtAmountInput = document.getElementById('m-debt-amount');
-        if (debtAmountInput) {
-            debtAmountInput.addEventListener('input', function() {
-                const digits = this.value.replace(/\D/g, '');
-                this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-            });
-        }
-
-        // جداکننده سه‌رقمی برای مبالغ پرداخت (شیت پرداخت + فرم خارج از لیست)
-        document.querySelectorAll('.js-comma').forEach(function(input) {
-            const applyComma = function() {
-                const digits = this.value.replace(/\D/g, '');
-                this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-            };
-            input.addEventListener('input', applyComma);
-            applyComma.call(input);  // نمایش اولیه با کاما
-        });
-
         // ---------- شیت جزئیات بدهی (الرت موبایل) ----------
         const backdrop = document.getElementById('sheetBackdrop');
         const sheet = document.getElementById('debtSheet');

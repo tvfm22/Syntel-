@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from django.utils import timezone
 
 try:
@@ -63,13 +64,16 @@ class Command(BaseCommand):
         for cafe, records in by_cafe.items():
             managers_emails = list(
                 User.objects.filter(
-                    role='manager',
                     is_active=True,
-                    cafe=cafe,
                     email__isnull=False,
+                )
+                .filter(
+                    Q(cafe=cafe, role__in=['manager', 'ceo', 'finance_manager'])
+                    | Q(cafe__isnull=True, role__in=['manager', 'ceo', 'finance_manager'])
                 )
                 .exclude(email='')
                 .values_list('email', flat=True)
+                .distinct()
             )
             if not managers_emails:
                 self.stdout.write(

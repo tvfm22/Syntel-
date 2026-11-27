@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}ورود اموال از فاکتور خرید - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:1180px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-file-invoice"></i></div>
+            <div class="ph-title">
+                <h1>افزودن اموال از روی فاکتور خرید</h1>
+                <div class="page-sub">انتخاب فاکتور و تخصیص اقلام خریداری‌شده به اموال سکشن‌ها</div>
+            </div>
+        </div>
+        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+    </div>
+
+    <form method="get" class="filters-container" style="margin-bottom:1.25rem;">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">انتخاب فاکتور کافه</label>
+                <select name="invoice_id" class="filter-select" required>
+                    <option value="">یک فاکتور انتخاب کنید...</option>
+                    {% for inv in invoices %}
+                    <option value="{{ inv.id }}" {% if selected_invoice and selected_invoice.id == inv.id %}selected{% endif %}>
+                        {{ inv.invoice_number }} — {{ inv.store_name|default:inv.supplier.name|default:'فروشنده' }} ({{ inv.invoice_date|jalali_date }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">بارگذاری فاکتور</button>
+        </div>
+    </form>
+
+    {% if selected_invoice %}
+    <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-header"><div class="card-title"><i class="fas fa-plus"></i> ثبت مال جدید از فاکتور {{ selected_invoice.invoice_number }}</div></div>
+        <div class="card-body">
+            <form method="post" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0.85rem; align-items:end;">
+                {% csrf_token %}
+                <input type="hidden" name="invoice_id" value="{{ selected_invoice.id }}">
+                <div class="filter-group">
+                    <label class="filter-label">کالای اموالی *</label>
+                    <select name="asset_id" class="filter-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for a in assets %}
+                        <option value="{{ a.id }}">{{ a.name }} ({{ a.get_tracking_mode_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">سکشن مقصد *</label>
+                    <select name="department_id" class="filter-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}">{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">تعداد (برای تعدادی)</label>
+                    <input type="number" name="quantity" min="1" value="1" class="form-control">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">کد پلاک (برای پلاک‌دار)</label>
+                    <input type="text" name="asset_tag" class="form-control" placeholder="در صورت پلاک‌دار بودن">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">بهای واحد (ریال)</label>
+                    <input type="number" name="unit_value" min="0" class="form-control" placeholder="اختیاری">
+                </div>
+                <button type="submit" class="btn btn-success" style="height:42px;">افزودن به اموال سکشن</button>
+            </form>
+        </div>
+    </div>
+
+    {% if invoice_items %}
+    <div class="table-card" style="margin-bottom:1.25rem;">
+        <div class="table-header"><div class="table-title"><i class="fas fa-receipt"></i> اقلام ثبت‌شده در فاکتور</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>شرح قلم</th><th>تعداد</th><th>قیمت واحد</th><th>مبلغ کل</th></tr></thead>
+                <tbody>
+                    {% for item in invoice_items %}
+                    <tr>
+                        <td>{{ item.description }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.unit_price|number_format }}</td>
+                        <td>{{ item.line_total|number_format }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-check"></i> اموال ثبت‌شده از این فاکتور</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>تاریخ</th><th>کالا / پلاک</th><th>سکشن</th><th>تعداد</th><th>توضیحات</th></tr></thead>
+                <tbody>
+                    {% for mv in imported_movements %}
+                    <tr>
+                        <td>{{ mv.created_at|jalali_datetime }}</td>
+                        <td>{{ mv.asset.name }}{% if mv.asset_unit %} ({{ mv.asset_unit.asset_tag }}){% endif %}</td>
+                        <td>{{ mv.to_department.name|default:'—' }}</td>
+                        <td>{{ mv.quantity }}</td>
+                        <td>{{ mv.reason|default:'—' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align:center; padding:1.5rem;">هنوز مالی از این فاکتور ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

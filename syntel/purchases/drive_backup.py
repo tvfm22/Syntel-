@@ -238,6 +238,8 @@ def _refresh_access_token() -> str:
     resp.raise_for_status()
     data = resp.json()
     token['access_token'] = data['access_token']
+    if data.get('refresh_token'):
+        token['refresh_token'] = data['refresh_token']
     token['expires_at'] = time.time() + int(data.get('expires_in', 3600)) - 60
     save_token(token)
     return token['access_token']
@@ -312,6 +314,7 @@ def _upload_resumable_file(access_token: str, filename: str, filepath: Path) -> 
     offset = 0
     with open(filepath, 'rb') as f:
         while offset < total_size:
+            f.seek(offset)
             chunk = f.read(UPLOAD_CHUNK_SIZE)
             if not chunk:
                 break
@@ -322,7 +325,15 @@ def _upload_resumable_file(access_token: str, filename: str, filepath: Path) -> 
             }
             resp = session.put(upload_url, headers=headers, data=chunk, timeout=300)
             if resp.status_code == 308:
-                offset += len(chunk)
+                range_header = resp.headers.get('Range', '')
+                if range_header.startswith('bytes=') and '-' in range_header:
+                    try:
+                        committed_end = int(range_header.split('-', 1)[1])
+                        offset = committed_end + 1
+                    except ValueError:
+                        offset += len(chunk)
+                else:
+                    offset += len(chunk)
                 continue
             resp.raise_for_status()
             return resp.json().get('id', '')

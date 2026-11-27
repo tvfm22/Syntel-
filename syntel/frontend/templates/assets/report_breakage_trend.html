@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}گزارش روند شکستگی و مفقودی - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rbt-wrap { max-width: 1360px; margin: 0 auto; }
+    .rbt-chart-wrap { height: 340px; position: relative; }
+    .rbt-thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rbt-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon orange"><i class="fas fa-chart-line"></i></div>
+            <div class="ph-title">
+                <h1>روند شکستگی، اسقاط و مفقودی اموال</h1>
+                <div class="page-sub">تجمیع ماهانه اسناد شکستگی (disposal) و کسری تاییدشده انبارگردانی در {{ months_count }} ماه اخیر</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+        </a>
+    </div>
+
+    <form method="get" class="filters-container">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">بازه زمانی</label>
+                <select name="months" class="filter-select">
+                    <option value="3" {% if months_count == 3 %}selected{% endif %}>۳ ماه اخیر</option>
+                    <option value="6" {% if months_count == 6 %}selected{% endif %}>۶ ماه اخیر</option>
+                    <option value="12" {% if months_count == 12 %}selected{% endif %}>۱۲ ماه اخیر</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">سکشن / بخش</label>
+                <select name="department" class="filter-select">
+                    <option value="">همه سکشن‌ها</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">نمایش</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="stats-grid" style="margin-bottom:1.25rem;">
+        <div class="stat-card">
+            <div class="stat-value warning">{{ total_qty|number_format }}</div>
+            <div class="stat-label">مجموع تعداد شکستگی و مفقودی</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value danger">{{ total_val|number_format }} ریال</div>
+            <div class="stat-label">برآورد ریالی خسارت دوره</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-chart-bar"></i> نمودار ماهانه شکستگی و مفقودی به تفکیک سکشن</div>
+        </div>
+        <div class="card-body">
+            <div class="rbt-chart-wrap"><canvas id="breakageTrendChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-trophy"></i> ۱۰ کالای پرشکستگی و مفقودی (Top 10)</div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>رتبه</th>
+                        <th>کالا</th>
+                        <th>دسته‌بندی</th>
+                        <th>شکستگی / اسقاط</th>
+                        <th>کسری انبارگردانی</th>
+                        <th>مجموع تعداد</th>
+                        <th>برآورد خسارت (ریال)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in top_assets %}
+                    <tr>
+                        <td><strong>{{ forloop.counter }}</strong></td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                {% if item.thumb_url %}
+                                <img src="{{ item.thumb_url }}" alt="" class="rbt-thumb">
+                                {% endif %}
+                                <div>
+                                    <div style="font-weight:700;">{{ item.asset.name }}</div>
+                                    <div style="font-size:0.74rem; color:var(--text-muted);">{{ item.asset.code }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ item.category_name }}</td>
+                        <td>{{ item.disposal_count }}</td>
+                        <td>{{ item.audit_loss_count }}</td>
+                        <td><span class="badge badge-danger">{{ item.total_qty }}</span></td>
+                        <td><strong style="color:#DC2626;">{{ item.total_val|number_format }} ریال</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" style="text-align:center; padding:2rem;">هیچ شکستگی یا مفقودی در این بازه ثبت نشده است.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+Chart.defaults.font.family = 'Vazir, sans-serif';
+var btData = {{ chart_data_json|safe }};
+var ctx = document.getElementById('breakageTrendChart');
+if (ctx) {
+    var datasets = btData.datasets && btData.datasets.length ? btData.datasets : [{
+        label: 'مجموع تلفات',
+        data: btData.total_qty_series,
+        backgroundColor: '#F97316'
+    }];
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: btData.labels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+        }
+    });
+}
+</script>
+{% endblock %}

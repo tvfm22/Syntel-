@@ -80,11 +80,11 @@
         display: grid; gap: 0.5rem; align-items: center;
     }
     .items-head {
-        grid-template-columns: 2.2fr 1.6fr 0.9fr 1fr 1fr 1.3fr 30px;
+        grid-template-columns: 2.3fr 0.75fr 0.9fr 0.95fr 0.95fr 1.3fr 30px;
         padding: 0 0.2rem 0.4rem; font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
     }
     .item-row {
-        grid-template-columns: 2.2fr 1.6fr 0.9fr 1fr 1fr 1.3fr 30px;
+        grid-template-columns: 2.3fr 0.75fr 0.9fr 0.95fr 0.95fr 1.3fr 30px;
         background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-light);
         border-radius: var(--radius-lg); padding: 0.55rem; margin-bottom: 0.5rem;
     }
@@ -94,6 +94,24 @@
         font-size: 0.76rem; background: var(--bg-card); color: var(--text-primary);
     }
     .item-row select:focus, .item-row input:focus { outline: none; border-color: var(--accent-indigo); }
+    .item-row input.row-price { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
+    .row-stock-badge {
+        display: flex; align-items: center; justify-content: center;
+        height: 34px; padding: 0 0.45rem;
+        border-radius: var(--radius-md); border: 1.5px solid var(--border-light);
+        background: var(--bg-card); color: var(--text-muted);
+        font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .row-stock-badge.pos  { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .row-stock-badge.zero { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
+    .row-stock-badge.neg  { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .item-row input.row-unit-display {
+        background: #f1f5f9; border-color: var(--border-light);
+        color: var(--text-secondary); font-weight: 600; text-align: center;
+        cursor: default;
+    }
+    .item-row input.row-unit-display:focus { border-color: var(--border-light); }
     .remove-row {
         width: 28px; height: 28px; border: none; border-radius: var(--radius-md);
         background: #fee2e2; color: #b91c1c; cursor: pointer; font-size: 0.8rem;
@@ -207,7 +225,7 @@
                         <option value="">انتخاب انبار...</option>
                         {% for wh in warehouses %}
                         <option value="{{ wh.id }}"{% if form_source_wh and form_source_wh.id == wh.id or edit_source_wh and edit_source_wh.id == wh.id %} selected{% endif %}>
-                            {{ wh.name }}{% for dept in wh.departments.all %}{% if dept.is_department_warehouse %} (انبار بخش: {{ dept.name }}){% else %} (انبار مرکزی: {{ dept.name }}){% endif %}{% endfor %}
+                            {{ wh.name }}{% if wh.allow_negative_stock %} [موجودی منفی مجاز]{% endif %}{% for dept in wh.departments.all %}{% if dept.is_department_warehouse %} (انبار بخش: {{ dept.name }}){% else %} (انبار مرکزی: {{ dept.name }}){% endif %}{% endfor %}
                         </option>
                         {% endfor %}
                     </select>
@@ -222,7 +240,7 @@
                         <option value="">انتخاب انبار...</option>
                         {% for wh in warehouses %}
                         <option value="{{ wh.id }}"{% if form_dest_wh and form_dest_wh.id == wh.id or edit_dest_wh and edit_dest_wh.id == wh.id %} selected{% endif %}>
-                            {{ wh.name }}{% for dept in wh.departments.all %}{% if dept.is_department_warehouse %} (انبار بخش: {{ dept.name }}){% else %} (انبار مرکزی: {{ dept.name }}){% endif %}{% endfor %}
+                            {{ wh.name }}{% if wh.allow_negative_stock %} [موجودی منفی مجاز]{% endif %}{% for dept in wh.departments.all %}{% if dept.is_department_warehouse %} (انبار بخش: {{ dept.name }}){% else %} (انبار مرکزی: {{ dept.name }}){% endif %}{% endfor %}
                         </option>
                         {% endfor %}
                     </select>
@@ -254,7 +272,7 @@
         <div class="form-card">
             <div class="form-card-title"><i class="fas fa-list-ul"></i> اقلام حواله</div>
             <div class="items-head">
-                <span>محصول</span><span>موجودی انبار (اختیاری)</span>
+                <span>محصول</span><span>موجودی</span>
                 <span>واحد</span><span>مقدار پایه</span><span>قیمت واحد</span>
                 <span>توضیح قلم</span><span></span>
             </div>
@@ -266,9 +284,8 @@
             <div class="hint">
                 <i class="fas fa-circle-info"></i>
                 <div>
-                    <b>مقدار پایه</b> میزان اصلی کالا در واحد انتخابی است (برای تعدیل، علامت جهت را نشان می‌دهد: + افزایش، − کاهش).
-                    انتخاب <b>موجودی انبار</b> اختیاری است — برای خروج، ترجیحاً موجودیِ دقیقِ همان انبار را انتخاب کنید.
-                    <b>حوالهٔ ورود</b> همهٔ محصولات را می‌پذیرد: اگر کالا هنوز در انبار موجودی ندارد، هنگام نهایی‌سازی خودکار ثبت می‌شود.
+                    <b>مقدار پایه</b> میزان اصلی کالا در واحد تعریف‌شدهٔ محصول است (برای تعدیل، علامت جهت را نشان می‌دهد: + افزایش، − کاهش).
+                    <b>موجودی</b> به‌صورت خودکار میزان فعلی کالا در انبار انتخاب‌شده را نمایش می‌دهد (در صورت نبودن موجودی، <b>۰</b> نشان داده می‌شود) و <b>واحد</b> مطابق واحد تعریف‌شدهٔ کالا تنظیم و قفل می‌شود.
                 </div>
             </div>
         </div>
@@ -278,11 +295,9 @@
                 <i class="fas fa-check-double"></i>
                 {% if voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
             </button>
-            {% if not editing %}
             <button type="submit" name="action" value="draft" class="btn btn-outline">
-                <i class="fas fa-pen"></i> ذخیره به‌عنوان پیش‌نویس
+                <i class="fas fa-pen"></i> {% if editing %}ذخیره تغییرات پیش‌نویس{% else %}ذخیره به‌عنوان پیش‌نویس{% endif %}
             </button>
-            {% endif %}
             <a href="{% if editing %}{% url 'voucher_detail' cafe_code=cafe_code voucher_id=edit_voucher.id %}{% else %}{% url 'voucher_list' cafe_code=cafe_code %}{% endif %}" class="btn btn-outline">انصراف</a>
         </div>
     </form>
@@ -299,9 +314,17 @@
     // ── فهرست کامل محصولات برای جستجوی تایپی (یک‌بار درج می‌شود، نه در هر ردیف) ──
     var PRODUCTS = [
         {% for p in products %}
-        { id: {{ p.id }}, name: "{{ p.name|escapejs }}" },
+        { id: {{ p.id }}, name: "{{ p.name|escapejs }}",
+          unit_id: {{ p.unit_id|default:'null' }},
+          unit_name: "{{ p.unit.name|default:''|escapejs }}" },
         {% endfor %}
     ];
+
+    var UNITS_MAP = {
+        {% for u in units %}
+        "{{ u.id }}": "{{ u.name|escapejs }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
 
     var STOCK_ITEMS = [
         {% for si in stock_items %}
@@ -346,27 +369,73 @@
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function populateStocks(row) {
-        var hidden = row.querySelector('.row-product-id');
-        var stockSel = row.querySelector('.row-stock');
-        var pid = hidden.value;
-        stockSel.innerHTML = '<option value="">—</option>';
-        if (pid) {
-            var wh = selectedWarehouseId();
-            var found = false;
-            STOCK_ITEMS.forEach(function (si) {
-                if (String(si.product_id) !== pid) return;
-                if (wh && String(si.warehouse_id) !== wh) return;
-                stockSel.innerHTML += '<option value="' + si.sid + '">' +
-                    esc(si.warehouse) + ' — موجودی ' + esc(si.qty) + ' ' + esc(si.unit) + '</option>';
-                found = true;
-            });
-            if (!found) {
-                stockSel.innerHTML += '<option value="">(موجودی ثبت‌نشده در این انبار)</option>';
+    function findProduct(pid) {
+        if (!pid) return null;
+        for (var i = 0; i < PRODUCTS.length; i++) {
+            if (String(PRODUCTS[i].id) === String(pid)) return PRODUCTS[i];
+        }
+        return null;
+    }
+
+    function updateRowStock(row) {
+        var pid = row.querySelector('.row-product-id').value;
+        var stockHidden = row.querySelector('.row-stock');
+        var badge = row.querySelector('.row-stock-badge');
+        stockHidden.value = '';
+        if (!pid) {
+            badge.textContent = '—';
+            badge.className = 'row-stock-badge';
+            badge.removeAttribute('title');
+            return;
+        }
+        var wh = selectedWarehouseId();
+        if (!wh) {
+            badge.textContent = '—';
+            badge.className = 'row-stock-badge';
+            badge.title = 'ابتدا انبار را انتخاب کنید';
+            return;
+        }
+        var found = null;
+        for (var i = 0; i < STOCK_ITEMS.length; i++) {
+            var si = STOCK_ITEMS[i];
+            if (String(si.product_id) === String(pid) && String(si.warehouse_id) === String(wh)) {
+                found = si;
+                break;
             }
         }
-        stockSel.selectedIndex = 0;
-        return pid;
+        if (found) {
+            stockHidden.value = found.sid;
+            var num = parseFloat(found.qty);
+            var fmtStock = (window.SyntelComma && window.SyntelComma.formatDisplayNumber)
+                ? window.SyntelComma.formatDisplayNumber(found.qty)
+                : String(found.qty).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            badge.innerHTML = '<span dir="ltr">' + esc(fmtStock) + '</span>';
+            badge.title = 'موجودی فعلی: ' + fmtStock + (found.unit ? ' ' + found.unit : '');
+            if (num > 0) badge.className = 'row-stock-badge pos';
+            else if (num < 0) badge.className = 'row-stock-badge neg';
+            else badge.className = 'row-stock-badge zero';
+        } else {
+            badge.innerHTML = '<span dir="ltr">0</span>';
+            badge.className = 'row-stock-badge zero';
+            badge.title = 'موجودی در این انبار: ۰';
+        }
+    }
+
+    function updateRowUnit(row, fallbackUnitId) {
+        var pid = row.querySelector('.row-product-id').value;
+        var unitHidden = row.querySelector('.row-unit');
+        var unitDisplay = row.querySelector('.row-unit-display');
+        var p = findProduct(pid);
+        if (p && p.unit_id) {
+            unitHidden.value = String(p.unit_id);
+            unitDisplay.value = p.unit_name || UNITS_MAP[String(p.unit_id)] || '';
+        } else if (fallbackUnitId) {
+            unitHidden.value = String(fallbackUnitId);
+            unitDisplay.value = UNITS_MAP[String(fallbackUnitId)] || '';
+        } else {
+            unitHidden.value = '';
+            unitDisplay.value = '';
+        }
     }
 
     // انبار انتخاب‌شده (مبدأ یا مقصد) — برای فیلتر فهرست «موجودی انبار»
@@ -394,12 +463,17 @@
         var input = row.querySelector('.row-product-name');
         var hidden = row.querySelector('.row-product-id');
         var drop = row.querySelector('.prod-ac-drop');
-        var stockSel = row.querySelector('.row-stock');
         var matches = [];
         var active = -1;
 
-        function resetItemSelects() {
-            stockSel.innerHTML = '<option value="">—</option>';
+        function resetItemMeta() {
+            row.querySelector('.row-stock').value = '';
+            var badge = row.querySelector('.row-stock-badge');
+            badge.textContent = '—';
+            badge.className = 'row-stock-badge';
+            badge.removeAttribute('title');
+            row.querySelector('.row-unit').value = '';
+            row.querySelector('.row-unit-display').value = '';
         }
 
         function closeDrop() {
@@ -448,7 +522,8 @@
             hidden.value = p.id;
             input.classList.remove('invalid');
             closeDrop();
-            populateStocks(row);
+            updateRowUnit(row);
+            updateRowStock(row);
         }
 
         input.addEventListener('focus', function () {
@@ -457,14 +532,11 @@
         input.addEventListener('input', function () {
             // اگر متن با نام محصولِ انتخاب‌شده فرق کند، انتخاب باطل می‌شود
             if (hidden.value) {
-                var picked = null;
-                for (var i = 0; i < PRODUCTS.length; i++) {
-                    if (String(PRODUCTS[i].id) === hidden.value) { picked = PRODUCTS[i]; break; }
-                }
+                var picked = findProduct(hidden.value);
                 if (!picked || picked.name !== input.value) {
                     hidden.value = '';
                     input.classList.remove('invalid');
-                    resetItemSelects();
+                    resetItemMeta();
                 }
             }
             renderDrop();
@@ -488,8 +560,8 @@
             }
         });
         // باز شدن روی فیلدهای دیگر ردیف، فهرست را می‌بندد
-        [stockSel, row.querySelector('.row-unit'),
-         row.querySelector('.row-qty')].forEach(function (el) {
+        [row.querySelector('.row-qty'), row.querySelector('.row-price'),
+         row.querySelector('.row-desc')].forEach(function (el) {
             el.addEventListener('focus', closeDrop);
         });
         document.addEventListener('click', function (ev) {
@@ -508,16 +580,17 @@
             '  <input type="hidden" class="row-product-id" name="product_id[]">' +
             '  <div class="prod-ac-drop" hidden></div>' +
             '</div>' +
-            '<select class="row-stock" name="stock_item_id[]"><option value="">—</option></select>' +
-            '<select class="row-unit" name="unit_id[]" required>' +
-            '  <option value="">واحد...</option>' +
-            {% for u in units %}
-            '  <option value="{{ u.id }}"' + (data.unit_id == {{ u.id }} ? ' selected' : '') + '>{{ u.name|escapejs }} ({{ u.symbol|escapejs }})</option>' +
-            {% endfor %}
-            '</select>' +
+            '<div>' +
+            '  <input type="hidden" class="row-stock" name="stock_item_id[]" value="">' +
+            '  <span class="row-stock-badge">—</span>' +
+            '</div>' +
+            '<div>' +
+            '  <input type="hidden" class="row-unit" name="unit_id[]" value="">' +
+            '  <input type="text" class="row-unit-display" readonly tabindex="-1" placeholder="واحد" title="واحد تعریف‌شدهٔ کالا (غیرقابل تغییر)">' +
+            '</div>' +
             '<input type="number" class="row-qty" name="base_quantity[]" step="any" ' +
             '       min="{% if typeAdjustment %}{% else %}0{% endif %}" placeholder="{% if typeAdjustment %}جهت: + یا −{% else %}مقدار{% endif %}" required value="' + esc(data.base || '') + '">' +
-            '<input type="number" class="row-price" name="unit_price[]" step="any" min="0" value="' + esc(data.price || '0') + '">' +
+            '<input type="text" class="row-price js-comma" name="unit_price[]" inputmode="decimal" dir="ltr" placeholder="0" value="' + esc(data.price || '0') + '">' +
             '<input type="text" class="row-desc" name="item_description[]" placeholder="اختیاری" value="' + esc(data.desc || '') + '">' +
             '<button type="button" class="remove-row" title="حذف قلم"><i class="fas fa-xmark"></i></button>';
 
@@ -532,10 +605,32 @@
             nameInput.value = data.product_name || '';
         }
         attachProductBox(row);
-        // پس از اتصال DOM، گزینه‌های موجودی را بر اساس انتخاب اولیه پر کن
-        populateStocks(row);
-        if (data.stock_id) {
-            row.querySelector('.row-stock').value = String(data.stock_id);
+        updateRowUnit(row, data.unit_id);
+        updateRowStock(row);
+        var priceEl = row.querySelector('.row-price');
+        if (priceEl) {
+            var formatPriceField = function (el) {
+                if (window.SyntelComma) {
+                    window.SyntelComma.applyCommaToInput(el);
+                    return;
+                }
+                var raw = String(el.value || '')
+                    .replace(/[۰-۹]/g, function (d) { return String(d.charCodeAt(0) - 0x06F0); })
+                    .replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); })
+                    .replace(/٫/g, '.');
+                var cleaned = raw.replace(/[^0-9.]/g, '');
+                var dotIdx = cleaned.indexOf('.');
+                if (dotIdx === -1) {
+                    var intOnly = cleaned.replace(/^0+(?=\d)/, '');
+                    el.value = intOnly ? intOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                } else {
+                    var intPart = cleaned.slice(0, dotIdx).replace(/^0+(?=\d)/, '') || '0';
+                    var decPart = cleaned.slice(dotIdx + 1).replace(/\./g, '');
+                    el.value = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + decPart;
+                }
+            };
+            priceEl.addEventListener('input', function () { formatPriceField(priceEl); });
+            formatPriceField(priceEl);
         }
         return row;
     }
@@ -546,20 +641,13 @@
         addRow();
     });
 
-    // با تغییر انبار، فهرست «موجودی انبار» همهٔ ردیف‌ها بازخوانی می‌شود
+    // با تغییر انبار، موجودیِ نمایشیِ همهٔ ردیف‌ها به‌روز می‌شود
     ['source_warehouse', 'dest_warehouse'].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', function () {
             container.querySelectorAll('.item-row').forEach(function (row) {
-                var stockSel = row.querySelector('.row-stock');
-                var prev = stockSel.value;
-                populateStocks(row);
-                if (prev) {
-                    Array.prototype.forEach.call(stockSel.options, function (o) {
-                        if (o.value === prev) stockSel.value = prev;
-                    });
-                }
+                updateRowStock(row);
             });
         });
     });

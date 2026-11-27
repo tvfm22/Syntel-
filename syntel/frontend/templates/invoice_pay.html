@@ -1,5 +1,5 @@
 ﻿{% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}پرداخت فاکتور {{ invoice.invoice_number }}{% endblock %}
 
@@ -47,8 +47,8 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="payment_amount">مبلغ پرداخت *</label>
-                                    <input type="number" step="0.01" class="form-control" id="payment_amount" 
-                                           name="payment_amount" value="{{ invoice.remaining_amount }}" required>
+                                    <input type="text" class="form-control js-comma" id="payment_amount" inputmode="decimal"
+                                           name="payment_amount" value="{{ invoice.remaining_amount|trim_decimal:2 }}" required>
                                     <small class="form-text text-muted">حداکثر مبلغ قابل پرداخت: {{ invoice.remaining_amount|floatformat:0 }} ریال</small>
                                 </div>
                             </div>

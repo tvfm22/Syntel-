@@ -1,217 +1,565 @@
 ﻿{% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}مدیریت محصولات{% endblock %}
+{% block title %}مدیریت محصولات - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ===== مدیریت محصولات — هماهنگ با دیزاین سیستم داشبورد ===== */
+    /* ==========================================================================
+       Product Management — Minimal Modern Design System (Cohesive with Reports & COGS)
+       ========================================================================== */
     .products-page {
-        max-width: 1400px;
+        max-width: 1280px;
         margin: 0 auto;
+        padding-bottom: 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
     }
 
-    /* ---------- تولبار: جستجو + فیلترها ---------- */
-    .p-toolbar {
+    /* ── 1. Clean Frameless Top Header ── */
+    .pl-topbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.9rem;
+        padding: 0.25rem 0.1rem 0.1rem;
+    }
+
+    .pl-heading {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .pl-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.015em;
+        margin: 0;
+        line-height: 1.3;
+    }
+
+    .pl-subtitle {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .pl-subtitle-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--border-strong);
+    }
+
+    .pl-topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+    }
+
+    .pl-btn {
+        height: 36px;
+        padding: 0 0.95rem;
+        border-radius: 10px;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.42rem;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        border: 1px solid transparent;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .pl-btn-primary {
+        background: var(--primary);
+        color: #FFFFFF;
+        border-color: var(--primary);
+        font-weight: 700;
+    }
+    .pl-btn-primary:hover {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
+        color: #FFFFFF;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.22);
+    }
+
+    .pl-btn-ghost {
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        border-color: var(--border-default);
+    }
+    .pl-btn-ghost:hover {
+        color: var(--text-primary);
+        border-color: var(--border-strong);
+        background: var(--gray-50);
+    }
+
+    .pl-btn-clear {
+        background: #FEF2F2;
+        color: #DC2626;
+        border-color: transparent;
+        font-size: 0.77rem;
+        padding: 0 0.78rem;
+    }
+    .pl-btn-clear:hover {
+        background: #FEE2E2;
+        color: #B91C1C;
+    }
+
+    /* ── 2. Unified Minimal Metrics Strip ── */
+    .pl-metrics-strip {
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        overflow: hidden;
+    }
+
+    .pl-metric-cell {
+        padding: 1.05rem 1.3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        border-left: 1px solid var(--border-light);
+        min-width: 0;
+    }
+    .pl-metric-cell:last-child { border-left: none; }
+
+    .pl-metric-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .pl-metric-val {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+    }
+    .pl-metric-val.is-green  { color: #047857; }
+    .pl-metric-val.is-accent { color: var(--primary-dark); }
+    .pl-metric-val.is-warn   { color: #B45309; }
+
+    .pl-metric-unit {
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-right: 0.25rem;
+    }
+
+    .pl-metric-hint {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    /* ── 3. Unified Filter & Control Card ── */
+    .pl-controls-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .pl-controls-main {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: var(--space-3);
+        gap: 0.6rem;
+        padding: 0.8rem 1.05rem;
     }
 
-    .search-box { position: relative; flex: 1; min-width: 220px; max-width: 340px; }
-    .search-box > i {
-        position: absolute; right: 0.9rem; top: 50%;
+    .pl-controls-sub {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        padding: 0.65rem 1.05rem;
+        border-top: 1px solid var(--border-light);
+        background: var(--gray-50);
+    }
+
+    .pl-sub-group {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+    }
+
+    .pl-search {
+        position: relative;
+        flex: 1 1 240px;
+        min-width: 210px;
+        max-width: 340px;
+    }
+    .pl-search > i {
+        position: absolute;
+        right: 0.8rem;
+        top: 50%;
         transform: translateY(-50%);
-        color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        pointer-events: none;
     }
-
-    .search-input {
-        width: 100%; height: 40px;
-        padding: 0 2.4rem 0 0.9rem;
+    .pl-search input {
+        width: 100%;
+        height: 36px;
+        padding: 0 2.15rem 0 0.85rem;
         border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        background: var(--bg-card);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; color: var(--text-primary);
-        transition: all var(--transition-fast);
+        border-radius: 10px;
+        background: var(--gray-50);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.8rem;
+        color: var(--text-primary);
+        transition: all 0.15s ease;
     }
-
-    .search-input:focus {
+    .pl-search input:focus {
         outline: none;
-        border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        background: var(--bg-card);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
 
     .p-select {
-        height: 40px; padding: 0 0.75rem;
+        height: 36px;
+        padding: 0 0.8rem 0 1.95rem;
+        border-radius: 10px;
         border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        background: var(--bg-card); color: var(--text-primary);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
-        cursor: pointer; transition: all var(--transition-fast);
+        background-color: var(--bg-card);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 0.6rem center;
+        background-size: 12px 12px;
+        -webkit-appearance: none;
+        appearance: none;
+        color: var(--text-primary);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.79rem;
+        font-weight: 600;
+        cursor: pointer;
+        max-width: 215px;
+        text-overflow: ellipsis;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-
     .p-select:focus {
         outline: none;
-        border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
-
-    /* لینک پاک‌کردن فیلترها */
-    .p-reset {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        height: 40px; padding: 0 0.85rem;
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--border-default);
-        background: var(--bg-card);
+    .p-select.is-sub {
+        height: 34px;
+        font-size: 0.77rem;
         color: var(--text-secondary);
-        font-size: 0.8rem; font-weight: 500; text-decoration: none;
-        transition: all var(--transition-fast);
+        max-width: 195px;
     }
-    .p-reset:hover { color: #DC2626; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); }
 
-    /* دکمه outline (اکشن ثانویه در هدر) */
-    .p-btn-outline {
-        background: var(--bg-card); color: var(--text-primary);
+    .pl-count-label {
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .pl-count-label strong { color: var(--text-primary); }
+
+    /* ── 4. Clean Minimal Product Table Card ── */
+    .pl-table-card {
+        background: var(--bg-card);
         border: 1px solid var(--border-default);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
     }
-    .p-btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
 
-    /* دکمه جستجو با ارتفاع هم‌اندازه فیلترها */
-    .p-btn-primary {
-        height: 40px; padding: 0 1.1rem; border: none;
-        border-radius: var(--radius-lg);
-        background: var(--accent-indigo); color: #fff;
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 600;
-        cursor: pointer; transition: all var(--transition-base);
-        display: inline-flex; align-items: center; gap: 0.45rem;
-    }
-    .p-btn-primary:hover { background: var(--primary-dark); }
-
-    /* ---------- جدول ---------- */
     .table-scroll { overflow-x: auto; }
 
-    .p-table th { white-space: nowrap; }
-    .p-table td { vertical-align: middle; }
-
-    .table-meta {
-        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        padding: 0.25rem 0.75rem; border-radius: 999px;
+    .pl-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.835rem;
     }
 
-    /* سلول محصول */
-    .p-name {
-        font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.5;
-    }
-    .p-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
-
-    .p-incomplete {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        background: rgba(249, 115, 22, 0.09); color: #EA580C;
-        padding: 0.15rem 0.55rem; border-radius: var(--radius-xs);
-        font-size: 0.72rem; font-weight: 600; margin-top: 0.3rem;
-    }
-
-    /* چیپ‌های متنی */
-    .p-chip {
-        display: inline-block;
-        background: var(--bg-subtle); color: var(--text-secondary);
-        border: 1px solid var(--border-light);
-        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
-        font-size: 0.78rem; font-weight: 500;
-    }
-    .p-chip-accent {
-        display: inline-block;
-        background: rgba(139, 92, 246, 0.08); color: var(--primary-dark);
-        border: 1px solid rgba(139, 92, 246, 0.18);
-        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
-        font-size: 0.78rem; font-weight: 600;
-    }
-    .p-chip-muted {
-        display: inline-block;
-        background: rgba(148, 163, 184, 0.12); color: var(--text-muted);
-        border: 1px dashed var(--border-strong);
-        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
-        font-size: 0.78rem; font-weight: 500;
-    }
-    .muted-dash { color: var(--text-muted); font-size: 0.85rem; }
-
-    .p-num { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
-
-    /* ---------- قیمت واحد کوچک‌ترین واحد ---------- */
-    .p-price {
-        font-variant-numeric: tabular-nums;
-        font-weight: 700; font-size: 0.92rem;
-        color: var(--text-primary);
+    .pl-table thead th {
+        text-align: right;
+        padding: 0.72rem 1.1rem;
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--border-light);
         white-space: nowrap;
     }
 
-    /* ---------- مصرف در رسپی ---------- */
-    .p-recipe {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.18rem 0.55rem; border-radius: var(--radius-xs);
-        font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    .pl-table tbody td {
+        padding: 0.85rem 1.1rem;
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: middle;
+        color: var(--text-primary);
     }
-    .p-recipe.is-used { background: rgba(16, 185, 129, 0.1); color: #059669; }
-    .p-recipe.is-idle { background: rgba(148, 163, 184, 0.14); color: #64748B; }
-    .p-recipe.is-blocked { background: rgba(239, 68, 68, 0.09); color: #B91C1C; }
-    .p-recipe.is-na { background: transparent; color: var(--text-muted); font-weight: 500; }
 
-    /* ---------- دستهٔ «تحقیق و توسعه»: کالای تعریف‌شده توسط درخواست‌کننده ---------- */
+    .pl-table tbody tr:last-child td { border-bottom: none; }
+    .pl-table tbody tr { transition: background 0.14s ease; }
+    .pl-table tbody tr:hover { background: #FAF9FF; }
+
+    /* سلول محصول */
+    .p-name-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .p-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.35;
+    }
+    .p-meta-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-top: 0.25rem;
+    }
+    .p-sub {
+        font-size: 0.73rem;
+        color: var(--text-muted);
+        margin-top: 0.18rem;
+    }
+
+    .p-incomplete {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: #FFFBEB;
+        color: #B45309;
+        padding: 0.1rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    /* چیپ‌های متنی آرام */
+    .p-chip {
+        display: inline-flex;
+        align-items: center;
+        background: var(--gray-100);
+        color: var(--gray-700);
+        padding: 0.16rem 0.52rem;
+        border-radius: 7px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .p-chip-accent {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(139, 92, 246, 0.08);
+        color: var(--primary-dark);
+        padding: 0.16rem 0.52rem;
+        border-radius: 7px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .p-chip-muted {
+        display: inline-flex;
+        align-items: center;
+        background: var(--gray-50);
+        color: var(--text-muted);
+        border: 1px dashed var(--border-strong);
+        padding: 0.14rem 0.5rem;
+        border-radius: 7px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
     .p-chip-rd {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        background: rgba(245, 158, 11, 0.12); color: #B45309;
-        border: 1px dashed rgba(245, 158, 11, 0.5);
-        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
-        font-size: 0.78rem; font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        background: #FFFBEB;
+        color: #B45309;
+        border: 1px dashed #F59E0B;
+        padding: 0.14rem 0.52rem;
+        border-radius: 7px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .muted-dash { color: var(--text-muted); font-size: 0.82rem; }
+
+    /* قیمت و موجودی */
+    .p-price {
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        font-size: 0.88rem;
+        color: #047857;
+        white-space: nowrap;
+    }
+    .p-price-unit {
+        font-weight: 600;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-right: 0.2rem;
+    }
+    .p-num {
+        font-variant-numeric: tabular-nums;
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+    .p-stock-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.12rem;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
     }
 
-    /* ---------- وضعیت (فعال/غیرفعال در سفارش‌گذاری) ---------- */
+    /* مصرف در رسپی */
+    .p-recipe {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.18rem 0.58rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .p-recipe.is-used    { background: #ECFDF5; color: #047857; }
+    .p-recipe.is-idle    { background: var(--gray-100); color: var(--text-secondary); }
+    .p-recipe.is-blocked { background: #FEF2F2; color: #B91C1C; }
+    .p-recipe.is-na      { background: var(--gray-100); color: var(--text-muted); font-weight: 600; }
+
+    /* وضعیت فعال/غیرفعال */
     .p-status-btn {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 600;
-        padding: 0.25rem 0.65rem; border-radius: 999px;
-        border: 1px solid transparent; background: transparent;
-        cursor: pointer; transition: all var(--transition-fast);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.38rem;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.22rem 0.62rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
     }
-    .p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .p-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .p-status-btn.is-active {
-        color: #15803D; background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.22);
+        color: #047857;
+        background: #ECFDF5;
+        border-color: #D1FAE5;
     }
-    .p-status-btn.is-active .p-dot { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
-    .p-status-btn.is-active:hover { background: rgba(34, 197, 94, 0.16); }
+    .p-status-btn.is-active .p-dot { background: #10B981; }
+    .p-status-btn.is-active:hover { background: #D1FAE5; }
     .p-status-btn.is-off {
-        color: var(--gray-500, #64748B); background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.25);
+        color: var(--text-secondary);
+        background: var(--gray-100);
+        border-color: var(--border-default);
     }
-    .p-status-btn.is-off .p-dot { background: var(--border-strong); }
-    .p-status-btn.is-off:hover { background: rgba(148, 163, 184, 0.22); color: var(--text-primary); }
+    .p-status-btn.is-off .p-dot { background: var(--text-muted); }
+    .p-status-btn.is-off:hover { background: var(--gray-200); color: var(--text-primary); }
 
-    /* ---------- اکشن‌ها ---------- */
-    .p-actions { display: inline-flex; gap: 0.4rem; }
+    /* اکشن‌ها (آرام در حالت عادی، برجسته در هاور) */
+    .p-actions { display: inline-flex; align-items: center; gap: 0.3rem; }
 
     .act-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        height: 32px; padding: 0 0.7rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default);
-        background: var(--bg-card);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.32rem;
+        height: 30px;
+        padding: 0 0.65rem;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
         color: var(--text-secondary);
-        font-size: 0.78rem; font-weight: 500; text-decoration: none;
-        transition: all var(--transition-fast);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.15s ease;
     }
-    .act-chip i { font-size: 0.78rem; }
-    .act-edit:hover { color: var(--primary-dark); border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.07); }
-    .act-del:hover  { color: #DC2626; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.07); }
-
-    /* ---------- ریسپانسیو ---------- */
-    @media (max-width: 992px) {
-        .search-box { max-width: none; flex-basis: 100%; order: 10; }
+    .act-chip i { font-size: 0.74rem; }
+    .pl-table tbody tr:hover .act-edit,
+    .act-edit:hover {
+        background: rgba(139, 92, 246, 0.10);
+        color: var(--primary-dark);
+    }
+    .act-del:hover {
+        background: #FEF2F2;
+        color: #DC2626;
     }
 
-    @media (max-width: 480px) {
-        .p-actions { gap: 0.3rem; }
-        .act-chip { padding: 0 0.55rem; }
+    /* حالت خالی */
+    .pl-empty {
+        text-align: center;
+        padding: 3.25rem 1.5rem;
+        color: var(--text-muted);
+    }
+    .pl-empty i {
+        font-size: 1.9rem;
+        opacity: 0.38;
+        margin-bottom: 0.65rem;
+        display: block;
+    }
+    .pl-empty-title {
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    .pl-empty-sub {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.1rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+        .pl-metrics-strip { grid-template-columns: repeat(2, 1fr); }
+        .pl-metric-cell { border-bottom: 1px solid var(--border-light); }
+        .pl-metric-cell:nth-child(even) { border-left: none; }
+        .pl-metric-cell:nth-last-child(-n+2) { border-bottom: none; }
+    }
+
+    @media (max-width: 640px) {
+        .pl-metrics-strip { grid-template-columns: 1fr; }
+        .pl-metric-cell {
+            border-left: none;
+            border-bottom: 1px solid var(--border-light);
+            padding: 0.9rem 1.1rem;
+        }
+        .pl-metric-cell:last-child { border-bottom: none; }
+        .pl-search { max-width: none; flex-basis: 100%; }
+        .p-select, .p-select.is-sub { max-width: none; flex: 1 1 140px; }
     }
 </style>
 {% endblock %}
@@ -219,30 +567,67 @@
 {% block content %}
 <div class="products-page">
 
-    <!-- هدر صفحه -->
-    <div class="page-header">
-        <h1 class="page-title"><i class="fas fa-boxes-stacked"></i> مدیریت محصولات</h1>
-        <div class="header-actions">
-            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn p-btn-outline"
+    <!-- 1. هدر مینیمال بدون کادر اضافه -->
+    <header class="pl-topbar">
+        <div class="pl-heading">
+            <h1 class="pl-title">مدیریت محصولات</h1>
+            <div class="pl-subtitle">
+                <span>کالاهای کافه، قیمت واحد پایه و وضعیت حضور در رسپی و سفارش‌گذاری</span>
+                {% if search or selected_category or selected_department or selected_status or selected_pricing or selected_recipe %}
+                <span class="pl-subtitle-dot"></span>
+                <span style="color:var(--primary-dark); font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="pl-topbar-actions">
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="pl-btn pl-btn-ghost"
                title="تعریف و مدیریت دسته‌بندی محصولات">
-                <i class="fas fa-layer-group"></i> دسته‌بندی‌ها
+                <i class="fas fa-layer-group"></i>
+                <span>دسته‌بندی‌ها</span>
             </a>
-            <a href="{% url 'product_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> محصول جدید
+            <a href="{% url 'product_create' cafe_code=cafe_code %}" class="pl-btn pl-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>محصول جدید</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- فیلترها -->
-    <div class="filters-container">
-        <form method="GET" class="p-toolbar">
-            <div class="search-box">
+    <!-- 2. نوار خلاصه آمار یکپارچه -->
+    <section class="pl-metrics-strip" aria-label="خلاصه آمار محصولات">
+        <div class="pl-metric-cell">
+            <span class="pl-metric-label">کل محصولات نمایشی</span>
+            <div class="pl-metric-val">{{ product_stats.total|number_format }}<span class="pl-metric-unit">قلم</span></div>
+            <span class="pl-metric-hint">بر اساس فیلترهای فعلی</span>
+        </div>
+        <div class="pl-metric-cell">
+            <span class="pl-metric-label">فعال در سفارش‌گذاری</span>
+            <div class="pl-metric-val is-green">{{ product_stats.active|number_format }}<span class="pl-metric-unit">قلم</span></div>
+            <span class="pl-metric-hint">قابل درخواست توسط بخش‌ها</span>
+        </div>
+        <div class="pl-metric-cell">
+            <span class="pl-metric-label">دارای قیمت واحد</span>
+            <div class="pl-metric-val is-accent">{{ product_stats.priced|number_format }}<span class="pl-metric-unit">قلم</span></div>
+            <span class="pl-metric-hint">قیمت پایه ثبت‌شده</span>
+        </div>
+        <div class="pl-metric-cell">
+            <span class="pl-metric-label">مصرف‌شده در رسپی</span>
+            <div class="pl-metric-val {% if product_stats.missing_recipe %}is-warn{% endif %}">{{ product_stats.in_recipe|number_format }}<span class="pl-metric-unit">قلم</span></div>
+            <span class="pl-metric-hint">
+                {% if product_stats.missing_recipe %}{{ product_stats.missing_recipe|number_format }} کالای غذایی بدون رسپی{% else %}همه کالاهای غذایی در رسپی هستند{% endif %}
+            </span>
+        </div>
+    </section>
+
+    <!-- 3. نوار فیلتر یکپارچه و دوطبقه -->
+    <form method="GET" id="productFilterForm" class="pl-controls-card">
+        <div class="pl-controls-main">
+            <div class="pl-search">
                 <i class="fas fa-search"></i>
                 <input type="text" name="search" value="{{ search }}"
-                       placeholder="جستجو در محصولات..." class="search-input" aria-label="جستجو">
+                       placeholder="جستجوی نام محصول..." aria-label="جستجو">
             </div>
 
-            <select name="category" class="p-select" aria-label="فیلتر دسته‌بندی">
+            <select name="category" class="p-select js-auto-submit" aria-label="فیلتر دسته‌بندی">
                 <option value="">همه دسته‌بندی‌ها</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}" {% if category.id|stringformat:"s" == selected_category %}selected{% endif %}>
@@ -251,9 +636,11 @@
                 {% endfor %}
             </select>
 
-            <select name="department" class="p-select" aria-label="فیلتر بخش درخواست">
+            <select name="department" class="p-select js-auto-submit" aria-label="فیلتر بخش درخواست">
                 <option value="">همه بخش‌های درخواست</option>
-                <option value="general" {% if selected_department == 'general' %}selected{% endif %}>عمومی (همه بخش‌ها)</option>
+                <option value="general" {% if selected_department == 'general' %}selected{% endif %}>عمومی کل (همه بخش‌ها)</option>
+                <option value="general_kitchen_bar" {% if selected_department == 'general_kitchen_bar' %}selected{% endif %}>عمومی آشپزخانه و بار</option>
+                <option value="general_other" {% if selected_department == 'general_other' %}selected{% endif %}>عمومی سایر بخش‌ها</option>
                 <option value="none" {% if selected_department == 'none' %}selected{% endif %}>بدون بخش</option>
                 {% for dep in departments_qs %}
                 <option value="{{ dep.id }}" {% if dep.id|stringformat:"s" == selected_department %}selected{% endif %}>
@@ -262,55 +649,58 @@
                 {% endfor %}
             </select>
 
-            <select name="is_active" class="p-select" aria-label="فیلتر وضعیت">
-                <option value="">همه وضعیت‌ها</option>
-                <option value="true" {% if selected_status == 'true' %}selected{% endif %}>فقط فعال</option>
-                <option value="false" {% if selected_status == 'false' %}selected{% endif %}>فقط غیرفعال</option>
-            </select>
-
-            <select name="pricing" class="p-select" aria-label="فیلتر قیمت">
-                <option value="">همه قیمت‌ها</option>
-                <option value="priced" {% if selected_pricing == 'priced' %}selected{% endif %}>فقط قیمت‌دار</option>
-                <option value="unpriced" {% if selected_pricing == 'unpriced' %}selected{% endif %}>بدون قیمت</option>
-            </select>
-
-            <select name="recipe" class="p-select" aria-label="فیلتر وضعیت رسپی">
-                <option value="">همه وضعیت‌های رسپی</option>
-                <option value="used" {% if selected_recipe == 'used' %}selected{% endif %}>فقط در رسپی</option>
-                <option value="missing" {% if selected_recipe == 'missing' %}selected{% endif %}>فقط بدون رسپی (مخفی)</option>
-                <option value="free" {% if selected_recipe == 'free' %}selected{% endif %}>فقط بدون نیاز به رسپی</option>
-            </select>
-
-            <button type="submit" class="p-btn-primary">
-                <i class="fas fa-search"></i> جستجو
+            <button type="submit" class="pl-btn pl-btn-primary">
+                <i class="fas fa-search"></i>
+                <span>جستجو</span>
             </button>
 
             {% if search or selected_category or selected_department or selected_status or selected_pricing or selected_recipe %}
-            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="p-reset" title="حذف همه فیلترها">
-                <i class="fas fa-xmark"></i> پاک‌کردن
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="pl-btn pl-btn-clear" title="حذف همه فیلترها">
+                <i class="fas fa-xmark"></i>
+                <span>پاک‌کردن</span>
             </a>
             {% endif %}
-        </form>
-    </div>
-
-    {% if products %}
-    <!-- جدول محصولات -->
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-list"></i> لیست محصولات</div>
-            <span class="table-meta">{{ products|length }} محصول</span>
         </div>
+
+        <div class="pl-controls-sub">
+            <div class="pl-sub-group">
+                <select name="is_active" class="p-select is-sub js-auto-submit" aria-label="فیلتر وضعیت">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="true" {% if selected_status == 'true' %}selected{% endif %}>فقط فعال</option>
+                    <option value="false" {% if selected_status == 'false' %}selected{% endif %}>فقط غیرفعال</option>
+                </select>
+
+                <select name="pricing" class="p-select is-sub js-auto-submit" aria-label="فیلتر قیمت">
+                    <option value="">همه قیمت‌ها</option>
+                    <option value="priced" {% if selected_pricing == 'priced' %}selected{% endif %}>فقط قیمت‌دار</option>
+                    <option value="unpriced" {% if selected_pricing == 'unpriced' %}selected{% endif %}>بدون قیمت</option>
+                </select>
+
+                <select name="recipe" class="p-select is-sub js-auto-submit" aria-label="فیلتر وضعیت رسپی">
+                    <option value="">همه وضعیت‌های رسپی</option>
+                    <option value="used" {% if selected_recipe == 'used' %}selected{% endif %}>فقط در رسپی</option>
+                    <option value="missing" {% if selected_recipe == 'missing' %}selected{% endif %}>فقط بدون رسپی (مخفی)</option>
+                    <option value="free" {% if selected_recipe == 'free' %}selected{% endif %}>فقط بدون نیاز به رسپی</option>
+                </select>
+            </div>
+
+            <span class="pl-count-label">
+                <strong>{{ products|length|number_format }}</strong> محصول
+            </span>
+        </div>
+    </form>
+
+    <!-- 4. جدول ساده، خوانا و بدون شلوغی -->
+    {% if products %}
+    <section class="pl-table-card">
         <div class="table-scroll">
-            <table class="data-table p-table">
+            <table class="pl-table">
                 <thead>
                     <tr>
-                        <th>محصول</th>
-                        <th>دسته‌بندی</th>
+                        <th>محصول و دسته‌بندی</th>
                         <th>بخش‌های درخواست</th>
-                        <th>واحد</th>
                         <th>قیمت واحد</th>
-                        <th>حداقل موجودی</th>
-                        <th>عمر مفید</th>
+                        <th>انبار و نگهداری</th>
                         <th>رسپی و سفارش</th>
                         <th>وضعیت</th>
                         <th style="text-align:left;">عملیات</th>
@@ -319,75 +709,66 @@
                 <tbody>
                     {% for product in products %}
                     <tr>
-                        <!-- محصول -->
+                        <!-- محصول و دسته‌بندی -->
                         <td>
-                            <div class="p-name">{{ product.name }}</div>
-                            {% if not product.is_complete %}
-                            <span class="p-incomplete" title="اطلاعات این کالا کامل نیست؛ در پیشنهادهای درخواست نمایش داده نمی‌شود">
-                                <i class="fas fa-triangle-exclamation" style="font-size:0.65rem;"></i> ناقص
-                            </span>
-                            {% endif %}
+                            <div class="p-name-row">
+                                <span class="p-name">{{ product.name }}</span>
+                                {% if product.unit %}
+                                <span class="p-chip-muted" style="border-style:solid; border-color:var(--border-light);">{{ product.unit.symbol|default:product.unit.name }}</span>
+                                {% endif %}
+                                {% if not product.is_complete %}
+                                <span class="p-incomplete" title="اطلاعات این کالا کامل نیست؛ در پیشنهادهای درخواست نمایش داده نمی‌شود">
+                                    <i class="fas fa-triangle-exclamation" style="font-size:0.65rem;"></i> ناقص
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="p-meta-row">
+                                {% if product.category %}
+                                    {% if product.is_rd_category %}
+                                    <span class="p-chip-rd" title="کالای تعریف‌شده توسط درخواست‌کننده — تا بررسی مدیریت در این دسته می‌ماند">
+                                        <i class="fas fa-flask" style="font-size:0.65rem;"></i> {{ product.category.name }}
+                                    </span>
+                                    {% else %}
+                                    <span style="font-size:0.74rem; color:var(--text-muted);">{{ product.category.name }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="font-size:0.73rem; color:var(--text-muted);">بدون دسته‌بندی</span>
+                                {% endif %}
+                            </div>
                             {% if product.description %}
                             <div class="p-sub" title="{{ product.description }}">
-                                {{ product.description|truncatechars:60 }}
+                                {{ product.description|truncatechars:56 }}
                             </div>
-                            {% endif %}
-                        </td>
-
-                        <!-- دسته‌بندی -->
-                        <td>
-                            {% if product.category %}
-                                {% if product.is_rd_category %}
-                                <span class="p-chip-rd" title="کالای تعریف‌شده توسط درخواست‌کننده — تا بررسی مدیریت در این دسته می‌ماند">
-                                    <i class="fas fa-flask" style="font-size:0.68rem;"></i> {{ product.category.name }}
-                                </span>
-                                {% else %}
-                                <span class="p-chip">{{ product.category.name }}</span>
-                                {% endif %}
-                            {% else %}
-                            <span class="muted-dash">—</span>
                             {% endif %}
                         </td>
 
                         <!-- بخش‌های درخواست -->
                         <td>
-                            <div style="display:flex;flex-wrap:wrap;gap:0.25rem;">
+                            <div style="display:flex; flex-wrap:wrap; gap:0.28rem;">
                                 {% for sec_label in product.request_section_labels %}
-                                <span class="{% if sec_label == 'عمومی' %}p-chip{% elif sec_label == 'بدون بخش' %}p-chip-muted{% else %}p-chip-accent{% endif %}">{{ sec_label }}</span>
+                                <span class="{% if sec_label == 'عمومی کل' or sec_label == 'عمومی آشپزخانه و بار' or sec_label == 'عمومی سایر بخش‌ها' or sec_label == 'عمومی' %}p-chip{% elif sec_label == 'بدون بخش' %}p-chip-muted{% else %}p-chip-accent{% endif %}">{{ sec_label }}</span>
                                 {% endfor %}
                             </div>
-                        </td>
-
-                        <!-- واحد -->
-                        <td>
-                            {% if product.unit %}
-                            <span class="p-chip-accent">{{ product.unit.symbol|default:product.unit.name }}</span>
-                            <div class="p-sub">{{ product.unit.name }}</div>
-                            {% else %}
-                            <span class="muted-dash">—</span>
-                            {% endif %}
                         </td>
 
                         <!-- قیمت واحد کوچک‌ترین واحد -->
                         <td>
                             {% if product.base_unit_price is not None %}
-                            <div class="p-price">{{ product.base_unit_price|number_format }} <span style="font-weight:500;font-size:0.78rem;color:var(--text-secondary);">ریال</span></div>
-                            <div class="p-sub">به ازای هر ۱ {{ product.smallest_unit|default:"واحد" }}</div>
+                            <div class="p-price">{{ product.base_unit_price|number_format }}<span class="p-price-unit">ریال</span></div>
+                            <div class="p-sub">هر ۱ {{ product.smallest_unit|default:"واحد" }}</div>
                             {% else %}
                             <span class="muted-dash">—</span>
                             {% endif %}
                         </td>
 
-                        <!-- حداقل موجودی -->
-                        <td><span class="p-num">{{ product.min_stock }}</span></td>
-
-                        <!-- عمر مفید -->
+                        <!-- حداقل موجودی + عمر مفید -->
                         <td>
-                            {% if product.shelf_life_days %}
-                            <span class="p-num">{{ product.shelf_life_days }}</span><span style="color:var(--text-muted);font-size:0.78rem;"> روز</span>
-                            {% else %}
-                            <span class="muted-dash">—</span>
-                            {% endif %}
+                            <div class="p-stock-cell">
+                                <span>حداقل: <span class="p-num">{{ product.min_stock }}</span>{% if product.unit %} {{ product.unit.symbol|default:product.unit.name }}{% endif %}</span>
+                                {% if product.shelf_life_days %}
+                                <span style="font-size:0.72rem; color:var(--text-muted);">عمر مفید: {{ product.shelf_life_days }} روز</span>
+                                {% endif %}
+                            </div>
                         </td>
 
                         <!-- مصرف در رسپی منو + قابلیت سفارش -->
@@ -450,20 +831,32 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% else %}
-    <div class="table-card">
-        <div class="card-body">
-            <div class="empty-state">
-                <i class="fas fa-box-open"></i>
-                <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:0.4rem;">محصولی یافت نشد</h3>
-                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.25rem;">هیچ محصولی با معیارهای جستجوی شما یافت نشد.</p>
-                <a href="{% url 'product_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> افزودن اولین محصول
-                </a>
-            </div>
+    <section class="pl-table-card">
+        <div class="pl-empty">
+            <i class="fas fa-box-open"></i>
+            <div class="pl-empty-title">محصولی یافت نشد</div>
+            <div class="pl-empty-sub">هیچ محصولی با معیارهای جستجو یا فیلتر فعلی مطابقت ندارد.</div>
+            <a href="{% url 'product_create' cafe_code=cafe_code %}" class="pl-btn pl-btn-primary">
+                <i class="fas fa-plus"></i> افزودن اولین محصول
+            </a>
         </div>
-    </div>
+    </section>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var form = document.getElementById('productFilterForm');
+    if (!form) return;
+    form.querySelectorAll('.js-auto-submit').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+            form.submit();
+        });
+    });
+})();
+</script>
 {% endblock %}

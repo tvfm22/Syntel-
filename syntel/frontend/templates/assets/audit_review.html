@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}بررسی انبارگردانی - {{ audit.title }} - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ar-wrap { max-width: 1320px; margin: 0 auto; }
+    .ar-kpi-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem; margin-bottom: 1.25rem;
+    }
+    .ar-kpi {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-right: 4px solid var(--accent-indigo); border-radius: var(--radius-xl);
+        padding: 1rem 1.15rem; box-shadow: var(--shadow-xs);
+    }
+    .ar-kpi.red { border-right-color: #EF4444; }
+    .ar-kpi.green { border-right-color: #10B981; }
+    .ar-kpi.orange { border-right-color: #F97316; }
+    .ar-kpi-val { font-size: 1.45rem; font-weight: 800; color: var(--text-primary); }
+    .ar-kpi-lbl { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem; font-weight: 600; }
+
+    .ar-diff-row { background: #FFFBEB; }
+    .ar-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+    .ar-evidence-btn {
+        border: 1px solid #C7D2FE; background: #EEF2FF; color: #3730A3; border-radius: 8px;
+        padding: 0.25rem 0.55rem; font-size: 0.74rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.3rem; font-family: 'Vazir', sans-serif;
+    }
+    .ar-action-card {
+        background: var(--bg-card); border: 1px solid var(--border-default);
+        border-radius: var(--radius-xl); padding: 1.25rem; margin-top: 1.25rem;
+        box-shadow: var(--shadow-sm);
+    }
+    .ar-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
+        display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .ar-modal-backdrop.is-open { display: flex; }
+    .ar-modal {
+        background: #fff; border-radius: var(--radius-xl); max-width: 560px; width: 100%;
+        padding: 1.25rem; text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="ph-title">
+                <h1>بررسی و تأیید انبارگردانی: {{ audit.title }}</h1>
+                <div class="page-sub">
+                    سکشن: {{ audit.department.name }} | وضعیت: {{ audit.get_status_display }}
+                    {% if audit.counted_by %} | شمارش‌کننده: {{ audit.counted_by.get_full_name|default:audit.counted_by.username }}{% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{% url 'asset_audit_count' cafe_code=cafe_code audit_id=audit.id %}" class="btn btn-secondary">
+                <i class="fas fa-mobile-alt"></i> نمای شمارش
+            </a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> لیست جلسات
+            </a>
+        </div>
+    </div>
+
+    <div class="ar-kpi-grid">
+        <div class="ar-kpi">
+            <div class="ar-kpi-val">{{ progress.counted_items }} / {{ progress.total_items }}</div>
+            <div class="ar-kpi-lbl">اقلام شمارش‌شده</div>
+        </div>
+        <div class="ar-kpi orange">
+            <div class="ar-kpi-val">{{ discrepancy_count }}</div>
+            <div class="ar-kpi-lbl">ردیف‌های دارای مغایرت</div>
+        </div>
+        <div class="ar-kpi red">
+            <div class="ar-kpi-val">{{ total_shortage_value|number_format }} ریال</div>
+            <div class="ar-kpi-lbl">ارزش کسری / خسارت</div>
+        </div>
+        <div class="ar-kpi green">
+            <div class="ar-kpi-val">{{ net_variance_value|number_format }} ریال</div>
+            <div class="ar-kpi-lbl">خالص ارزش اختلاف</div>
+        </div>
+    </div>
+
+    <form method="post" id="auditReviewForm">
+        {% csrf_token %}
+
+        <div class="table-card">
+            <div class="table-header">
+                <div class="table-title"><i class="fas fa-balance-scale"></i> جدول مغایرت‌ها و مستندات</div>
+                {% if audit.status == 'submitted' %}
+                <button type="button" class="btn btn-warning" style="height:36px; font-size:0.78rem;" onclick="selectDiscrepancyRows()">
+                    <i class="fas fa-check-square"></i> انتخاب همه ردیف‌های مغایر
+                </button>
+                {% endif %}
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            {% if audit.status == 'submitted' %}<th>انتخاب</th>{% endif %}
+                            <th>کالا / پلاک</th>
+                            <th>موجودی سیستم</th>
+                            <th>شمارش کاربر</th>
+                            <th>مغایرت</th>
+                            <th>ارزش ریالی اختلاف</th>
+                            <th>توضیحات و مدرک</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr class="{% if r.has_discrepancy %}ar-diff-row{% endif %}">
+                            {% if audit.status == 'submitted' %}
+                            <td>
+                                <input type="checkbox" name="item_ids" value="{{ r.item.id }}"
+                                       class="ar-row-check" data-diff="{{ r.has_discrepancy|yesno:'1,0' }}">
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div style="display:flex; align-items:center; gap:0.6rem;">
+                                    {% if r.thumb_url %}
+                                    <img src="{{ r.thumb_url }}" alt="" class="ar-thumb">
+                                    {% endif %}
+                                    <div>
+                                        <div style="font-weight:700; color:var(--text-primary);">{{ r.item.asset.name }}</div>
+                                        <div style="font-size:0.74rem; color:var(--text-muted);">
+                                            کد: {{ r.item.asset.code }}
+                                            {% if r.item.asset_unit %} | پلاک: {{ r.item.asset_unit.asset_tag }}{% endif %}
+                                            {% if r.item.is_unexpected_item %} | <span style="color:#A21CAF; font-weight:700;">خارج از لیست</span>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if r.is_serialized %}
+                                    {{ r.expected_status_label }}
+                                {% else %}
+                                    سالم: {{ r.item.expected_healthy }} / معیوب: {{ r.item.expected_damaged }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not r.item.is_counted %}
+                                    <span class="badge badge-neutral">شمارش‌نشده</span>
+                                {% elif r.is_serialized %}
+                                    <strong>{{ r.counted_status_label }}</strong>
+                                {% else %}
+                                    <strong>سالم: {{ r.item.counted_healthy|default:0 }} / معیوب: {{ r.item.counted_damaged|default:0 }}</strong>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not r.item.is_counted %}
+                                    —
+                                {% elif r.is_serialized %}
+                                    {% if r.has_discrepancy %}
+                                        <span class="badge badge-danger">{{ r.expected_status_label }} ← {{ r.counted_status_label }}</span>
+                                    {% else %}
+                                        <span class="badge badge-success">مطابق</span>
+                                    {% endif %}
+                                {% else %}
+                                    {% if r.item.variance_healthy != 0 or r.item.variance_damaged != 0 %}
+                                        <span class="badge {% if r.item.variance_total < 0 %}badge-danger{% elif r.item.variance_total > 0 %}badge-info{% else %}badge-warning{% endif %}">
+                                            سالم: {{ r.item.variance_healthy }} | معیوب: {{ r.item.variance_damaged }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-success">مطابق</span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td style="font-weight:700;">
+                                {% if r.variance_value < 0 %}
+                                    <span style="color:#DC2626;">{{ r.variance_value|number_format }} ریال</span>
+                                {% elif r.variance_value > 0 %}
+                                    <span style="color:#059669;">+{{ r.variance_value|number_format }} ریال</span>
+                                {% else %}
+                                    ۰
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.item.note %}
+                                <div style="font-size:0.78rem; margin-bottom:0.25rem;">{{ r.item.note }}</div>
+                                {% endif %}
+                                {% if r.evidence_url %}
+                                <button type="button" class="ar-evidence-btn"
+                                        onclick="openEvidenceModal('{{ r.evidence_url|escapejs }}', '{{ r.item.asset.name|escapejs }}')">
+                                    <i class="fas fa-image"></i> مشاهده عکس مدرک
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if audit.status == 'submitted' %}
+        <div class="ar-action-card">
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label for="review_notes">یادداشت بررسی / دستور بازشماری برای کاربر سکشن</label>
+                <textarea name="review_notes" id="review_notes" class="form-control" style="height:auto; padding:0.75rem;" rows="2"
+                          placeholder="توضیحات مدیر درباره مغایرت‌ها یا دلیل بازشماری...">{{ audit.review_notes }}</textarea>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <button type="submit"
+                        formaction="{% url 'asset_audit_recount' cafe_code=cafe_code audit_id=audit.id %}"
+                        class="btn btn-warning">
+                    <i class="fas fa-redo"></i> درخواست بازشماری موارد انتخابی
+                </button>
+                <button type="submit"
+                        formaction="{% url 'asset_audit_approve' cafe_code=cafe_code audit_id=audit.id %}"
+                        class="btn btn-success"
+                        onclick="return confirm('با تأیید نهایی، موجودی سیستم بر اساس شمارش تعدیل و اسناد گردش ثبت می‌شوند. ادامه می‌دهید؟');">
+                    <i class="fas fa-check-double"></i> تأیید نهایی و اعمال تعدیل
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if audit.status == 'approved' and movements %}
+    <div class="table-card" style="margin-top:1.25rem;">
+        <div class="table-header">
+            <div class="table-title"><i class="fas fa-exchange-alt"></i> اسناد تعدیل ثبت‌شده در کاردکس</div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>کالا</th>
+                        <th>پلاک</th>
+                        <th>وضعیت سلامت</th>
+                        <th>تعداد تعدیل</th>
+                        <th>ارزش واحد</th>
+                        <th>توضیحات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mv in movements %}
+                    <tr>
+                        <td><strong>{{ mv.asset.name }}</strong></td>
+                        <td>{{ mv.asset_unit.asset_tag|default:'—' }}</td>
+                        <td>{{ mv.get_condition_bucket_display }}</td>
+                        <td style="font-weight:800; color:{% if mv.quantity < 0 %}#DC2626{% else %}#059669{% endif %};">{{ mv.quantity }}</td>
+                        <td>{{ mv.unit_value_snapshot|number_format }} ریال</td>
+                        <td>{{ mv.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="evidenceModal" class="ar-modal-backdrop" onclick="this.classList.remove('is-open')">
+    <div class="ar-modal" onclick="event.stopPropagation();">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <strong id="evidenceModalTitle">عکس مدرک</strong>
+            <button type="button" class="btn btn-secondary" style="height:34px;" onclick="document.getElementById('evidenceModal').classList.remove('is-open')">بستن</button>
+        </div>
+        <img id="evidenceModalImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectDiscrepancyRows() {
+    document.querySelectorAll('.ar-row-check').forEach(function (cb) {
+        cb.checked = (cb.getAttribute('data-diff') === '1');
+    });
+}
+function openEvidenceModal(url, title) {
+    document.getElementById('evidenceModalImg').src = url;
+    document.getElementById('evidenceModalTitle').textContent = 'مدرک: ' + title;
+    document.getElementById('evidenceModal').classList.add('is-open');
+}
+</script>
+{% endblock %}

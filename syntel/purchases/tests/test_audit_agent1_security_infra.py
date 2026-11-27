@@ -29,7 +29,7 @@ from purchases.models import (
     Supplier,
     Unit,
 )
-from purchases.views_backups import _build_data_folder_zip
+from purchases.views.backups import _build_data_folder_zip
 from syntel.data_paths import resolve_data_path
 
 User = get_user_model()
@@ -300,7 +300,7 @@ class Agent1SecurityAndInfraTests(TestCase):
         self.assertContains(resp, "بررسی یکپارچگی ناموفق بود")
 
         # PostgreSQL engine must reject SQLite file restore
-        with mock.patch("purchases.views_backups._is_sqlite_engine", return_value=False):
+        with mock.patch("purchases.views.backups._is_sqlite_engine", return_value=False):
             resp_pg = client.post(url, {"db_file": io.BytesIO(b"SQLite format 3\x00")}, follow=True)
             self.assertEqual(resp_pg.status_code, 200)
             self.assertContains(resp_pg, "PostgreSQL")

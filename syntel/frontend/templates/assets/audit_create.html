@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ایجاد جلسه انبارگردانی اموال - Kuker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ac-wrap { max-width: 780px; margin: 0 auto; }
+    .ac-card {
+        background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: var(--radius-xl); box-shadow: var(--shadow-md);
+        padding: 1.5rem;
+    }
+    .ac-type-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 0.75rem; margin-top: 0.4rem;
+    }
+    .ac-type-option {
+        position: relative; border: 2px solid var(--border-default); border-radius: var(--radius-lg);
+        padding: 0.85rem 1rem; cursor: pointer; transition: all 0.15s ease;
+        display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 0.88rem;
+    }
+    .ac-type-option:has(input:checked) {
+        border-color: var(--accent-indigo); background: rgba(139,92,246,0.08); color: var(--primary-dark);
+    }
+    .ac-blind-box {
+        display: flex; align-items: flex-start; gap: 0.75rem;
+        background: #F5F3FF; border: 1.5px solid #DDD6FE; border-radius: var(--radius-lg);
+        padding: 1rem; cursor: pointer;
+    }
+    .ac-blind-box input { width: 20px; height: 20px; margin-top: 0.15rem; accent-color: #7C3AED; }
+    .ac-spot-box {
+        border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        padding: 1rem; background: var(--bg-subtle); margin-bottom: 1.25rem;
+    }
+    .ac-spot-list {
+        max-height: 260px; overflow-y: auto; display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+    .ac-spot-item {
+        background: #fff; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+        padding: 0.5rem 0.65rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ac-wrap">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon"><i class="fas fa-plus-circle"></i></div>
+            <div class="ph-title">
+                <h1>ایجاد جلسه انبارگردانی جدید</h1>
+                <div class="page-sub">اسنپ‌شات موجودی اموال بخش انتخابی در لحظه ایجاد ثبت می‌شود</div>
+            </div>
+        </div>
+        <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> بازگشت
+        </a>
+    </div>
+
+    <form method="post" class="ac-card">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="department_id">سکشن / بخش هدف *</label>
+            <select name="department_id" id="department_id" class="form-control" required>
+                <option value="">انتخاب سکشن...</option>
+                {% for dept in departments %}
+                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="title">عنوان انبارگردانی *</label>
+            <input type="text" name="title" id="title" class="form-control" required
+                   placeholder="مثلاً: انبارگردانی پایان ماه بار">
+        </div>
+
+        <div class="form-group">
+            <label>نوع انبارگردانی</label>
+            <div class="ac-type-grid">
+                {% for val, label in audit_type_choices %}
+                <label class="ac-type-option">
+                    <input type="radio" name="audit_type" value="{{ val }}"
+                           {% if val == 'full' %}checked{% endif %}
+                           onchange="toggleSpotSelector(this.value)">
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="ac-spot-box" id="spotAssetsBox" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <strong style="font-size:0.88rem;">انتخاب اختیاری اقلام برای شمارش موردی</strong>
+                <input type="text" id="spotSearchInput" class="filter-input" style="height:36px; width:220px;"
+                       placeholder="جستجوی کالا..." oninput="filterSpotAssets(this.value)">
+            </div>
+            <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:0.25rem;">
+                در صورت انتخاب نکردن هیچ کالا، کل اقلام موجود در سکشن در لیست شمارش قرار می‌گیرند.
+            </div>
+            <div class="ac-spot-list" id="spotAssetList">
+                {% for asset in catalog_assets %}
+                <label class="ac-spot-item" data-name="{{ asset.name|lower }} {{ asset.code|lower }}">
+                    <input type="checkbox" name="asset_ids" value="{{ asset.id }}">
+                    <span>{{ asset.name }} <small style="color:var(--text-muted);">({{ asset.code }})</small></span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="ac-blind-box">
+                <input type="checkbox" name="blind_count" value="1">
+                <div>
+                    <div style="font-weight:800; color:#4C1D95; font-size:0.92rem;">
+                        <i class="fas fa-eye-slash"></i> فعال‌سازی شمارش کور (Blind Count)
+                    </div>
+                    <div style="font-size:0.78rem; color:#5B21B6; margin-top:0.2rem;">
+                        موجودی سیستم (تعداد سالم و معیوب) برای کاربر شمارش‌کننده کاملاً مخفی می‌شود تا شمارش دقیق و واقعی انجام شود.
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">یادداشت جلسه (اختیاری)</label>
+            <textarea name="notes" id="notes" class="form-control" style="height:auto; padding:0.75rem;" rows="2"
+                      placeholder="توضیحات یا نکات لازم برای تیم شمارش..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-play"></i> ایجاد و شروع شمارش
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleSpotSelector(val) {
+    var box = document.getElementById('spotAssetsBox');
+    if (box) box.style.display = (val === 'spot') ? 'block' : 'none';
+}
+function filterSpotAssets(query) {
+    var q = (query || '').trim().toLowerCase();
+    var items = document.querySelectorAll('#spotAssetList .ac-spot-item');
+    items.forEach(function (el) {
+        var txt = el.getAttribute('data-name') || '';
+        el.style.display = (!q || txt.indexOf(q) !== -1) ? 'flex' : 'none';
+    });
+}
+</script>
+{% endblock %}

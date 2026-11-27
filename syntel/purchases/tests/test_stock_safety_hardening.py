@@ -317,7 +317,7 @@ class AvailableProductsInventoryErrorTests(_StockSafetyBase):
             })
 
     def test_inventory_insufficient_error_is_friendly(self):
-        with patch('purchases.views.apply_stock_delta',
+        with patch('purchases.views.warehouse.apply_stock_delta',
                    side_effect=InsufficientStockError('Sugar')):
             r = self.post()
         self.assertEqual(r.status_code, 200)
@@ -326,7 +326,7 @@ class AvailableProductsInventoryErrorTests(_StockSafetyBase):
         self.assertEqual(self.stock_a.quantity, D('100'))
 
     def test_inventory_scope_error_is_friendly(self):
-        with patch('purchases.views.apply_stock_delta',
+        with patch('purchases.views.warehouse.apply_stock_delta',
                    side_effect=StockScopeError('کافه')):
             r = self.post()
         self.assertEqual(r.status_code, 200)

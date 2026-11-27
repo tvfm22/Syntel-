@@ -168,7 +168,7 @@ class AnalyticsBubbleChartAPITests(TestCase):
     
     def test_growth_rate_calculation(self):
         """تست محاسبه نرخ رشد"""
-        from purchases.views_analytics import calculate_growth_rate
+        from purchases.views.analytics_helpers import calculate_growth_rate
         
         # رشد 100%
         rate = calculate_growth_rate(200, 100)
@@ -192,7 +192,7 @@ class AnalyticsBubbleChartAPITests(TestCase):
     
     def test_color_by_growth(self):
         """تست تولید رنگ بر اساس رشد"""
-        from purchases.views_analytics import get_color_by_growth
+        from purchases.views.analytics_helpers import get_color_by_growth
         
         # رشد مثبت - باید قرمز باشد
         color = get_color_by_growth(50)
@@ -212,7 +212,7 @@ class AnalyticsUtilsTests(TestCase):
     
     def test_get_date_range(self):
         """تست محاسبه بازه زمانی"""
-        from purchases.views_analytics import get_date_range
+        from purchases.views.analytics_helpers import get_date_range
         
         # هفتگی
         start, end, prev_start, prev_end = get_date_range('weekly')

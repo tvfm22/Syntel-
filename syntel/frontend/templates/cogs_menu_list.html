@@ -4,199 +4,158 @@
 {% block title %}لیست غذاهای منو — بهای تمام شده{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cogs_modern.css' %}?v=20261127a">
 <style>
-    /* ═══ صفحه ۱ بهای تمام شده — لیست غذاهای منو و نیمه‌آماده‌ها ═══ */
-    .cogs-page { max-width: 1420px; margin: 0 auto; }
-    .cogs-head-note { font-size: 0.82rem; color: var(--text-secondary); margin-top: 3px; }
-
-    /* آمار بالای صفحه */
-    .cogs-stats {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
-        margin-bottom: var(--space-4);
+    /* ═══ استایل اختصاصی صفحه ۱ — لیست غذاهای منو و نیمه‌آماده‌ها ═══ */
+    .cogs-view {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
-    .cogs-stat {
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
-        display: flex; align-items: center; gap: var(--space-3);
-        box-shadow: var(--shadow-sm);
-    }
-    .cogs-stat-icon {
-        width: 38px; height: 38px; border-radius: var(--radius-md);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.95rem; flex-shrink: 0;
-        background: rgba(139,92,246,0.10); color: var(--accent-indigo);
-    }
-    .cogs-stat-icon.is-green { background: rgba(34,197,94,0.10); color: var(--accent-green); }
-    .cogs-stat-icon.is-orange { background: rgba(249,115,22,0.10); color: var(--accent-orange); }
-    .cogs-stat-icon.is-pink { background: rgba(236,72,153,0.10); color: var(--accent-pink); }
-    .cogs-stat-value { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .cogs-stat-label { font-size: 0.74rem; color: var(--text-secondary); font-weight: 600; }
-
-    /* تب‌های اصلی */
-    .cogs-main-tabs {
-        display: flex; gap: 4px; background: var(--gray-100);
-        padding: 4px; border-radius: var(--radius-lg);
-        margin-bottom: var(--space-4); width: fit-content;
-    }
-    .cogs-main-tab {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        padding: 0.55rem 1.15rem; border: none; cursor: pointer;
-        border-radius: var(--radius-md); background: transparent;
-        font-family: 'Vazir', sans-serif; font-size: 0.84rem; font-weight: 600;
-        color: var(--text-secondary); transition: all var(--transition-fast);
-    }
-    .cogs-main-tab:hover { color: var(--primary); }
-    .cogs-main-tab.is-active {
-        background: var(--bg-card); color: var(--accent-indigo);
-        box-shadow: var(--shadow-sm);
-    }
-    .cogs-main-tab .tab-count {
-        font-size: 0.7rem; font-weight: 700; padding: 1px 7px;
-        border-radius: 999px; background: var(--gray-200); color: var(--text-secondary);
-    }
-    .cogs-main-tab.is-active .tab-count { background: rgba(139,92,246,0.14); color: var(--accent-indigo); }
-
-    /* بلوک هر بخش */
-    .cogs-section {
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl); margin-bottom: var(--space-4);
-        box-shadow: var(--shadow-sm); overflow: hidden;
-    }
-    .cogs-section-head {
-        display: flex; align-items: center; gap: var(--space-3);
-        padding: var(--space-3) var(--space-5);
-        background: var(--bg-subtle);
-        border-bottom: 1px solid var(--border-light);
-    }
-    .cogs-section-title {
-        display: flex; align-items: center; gap: 0.5rem;
-        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
-    }
-    .cogs-section-title i { color: var(--accent-indigo); font-size: 0.82rem; }
-    .cogs-section-title.is-fixed i { color: var(--accent-orange); }
-    .cogs-section-meta {
-        display: flex; align-items: center; gap: var(--space-3);
-        margin-inline-start: auto; font-size: 0.76rem; color: var(--text-secondary);
-    }
-    .cogs-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: 999px; padding: 2px 9px;
-        font-size: 0.72rem; font-weight: 700; color: var(--text-secondary);
-    }
-    .cogs-chip.is-cost { color: var(--accent-green); border-color: rgba(34,197,94,0.28); }
-
-    /* جدول */
-    .cogs-table { width: 100%; border-collapse: collapse; }
-    .cogs-table thead th {
-        text-align: right; padding: 0.55rem var(--space-5);
-        font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
-        background: var(--bg-card); border-bottom: 1px solid var(--border-light);
-        white-space: nowrap;
-    }
-    .cogs-table tbody td {
-        padding: 0.62rem var(--space-5); border-bottom: 1px solid var(--border-light);
-        font-size: 0.83rem; color: var(--text-primary); vertical-align: middle;
-    }
-    .cogs-table tbody tr:last-child td { border-bottom: none; }
-    .cogs-table tbody tr:hover { background: rgba(139,92,246,0.03); }
 
     .item-name {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        background: none; border: none; cursor: pointer; padding: 0;
-        font-family: 'Vazir', sans-serif; font-size: 0.86rem; font-weight: 600;
-        color: var(--text-primary); text-align: right;
-        transition: color var(--transition-fast);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.87rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        text-align: right;
+        transition: color 0.15s ease;
     }
-    .item-name:hover { color: var(--accent-indigo); }
+    .item-name:hover { color: var(--primary-dark); }
     .item-dot {
-        width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-        background: var(--accent-indigo);
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: var(--primary);
     }
-    .item-dot.is-prep { background: var(--accent-orange); }
+    .item-dot.is-prep { background: #D97706; }
     .tag-custom {
-        font-size: 0.64rem; font-weight: 700; padding: 1px 6px;
-        border-radius: 999px; background: rgba(59,130,246,0.10); color: var(--accent-blue);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: #EFF6FF;
+        color: #2563EB;
         margin-inline-start: 6px;
     }
     .cell-muted { color: var(--text-secondary); font-size: 0.79rem; }
-    .cell-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .cell-num { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-primary); }
 
     .cost-btn {
-        background: none; border: none; cursor: pointer; padding: 2px 8px;
-        border-radius: var(--radius-sm); font-family: 'Vazir', sans-serif;
-        font-size: 0.88rem; font-weight: 800; color: var(--accent-green);
+        background: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        padding: 0.22rem 0.6rem;
+        border-radius: 8px;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.87rem;
+        font-weight: 800;
+        color: #047857;
         font-variant-numeric: tabular-nums;
-        border-bottom: 1px dashed rgba(34,197,94,0.45);
-        transition: all var(--transition-fast);
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .cost-btn:hover { background: rgba(34,197,94,0.08); }
-    .cost-btn.is-empty { color: var(--text-muted); border-bottom-color: var(--gray-300); }
-
-    .btn-edit {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        color: var(--text-secondary); cursor: pointer;
-        padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
-        font-family: 'Vazir', sans-serif; font-size: 0.76rem; font-weight: 600;
-        transition: all var(--transition-fast);
+    .cost-btn:hover {
+        background: #ECFDF5;
+        border-color: #D1FAE5;
     }
-    .btn-edit:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); background: rgba(139,92,246,0.05); }
-
-    .cogs-empty {
-        padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: 0.85rem;
+    .cost-btn.is-empty {
+        color: var(--text-muted);
+        font-weight: 600;
     }
-    .cogs-empty i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+    .cost-btn.is-empty:hover {
+        background: var(--gray-100);
+        border-color: transparent;
+    }
 
-    /* ═══ مودال‌ها، فرم رسپی و دکمهٔ btn-sm در پارشیال مشترک
-       partials/cogs_recipe_editor.html تعریف شده‌اند ═══ */
+    .cg-menu-count {
+        font-size: 0.77rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+    .cg-menu-count strong { color: var(--text-primary); }
 
     /* نمودار تاریخچه */
     .chart-summary {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
-        margin-bottom: var(--space-4);
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        background: var(--gray-50);
+        overflow: hidden;
+        margin-bottom: 1rem;
     }
     .chart-sum-card {
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        border-radius: var(--radius-md); padding: 0.6rem 0.75rem;
+        padding: 0.78rem 0.95rem;
+        border-left: 1px solid var(--border-light);
     }
-    .chart-sum-label { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); }
+    .chart-sum-card:last-child { border-left: none; }
+    .chart-sum-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.18rem; }
     .chart-sum-value {
-        font-size: 0.98rem; font-weight: 800; color: var(--text-primary);
+        font-size: 0.96rem;
+        font-weight: 800;
+        color: var(--text-primary);
         font-variant-numeric: tabular-nums;
     }
-    .chart-sum-card.is-min .chart-sum-value { color: var(--accent-green); }
-    .chart-sum-card.is-max .chart-sum-value { color: var(--danger); }
-    .chart-sum-card.is-latest .chart-sum-value { color: var(--accent-indigo); }
-    .chart-wrap { position: relative; height: 300px; }
+    .chart-sum-card.is-min .chart-sum-value { color: #047857; }
+    .chart-sum-card.is-max .chart-sum-value { color: #DC2626; }
+    .chart-sum-card.is-latest .chart-sum-value { color: var(--primary-dark); }
+    .chart-wrap { position: relative; height: 290px; }
     .chart-empty {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        height: 300px; color: var(--text-muted); font-size: 0.84rem; text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 270px;
+        color: var(--text-muted);
+        font-size: 0.84rem;
+        text-align: center;
         gap: 0.6rem;
     }
-    .chart-empty i { font-size: 1.6rem; opacity: 0.45; }
+    .chart-empty i { font-size: 1.6rem; opacity: 0.4; }
 
     /* مدیریت بخش‌ها */
     .section-row {
-        display: grid; grid-template-columns: minmax(0,1fr) auto;
-        gap: 6px; align-items: center; margin-bottom: 6px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
     }
     .section-row input {
-        height: 36px; padding: 0 0.6rem;
-        border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-        font-family: 'Vazir', sans-serif; font-size: 0.82rem;
-        background: var(--bg-card); color: var(--text-primary);
+        height: 36px;
+        padding: 0 0.7rem;
+        border: 1px solid var(--border-default);
+        border-radius: 10px;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.82rem;
+        background: var(--bg-card);
+        color: var(--text-primary);
     }
-    .section-row input:focus { outline: none; border-color: var(--accent-indigo); }
+    .section-row input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+    }
     .section-group-title {
-        font-size: 0.76rem; font-weight: 800; color: var(--text-secondary);
-        margin: var(--space-4) 0 var(--space-2);
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--text-secondary);
+        margin: 1rem 0 0.45rem;
     }
     .section-group-title:first-child { margin-top: 0; }
 
     @media (max-width: 900px) {
-        .cogs-stats { grid-template-columns: repeat(2, 1fr); }
         .chart-summary { grid-template-columns: repeat(2, 1fr); }
+        .chart-sum-card { border-bottom: 1px solid var(--border-light); }
         .cogs-table thead th:nth-child(2), .cogs-table tbody td:nth-child(2) { display: none; }
     }
 </style>
@@ -206,56 +165,54 @@
 {% block content %}
 <div class="cogs-page">
 
-    <div class="page-header">
-        <div>
-        <div class="ph-main"><div class="ph-icon"><i class="fas fa-utensils"></i></div><div><h1 class="ph-title">لیست غذاهای منو و نیمه‌آماده‌ها</h1><p class="page-sub">بهای هر غذا از روی رسپی‌اش محاسبه می‌شود؛ روی نام یا بهای هر قلم کلیک کنید تا رسپی و روند تغییر قیمتش را ببینید</p></div></div>
-            <div class="cogs-head-note" style="display:none;">
-                بهای هر غذا از روی رسپی‌اش محاسبه می‌شود. روی نام یا بهای هر قلم کلیک کنید تا رسپی و
-                روند تغییر قیمتش را ببینید.
+    <!-- 1. هدر مینیمال بدون شلوغی -->
+    <header class="cg-topbar">
+        <div class="cg-heading">
+            <h1 class="cg-title">لیست غذاهای منو و نیمه‌آماده‌ها</h1>
+            <div class="cg-subtitle">
+                <span>بهای هر غذا از روی رسپی محاسبه می‌شود</span>
+                <span class="cg-subtitle-dot"></span>
+                <span>روی نام برای ویرایش رسپی و روی بها برای نمودار روند کلیک کنید</span>
             </div>
         </div>
-        <div class="header-actions">
-            <button type="button" class="btn btn-secondary" id="btnSections">
-                <i class="fas fa-layer-group"></i> بخش‌ها
+        <div class="cg-topbar-actions">
+            <button type="button" class="cg-btn cg-btn-ghost" id="btnSections">
+                <i class="fas fa-layer-group"></i>
+                <span>بخش‌ها</span>
             </button>
-            <button type="button" class="btn btn-primary" id="btnNewItem">
-                <i class="fas fa-plus"></i> آیتم جدید
+            <button type="button" class="cg-btn cg-btn-primary" id="btnNewItem">
+                <i class="fas fa-plus"></i>
+                <span>آیتم جدید</span>
             </button>
         </div>
-    </div>
+    </header>
 
+    <!-- 2. ناوبری یکپارچه زیرصفحه‌های بهای تمام شده -->
     {% include "cogs_nav.html" %}
 
-    <div class="cogs-stats">
-        <div class="cogs-stat">
-            <div class="cogs-stat-icon"><i class="fas fa-utensils"></i></div>
-            <div>
-                <div class="cogs-stat-value">{{ stats.dishes|number_format }}</div>
-                <div class="cogs-stat-label">غذای منو</div>
-            </div>
+    <!-- 3. نوار خلاصه آمار یکپارچه -->
+    <section class="cg-metrics-strip" aria-label="خلاصه آمار منو">
+        <div class="cg-metric-cell">
+            <span class="cg-metric-label">غذای منو</span>
+            <div class="cg-metric-val is-accent">{{ stats.dishes|number_format }}<span class="cg-metric-unit">قلم</span></div>
+            <span class="cg-metric-hint">غذاهای قابل فروش منو</span>
         </div>
-        <div class="cogs-stat">
-            <div class="cogs-stat-icon is-orange"><i class="fas fa-layer-group"></i></div>
-            <div>
-                <div class="cogs-stat-value">{{ stats.preps|number_format }}</div>
-                <div class="cogs-stat-label">نیمه‌آماده</div>
-            </div>
+        <div class="cg-metric-cell">
+            <span class="cg-metric-label">نیمه‌آماده</span>
+            <div class="cg-metric-val">{{ stats.preps|number_format }}<span class="cg-metric-unit">قلم</span></div>
+            <span class="cg-metric-hint">سس‌ها و مواد آماده‌سازی</span>
         </div>
-        <div class="cogs-stat">
-            <div class="cogs-stat-icon is-green"><i class="fas fa-list-check"></i></div>
-            <div>
-                <div class="cogs-stat-value">{{ stats.sections|number_format }}</div>
-                <div class="cogs-stat-label">بخش تعریف‌شده</div>
-            </div>
+        <div class="cg-metric-cell">
+            <span class="cg-metric-label">بخش تعریف‌شده</span>
+            <div class="cg-metric-val">{{ stats.sections|number_format }}<span class="cg-metric-unit">بخش</span></div>
+            <span class="cg-metric-hint">گروه‌بندی منو و آماده‌سازی</span>
         </div>
-        <div class="cogs-stat">
-            <div class="cogs-stat-icon is-pink"><i class="fas fa-triangle-exclamation"></i></div>
-            <div>
-                <div class="cogs-stat-value">{{ stats.no_recipe|number_format }}</div>
-                <div class="cogs-stat-label">بدون رسپی</div>
-            </div>
+        <div class="cg-metric-cell">
+            <span class="cg-metric-label">بدون رسپی</span>
+            <div class="cg-metric-val {% if stats.no_recipe %}is-warn{% endif %}">{{ stats.no_recipe|number_format }}<span class="cg-metric-unit">قلم</span></div>
+            <span class="cg-metric-hint">{% if stats.no_recipe %}نیازمند ثبت مواد اولیه{% else %}همه اقلام رسپی دارند{% endif %}</span>
         </div>
-    </div>
+    </section>
 
     {% if not has_menu %}
     <div class="cogs-section">
@@ -267,21 +224,32 @@
     </div>
     {% else %}
 
-    <div class="cogs-main-tabs" role="tablist">
-        <button type="button" class="cogs-main-tab is-active" data-view="dish">
-            <i class="fas fa-utensils"></i> غذاهای منو
-            <span class="tab-count">{{ stats.dishes|number_format }}</span>
-        </button>
-        <button type="button" class="cogs-main-tab" data-view="prep">
-            <i class="fas fa-layer-group"></i> نیمه‌آماده‌ها
-            <span class="tab-count">{{ stats.preps|number_format }}</span>
-        </button>
+    <!-- 4. نوار کنترل: سوییچ منو/نیمه‌آماده + جستجوی سریع -->
+    <div class="cg-controls-bar">
+        <div class="cogs-main-tabs" role="tablist">
+            <button type="button" class="cogs-main-tab is-active" data-view="dish">
+                <i class="fas fa-utensils"></i> غذاهای منو
+                <span class="tab-count">{{ stats.dishes|number_format }}</span>
+            </button>
+            <button type="button" class="cogs-main-tab" data-view="prep">
+                <i class="fas fa-layer-group"></i> نیمه‌آماده‌ها
+                <span class="tab-count">{{ stats.preps|number_format }}</span>
+            </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.7rem; flex:1; justify-content:flex-end; min-width:220px;">
+            <div class="cg-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="menuQuickSearch" placeholder="جستجوی نام غذا یا بخش..." aria-label="جستجوی سریع در منو">
+            </div>
+            <span class="cg-menu-count" id="menuVisibleCount"></span>
+        </div>
     </div>
 
     <!-- ═══ غذاهای منو ═══ -->
     <div class="cogs-view" data-view="dish">
         {% for g in dish_groups %}
-        <div class="cogs-section">
+        <div class="cogs-section" data-section-card>
             <div class="cogs-section-head">
                 <div class="cogs-section-title">
                     <i class="fas fa-folder-open"></i>{{ g.name }}
@@ -289,7 +257,7 @@
                 <div class="cogs-section-meta">
                     <span class="cogs-chip">{{ g.count|number_format }} قلم</span>
                     {% if g.priced %}
-                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }}</span>
+                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }} ریال</span>
                     {% endif %}
                     {% if g.id %}
                     <button type="button" class="btn-sm" data-rename-section="{{ g.id }}" data-name="{{ g.name }}">
@@ -299,44 +267,46 @@
                 </div>
             </div>
             {% if g.items %}
-            <table class="cogs-table">
-                <thead>
-                    <tr>
-                        <th>نام</th>
-                        <th>بخش</th>
-                        <th>خروجی هر بچ</th>
-                        <th>تعداد مواد</th>
-                        <th>بهای تمام شده هر واحد</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in g.items %}
-                    <tr>
-                        <td>
-                            <button type="button" class="item-name" data-edit="{{ item.id }}">
-                                <span class="item-dot"></span><span>{{ item.name }}</span>
-                            </button>
-                            {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
-                        </td>
-                        <td class="cell-muted">{{ g.name }}</td>
-                        <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
-                        <td class="cell-num">{{ item.lines_count|number_format }}</td>
-                        <td>
-                            <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
-                                    data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
-                                {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
-                            </button>
-                        </td>
-                        <td>
-                            <button type="button" class="btn-edit" data-edit="{{ item.id }}">
-                                <i class="fas fa-pen"></i> ویرایش
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table class="cogs-table">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>بخش</th>
+                            <th>خروجی هر بچ</th>
+                            <th>تعداد مواد</th>
+                            <th>بهای تمام شده هر واحد</th>
+                            <th style="text-align:left;">رسپی</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in g.items %}
+                        <tr data-search-row="{{ item.name }} {{ g.name }}">
+                            <td>
+                                <button type="button" class="item-name" data-edit="{{ item.id }}">
+                                    <span class="item-dot"></span><span>{{ item.name }}</span>
+                                </button>
+                                {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
+                            </td>
+                            <td class="cell-muted">{{ g.name }}</td>
+                            <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
+                            <td class="cell-num">{{ item.lines_count|number_format }}</td>
+                            <td>
+                                <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
+                                        data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
+                                    {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
+                                </button>
+                            </td>
+                            <td style="text-align:left;">
+                                <button type="button" class="btn-edit" data-edit="{{ item.id }}">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% else %}
             <div class="cogs-empty">
                 <i class="fas fa-inbox"></i>
@@ -357,7 +327,7 @@
     <!-- ═══ نیمه‌آماده‌ها ═══ -->
     <div class="cogs-view" data-view="prep" style="display:none;">
         {% for g in prep_groups %}
-        <div class="cogs-section">
+        <div class="cogs-section" data-section-card>
             <div class="cogs-section-head">
                 <div class="cogs-section-title{% if g.fixed %} is-fixed{% endif %}">
                     <i class="fas fa-{% if g.fixed %}blender{% else %}folder-open{% endif %}"></i>{{ g.name }}
@@ -365,7 +335,7 @@
                 <div class="cogs-section-meta">
                     <span class="cogs-chip">{{ g.count|number_format }} قلم</span>
                     {% if g.priced %}
-                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }}</span>
+                    <span class="cogs-chip is-cost">جمع بها {{ g.total|number_format }} ریال</span>
                     {% endif %}
                     {% if g.id %}
                     <button type="button" class="btn-sm" data-rename-section="{{ g.id }}" data-name="{{ g.name }}">
@@ -375,44 +345,46 @@
                 </div>
             </div>
             {% if g.items %}
-            <table class="cogs-table">
-                <thead>
-                    <tr>
-                        <th>نام</th>
-                        <th>بخش</th>
-                        <th>خروجی هر بچ</th>
-                        <th>تعداد مواد</th>
-                        <th>بهای تمام شده هر واحد</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in g.items %}
-                    <tr>
-                        <td>
-                            <button type="button" class="item-name" data-edit="{{ item.id }}">
-                                <span class="item-dot is-prep"></span><span>{{ item.name }}</span>
-                            </button>
-                            {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
-                        </td>
-                        <td class="cell-muted">{{ g.name }}</td>
-                        <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
-                        <td class="cell-num">{{ item.lines_count|number_format }}</td>
-                        <td>
-                            <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
-                                    data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
-                                {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
-                            </button>
-                        </td>
-                        <td>
-                            <button type="button" class="btn-edit" data-edit="{{ item.id }}">
-                                <i class="fas fa-pen"></i> ویرایش
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table class="cogs-table">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>بخش</th>
+                            <th>خروجی هر بچ</th>
+                            <th>تعداد مواد</th>
+                            <th>بهای تمام شده هر واحد</th>
+                            <th style="text-align:left;">رسپی</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in g.items %}
+                        <tr data-search-row="{{ item.name }} {{ g.name }}">
+                            <td>
+                                <button type="button" class="item-name" data-edit="{{ item.id }}">
+                                    <span class="item-dot is-prep"></span><span>{{ item.name }}</span>
+                                </button>
+                                {% if item.is_custom %}<span class="tag-custom">دستی</span>{% endif %}
+                            </td>
+                            <td class="cell-muted">{{ g.name }}</td>
+                            <td class="cell-num">{{ item.out_qty|num2 }} {{ item.out_unit }}</td>
+                            <td class="cell-num">{{ item.lines_count|number_format }}</td>
+                            <td>
+                                <button type="button" class="cost-btn{% if not item.has_cost %} is-empty{% endif %}"
+                                        data-cost="{{ item.id }}" title="روند تغییر بهای این قلم">
+                                    {% if item.has_cost %}{{ item.cost|number_format }}{% else %}—{% endif %}
+                                </button>
+                            </td>
+                            <td style="text-align:left;">
+                                <button type="button" class="btn-edit" data-edit="{{ item.id }}">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% else %}
             <div class="cogs-empty">
                 <i class="fas fa-inbox"></i>
@@ -597,7 +569,7 @@
     const HISTORY_URL = "{% url 'cogs_item_cost_history' cafe_code=cafe_code item_id=999999 %}";
     const SECTION_URL = "{% url 'cogs_section_save' cafe_code=cafe_code %}";
 
-    const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const fa = n => String(n);
     const money = v => {
         if (v === null || v === undefined || v === '') return '—';
         const n = Number(v);
@@ -628,7 +600,40 @@
         }
     });
 
-    /* ---------- تب‌ها ---------- */
+    /* ---------- تب‌ها و جستجوی سریع ---------- */
+    const menuSearchInput = document.getElementById('menuQuickSearch');
+    const menuVisibleCountEl = document.getElementById('menuVisibleCount');
+
+    function applyMenuSearch() {
+        const activeView = document.querySelector('.cogs-view:not([style*="display: none"]):not([style*="display:none"])');
+        if (!activeView) return;
+        const q = menuSearchInput ? (menuSearchInput.value || '').trim().toLowerCase() : '';
+        let totalShown = 0;
+        activeView.querySelectorAll('[data-section-card]').forEach(sec => {
+            const rows = sec.querySelectorAll('tr[data-search-row]');
+            if (!rows.length) {
+                sec.style.display = q ? 'none' : '';
+                return;
+            }
+            let secShown = 0;
+            rows.forEach(tr => {
+                const hay = (tr.getAttribute('data-search-row') || '').toLowerCase();
+                const ok = !q || hay.indexOf(q) !== -1;
+                tr.style.display = ok ? '' : 'none';
+                if (ok) secShown++;
+            });
+            sec.style.display = (secShown > 0 || !q) ? '' : 'none';
+            totalShown += secShown;
+        });
+        if (menuVisibleCountEl) {
+            menuVisibleCountEl.innerHTML = q ? ('<strong>' + totalShown + '</strong> نتیجه') : '';
+        }
+    }
+
+    if (menuSearchInput) {
+        menuSearchInput.addEventListener('input', applyMenuSearch);
+    }
+
     document.querySelectorAll('.cogs-main-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.cogs-main-tab').forEach(t => t.classList.remove('is-active'));
@@ -637,6 +642,7 @@
             document.querySelectorAll('.cogs-view').forEach(v => {
                 v.style.display = (v.dataset.view === view) ? '' : 'none';
             });
+            applyMenuSearch();
         });
     });
 

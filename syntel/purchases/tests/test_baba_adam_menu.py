@@ -9,7 +9,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from purchases.models import Cafe, Department, Product, ProductPriceEntry
-from purchases.models_cogs import KukerItem, KukerRecipeLine, MenuSection
+from purchases.models.cogs import KukerItem, KukerRecipeLine, MenuSection
 from purchases.services.baba_adam_menu import (
     COGS_ONLY_CONSUMABLE,
     NEW_MENU_PRODUCTS,

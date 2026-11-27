@@ -242,7 +242,33 @@
             <span>📄</span>
             مشاهده فاکتور
         </h1>
-        <div style="display: flex; gap: 0.75rem;">
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            {% if invoice.status == 'draft' %}
+            <form method="post" action="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn-outline-custom">
+                    📤 ارسال فاکتور
+                </button>
+            </form>
+            {% endif %}
+            {% if invoice.can_be_approved %}
+                {% if user.is_superuser or user.role in 'manager,finance_manager,ceo,admin' or user.secondary_role in 'manager,finance_manager,ceo,admin' %}
+                <form method="post" action="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-primary-custom" style="background-color: #16a34a;">
+                        ✅ تأیید فاکتور
+                    </button>
+                </form>
+                {% endif %}
+            {% endif %}
+            {% if invoice.status != 'paid' and invoice.status != 'partially_paid' and invoice.status != 'cancelled' %}
+            <form method="post" action="{% url 'invoice_cancel' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;" onsubmit="return confirm('آیا از لغو این فاکتور مطمئن هستید؟');">
+                {% csrf_token %}
+                <button type="submit" class="btn-outline-custom" style="color: #dc2626; border-color: #fca5a5;">
+                    ❌ لغو فاکتور
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn-primary-custom">
                 ✏️ ویرایش
             </a>

@@ -279,12 +279,12 @@ class Command(BaseCommand):
 
             if matched_depts:
                 is_active = True
-                usage_location = matched_depts[0].name[:20] if len(matched_depts) == 1 else 'multi'
                 active_count += 1
             else:
                 is_active = False
-                usage_location = 'none'
                 inactive_count += 1
+            # usage_location must stay within DEPARTMENT_CHOICES; specific sections are stored in M2M `departments`.
+            usage_location = 'general'
 
             product, created = Product.objects.update_or_create(
                 name=name,

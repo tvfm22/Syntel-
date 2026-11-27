@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static custom_filters %}
+
+{% block title %}کارتابل تأیید گردش اموال - Kuker{% endblock %}
+
+{% block content %}
+<div style="max-width:1300px; margin:0 auto;">
+    <div class="page-header" style="margin-bottom:1.25rem;">
+        <div class="ph-main">
+            <div class="ph-icon orange"><i class="fas fa-hourglass-half"></i></div>
+            <div class="ph-title">
+                <h1>کارتابل اسناد اموال در انتظار تأیید</h1>
+                <div class="page-sub">گزارش‌های شکستگی/اسقاط ارسال‌شده توسط سکشن‌ها و انتقال‌های در انتظار تحویل</div>
+            </div>
+        </div>
+        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+    </div>
+
+    <div class="table-card" style="margin-bottom:1.25rem;">
+        <div class="table-header"><div class="table-title"><i class="fas fa-check-double"></i> در انتظار تأیید مدیر ({{ pending_list|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>تاریخ</th><th>نوع</th><th>کالا</th><th>بخش</th><th>تعداد</th><th>علت و مدرک</th><th>ثبت‌کننده</th><th>اقدام</th></tr></thead>
+                <tbody>
+                    {% for mv in pending_list %}
+                    <tr>
+                        <td>{{ mv.created_at|jalali_datetime }}</td>
+                        <td>{{ mv.get_movement_type_display }}</td>
+                        <td><strong>{{ mv.asset.name }}</strong>{% if mv.asset_unit %} ({{ mv.asset_unit.asset_tag }}){% endif %}</td>
+                        <td>{{ mv.from_department.name|default:'—' }}</td>
+                        <td>{{ mv.quantity }}</td>
+                        <td>
+                            <div>{{ mv.reason|default:'—' }}</div>
+                            {% if mv.evidence_photo %}<a href="{{ mv.evidence_photo.url }}" target="_blank" style="font-size:0.78rem;">مشاهده عکس مدرک</a>{% endif %}
+                        </td>
+                        <td>{{ mv.created_by.username|default:'—' }}</td>
+                        <td style="display:flex; gap:0.4rem;">
+                            <form method="post" action="{% url 'asset_movement_approve' cafe_code=cafe_code pk=mv.id %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success" style="height:34px; font-size:0.78rem;">تأیید و اعمال</button>
+                            </form>
+                            <form method="post" action="{% url 'asset_movement_reject' cafe_code=cafe_code pk=mv.id %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger" style="height:34px; font-size:0.78rem;">رد</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" style="text-align:center; padding:1.5rem;">سندی در انتظار تأیید نیست.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if handshake_list %}
+    <div class="table-card">
+        <div class="table-header"><div class="table-title"><i class="fas fa-truck"></i> انتقال‌های در انتظار تحویل مقصد ({{ handshake_list|length }})</div></div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr><th>تاریخ</th><th>کالا</th><th>مبدأ</th><th>مقصد</th><th>تعداد</th><th>ثبت‌کننده</th></tr></thead>
+                <tbody>
+                    {% for mv in handshake_list %}
+                    <tr>
+                        <td>{{ mv.created_at|jalali_datetime }}</td>
+                        <td>{{ mv.asset.name }}</td>
+                        <td>{{ mv.from_department.name|default:'—' }}</td>
+                        <td>{{ mv.to_department.name|default:'—' }}</td>
+                        <td>{{ mv.quantity }}</td>
+                        <td>{{ mv.created_by.username|default:'—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

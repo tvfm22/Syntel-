@@ -65,7 +65,7 @@
             <div class="pay-form-grid">
                 <div class="form-group">
                     <label for="edit_pay_amount" class="form-label">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
-                    <input type="text" id="edit_pay_amount" name="amount" class="form-control" required
+                    <input type="text" id="edit_pay_amount" name="amount" class="form-control js-comma" required
                            inputmode="numeric" value="{{ payment.amount|floatformat:'0' }}">
                 </div>
                 <div class="form-group">
@@ -117,18 +117,4 @@
         </form>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    const amountInput = document.getElementById('edit_pay_amount');
-    if (amountInput) {
-        const applyComma = function() {
-            const digits = this.value.replace(/\D/g, '');
-            this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-        };
-        amountInput.addEventListener('input', applyComma);
-        applyComma.call(amountInput);
-    }
-</script>
 {% endblock %}

@@ -14,7 +14,7 @@ from django.urls import reverse
 from purchases.models import (
     Cafe, Category, Product, StockItem, StockTransaction, Unit, User, Warehouse
 )
-from purchases.views_backups import (
+from purchases.views.backups import (
     LOCK_AUTO_BACKUP, LOCK_SERVER_BACKUP, LOCK_DRIVE_BACKUP
 )
 

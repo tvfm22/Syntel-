@@ -32,8 +32,8 @@ COPY . .
 # Keep any shipped seed DB only under /app/seed_data/db (avoid duplicate copies),
 # strip transient runtime directories, and set ownership for the non-root user.
 RUN mkdir -p /app/seed_data/db /app/data /tmp/staticfiles \
-    && { [ -f /app/data/db/db.sqlite3 ] && [ ! -f /app/seed_data/db/db.sqlite3 ] && cp /app/data/db/db.sqlite3 /app/seed_data/db/db.sqlite3 || true; } \
-    && rm -rf /app/data/logs /app/data/cache /app/data/tmp /app/data/sessions /app/data/backups /app/data/uploads \
+    && { [ -f /app/data/db/db.sqlite3 ] && [ ! -f /app/seed_data/db/db.sqlite3 ] && mv /app/data/db/db.sqlite3 /app/seed_data/db/db.sqlite3 || true; } \
+    && rm -rf /app/data/db /app/data/logs /app/data/cache /app/data/tmp /app/data/sessions /app/data/backups /app/data/uploads \
     && find . -type d -name __pycache__ -exec rm -rf {} + \
     && chmod +x /app/entrypoint.sh \
     && chown -R syntel:syntel /app /tmp/staticfiles

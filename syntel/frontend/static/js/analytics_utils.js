@@ -65,8 +65,7 @@ function formatCurrency(amount) {
     // تبدیل به عدد اگر string است
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     
-    // فرمت فارسی
-    return new Intl.NumberFormat('fa-IR').format(Math.round(numAmount)) + ' ریال';
+    return new Intl.NumberFormat('en-US').format(Math.round(numAmount)) + ' ریال';
 }
 
 /**
@@ -81,7 +80,7 @@ function formatPercent(value) {
     
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     
-    return new Intl.NumberFormat('fa-IR', {
+    return new Intl.NumberFormat('en-US', {
         style: 'percent',
         minimumFractionDigits: 1,
         maximumFractionDigits: 1
@@ -99,7 +98,7 @@ function formatNumber(value) {
     }
     
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('fa-IR').format(numValue);
+    return new Intl.NumberFormat('en-US').format(numValue);
 }
 
 /**
@@ -182,7 +181,7 @@ function getCsrfToken() {
 function toPersianDate(dateString) {
     try {
         const date = new Date(dateString);
-        return date.toLocaleDateString('fa-IR', {
+        return date.toLocaleDateString('fa-IR-u-nu-latn', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'

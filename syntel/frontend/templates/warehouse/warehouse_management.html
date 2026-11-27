@@ -105,6 +105,7 @@
     .whm-chip.ok    { background: #d1fae5; color: #065f46; }
     .whm-chip.off   { background: #fee2e2; color: #b91c1c; }
     .whm-chip.supply { background: rgba(139,92,246,0.1); color: #6d28d9; }
+    .whm-chip.neg   { background: #fef3c7; color: #92400e; }
     .whm-chip.warehouse { background: #dbeafe; color: #1e40af; }
     .whm-chip.category  { background: #e0e7ff; color: #3730a3; }
 
@@ -338,6 +339,9 @@
                         {% if warehouse.is_supply_enabled %}
                         <span class="whm-chip supply"><i class="fas fa-truck-fast"></i> تامین</span>
                         {% endif %}
+                        {% if warehouse.allow_negative_stock %}
+                        <span class="whm-chip neg" title="خروج بدون موجودی اولیه مجاز است"><i class="fas fa-minus-circle"></i> موجودی منفی مجاز</span>
+                        {% endif %}
                         <i class="fas fa-chevron-down whm-chevron"></i>
                     </div>
                 </div>
@@ -365,7 +369,7 @@
                 {% if user.role in 'manager,admin,ceo' %}
                 <div class="whm-card-actions">
                     <button class="whm-link-action whm-link-blue"
-                            onclick="whmOpenEdit({{ warehouse.id }}, '{{ warehouse.name|escapejs }}', '{{ warehouse.code|escapejs }}', '{{ warehouse.description|escapejs }}', '{{ warehouse.location|escapejs }}', '{{ warehouse.manager_name|escapejs }}', '{{ warehouse.manager_phone|escapejs }}', {{ warehouse.is_active|yesno:'true,false' }}, {{ warehouse.is_supply_enabled|yesno:'true,false' }})">
+                            onclick="whmOpenEdit({{ warehouse.id }}, '{{ warehouse.name|escapejs }}', '{{ warehouse.code|escapejs }}', '{{ warehouse.description|escapejs }}', '{{ warehouse.location|escapejs }}', '{{ warehouse.manager_name|escapejs }}', '{{ warehouse.manager_phone|escapejs }}', {{ warehouse.is_active|yesno:'true,false' }}, {{ warehouse.is_supply_enabled|yesno:'true,false' }}, {{ warehouse.allow_negative_stock|yesno:'true,false' }})">
                         <i class="fas fa-pen"></i> ویرایش
                     </button>
                     <button class="whm-link-action {% if warehouse.is_active %}whm-link-amber{% else %}whm-link-green{% endif %}"
@@ -488,6 +492,17 @@
                         </label>
                     </div>
                 </div>
+                <div class="whm-form-group full">
+                    <div class="whm-supply-note" style="background:#fffbeb;border-color:#fde68a;">
+                        <label class="whm-form-check">
+                            <input type="checkbox" id="whmFieldAllowNegative">
+                            <div>
+                                <span class="whm-form-label" style="margin:0">مجاز بودن موجودی منفی (بدون نیاز به موجودی اولیه)</span>
+                                <div class="hint">در صورت فعال بودن، می‌توان بدون وارد کردن موجودی اولیه، حواله خروج و تحویل ثبت کرد تا مصرف مشخص شود و بعداً با انبارگردانی موجودی واقعی ثبت گردد.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="whm-modal-footer">
@@ -528,12 +543,13 @@
         document.getElementById('whmEditId').value = '';
         ['whmFieldName','whmFieldCode','whmFieldManager','whmFieldPhone','whmFieldLocation','whmFieldDesc'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('whmFieldSupply').checked = true;
+        document.getElementById('whmFieldAllowNegative').checked = false;
         document.getElementById('whmActiveGroup').style.display = 'none';
         document.getElementById('whmModal').classList.add('open');
         document.getElementById('whmFieldName').focus();
     }
 
-    function whmOpenEdit(id, name, code, desc, location, manager, phone, isActive, isSupply) {
+    function whmOpenEdit(id, name, code, desc, location, manager, phone, isActive, isSupply, allowNegative) {
         document.getElementById('whmModalTitle').innerHTML = '<i class="fas fa-pen"></i> ویرایش انبار';
         document.getElementById('whmEditId').value = id;
         document.getElementById('whmFieldName').value = name;
@@ -544,6 +560,7 @@
         document.getElementById('whmFieldDesc').value = desc;
         document.getElementById('whmFieldActive').checked = isActive;
         document.getElementById('whmFieldSupply').checked = isSupply;
+        document.getElementById('whmFieldAllowNegative').checked = !!allowNegative;
         document.getElementById('whmActiveGroup').style.display = 'block';
         document.getElementById('whmModal').classList.add('open');
     }
@@ -572,6 +589,7 @@
             manager_phone: document.getElementById('whmFieldPhone').value.trim(),
             is_active: document.getElementById('whmFieldActive').checked,
             is_supply_enabled: document.getElementById('whmFieldSupply').checked,
+            allow_negative_stock: document.getElementById('whmFieldAllowNegative').checked,
         };
 
         btn.disabled = true;

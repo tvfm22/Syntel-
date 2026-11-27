@@ -850,20 +850,20 @@ function getCsrfToken() {
 }
 
 function formatCurrency(amount) {
-    if (amount === null || amount === undefined) return '۰ ریال';
-    const formatted = Number(amount).toLocaleString('fa-IR');
+    if (amount === null || amount === undefined) return '0 ریال';
+    const formatted = Number(amount).toLocaleString('en-US');
     return formatted + ' ریال';
 }
 
 function formatNumber(num) {
-    if (num === null || num === undefined) return '۰';
-    return Number(num).toLocaleString('fa-IR');
+    if (num === null || num === undefined) return '0';
+    return Number(num).toLocaleString('en-US');
 }
 
 function formatPercent(value) {
-    if (value === null || value === undefined) return '۰٪';
-    const formatted = Number(value).toLocaleString('fa-IR', { maximumFractionDigits: 2 });
-    return formatted + '٪';
+    if (value === null || value === undefined) return '0%';
+    const formatted = Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return formatted + '%';
 }
 
 function calculateBubbleSize(value, minValue, maxValue) {
@@ -889,7 +889,7 @@ function toPersianDate(dateStr) {
     if (!dateStr) return '-';
     try {
         const date = new Date(dateStr);
-        return date.toLocaleDateString('fa-IR');
+        return date.toLocaleDateString('fa-IR-u-nu-latn');
     } catch (e) {
         return dateStr;
     }

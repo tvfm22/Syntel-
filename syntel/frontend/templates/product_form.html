@@ -222,9 +222,9 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="base_unit_price" class="form-label">قیمت واحد</label>
-                    <input type="number" id="base_unit_price" name="base_unit_price" class="form-input"
+                    <input type="text" id="base_unit_price" name="base_unit_price" class="form-input js-comma"
                            value="{% if product and product.base_unit_price is not None %}{{ product.base_unit_price|trim_decimal:4 }}{% elif form_data %}{{ form_data.base_unit_price }}{% endif %}"
-                           step="0.0001" min="0" placeholder="مثال: 250000 برای هر کیلو">
+                           inputmode="decimal" placeholder="مثال: 250,000 برای هر کیلو">
                     <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
                         {% if product and product.smallest_unit %}
                         قیمت فعلی ثبت‌شده: به ازای هر ۱ {{ product.smallest_unit }}
@@ -277,11 +277,23 @@
                 </div>
                 <input type="hidden" name="departments_present" value="1">
                 <div class="section-picker-grid" id="sectionPickerGrid">
-                    <label class="section-chip is-general{% if is_general_selected %} is-selected{% endif %}" for="usage_general">
-                        <input type="checkbox" id="usage_general" name="usage_general" value="1"
-                               {% if is_general_selected %}checked{% endif %}>
+                    <label class="section-chip is-general{% if selected_general_scope == 'general' %} is-selected{% endif %}" for="usage_general">
+                        <input type="checkbox" id="usage_general" name="usage_general" value="general"
+                               {% if selected_general_scope == 'general' %}checked{% endif %}>
                         <i class="fas fa-globe" style="font-size:0.82rem;"></i>
-                        <span>عمومی (همه بخش‌ها)</span>
+                        <span>عمومی کل (همه بخش‌ها)</span>
+                    </label>
+                    <label class="section-chip is-general{% if selected_general_scope == 'general_kitchen_bar' %} is-selected{% endif %}" for="usage_general_kitchen_bar">
+                        <input type="checkbox" id="usage_general_kitchen_bar" name="usage_general" value="general_kitchen_bar"
+                               {% if selected_general_scope == 'general_kitchen_bar' %}checked{% endif %}>
+                        <i class="fas fa-utensils" style="font-size:0.82rem;"></i>
+                        <span>عمومی آشپزخانه و بار</span>
+                    </label>
+                    <label class="section-chip is-general{% if selected_general_scope == 'general_other' %} is-selected{% endif %}" for="usage_general_other">
+                        <input type="checkbox" id="usage_general_other" name="usage_general" value="general_other"
+                               {% if selected_general_scope == 'general_other' %}checked{% endif %}>
+                        <i class="fas fa-concierge-bell" style="font-size:0.82rem;"></i>
+                        <span>عمومی سایر بخش‌ها</span>
                     </label>
                     {% for dep in departments_qs %}
                     <label class="section-chip{% if dep.id in selected_department_ids %} is-selected{% endif %}" for="dep_{{ dep.id }}">
@@ -301,7 +313,7 @@
                 </div>
                 <div id="newSectionFeedback" class="section-quick-feedback" style="display:none;"></div>
                 <small style="color:var(--gray-500);display:block;margin-top:6px;font-size:0.78rem;">
-                    می‌توانید یک یا چند بخش درخواست را انتخاب یا بخش جدیدی اضافه کنید؛ با انتخاب «عمومی»، محصول برای همه بخش‌ها قابل سفارش خواهد بود.
+                    می‌توانید یک یا چند بخش درخواست را انتخاب یا بخش جدیدی اضافه کنید؛ یا یکی از گزینه‌های عمومی (کل، آشپزخانه و بار، سایر بخش‌ها) را برگزینید.
                 </small>
             </div>
 
@@ -361,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('.product-form');
     if (!form) return;
 
-    const generalCb = document.getElementById('usage_general');
+    const generalCbs = Array.from(form.querySelectorAll('input[name="usage_general"]'));
     const pickerGrid = document.getElementById('sectionPickerGrid');
     const newSectionInput = document.getElementById('newSectionNameInput');
     const btnAddSection = document.getElementById('btnAddSection');
@@ -373,10 +385,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(form.querySelectorAll('input[name="departments"]'));
     }
 
+    function clearGeneralCbs(exceptCb) {
+        generalCbs.forEach(gcb => {
+            if (gcb !== exceptCb) gcb.checked = false;
+        });
+    }
+
     function syncSectionChips() {
-        if (generalCb) {
-            generalCb.closest('.section-chip')?.classList.toggle('is-selected', generalCb.checked);
-        }
+        generalCbs.forEach(gcb => {
+            gcb.closest('.section-chip')?.classList.toggle('is-selected', gcb.checked);
+        });
         getDeptCbs().forEach(cb => {
             cb.closest('.section-chip')?.classList.toggle('is-selected', cb.checked);
         });
@@ -384,21 +402,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function bindDeptCheckbox(cb) {
         cb.addEventListener('change', function() {
-            if (cb.checked && generalCb) {
-                generalCb.checked = false;
+            if (cb.checked) {
+                clearGeneralCbs(null);
             }
             syncSectionChips();
         });
     }
 
-    if (generalCb) {
-        generalCb.addEventListener('change', function() {
-            if (generalCb.checked) {
+    generalCbs.forEach(gcb => {
+        gcb.addEventListener('change', function() {
+            if (gcb.checked) {
+                clearGeneralCbs(gcb);
                 getDeptCbs().forEach(cb => { cb.checked = false; });
             }
             syncSectionChips();
         });
-    }
+    });
 
     getDeptCbs().forEach(bindDeptCheckbox);
     syncSectionChips();
@@ -436,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (existing) {
             existing.checked = true;
         }
-        if (generalCb) generalCb.checked = false;
+        clearGeneralCbs(null);
         syncSectionChips();
     }
 
@@ -506,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid = false;
         }
 
-        const hasSection = (generalCb && generalCb.checked) || getDeptCbs().some(cb => cb.checked);
+        const hasSection = generalCbs.some(gcb => gcb.checked) || getDeptCbs().some(cb => cb.checked);
         if (!hasSection) {
             const group = document.getElementById('section_picker_group');
             if (group) {

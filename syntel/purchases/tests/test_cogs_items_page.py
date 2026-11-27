@@ -286,7 +286,7 @@ class RawMaterialCreateTest(ItemsPageBase):
         self.assertIn('محل استفاده', html)
         self.assertIn('واحد پایه', html)
         # پنیر در یک رسپی مصرف شده است
-        self.assertIn('۱ رسپی', html)
+        self.assertIn('1 رسپی', html)
 
     def test_category_filter_narrows_the_table(self):
         self.client.post(self.url('cogs_raw_material_create'), {
@@ -321,8 +321,8 @@ class PriceEntryTest(ItemsPageBase):
         self.assertTrue(data['ok'])
         self.assertEqual(Decimal(data['stored_price']), Decimal('350'))
         self.assertEqual(data['smallest_unit'], 'گرم')
-        self.assertIn('۳۵۰,۰۰۰ ریال برای ۱ کیلوگرم', data['entered_text'])
-        self.assertIn('۳۵۰ ریال به ازای هر ۱ گرم', data['stored_text'])
+        self.assertIn('350,000 ریال برای 1 کیلوگرم', data['entered_text'])
+        self.assertIn('350 ریال به ازای هر 1 گرم', data['stored_text'])
 
     def test_preview_handles_custom_package_size(self):
         r = self.client.get(self.url('cogs_price_preview'), {
@@ -331,7 +331,7 @@ class PriceEntryTest(ItemsPageBase):
         data = r.json()
         self.assertTrue(data['ok'])
         self.assertEqual(Decimal(data['stored_price']), Decimal('350'))
-        self.assertIn('بستهٔ ۵ کیلوگرم', data['entered_text'])
+        self.assertIn('بستهٔ 5 کیلوگرم', data['entered_text'])
 
     def test_preview_of_pieces_needs_no_division(self):
         data = self.client.get(self.url('cogs_price_preview'), {
@@ -417,7 +417,7 @@ class PriceEntryTest(ItemsPageBase):
 
     def test_price_modal_lists_the_six_purchase_units(self):
         html = self.client.get(self.url('cogs_manage_items')).content.decode()
-        for label in ('۱ کیلوگرم', '۱ گرم', '۱ لیتر', '۱ میل', '۱ عدد', 'بستهٔ دلخواه'):
+        for label in ('1 کیلوگرم', '1 گرم', '1 لیتر', '1 میل', '1 عدد', 'بستهٔ دلخواه'):
             with self.subTest(label=label):
                 self.assertIn(label, html)
 

@@ -193,7 +193,7 @@
                 </div>
                 <div class="form-group">
                     <label for="amount">مبلغ بدهی (تومان) <span style="color:var(--danger);">*</span></label>
-                    <input type="text" id="amount" name="amount" class="form-control" required
+                    <input type="text" id="amount" name="amount" class="form-control js-comma" required
                            inputmode="numeric" placeholder="مبلغ بدهی را وارد کنید — مثلاً ۱٬۵۰۰٬۰۰۰">
                 </div>
                 <div class="form-group">
@@ -395,11 +395,10 @@
     })();
 </script>
 <script>
-    const FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-    const toFa = n => String(n).replace(/\d/g, d => FA_DIGITS[d]);
+    const toFa = n => String(n);
     const formatNum = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-    // تبدیل اعداد به فارسی برای مقادیر مبلغ
+    // نمایش اعداد انگلیسی برای مقادیر مبلغ
     document.querySelectorAll('[data-fa]').forEach(el => {
         const num = Number(el.textContent.replace(/,/g, ''));
         if (!isNaN(num)) el.textContent = toFa(formatNum(num));
@@ -412,15 +411,6 @@
     // تاریخ امروز شمسی
     const persianDateEl = document.getElementById('persianDate');
     if (persianDateEl) persianDateEl.textContent =
-        new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
-
-    // جداکننده سه‌رقمی با کاما هنگام تایپ مبلغ بدهی — سرور کاماها را حذف می‌کند
-    const amountInput = document.getElementById('amount');
-    if (amountInput) {
-        amountInput.addEventListener('input', function() {
-            const digits = this.value.replace(/\D/g, '');
-            this.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
-        });
-    }
+        new Intl.DateTimeFormat('fa-IR-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
 </script>
 {% endblock %}

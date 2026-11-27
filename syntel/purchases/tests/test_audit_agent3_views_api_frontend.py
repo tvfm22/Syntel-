@@ -12,6 +12,7 @@ from rest_framework.test import APIClient
 from purchases.models import (
     Cafe,
     Category,
+    Debt,
     Invoice,
     InvoiceItem,
     KukerItem,
@@ -31,7 +32,6 @@ from purchases.models import (
     Warehouse,
     WarehouseVoucher,
 )
-from purchases.models_debts import Debt
 from purchases.templatetags.custom_filters import (
     cafe_url,
     get_item,
@@ -40,7 +40,7 @@ from purchases.templatetags.custom_filters import (
     num2,
     number_format,
 )
-from purchases.views_analytics import get_date_range
+from purchases.views.analytics_helpers import get_date_range
 
 
 class Agent3ViewsApiFrontendAuditTests(TestCase):
@@ -482,9 +482,9 @@ class Agent3ViewsApiFrontendAuditTests(TestCase):
         self.assertNotEqual(jalali_datetime(date(2025, 3, 21)), "")
         self.assertEqual(
             number_format("1234567890123456789"),
-            "۱,۲۳۴,۵۶۷,۸۹۰,۱۲۳,۴۵۶,۷۸۹",
+            "1,234,567,890,123,456,789",
         )
-        self.assertEqual(num2("100.00"), "۱۰۰")
+        self.assertEqual(num2("100.00"), "100")
         self.assertEqual(cafe_url({}, "select_cafe"), reverse("select_cafe"))
         self.assertEqual(cafe_url({}, "management_dashboard"), "#")
         aware_dt = timezone.now()
@@ -511,6 +511,10 @@ class Agent3ViewsApiFrontendAuditTests(TestCase):
             self.assertNotIn("persian-datepicker", content, f"{html_file} still references persian-datepicker")
             self.assertNotIn("new persianDatepicker", content, f"{html_file} still calls persianDatepicker")
 
+        js_root = Path(settings.BASE_DIR) / "frontend" / "static" / "js"
         for rel in ["purchase_request_form.html", "warehouse_request_form.html", "price_dashboard.html"]:
             text = (tpl_root / rel).read_text(encoding="utf-8")
+            js_file = js_root / f"{Path(rel).stem}.js"
+            if js_file.is_file():
+                text += js_file.read_text(encoding="utf-8")
             self.assertIn("&#39;", text, f"{rel} missing single-quote escaping in escapeHtml")
