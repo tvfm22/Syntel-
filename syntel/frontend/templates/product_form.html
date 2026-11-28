@@ -5,364 +5,379 @@
 {% if mode == 'edit_product' %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %} - Kuker
 {% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.product-form-container { max-width: 720px; margin: 0 auto; }
-.product-form {
-    background: #fff; padding: 1.75rem; border-radius: var(--radius-xl);
-    border: 1px solid var(--gray-200); box-shadow: var(--shadow-xs);
-}
-.form-group { margin-bottom: 1.15rem; }
-.form-label { display: block; font-weight: 700; color: var(--dark); margin-bottom: 0.4rem; font-size: 0.85rem; }
-.form-input, .form-select, .form-textarea {
-    width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border-medium);
-    border-radius: 10px; font-size: 0.88rem; font-family: inherit;
-    background: var(--bg-input); color: var(--dark); transition: all 0.15s; box-sizing: border-box;
-}
-.form-input:focus, .form-select:focus, .form-textarea:focus {
-    outline: none; border-color: var(--primary); background: #fff;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
-}
-.form-textarea { resize: vertical; min-height: 90px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.form-actions {
-    display: flex; gap: 0.75rem; justify-content: flex-end;
-    margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
-}
-.btn-submit, .btn-cancel {
-    padding: 0.65rem 1.4rem; border-radius: 10px; text-decoration: none;
-    font-weight: 700; font-size: 0.86rem; font-family: inherit; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.15s;
-}
-.btn-submit { background: var(--primary); color: #fff; border: none; }
-.btn-submit:hover { background: var(--primary-dark); }
-.btn-cancel { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
-.btn-cancel:hover { background: var(--gray-200); color: var(--dark); }
-.required { color: var(--danger); }
-.error-message { color: var(--danger); font-size: 0.8rem; margin-top: 0.35rem; font-weight: 600; }
-
-/* بخش انتخاب محصول از لیست پیشنهادها */
-.autocomplete-wrapper { position: relative; }
-.autocomplete-list {
-    position: absolute; top: 100%; left: 0; right: 0; background: #fff;
-    border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 10px 10px;
-    box-shadow: var(--shadow-md); z-index: 100; max-height: 260px; overflow-y: auto; display: none;
-}
-.autocomplete-item { padding: 0.65rem 0.9rem; cursor: pointer; border-bottom: 1px solid var(--gray-100); }
-.autocomplete-item:hover { background: var(--primary-light); }
-.autocomplete-item .item-name { font-weight: 700; color: var(--dark); font-size: 0.88rem; }
-.autocomplete-item .item-meta { font-size: 0.76rem; color: var(--gray-500); margin-top: 2px; }
-.autocomplete-empty { padding: 0.75rem 0.9rem; color: var(--gray-500); font-size: 0.84rem; text-align: center; }
-
-/* بنر محصول انتخاب‌شده */
-.selected-product-banner {
-    display: none; background: var(--primary-light); border: 1.5px solid #C4B5FD;
-    border-radius: 12px; padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; position: relative;
-}
-.selected-product-banner .banner-title { font-weight: 800; color: var(--primary-dark); font-size: 0.92rem; }
-.selected-product-banner .banner-detail { color: var(--gray-500); font-size: 0.82rem; margin-top: 4px; }
-.selected-product-banner .banner-clear {
-    position: absolute; top: 8px; left: 10px; background: none; border: none;
-    color: var(--primary); font-size: 1.15rem; cursor: pointer; font-weight: bold;
-}
-.selected-product-banner .banner-clear:hover { color: var(--danger); }
-
-.form-section-title {
-    font-weight: 800; color: var(--dark); font-size: 0.88rem;
-    margin-bottom: 0.85rem; padding-bottom: 0.45rem; border-bottom: 1px dashed var(--gray-200);
-}
-
-/* انتخاب چندگانه بخش‌های درخواست */
-.section-picker-grid {
-    display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.35rem;
-}
-.section-chip {
-    display: inline-flex; align-items: center; gap: 0.45rem;
-    padding: 0.5rem 0.9rem; border-radius: 10px;
-    border: 1.5px solid var(--border-medium); background: var(--bg-input);
-    color: var(--dark); font-size: 0.84rem; font-weight: 600;
-    cursor: pointer; user-select: none; transition: all 0.15s;
-}
-.section-chip:hover {
-    border-color: var(--primary); background: #fff;
-}
-.section-chip input[type="checkbox"] {
-    width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--primary);
-}
-.section-chip.is-selected {
-    background: var(--primary-light); border-color: var(--primary);
-    color: var(--primary-dark); font-weight: 700;
-    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
-}
-.section-chip.is-general.is-selected {
-    background: #ECFDF5; border-color: #10B981; color: #065F46;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12);
-}
-.section-chip.is-general.is-selected input[type="checkbox"] {
-    accent-color: #10B981;
-}
 .section-header-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 .section-manage-link {
-    font-size: 0.78rem; font-weight: 600; color: var(--primary); text-decoration: none;
-    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: var(--primary-dark, #7C3AED);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
-.section-manage-link:hover { text-decoration: underline; }
+.section-manage-link:hover {
+    text-decoration: underline;
+}
+.section-picker-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+.section-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-default, #E2E8F0);
+    background: var(--gray-50, #F8FAFC);
+    color: var(--text-primary, #0F172A);
+    font-size: 0.81rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+.section-chip:hover {
+    border-color: var(--primary, #8B5CF6);
+    background: var(--bg-card, #FFFFFF);
+}
+.section-chip input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary, #8B5CF6);
+}
+.section-chip.is-selected {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.45);
+    color: var(--primary-dark, #7C3AED);
+    font-weight: 700;
+}
+.section-chip.is-general.is-selected {
+    background: #ECFDF5;
+    border-color: #10B981;
+    color: #047857;
+}
+.section-chip.is-general.is-selected input[type="checkbox"] {
+    accent-color: #047857;
+}
 .section-quick-add {
-    display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem; flex-wrap: wrap;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.55rem;
+    flex-wrap: wrap;
 }
-.section-quick-add .form-input {
-    flex: 1; min-width: 200px; padding: 0.5rem 0.8rem; font-size: 0.84rem;
+.section-quick-add .ui-input {
+    flex: 1 1 210px;
+    min-width: 200px;
 }
-.btn-add-section {
-    padding: 0.5rem 0.95rem; border-radius: 10px; border: 1.5px solid var(--primary);
-    background: var(--primary-light); color: var(--primary-dark); font-family: inherit;
-    font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
-    display: inline-flex; align-items: center; gap: 0.35rem; transition: all 0.15s;
+.section-quick-feedback {
+    font-size: 0.76rem;
+    margin-top: 0.35rem;
+    font-weight: 600;
 }
-.btn-add-section:hover { background: var(--primary); color: #fff; }
-.btn-add-section:disabled { opacity: 0.6; cursor: not-allowed; }
-.section-quick-feedback { font-size: 0.78rem; margin-top: 0.35rem; font-weight: 600; }
-
-@media (max-width: 768px) {
-    .product-form { padding: 1.25rem; }
-    .form-row { grid-template-columns: 1fr; gap: 0; }
-    .form-actions { flex-direction: column-reverse; }
-    .btn-submit, .btn-cancel { width: 100%; justify-content: center; }
+.ui-check-card {
+    background: var(--gray-50, #F8FAFC);
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+}
+.ui-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--text-primary, #0F172A);
+    margin: 0;
+}
+.ui-check-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary, #8B5CF6);
+    margin: 0;
+}
+.error-message {
+    color: var(--ui-danger, #DC2626);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    font-weight: 600;
+}
+.ui-section-heading {
+    font-size: 0.86rem;
+    font-weight: 800;
+    color: var(--text-primary, #0F172A);
+    margin: 0 0 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.ui-section-heading i {
+    color: var(--primary, #8B5CF6);
+    font-size: 0.82rem;
+}
+@media (max-width: 640px) {
+    .ui-form-actions {
+        flex-direction: column-reverse;
+    }
+    .ui-form-actions .ui-btn {
+        width: 100%;
+    }
 }
 </style>
+{% endblock %}
 
-<div class="product-form-container">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-box"></i></div>
-            <div>
-                <h1 class="ph-title">
-                    {% if mode == 'edit_product' %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %}
-                </h1>
-                <p class="page-sub">
-                    {% if mode == 'edit_product' %}اطلاعات محصول را ویرایش کنید{% else %}اطلاعات محصول جدید را وارد کنید{% endif %}
-                </p>
-            </div>
+{% block content %}
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-box" style="color: var(--primary, #8B5CF6); font-size: 1.1rem;"></i>
+                {% if mode == 'edit_product' %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if mode == 'edit_product' %}اطلاعات محصول، قیمت واحد پایه و بخش‌های مصرف را ویرایش کنید{% else %}اطلاعات محصول جدید، واحد پایه و بخش‌های درخواست را ثبت کنید{% endif %}
+            </p>
         </div>
-        <a href="{% url 'product_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به محصولات</span>
+            </a>
+        </div>
+    </header>
 
-    <form method="POST" class="product-form">
+    <form method="POST" class="ui-form-card product-form">
         {% csrf_token %}
 
         {% if messages %}
-        <div style="margin-bottom: 1rem;">
+        <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
             {% for message in messages %}
-            <div style="padding:0.75rem 1rem;border-radius:10px;margin-bottom:0.5rem;font-size:0.86rem;font-weight:600;
-                        {% if message.tags == 'success' %}background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;
-                        {% elif message.tags == 'error' %}background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;
-                        {% else %}background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;{% endif %}">
-                {{ message }}
+            <div class="ui-banner {% if message.tags == 'success' %}is-ok{% elif message.tags == 'error' %}is-danger{% else %}is-info{% endif %}">
+                <span>{{ message }}</span>
             </div>
             {% endfor %}
         </div>
         {% endif %}
 
         {% if error %}
-        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.15rem;color:#B91C1C;font-size:0.86rem;font-weight:600;">
-            <i class="fas fa-circle-exclamation"></i> {{ error }}
+        <div class="ui-banner is-danger" style="margin-bottom:1.1rem;">
+            <i class="fas fa-circle-exclamation" style="margin-top:2px;"></i>
+            <span>{{ error }}</span>
         </div>
         {% endif %}
 
-        <!-- بخش اطلاعات محصول -->
         <div id="product_base_section">
-            <div class="form-section-title">اطلاعات محصول</div>
-            <div class="form-group">
-                <label for="name" class="form-label">
-                    نام محصول <span class="required">*</span>
-                </label>
-                <input type="text" id="name" name="name" class="form-input"
-                       value="{% if product %}{{ product.name }}{% elif form_data %}{{ form_data.name }}{% endif %}" required>
-                <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">نام محصول باید یکتا باشد (در هر کافه)</small>
-            </div>
+            <div class="ui-form-section">
+                <h2 class="ui-section-heading"><i class="fas fa-circle-info"></i> اطلاعات پایه محصول</h2>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="category" class="form-label">
-                        دسته‌بندی <span class="required">*</span>
+                <div class="ui-field">
+                    <label for="name" class="ui-field-label">
+                        نام محصول <span style="color:var(--ui-danger);">*</span>
                     </label>
-                    <select id="category" name="category" class="form-select" required>
-                        <option value="">انتخاب دسته‌بندی</option>
-                        {% for category in categories %}
-                        <option value="{{ category.id }}"
-                                {% if product and product.category.id == category.id %}selected
-                                {% elif form_data and form_data.category == category.id|stringformat:"s" %}selected{% endif %}>
-                            {{ category.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <input type="text" id="name" name="name" class="ui-input"
+                           value="{% if product %}{{ product.name }}{% elif form_data %}{{ form_data.name }}{% endif %}" required>
+                    <span class="ui-field-hint">نام محصول باید یکتا باشد (در هر کافه)</span>
                 </div>
 
-                <div class="form-group">
-                    <label for="unit" class="form-label">
-                        واحد پایه <span class="required">*</span>
-                    </label>
-                    <select id="unit" name="unit" class="form-select" required>
-                        <option value="">انتخاب واحد</option>
-                        {% for unit in units %}
-                        <option value="{{ unit.id }}"
-                                {% if product and product.unit.id == unit.id %}selected
-                                {% elif form_data and form_data.unit == unit.id|stringformat:"s" %}selected{% endif %}>
-                            {{ unit.name }} ({{ unit.symbol }})
-                        </option>
-                        {% endfor %}
-                    </select>
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label for="category" class="ui-field-label">
+                            دسته‌بندی <span style="color:var(--ui-danger);">*</span>
+                        </label>
+                        <select id="category" name="category" class="ui-select" required>
+                            <option value="">انتخاب دسته‌بندی</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}"
+                                    {% if product and product.category.id == category.id %}selected
+                                    {% elif form_data and form_data.category == category.id|stringformat:"s" %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="ui-field">
+                        <label for="unit" class="ui-field-label">
+                            واحد پایه <span style="color:var(--ui-danger);">*</span>
+                        </label>
+                        <select id="unit" name="unit" class="ui-select" required>
+                            <option value="">انتخاب واحد</option>
+                            {% for unit in units %}
+                            <option value="{{ unit.id }}"
+                                    {% if product and product.unit.id == unit.id %}selected
+                                    {% elif form_data and form_data.unit == unit.id|stringformat:"s" %}selected{% endif %}>
+                                {{ unit.name }} ({{ unit.symbol }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="base_unit_price" class="form-label">قیمت واحد</label>
-                    <input type="text" id="base_unit_price" name="base_unit_price" class="form-input js-comma"
-                           value="{% if product and product.base_unit_price is not None %}{{ product.base_unit_price|trim_decimal:4 }}{% elif form_data %}{{ form_data.base_unit_price }}{% endif %}"
-                           inputmode="decimal" placeholder="مثال: 250,000 برای هر کیلو">
-                    <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                        {% if product and product.smallest_unit %}
-                        قیمت فعلی ثبت‌شده: به ازای هر ۱ {{ product.smallest_unit }}
+            <div class="ui-form-section">
+                <h2 class="ui-section-heading"><i class="fas fa-coins"></i> قیمت‌گذاری و تبدیل واحد</h2>
+
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label for="base_unit_price" class="ui-field-label">قیمت واحد</label>
+                        <input type="text" id="base_unit_price" name="base_unit_price" class="ui-input js-comma"
+                               value="{% if product and product.base_unit_price is not None %}{{ product.base_unit_price|trim_decimal:4 }}{% elif form_data %}{{ form_data.base_unit_price }}{% endif %}"
+                               inputmode="decimal" placeholder="مثال: 250,000 برای هر کیلو">
+                        <span class="ui-field-hint">
+                            {% if product and product.smallest_unit %}
+                            قیمت فعلی ثبت‌شده: به ازای هر ۱ {{ product.smallest_unit }}
+                            {% else %}
+                            قیمت با واحد انتخابی ذخیره می‌شود و خودکار به کوچک‌ترین واحد تبدیل می‌گردد
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="ui-field">
+                        <label for="price_unit" class="ui-field-label">واحد قیمت</label>
+                        <select id="price_unit" name="price_unit" class="ui-select">
+                            <option value="" {% if not product or not product.smallest_unit %}selected{% endif %}>— واحد قیمت را انتخاب کنید —</option>
+                            {% for pu in price_units %}
+                            <option value="{{ pu }}"
+                                    {% if product and product.smallest_unit == pu %}selected
+                                    {% elif form_data and form_data.price_unit == pu %}selected{% endif %}>
+                                {{ pu }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <span class="ui-field-hint">کیلوگرم و لیتر هنگام ذخیره به گرم و میل تبدیل می‌شوند.</span>
+                    </div>
+                </div>
+
+                {% if cogs_item %}
+                <div class="ui-banner" style="background: rgba(139, 92, 246, 0.08); border-color: rgba(139, 92, 246, 0.28); color: var(--primary-dark, #7C3AED);">
+                    <i class="fas fa-utensils" style="margin-top:3px;"></i>
+                    <span>
+                        این کالا در منوی بهای تمام شده تعریف شده است
+                        {% if cogs_used_in_recipe %}
+                        و <strong>در رسپی غذاها مصرف می‌شود</strong>.
                         {% else %}
-                        قیمت با واحد انتخابی ذخیره می‌شود و خودکار به کوچک‌ترین واحد تبدیل می‌گردد
+                        ولی هنوز در هیچ رسپی مصرف نشده است.
                         {% endif %}
-                    </small>
+                    </span>
                 </div>
+                {% endif %}
+            </div>
 
-                <div class="form-group">
-                    <label for="price_unit" class="form-label">واحد قیمت</label>
-                    <select id="price_unit" name="price_unit" class="form-select">
-                        <option value="" {% if not product or not product.smallest_unit %}selected{% endif %}>— واحد قیمت را انتخاب کنید —</option>
-                        {% for pu in price_units %}
-                        <option value="{{ pu }}"
-                                {% if product and product.smallest_unit == pu %}selected
-                                {% elif form_data and form_data.price_unit == pu %}selected{% endif %}>
-                            {{ pu }}
-                        </option>
+            <div class="ui-form-section">
+                <div class="ui-field" id="section_picker_group">
+                    <div class="section-header-row">
+                        <label class="ui-field-label" style="margin-bottom:0;">
+                            بخش‌های درخواست (محل استفاده) <span style="color:var(--ui-danger);">*</span>
+                        </label>
+                        <a href="{% url 'department_list' cafe_code=cafe_code %}" class="section-manage-link" target="_blank" rel="noopener">
+                            <i class="fas fa-cog"></i> مدیریت بخش‌ها
+                        </a>
+                    </div>
+                    <input type="hidden" name="departments_present" value="1">
+                    <div class="section-picker-grid" id="sectionPickerGrid">
+                        <label class="section-chip is-general{% if selected_general_scope == 'general' %} is-selected{% endif %}" for="usage_general">
+                            <input type="checkbox" id="usage_general" name="usage_general" value="general"
+                                   {% if selected_general_scope == 'general' %}checked{% endif %}>
+                            <i class="fas fa-globe" style="font-size:0.8rem;"></i>
+                            <span>عمومی کل (همه بخش‌ها)</span>
+                        </label>
+                        <label class="section-chip is-general{% if selected_general_scope == 'general_kitchen_bar' %} is-selected{% endif %}" for="usage_general_kitchen_bar">
+                            <input type="checkbox" id="usage_general_kitchen_bar" name="usage_general" value="general_kitchen_bar"
+                                   {% if selected_general_scope == 'general_kitchen_bar' %}checked{% endif %}>
+                            <i class="fas fa-utensils" style="font-size:0.8rem;"></i>
+                            <span>عمومی آشپزخانه و بار</span>
+                        </label>
+                        <label class="section-chip is-general{% if selected_general_scope == 'general_other' %} is-selected{% endif %}" for="usage_general_other">
+                            <input type="checkbox" id="usage_general_other" name="usage_general" value="general_other"
+                                   {% if selected_general_scope == 'general_other' %}checked{% endif %}>
+                            <i class="fas fa-concierge-bell" style="font-size:0.8rem;"></i>
+                            <span>عمومی سایر بخش‌ها</span>
+                        </label>
+                        {% for dep in departments_qs %}
+                        <label class="section-chip{% if dep.id in selected_department_ids %} is-selected{% endif %}" for="dep_{{ dep.id }}">
+                            <input type="checkbox" id="dep_{{ dep.id }}" name="departments" value="{{ dep.id }}"
+                                   {% if dep.id in selected_department_ids %}checked{% endif %}>
+                            <span>{{ dep.name }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
-                    <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                        کیلوگرم و لیتر هنگام ذخیره به گرم و میل تبدیل می‌شوند.
-                    </small>
+                    </div>
+                    <div class="section-quick-add">
+                        <input type="text" id="newSectionNameInput" class="ui-input"
+                               placeholder="نام بخش درخواست جدید (مثلاً: آشپزخانه، بار، سالن)..."
+                               maxlength="100" autocomplete="off">
+                        <button type="button" id="btnAddSection" class="ui-btn ui-btn-soft">
+                            <i class="fas fa-plus"></i> افزودن بخش
+                        </button>
+                    </div>
+                    <div id="newSectionFeedback" class="section-quick-feedback" style="display:none;"></div>
+                    <span class="ui-field-hint">
+                        می‌توانید یک یا چند بخش درخواست را انتخاب یا بخش جدیدی اضافه کنید؛ یا یکی از گزینه‌های عمومی (کل، آشپزخانه و بار، سایر بخش‌ها) را برگزینید.
+                    </span>
                 </div>
             </div>
 
-            {% if cogs_item %}
-            <div class="form-group" style="background:var(--primary-light);border:1px solid #C4B5FD;border-radius:10px;padding:0.8rem 1rem;">
-                <div style="font-size:0.84rem;color:var(--primary-dark);">
-                    <i class="fas fa-utensils" style="color:var(--primary);"></i>
-                    این کالا در منوی بهای تمام شده تعریف شده است
-                    {% if cogs_used_in_recipe %}
-                    و <strong>در رسپی غذاها مصرف می‌شود</strong>.
-                    {% else %}
-                    ولی هنوز در هیچ رسپی مصرف نشده است.
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
+            <div class="ui-form-section">
+                <h2 class="ui-section-heading"><i class="fas fa-warehouse"></i> انبار و وضعیت سفارش‌گذاری</h2>
 
-            <div class="form-group" id="section_picker_group">
-                <div class="section-header-row">
-                    <label class="form-label" style="margin-bottom:0;">
-                        بخش‌های درخواست (محل استفاده) <span class="required">*</span>
-                    </label>
-                    <a href="{% url 'department_list' cafe_code=cafe_code %}" class="section-manage-link" target="_blank" rel="noopener">
-                        <i class="fas fa-cog"></i> مدیریت بخش‌ها
-                    </a>
-                </div>
-                <input type="hidden" name="departments_present" value="1">
-                <div class="section-picker-grid" id="sectionPickerGrid">
-                    <label class="section-chip is-general{% if selected_general_scope == 'general' %} is-selected{% endif %}" for="usage_general">
-                        <input type="checkbox" id="usage_general" name="usage_general" value="general"
-                               {% if selected_general_scope == 'general' %}checked{% endif %}>
-                        <i class="fas fa-globe" style="font-size:0.82rem;"></i>
-                        <span>عمومی کل (همه بخش‌ها)</span>
-                    </label>
-                    <label class="section-chip is-general{% if selected_general_scope == 'general_kitchen_bar' %} is-selected{% endif %}" for="usage_general_kitchen_bar">
-                        <input type="checkbox" id="usage_general_kitchen_bar" name="usage_general" value="general_kitchen_bar"
-                               {% if selected_general_scope == 'general_kitchen_bar' %}checked{% endif %}>
-                        <i class="fas fa-utensils" style="font-size:0.82rem;"></i>
-                        <span>عمومی آشپزخانه و بار</span>
-                    </label>
-                    <label class="section-chip is-general{% if selected_general_scope == 'general_other' %} is-selected{% endif %}" for="usage_general_other">
-                        <input type="checkbox" id="usage_general_other" name="usage_general" value="general_other"
-                               {% if selected_general_scope == 'general_other' %}checked{% endif %}>
-                        <i class="fas fa-concierge-bell" style="font-size:0.82rem;"></i>
-                        <span>عمومی سایر بخش‌ها</span>
-                    </label>
-                    {% for dep in departments_qs %}
-                    <label class="section-chip{% if dep.id in selected_department_ids %} is-selected{% endif %}" for="dep_{{ dep.id }}">
-                        <input type="checkbox" id="dep_{{ dep.id }}" name="departments" value="{{ dep.id }}"
-                               {% if dep.id in selected_department_ids %}checked{% endif %}>
-                        <span>{{ dep.name }}</span>
-                    </label>
-                    {% endfor %}
-                </div>
-                <div class="section-quick-add">
-                    <input type="text" id="newSectionNameInput" class="form-input"
-                           placeholder="نام بخش درخواست جدید (مثلاً: آشپزخانه، بار، سالن)..."
-                           maxlength="100" autocomplete="off">
-                    <button type="button" id="btnAddSection" class="btn-add-section">
-                        <i class="fas fa-plus"></i> افزودن بخش
-                    </button>
-                </div>
-                <div id="newSectionFeedback" class="section-quick-feedback" style="display:none;"></div>
-                <small style="color:var(--gray-500);display:block;margin-top:6px;font-size:0.78rem;">
-                    می‌توانید یک یا چند بخش درخواست را انتخاب یا بخش جدیدی اضافه کنید؛ یا یکی از گزینه‌های عمومی (کل، آشپزخانه و بار، سایر بخش‌ها) را برگزینید.
-                </small>
-            </div>
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label for="min_stock" class="ui-field-label">حداقل موجودی</label>
+                        <input type="number" id="min_stock" name="min_stock" class="ui-input ui-num"
+                               value="{% if product %}{{ product.min_stock }}{% elif form_data %}{{ form_data.min_stock }}{% endif %}"
+                               step="0.01" min="0">
+                    </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="min_stock" class="form-label">حداقل موجودی</label>
-                    <input type="number" id="min_stock" name="min_stock" class="form-input"
-                           value="{% if product %}{{ product.min_stock }}{% elif form_data %}{{ form_data.min_stock }}{% endif %}"
-                           step="0.01" min="0">
+                    <div class="ui-field">
+                        <label for="shelf_life_days" class="ui-field-label">عمر مفید (روز)</label>
+                        <input type="number" id="shelf_life_days" name="shelf_life_days" class="ui-input ui-num"
+                               value="{% if product and product.shelf_life_days %}{{ product.shelf_life_days }}{% elif form_data %}{{ form_data.shelf_life_days }}{% endif %}"
+                               step="1" min="0" placeholder="مثال: 180">
+                        <span class="ui-field-hint">مدت زمان ماندگاری محصول به روز (اختیاری). مثال: 180</span>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="shelf_life_days" class="form-label">عمر مفید (روز)</label>
-                    <input type="number" id="shelf_life_days" name="shelf_life_days" class="form-input"
-                           value="{% if product and product.shelf_life_days %}{{ product.shelf_life_days }}{% elif form_data %}{{ form_data.shelf_life_days }}{% endif %}"
-                           step="1" min="0" placeholder="مثال: 180">
-                    <small style="color:var(--gray-500);display:block;margin-top:5px;font-size:0.78rem;">
-                        مدت زمان ماندگاری محصول به روز (اختیاری). مثال: 180
-                    </small>
+                {% if mode == 'edit_product' %}
+                <div class="ui-field">
+                    <label for="description" class="ui-field-label">توضیحات</label>
+                    <textarea id="description" name="description" class="ui-textarea"
+                              placeholder="توضیحات محصول را وارد کنید...">{% if product %}{{ product.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
                 </div>
-            </div>
+                {% endif %}
 
-            {% if mode == 'edit_product' %}
-            <div class="form-group">
-                <label for="description" class="form-label">توضیحات</label>
-                <textarea id="description" name="description" class="form-textarea"
-                          placeholder="توضیحات محصول را وارد کنید...">{% if product %}{{ product.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
-            </div>
-            {% endif %}
-
-            <input type="hidden" name="is_active_present" value="1">
-            <div class="form-group" style="background:var(--bg-subtle, #f8fafc);border:1px solid var(--gray-200);border-radius:10px;padding:0.9rem 1rem;">
-                <label for="is_active" class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
-                    <input type="checkbox" id="is_active" name="is_active"
-                           style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);"
-                           {% if mode == 'edit_product' %}{% if form_data %}{% if form_data.is_active %}checked{% endif %}{% elif product and product.is_active %}checked{% endif %}{% elif form_data and form_data.is_active %}checked{% endif %}>
-                    فعال در سفارش‌گذاری
-                </label>
-                <div style="color:var(--gray-500);margin-top:6px;font-size:0.78rem;">
-                    اگر غیرفعال باشد، این کالا در فرم‌های درخواست خرید و انبار نمایش داده نمی‌شود و قابل سفارش نخواهد بود. کالاهایی که در رسپی منو نیستند به‌صورت پیش‌فرض غیرفعال ثبت می‌شوند.
+                <input type="hidden" name="is_active_present" value="1">
+                <div class="ui-check-card">
+                    <label for="is_active" class="ui-check-label">
+                        <input type="checkbox" id="is_active" name="is_active"
+                               {% if mode == 'edit_product' %}{% if form_data %}{% if form_data.is_active %}checked{% endif %}{% elif product and product.is_active %}checked{% endif %}{% elif form_data and form_data.is_active %}checked{% endif %}>
+                        <span>فعال در سفارش‌گذاری</span>
+                    </label>
+                    <div class="ui-field-hint" style="margin-top:0.35rem;">
+                        اگر غیرفعال باشد، این کالا در فرم‌های درخواست خرید و انبار نمایش داده نمی‌شود و قابل سفارش نخواهد بود. کالاهایی که در رسپی منو نیستند به‌صورت پیش‌فرض غیرفعال ثبت می‌شوند.
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
-            <button type="submit" class="btn-submit">
+        <div class="ui-form-actions">
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
                 <i class="fas fa-check"></i>
-                {% if mode == 'edit_product' %}ذخیره تغییرات{% else %}ایجاد محصول{% endif %}
+                <span>{% if mode == 'edit_product' %}ذخیره تغییرات{% else %}ایجاد محصول{% endif %}</span>
             </button>
         </div>
     </form>
@@ -426,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!newSectionFeedback) return;
         newSectionFeedback.textContent = msg;
         newSectionFeedback.style.display = msg ? 'block' : 'none';
-        newSectionFeedback.style.color = isError ? 'var(--danger)' : '#065F46';
+        newSectionFeedback.style.color = isError ? 'var(--ui-danger, #DC2626)' : '#047857';
     }
 
     function addOrSelectDepartmentChip(dep) {

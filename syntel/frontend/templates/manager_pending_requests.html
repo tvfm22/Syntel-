@@ -1,461 +1,51 @@
 ﻿{% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block title %}مدیریت درخواست‌های خرید - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    .requests-container {
-        max-width: 1400px;
-        margin: 2rem auto;
-        padding: 0 2rem;
+    .ui-modal-backdrop.active { display: flex; }
+    .mpr-items-list { display: flex; flex-direction: column; gap: 0.3rem; max-width: 420px; }
+    .mpr-item-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.65rem;
+        font-size: 0.82rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
-
-    .page-header {
-        background: white;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-bottom: 2rem;
-    }
-
-    .page-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--dark-color);
-        margin-bottom: 0.5rem;
-    }
-
-    .page-description {
-        color: #6b7280;
-        font-size: 0.95rem;
-    }
-
-    .stats-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-left: 4px solid var(--warning-color);
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        margin-bottom: 0.5rem;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--dark-color);
-    }
-
-    .filters-section {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-bottom: 2rem;
-    }
-
-    .filter-form {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-end;
-    }
-
-    .filter-group {
-        flex: 1;
-    }
-
-    .filter-label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--dark-color);
-        margin-bottom: 0.5rem;
-    }
-
-    .filter-select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-    }
-
-    .filter-select:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .requests-table-container {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        overflow: hidden;
-    }
-
-    .requests-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .requests-table thead {
-        background: var(--light-color);
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .requests-table th {
-        padding: 1rem;
-        text-align: right;
-        font-weight: 600;
-        color: var(--dark-color);
-        font-size: 0.875rem;
-        white-space: nowrap;
-    }
-
-    .requests-table td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
-    }
-
-    .requests-table tbody tr:hover {
-        background: #fafafa;
-    }
-
-    .request-id {
-        font-weight: 700;
-        color: var(--primary-color);
-        font-size: 1rem;
-    }
-
-    .user-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .user-name {
-        font-weight: 600;
-        color: var(--dark-color);
-    }
-
-    .user-dept {
-        font-size: 0.8rem;
-        color: #6b7280;
-        background: #f3f4f6;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        display: inline-block;
-    }
-
-    .items-list {
-        max-width: 400px;
-    }
-
-    .item-row {
-        font-size: 0.875rem;
-        color: var(--dark-color);
-        margin-bottom: 0.25rem;
-        padding: 0.25rem 0;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .item-row:last-child {
-        border-bottom: none;
-    }
-
-    .item-name {
-        font-weight: 500;
-    }
-
-    .item-qty {
-        color: #6b7280;
-        font-size: 0.8rem;
-    }
-
-    /* درخواست بدون قلم: خالی‌شده ولی همچنان در صف مدیرعامل (حذف نمی‌شود) */
-    .badge-noitems {
-        display: inline-block;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #b91c1c;
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        padding: 0.2rem 0.55rem;
-        border-radius: 999px;
-        margin-bottom: 0.35rem;
-    }
-
-    .date-info {
-        font-size: 0.875rem;
-        color: #6b7280;
-        direction: ltr;
-        text-align: right;
-    }
-
-    .actions-cell {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        white-space: nowrap;
-    }
-
-    .btn-approve {
-        background: var(--success-color);
-        color: white;
-    }
-
-    .btn-approve:hover {
-        background: #059669;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-
-    .btn-reject {
-        background: var(--danger-color);
-        color: white;
-    }
-
-    .btn-reject:hover {
-        background: #dc2626;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-    }
-
-    .btn-view {
-        background: var(--info-color);
-        color: white;
-    }
-
-    .btn-view:hover {
-        background: #2563eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .btn-filter {
-        background: var(--primary-color);
-        color: white;
-        padding: 0.75rem 1.5rem;
-    }
-
-    .btn-filter:hover {
-        background: var(--primary-dark);
-    }
-
-    .btn-clear {
-        background: #6b7280;
-        color: white;
-        padding: 0.75rem 1.5rem;
-    }
-
-    .btn-clear:hover {
-        background: #4b5563;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #6b7280;
-    }
-
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-
-    .empty-message {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
-
-    .empty-description {
-        font-size: 0.95rem;
-    }
-
-    /* Modal Styles */
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal.active {
-        display: flex;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 12px;
-        max-width: 500px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .modal-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--dark-color);
-    }
-
-    .modal-close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #6b7280;
-        padding: 0;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s;
-    }
-
-    .modal-close:hover {
-        background: #f3f4f6;
-        color: var(--dark-color);
-    }
-
-    .modal-body {
-        padding: 1.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 1rem;
-    }
-
-    .form-label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--dark-color);
-        margin-bottom: 0.5rem;
-    }
-
-    .form-textarea {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-family: inherit;
-        resize: vertical;
-        min-height: 120px;
-    }
-
-    .form-textarea:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .modal-footer {
-        padding: 1.5rem;
-        border-top: 1px solid var(--border-color);
-        display: flex;
-        gap: 1rem;
-        justify-content: flex-end;
-    }
-
-    @media (max-width: 768px) {
-        .requests-container {
-            padding: 1rem;
-        }
-
-        .requests-table-container {
-            overflow-x: auto;
-        }
-
-        .requests-table {
-            min-width: 1000px;
-        }
-
-        .filter-form {
-            flex-direction: column;
-        }
-
-        .actions-cell {
-            flex-direction: column;
-        }
-
-        .btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
+    .mpr-item-row:last-child { border-bottom: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="requests-container">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h1 class="page-title">🔍 مدیریت درخواست‌های خرید</h1>
-        <p class="page-description">بررسی و تایید درخواست‌های خرید قبل از ارسال به واحد خرید</p>
-    </div>
+<div class="ui-page is-wide">
 
-    <!-- Statistics -->
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">درخواست‌های در انتظار</div>
-            <div class="stat-value">{{ pending_count }}</div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-clipboard-check" style="color:var(--primary, #8B5CF6);"></i>
+                <span>مدیریت درخواست‌های خرید</span>
+            </h1>
+            <p class="ui-subtitle">بررسی و تایید درخواست‌های خرید قبل از ارسال به واحد خرید</p>
         </div>
-    </div>
+    </header>
 
-    <!-- Filters -->
-    <div class="filters-section">
-        <form method="GET" class="filter-form">
-            <div class="filter-group">
-                <label class="filter-label">فیلتر بر اساس دپارتمان</label>
-                <select name="department" class="filter-select">
+    <section class="ui-metrics-strip cols-2" aria-label="خلاصه درخواست‌ها">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">درخواست‌های در انتظار</span>
+            <div class="ui-metric-val {% if pending_count %}is-warn{% endif %}">{{ pending_count }}<span class="ui-metric-unit">درخواست</span></div>
+            <span class="ui-metric-hint">نیازمند بررسی و تایید مدیر</span>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">نمایش فعلی</span>
+            <div class="ui-metric-val is-accent">{{ requests|length }}<span class="ui-metric-unit">مورد</span></div>
+            <span class="ui-metric-hint">بر اساس فیلتر دپارتمان</span>
+        </div>
+    </section>
+
+    <form method="GET" class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div style="display:flex; align-items:center; gap:0.6rem; flex:1 1 280px; flex-wrap:wrap;">
+                <label for="deptFilter" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary);">فیلتر بر اساس دپارتمان:</label>
+                <select id="deptFilter" name="department" class="ui-select" onchange="this.form.submit()">
                     <option value="">همه دپارتمان‌ها</option>
                     {% for dept_value, dept_label in departments %}
                         <option value="{{ dept_value }}" {% if selected_department == dept_value %}selected{% endif %}>
@@ -464,113 +54,117 @@
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-filter">
-                <i class="fas fa-filter"></i>
-                اعمال فیلتر
-            </button>
-            <a href="{% url 'manager_pending_requests' cafe_code=cafe_code %}" class="btn btn-clear">
-                <i class="fas fa-times"></i>
-                پاک کردن
-            </a>
-        </form>
-    </div>
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-filter"></i>
+                    <span>اعمال فیلتر</span>
+                </button>
+                <a href="{% url 'manager_pending_requests' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                    <i class="fas fa-times"></i>
+                    <span>پاک کردن</span>
+                </a>
+            </div>
+        </div>
+    </form>
 
-    <!-- Requests Table -->
-    <div class="requests-table-container">
+    <section class="ui-table-card">
         {% if requests %}
-        <table class="requests-table">
-            <thead>
-                <tr>
-                    <th>شماره</th>
-                    <th>کاربر</th>
-                    <th>اقلام درخواستی</th>
-                    <th>تاریخ ثبت</th>
-                    <th>عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in requests %}
-                <tr>
-                    <td>
-                        <span class="request-id">{{ req.request_number }}</span>
-                    </td>
-                    <td>
-                        <div class="user-info">
-                            <span class="user-name">{{ req.user.get_full_name|default:req.user.username }}</span>
-                            <span class="user-dept">{{ req.user.get_role_display }}</span>
-                        </div>
-                    </td>
-                    <td>
-                        {% if not req.items.all %}
-                        <span class="badge-noitems" title="اقلام این درخواست حذف شده‌اند؛ با تایید یا رد، آن را تعیین‌تکلیف کنید">بدون قلم</span>
-                        {% endif %}
-                        <div class="items-list">
-                            {% for item in req.items.all %}
-                            <div class="item-row">
-                                <span class="item-name">{{ item.name }}</span>
-                                <span class="item-qty">({{ item.quantity }} {{ item.unit }})</span>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>شماره</th>
+                        <th>کاربر</th>
+                        <th>اقلام درخواستی</th>
+                        <th>تاریخ ثبت</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td>
+                            <span class="ui-num" style="font-weight:800; color:var(--primary-dark, #7C3AED);">{{ req.request_number }}</span>
+                        </td>
+                        <td>
+                            <div style="font-weight:700;">{{ req.user.get_full_name|default:req.user.username }}</div>
+                            <span class="ui-chip" style="margin-top:0.2rem;">{{ req.user.get_role_display }}</span>
+                        </td>
+                        <td>
+                            {% if not req.items.all %}
+                            <span class="ui-pill is-danger" title="اقلام این درخواست حذف شده‌اند؛ با تایید یا رد، آن را تعیین‌تکلیف کنید">بدون قلم</span>
+                            {% endif %}
+                            {% if req.items.all %}
+                            <div class="mpr-items-list">
+                                {% for item in req.items.all %}
+                                <div class="mpr-item-row">
+                                    <span style="font-weight:600;">{{ item.name }}</span>
+                                    <span class="ui-num" style="color:var(--text-secondary); font-size:0.78rem;">({{ item.quantity }} {{ item.unit }})</span>
+                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
-                        </div>
-                    </td>
-                    <td>
-                        <div class="date-info">{{ req.created_at|date:"Y/m/d - H:i" }}</div>
-                    </td>
-                    <td>
-                        <div class="actions-cell">
-                            <form method="POST" action="{% url 'manager_approve_request' request_id=req.id cafe_code=cafe_code %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-approve" onclick="return confirm('آیا از تایید این درخواست اطمینان دارید؟')">
-                                    <i class="fas fa-check"></i>
-                                    تایید
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="ui-num" style="direction:ltr; text-align:right; color:var(--text-secondary); font-size:0.8rem;">{{ req.created_at|date:"Y/m/d - H:i" }}</div>
+                        </td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex; gap:0.4rem; flex-wrap:wrap; justify-content:flex-end;">
+                                <form method="POST" action="{% url 'manager_approve_request' request_id=req.id cafe_code=cafe_code %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="ui-btn ui-btn-success is-sm" onclick="return confirm('آیا از تایید این درخواست اطمینان دارید؟')">
+                                        <i class="fas fa-check"></i>
+                                        <span>تایید</span>
+                                    </button>
+                                </form>
+                                <button type="button" class="ui-btn ui-btn-danger-soft is-sm" onclick="openRejectModal({{ req.id }})">
+                                    <i class="fas fa-times"></i>
+                                    <span>رد</span>
                                 </button>
-                            </form>
-                            <button type="button" class="btn btn-reject" onclick="openRejectModal({{ req.id }})">
-                                <i class="fas fa-times"></i>
-                                رد
-                            </button>
-                            <a href="{% url 'purchase_request_detail' request_id=req.id cafe_code=cafe_code %}" class="btn btn-view">
-                                <i class="fas fa-eye"></i>
-                                مشاهده
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                                <a href="{% url 'purchase_request_detail' request_id=req.id cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost is-sm">
+                                    <i class="fas fa-eye"></i>
+                                    <span>مشاهده</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <div class="empty-message">درخواستی در انتظار تایید وجود ندارد</div>
-            <p class="empty-description">تمام درخواست‌های خرید پردازش شده‌اند</p>
+        <div class="ui-empty">
+            <i class="fas fa-clipboard-list"></i>
+            <div style="font-weight:700; color:var(--text-primary); margin-bottom:0.25rem;">درخواستی در انتظار تایید وجود ندارد</div>
+            <div>تمام درخواست‌های خرید پردازش شده‌اند</div>
         </div>
         {% endif %}
-    </div>
+    </section>
+
 </div>
 
 <!-- Reject Modal -->
-<div id="rejectModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">رد درخواست خرید</h3>
-            <button type="button" class="modal-close" onclick="closeRejectModal()">
+<div id="rejectModal" class="ui-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
+    <div class="ui-modal is-narrow">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title" id="rejectModalTitle">رد درخواست خرید</h3>
+            <button type="button" class="ui-modal-close" onclick="closeRejectModal()" aria-label="بستن">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <form id="rejectForm" method="POST">
             {% csrf_token %}
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">دلیل رد درخواست *</label>
-                    <textarea name="rejection_reason" class="form-textarea" required placeholder="لطفاً دلیل رد درخواست را وارد کنید..."></textarea>
+            <div class="ui-modal-body">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="rejectionReasonInput">دلیل رد درخواست *</label>
+                    <textarea id="rejectionReasonInput" name="rejection_reason" class="ui-textarea" required placeholder="لطفاً دلیل رد درخواست را وارد کنید..."></textarea>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-clear" onclick="closeRejectModal()">انصراف</button>
-                <button type="submit" class="btn btn-reject">
+            <div class="ui-modal-foot">
+                <button type="button" class="ui-btn ui-btn-ghost" onclick="closeRejectModal()">انصراف</button>
+                <button type="submit" class="ui-btn ui-btn-danger">
                     <i class="fas fa-times"></i>
-                    ثبت رد درخواست
+                    <span>ثبت رد درخواست</span>
                 </button>
             </div>
         </form>
@@ -582,23 +176,21 @@ function openRejectModal(requestId) {
     const modal = document.getElementById('rejectModal');
     const form = document.getElementById('rejectForm');
     form.action = `/{{ cafe_code }}/management/reject-request/${requestId}/`;
-    modal.classList.add('active');
+    modal.classList.add('is-open', 'active');
 }
 
 function closeRejectModal() {
     const modal = document.getElementById('rejectModal');
-    modal.classList.remove('active');
+    modal.classList.remove('is-open', 'active');
     document.getElementById('rejectForm').reset();
 }
 
-// Close modal when clicking outside
 document.getElementById('rejectModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeRejectModal();
     }
 });
 
-// Close modal with Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeRejectModal();
@@ -606,4 +198,3 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 {% endblock %}
-

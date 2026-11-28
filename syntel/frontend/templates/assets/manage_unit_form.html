@@ -4,94 +4,106 @@
 {% block title %}ثبت پلاک اموال جدید - Kuker{% endblock %}
 
 {% block content %}
-<div style="max-width:860px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-plus"></i></div>
-            <div class="ph-title">
-                <h1>ثبت تجهیز پلاک‌دار جدید</h1>
-                <div class="page-sub">مشخصات دستگاه، کد پلاک یکتا، گارانتی و اتصال به فاکتور خرید</div>
-            </div>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-plus" style="color: var(--primary, #8B5CF6);"></i>
+                ثبت تجهیز پلاک‌دار جدید
+            </h1>
+            <p class="ui-subtitle">مشخصات دستگاه، کد پلاک یکتا، گارانتی و اتصال به فاکتور خرید</p>
         </div>
-        <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+        </nav>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <form method="post" enctype="multipart/form-data" style="display:grid; gap:1rem;">
-                {% csrf_token %}
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
-                    <div class="filter-group">
-                        <label class="filter-label">کالای پلاک‌دار (کاتالوگ) *</label>
-                        <select name="asset_id" class="filter-select" required>
-                            <option value="">انتخاب کنید...</option>
-                            {% for a in serialized_assets %}
-                            <option value="{{ a.id }}">{{ a.name }} ({{ a.code }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">کد پلاک یکتا *</label>
-                        <input type="text" name="asset_tag" class="form-control" required placeholder="مثلاً AST-1001">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">سکشن محل استقرار</label>
-                        <select name="department_id" class="filter-select">
-                            <option value="">انتخاب کنید...</option>
-                            {% for d in departments %}
-                            <option value="{{ d.id }}">{{ d.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">شماره سریال</label>
-                        <input type="text" name="serial_number" class="form-control">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">تاریخ خرید (شمسی YYYY/MM/DD)</label>
-                        <input type="text" name="purchase_date" class="form-control" placeholder="1405/09/05">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">پایان گارانتی (شمسی YYYY/MM/DD)</label>
-                        <input type="text" name="warranty_until" class="form-control" placeholder="1406/09/05">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">قیمت خرید (ریال)</label>
-                        <input type="number" name="purchase_price" min="0" class="form-control" value="0">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">فاکتور مرتبط (اختیاری)</label>
-                        <select name="invoice_id" class="filter-select">
-                            <option value="">بدون فاکتور</option>
-                            {% for inv in invoices %}
-                            <option value="{{ inv.id }}">{{ inv.invoice_number }} ({{ inv.store_name|default:'—' }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">تحویل‌گیرنده / مسئول</label>
-                        <select name="custodian_id" class="filter-select">
-                            <option value="">انتخاب نشده</option>
-                            {% for cu in custodians %}
-                            <option value="{{ cu.id }}">{{ cu.get_full_name|default:cu.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">تصویر دستگاه</label>
-                        <input type="file" name="photo" accept="image/*" class="form-control">
-                    </div>
+    <div class="ui-form-card">
+        <form method="post" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:1rem;">
+            {% csrf_token %}
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label class="ui-field-label">کالای پلاک‌دار (کاتالوگ) *</label>
+                    <select name="asset_id" class="ui-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for a in serialized_assets %}
+                        <option value="{{ a.id }}">{{ a.name }} ({{ a.code }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">یادداشت</label>
-                    <textarea name="notes" rows="2" class="form-control"></textarea>
+                <div class="ui-field">
+                    <label class="ui-field-label">کد پلاک یکتا *</label>
+                    <input type="text" name="asset_tag" class="ui-input" required placeholder="مثلاً AST-1001">
                 </div>
-                <div style="display:flex; gap:0.65rem;">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ثبت پلاک</button>
-                    <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن محل استقرار</label>
+                    <select name="department_id" class="ui-select">
+                        <option value="">انتخاب کنید...</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}">{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </form>
-        </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">شماره سریال</label>
+                    <input type="text" name="serial_number" class="ui-input">
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">تاریخ خرید (شمسی YYYY/MM/DD)</label>
+                    <input type="text" name="purchase_date" class="ui-input" placeholder="1405/09/05">
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">پایان گارانتی (شمسی YYYY/MM/DD)</label>
+                    <input type="text" name="warranty_until" class="ui-input" placeholder="1406/09/05">
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">قیمت خرید (ریال)</label>
+                    <input type="number" name="purchase_price" min="0" class="ui-input" value="0">
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">فاکتور مرتبط (اختیاری)</label>
+                    <select name="invoice_id" class="ui-select">
+                        <option value="">بدون فاکتور</option>
+                        {% for inv in invoices %}
+                        <option value="{{ inv.id }}">{{ inv.invoice_number }} ({{ inv.store_name|default:'—' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">تحویل‌گیرنده / مسئول</label>
+                    <select name="custodian_id" class="ui-select">
+                        <option value="">انتخاب نشده</option>
+                        {% for cu in custodians %}
+                        <option value="{{ cu.id }}">{{ cu.get_full_name|default:cu.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">تصویر دستگاه</label>
+                    <input type="file" name="photo" accept="image/*" class="ui-input" style="padding-top:0.45rem;">
+                </div>
+            </div>
+
+            <div class="ui-field">
+                <label class="ui-field-label">یادداشت</label>
+                <textarea name="notes" rows="2" class="ui-textarea"></textarea>
+            </div>
+
+            <div class="ui-form-actions">
+                <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+                <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-save"></i> ثبت پلاک</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

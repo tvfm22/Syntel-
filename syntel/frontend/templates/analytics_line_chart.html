@@ -1,176 +1,157 @@
 {% extends 'dashboard_layout.html' %}
 {% load static %}
 
-{% block title %}روند هزینه‌ها - نمودار خطی{% endblock %}
+{% block title %}روند هزینه‌ها - نمودار خطی - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    .chart-card {
-        background: white; border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-xl); overflow: hidden; margin-bottom: 1.5rem;
+    .chart-wrapper {
+        position: relative;
+        height: 430px;
     }
-    .chart-header {
-        padding: 1.5rem 2rem; border-bottom: 1px solid var(--gray-200);
-        display: flex; justify-content: space-between; align-items: center;
+
+    .comparison-chart-wrapper {
+        position: relative;
+        height: 380px;
     }
-    .chart-title { font-size: 1.25rem; font-weight: 700; color: var(--dark); }
-    .chart-actions { display: flex; gap: 0.5rem; }
-    .chart-action-btn {
-        padding: 0.5rem 0.75rem; border: 1px solid var(--gray-200);
-        border-radius: var(--radius-md); background: white; color: var(--dark);
-        cursor: pointer; font-size: 0.875rem; transition: all 0.2s;
-    }
-    .chart-action-btn:hover { background: var(--gray-50); border-color: var(--primary); color: var(--primary); }
-    .chart-body { padding: 2rem; }
-    .chart-wrapper { position: relative; height: 450px; }
-    .comparison-chart-wrapper { position: relative; height: 400px; }
 
     .loading-overlay {
-        position: absolute; inset: 0;
-        background: rgba(255,255,255,0.95);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 10; border-radius: var(--radius-md);
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        border-radius: 12px;
     }
+
     .spinner {
-        width: 3rem; height: 3rem;
-        border: 4px solid var(--gray-100);
-        border-top-color: var(--primary);
-        border-radius: 50%; animation: spin 1s linear infinite;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid var(--gray-100, #F1F5F9);
+        border-top-color: var(--primary, #8B5CF6);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .period-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
-
-    .stats-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr);
-        gap: 1rem; margin-bottom: 1.5rem;
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
-    .stat-card {
-        background: white; border-radius: var(--radius-lg);
-        padding: 1.25rem; box-shadow: var(--shadow-sm);
-        display: flex; align-items: center; gap: 1rem;
-    }
-    .stat-icon {
-        width: 48px; height: 48px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem; flex-shrink: 0;
-    }
-    .stat-icon.primary { background: rgba(99,102,241,0.1); color: var(--primary); }
-    .stat-icon.success { background: rgba(16,185,129,0.1); color: var(--success); }
-    .stat-icon.warning { background: rgba(245,158,11,0.1); color: var(--warning); }
-    .stat-icon.danger { background: rgba(239,68,68,0.1); color: var(--danger); }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
-    .stat-label { font-size: 0.8rem; color: var(--gray-500); margin-top: 0.15rem; }
 
     @media (max-width: 768px) {
-        .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-        .chart-wrapper { height: 300px; }
-        .chart-body { padding: 1rem; }
+        .chart-wrapper,
+        .comparison-chart-wrapper {
+            height: 290px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-chart-line"></i>
-        روند هزینه‌ها
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
+<div class="ui-page is-wide">
+    <!-- Top Header -->
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-line" style="color: var(--primary, #8B5CF6);"></i>
+                روند هزینه‌ها
+            </h1>
+            <p class="ui-subtitle">تحلیل روند زمانی مخارج و مقایسه بخش‌ها</p>
         </div>
-        <a href="{% url 'logout' %}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>خروج</span>
-        </a>
-    </div>
-</div>
+        <div class="ui-topbar-actions">
+            <span class="ui-chip">
+                <i class="fas fa-calendar-alt" style="color: var(--primary, #8B5CF6);"></i>
+                <span id="persianDate"></span>
+            </span>
+            <a href="{% url 'logout' %}" class="ui-btn ui-btn-danger-soft">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>خروج</span>
+            </a>
+        </div>
+    </header>
 
-<!-- Filters -->
-<div class="filters-container">
-    <div class="filters-grid">
-        <div class="filter-group">
-            <label class="filter-label">بازه زمانی</label>
-            <div class="period-buttons">
-                <button class="period-btn" data-period="weekly">هفتگی</button>
-                <button class="period-btn active" data-period="monthly">ماهانه</button>
-                <button class="period-btn" data-period="quarterly">فصلی</button>
-                <button class="period-btn" data-period="yearly">سالانه</button>
+    <!-- Controls Card -->
+    <section class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div class="ui-segmented" role="group" aria-label="بازه زمانی">
+                <button type="button" class="ui-seg-item period-btn" data-period="weekly">هفتگی</button>
+                <button type="button" class="ui-seg-item period-btn active is-active" data-period="monthly">ماهانه</button>
+                <button type="button" class="ui-seg-item period-btn" data-period="quarterly">فصلی</button>
+                <button type="button" class="ui-seg-item period-btn" data-period="yearly">سالانه</button>
+            </div>
+
+            <div style="display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center;">
+                <select class="ui-select" id="granularity" aria-label="دقت نمایش">
+                    <option value="daily">روزانه</option>
+                    <option value="weekly">هفتگی</option>
+                    <option value="monthly">ماهانه</option>
+                </select>
+                <select class="ui-select" id="departmentFilter" aria-label="بخش">
+                    <option value="">همه بخش‌ها</option>
+                </select>
+                <select class="ui-select" id="categoryFilter" aria-label="دسته‌بندی">
+                    <option value="">همه دسته‌ها</option>
+                </select>
             </div>
         </div>
-        <div class="filter-group">
-            <label class="filter-label">دقت نمایش</label>
-            <select class="filter-select" id="granularity">
-                <option value="daily">روزانه</option>
-                <option value="weekly">هفتگی</option>
-                <option value="monthly">ماهانه</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">بخش</label>
-            <select class="filter-select" id="departmentFilter">
-                <option value="">همه بخش‌ها</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">دسته‌بندی</label>
-            <select class="filter-select" id="categoryFilter">
-                <option value="">همه دسته‌ها</option>
-            </select>
-        </div>
-    </div>
-</div>
+    </section>
 
-<!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon primary"><i class="fas fa-coins"></i></div>
-        <div><div class="stat-value" id="totalExpense">۰</div><div class="stat-label">مجموع هزینه‌ها</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon success"><i class="fas fa-calculator"></i></div>
-        <div><div class="stat-value" id="avgExpense">۰</div><div class="stat-label">میانگین روزانه</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon warning"><i class="fas fa-arrow-up"></i></div>
-        <div><div class="stat-value" id="maxExpense">۰</div><div class="stat-label">بیشترین هزینه</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon danger"><i class="fas fa-arrow-down"></i></div>
-        <div><div class="stat-value" id="minExpense">۰</div><div class="stat-label">کمترین هزینه</div></div>
-    </div>
-</div>
+    <!-- Metrics Strip -->
+    <section class="ui-metrics-strip">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع هزینه‌ها</span>
+            <div class="ui-metric-val is-accent ui-num" id="totalExpense">۰</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">میانگین روزانه</span>
+            <div class="ui-metric-val is-green ui-num" id="avgExpense">۰</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">بیشترین هزینه</span>
+            <div class="ui-metric-val is-warn ui-num" id="maxExpense">۰</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کمترین هزینه</span>
+            <div class="ui-metric-val is-danger ui-num" id="minExpense">۰</div>
+        </div>
+    </section>
 
-<!-- Main Chart -->
-<div class="chart-card">
-    <div class="chart-header">
-        <h3 class="chart-title" id="mainChartTitle">روند هزینه‌ها</h3>
-        <div class="chart-actions">
-            <button class="chart-action-btn" onclick="refreshChart()"><i class="fas fa-sync-alt"></i></button>
+    <!-- Main Chart -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title" id="mainChartTitle">
+                <i class="fas fa-chart-area"></i>
+                روند هزینه‌ها
+            </h2>
+            <button type="button" class="ui-btn ui-btn-ghost is-sm" onclick="refreshChart()" aria-label="بروزرسانی">
+                <i class="fas fa-sync-alt"></i>
+                <span>بروزرسانی</span>
+            </button>
         </div>
-    </div>
-    <div class="chart-body">
-        <div class="chart-wrapper">
-            <canvas id="mainLineChart"></canvas>
-            <div class="loading-overlay" id="mainLoading"><div class="spinner"></div></div>
+        <div class="ui-card-body">
+            <div class="chart-wrapper">
+                <canvas id="mainLineChart"></canvas>
+                <div class="loading-overlay" id="mainLoading"><div class="spinner"></div></div>
+            </div>
         </div>
-    </div>
-</div>
+    </section>
 
-<!-- Comparison Chart -->
-<div class="chart-card">
-    <div class="chart-header">
-        <h3 class="chart-title">مقایسه بخش‌ها</h3>
-    </div>
-    <div class="chart-body">
-        <div class="comparison-chart-wrapper">
-            <canvas id="comparisonChart"></canvas>
-            <div class="loading-overlay" id="comparisonLoading"><div class="spinner"></div></div>
+    <!-- Comparison Chart -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-chart-bar"></i>
+                مقایسه بخش‌ها
+            </h2>
         </div>
-    </div>
+        <div class="ui-card-body">
+            <div class="comparison-chart-wrapper">
+                <canvas id="comparisonChart"></canvas>
+                <div class="loading-overlay" id="comparisonLoading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
@@ -205,8 +186,8 @@
     function setupEventListeners() {
         document.querySelectorAll('.period-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                document.querySelectorAll('.period-btn').forEach(function(b) { b.classList.remove('active'); });
-                this.classList.add('active');
+                document.querySelectorAll('.period-btn').forEach(function(b) { b.classList.remove('active', 'is-active'); });
+                this.classList.add('active', 'is-active');
                 currentPeriod = this.dataset.period;
                 loadChartData();
             });
@@ -265,12 +246,12 @@
         var ctx = document.getElementById('mainLineChart');
         if (mainChart) mainChart.destroy();
         if (!data.labels || data.labels.length === 0) {
-            ctx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>داده‌ای برای نمایش وجود ندارد</p></div>';
+            ctx.parentElement.innerHTML = '<div class="ui-empty"><i class="fas fa-chart-line"></i><p style="margin:0;">داده‌ای برای نمایش وجود ندارد</p></div>';
             return;
         }
         var datasets = [
-            { label: 'مبلغ کل', data: data.values || [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.4 },
-            { label: 'تعداد', data: data.counts || [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4, yAxisID: 'y1' }
+            { label: 'مبلغ کل', data: data.values || [], borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4 },
+            { label: 'تعداد', data: data.counts || [], borderColor: '#047857', backgroundColor: 'rgba(4,120,87,0.1)', fill: true, tension: 0.4, yAxisID: 'y1' }
         ];
         mainChart = new Chart(ctx, {
             type: 'line', data: { labels: data.labels, datasets: datasets },
@@ -308,7 +289,7 @@
         var ctx = document.getElementById('comparisonChart');
         if (comparisonChart) comparisonChart.destroy();
         if (!data.labels || data.labels.length === 0) {
-            ctx.parentElement.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>داده‌ای برای مقایسه وجود ندارد</p></div>';
+            ctx.parentElement.innerHTML = '<div class="ui-empty"><i class="fas fa-chart-bar"></i><p style="margin:0;">داده‌ای برای مقایسه وجود ندارد</p></div>';
             return;
         }
         comparisonChart = new Chart(ctx, {

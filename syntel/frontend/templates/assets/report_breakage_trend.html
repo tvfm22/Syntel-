@@ -5,78 +5,93 @@
 
 {% block extra_css %}
 <style>
-    .rbt-wrap { max-width: 1360px; margin: 0 auto; }
+    .rbt-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; align-items: end; }
     .rbt-chart-wrap { height: 340px; position: relative; }
-    .rbt-thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+    .rbt-thumb { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default, #E2E8F0); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rbt-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon orange"><i class="fas fa-chart-line"></i></div>
-            <div class="ph-title">
-                <h1>روند شکستگی، اسقاط و مفقودی اموال</h1>
-                <div class="page-sub">تجمیع ماهانه اسناد شکستگی (disposal) و کسری تاییدشده انبارگردانی در {{ months_count }} ماه اخیر</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-line" style="color: var(--ui-warn, #B45309);"></i>
+                روند شکستگی، اسقاط و مفقودی اموال
+            </h1>
+            <p class="ui-subtitle">تجمیع ماهانه اسناد شکستگی (disposal) و کسری تاییدشده انبارگردانی در {{ months_count }} ماه اخیر</p>
         </div>
-        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
-        </a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های گزارش اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> مرکز گزارش‌ها</a>
+            <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-coins"></i> ارزش سکشن‌ها</a>
+            <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-balance-scale"></i> مغایرت</a>
+            <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-chart-line"></i> شکستگی</a>
+            <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exclamation-triangle"></i> کسری</a>
+            <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-tools"></i> تعمیرات و گارانتی</a>
+            <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-history"></i> کاردکس</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">بازه زمانی</label>
-                <select name="months" class="filter-select">
-                    <option value="3" {% if months_count == 3 %}selected{% endif %}>۳ ماه اخیر</option>
-                    <option value="6" {% if months_count == 6 %}selected{% endif %}>۶ ماه اخیر</option>
-                    <option value="12" {% if months_count == 12 %}selected{% endif %}>۱۲ ماه اخیر</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">نمایش</button>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="rbt-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">بازه زمانی</label>
+                    <select name="months" class="ui-select">
+                        <option value="3" {% if months_count == 3 %}selected{% endif %}>۳ ماه اخیر</option>
+                        <option value="6" {% if months_count == 6 %}selected{% endif %}>۶ ماه اخیر</option>
+                        <option value="12" {% if months_count == 12 %}selected{% endif %}>۱۲ ماه اخیر</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="ui-btn ui-btn-primary">نمایش</button>
             </div>
         </div>
     </form>
 
-    <div class="stats-grid" style="margin-bottom:1.25rem;">
-        <div class="stat-card">
-            <div class="stat-value warning">{{ total_qty|number_format }}</div>
-            <div class="stat-label">مجموع تعداد شکستگی و مفقودی</div>
+    <section class="ui-metrics-strip cols-2">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع تعداد شکستگی و مفقودی</span>
+            <div class="ui-metric-val is-warn ui-num">{{ total_qty|number_format }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value danger">{{ total_val|number_format }} ریال</div>
-            <div class="stat-label">برآورد ریالی خسارت دوره</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">برآورد ریالی خسارت دوره</span>
+            <div class="ui-metric-val is-danger ui-num">{{ total_val|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-    </div>
+    </section>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-chart-bar"></i> نمودار ماهانه شکستگی و مفقودی به تفکیک سکشن</div>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-chart-bar"></i> نمودار ماهانه شکستگی و مفقودی به تفکیک سکشن</h2>
         </div>
-        <div class="card-body">
+        <div class="ui-card-body">
             <div class="rbt-chart-wrap"><canvas id="breakageTrendChart"></canvas></div>
         </div>
-    </div>
+    </section>
 
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-trophy"></i> ۱۰ کالای پرشکستگی و مفقودی (Top 10)</div>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-trophy"></i> ۱۰ کالای پرشکستگی و مفقودی (Top 10)</h2>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>رتبه</th>
@@ -91,7 +106,7 @@
                 <tbody>
                     {% for item in top_assets %}
                     <tr>
-                        <td><strong>{{ forloop.counter }}</strong></td>
+                        <td class="ui-num"><strong>{{ forloop.counter }}</strong></td>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.6rem;">
                                 {% if item.thumb_url %}
@@ -104,18 +119,18 @@
                             </div>
                         </td>
                         <td>{{ item.category_name }}</td>
-                        <td>{{ item.disposal_count }}</td>
-                        <td>{{ item.audit_loss_count }}</td>
-                        <td><span class="badge badge-danger">{{ item.total_qty }}</span></td>
-                        <td><strong style="color:#DC2626;">{{ item.total_val|number_format }} ریال</strong></td>
+                        <td class="ui-num">{{ item.disposal_count }}</td>
+                        <td class="ui-num">{{ item.audit_loss_count }}</td>
+                        <td><span class="ui-pill is-danger ui-num">{{ item.total_qty }}</span></td>
+                        <td class="ui-num" style="font-weight:700; color:var(--ui-danger);">{{ item.total_val|number_format }} ریال</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" style="text-align:center; padding:2rem;">هیچ شکستگی یا مفقودی در این بازه ثبت نشده است.</td></tr>
+                    <tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">هیچ شکستگی یا مفقودی در این بازه ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}
 

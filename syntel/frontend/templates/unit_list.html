@@ -1,75 +1,105 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}مدیریت واحدهای اندازه‌گیری - Kuker{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="ph-main">
-        <div class="ph-icon"><i class="fas fa-scale-balanced"></i></div>
-        <div>
-            <h1 class="ph-title">واحدهای اندازه‌گیری</h1>
-            <p class="page-sub">مدیریت واحدها و ضرایب شمارش کالاها</p>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-scale-balanced" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                واحدهای اندازه‌گیری
+            </h1>
+            <p class="ui-subtitle">
+                <span>مدیریت واحدها و ضرایب شمارش کالاها</span>
+                {% if search_query %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </p>
         </div>
-    </div>
-    <a href="{% url 'unit_create' cafe_code=cafe_code %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> واحد جدید
-    </a>
-</div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'unit_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>واحد جدید</span>
+            </a>
+        </div>
+    </header>
 
-<div class="card" style="padding:1rem 1.25rem;margin-bottom:1.25rem;">
-    <form method="GET" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-        <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در واحدهای اندازه‌گیری..." class="form-control" style="flex:1;min-width:220px;">
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i> جستجو
-        </button>
+    <form method="GET" class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div class="ui-search">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در واحدهای اندازه‌گیری..." aria-label="جستجو">
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-search"></i>
+                    <span>جستجو</span>
+                </button>
+                {% if search_query %}
+                <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-danger-soft">
+                    <i class="fas fa-xmark"></i>
+                    <span>پاک‌کردن</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </form>
-</div>
 
-{% if units %}
-<div class="card" style="padding:0;overflow:hidden;">
-    <div class="card-header" style="padding:1rem 1.25rem;margin-bottom:0;">
-        <span class="card-title"><i class="fas fa-balance-scale" style="color:var(--primary);margin-left:0.4rem;"></i> لیست واحدهای اندازه‌گیری</span>
-        <span class="badge badge-info">{{ units|length }} واحد</span>
-    </div>
-    <div class="table-container" style="border:none;border-radius:0;">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>نام واحد</th>
-                    <th>نماد</th>
-                    <th style="text-align:left;">عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for unit in units %}
-                <tr>
-                    <td style="font-weight:700;color:var(--dark);">{{ unit.name }}</td>
-                    <td>
-                        <span class="badge badge-neutral" style="font-family:monospace;">{{ unit.symbol|default:"—" }}</span>
-                    </td>
-                    <td style="text-align:left;">
-                        <div style="display:inline-flex;gap:0.4rem;">
-                            <a href="{% url 'unit_update' cafe_code=cafe_code unit_id=unit.id %}" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-pen"></i> ویرایش
-                            </a>
-                            <a href="{% url 'unit_delete' cafe_code=cafe_code unit_id=unit.id %}" class="btn btn-sm btn-danger">
-                                <i class="fas fa-trash"></i> حذف
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {% if units %}
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-balance-scale"></i>
+                <span>لیست واحدهای اندازه‌گیری</span>
+            </h2>
+            <span class="ui-pill is-info ui-num">{{ units|length|number_format }} واحد</span>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>نام واحد</th>
+                        <th>نماد</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in units %}
+                    <tr>
+                        <td style="font-weight:700;">{{ unit.name }}</td>
+                        <td>
+                            <span class="ui-chip" style="font-family:monospace;">{{ unit.symbol|default:"—" }}</span>
+                        </td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;gap:0.3rem;">
+                                <a href="{% url 'unit_update' cafe_code=cafe_code unit_id=unit.id %}" class="ui-row-action">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </a>
+                                <a href="{% url 'unit_delete' cafe_code=cafe_code unit_id=unit.id %}" class="ui-row-action is-danger">
+                                    <i class="fas fa-trash-can"></i> حذف
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% else %}
+    <section class="ui-table-card">
+        <div class="ui-empty">
+            <i class="fas fa-scale-balanced"></i>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">هیچ واحدی یافت نشد</div>
+            <p style="margin:0 0 1rem;">هیچ واحدی با معیارهای جستجوی شما یافت نشد.</p>
+            <a href="{% url 'unit_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> اولین واحد را اضافه کنید
+            </a>
+        </div>
+    </section>
+    {% endif %}
 </div>
-{% else %}
-<div class="card" style="text-align:center;padding:3rem 1.5rem;">
-    <div style="font-size:2.4rem;color:var(--gray-300);margin-bottom:0.75rem;"><i class="fas fa-scale-balanced"></i></div>
-    <h3 style="font-size:1.05rem;font-weight:800;color:var(--dark);margin-bottom:0.35rem;">هیچ واحدی یافت نشد</h3>
-    <p style="color:var(--gray-500);font-size:0.86rem;margin-bottom:1.25rem;">هیچ واحدی با معیارهای جستجوی شما یافت نشد.</p>
-    <a href="{% url 'unit_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> اولین واحد را اضافه کنید</a>
-</div>
-{% endif %}
 {% endblock %}

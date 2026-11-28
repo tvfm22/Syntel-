@@ -3,93 +3,90 @@
 
 {% block title %}داشبورد انبار - Kuker{% endblock %}
 
-{% block extra_css %}
-<style>
-    .whd-wrap { max-width: 1180px; margin: 0 auto; }
-    .whd-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
-    .ph-icon {
-        width: 42px; height: 42px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .page-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
-
-    .tab-row { display: flex; gap: 0.5rem; margin-bottom: var(--space-4); flex-wrap: wrap; }
-    .tab-btn {
-        padding: 0.5rem 1.15rem; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 700;
-        text-decoration: none; background: var(--bg-card); border: 1px solid var(--border-default);
-        color: var(--text-secondary); transition: all var(--transition-fast);
-        display: inline-flex; align-items: center; gap: 0.4rem;
-    }
-    .tab-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .tab-btn.active { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
-
-    .section-title { font-size: 0.98rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
-    .section-title i.warn { color: var(--warning); }
-    .section-block { margin-bottom: var(--space-5); }
-
-    .low-stock-card {
-        background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border-default);
-        box-shadow: var(--shadow-sm); padding: 0.5rem 1.15rem;
-    }
-    .low-stock-item { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border-light); }
-    .low-stock-item:last-child { border-bottom: none; }
-    .stock-name { font-weight: 700; color: var(--text-primary); }
-    .stock-quantities { display: flex; gap: 0.75rem; align-items: center; }
-    .qty-current { color: #DC2626; font-weight: 800; background: #FEF2F2; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.78rem; }
-    .qty-min { color: var(--text-secondary); font-size: 0.76rem; }
-
-    .see-all-link {
-        color: var(--accent-indigo); font-size: 0.8rem; text-decoration: none; font-weight: 700;
-        display: inline-flex; align-items: center; gap: 0.35rem;
-    }
-    .see-all-link:hover { color: var(--primary-dark); }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="whd-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
-            <div>
-                <h1 class="page-title">داشبورد انبار</h1>
-                <div class="page-sub">{{ user.first_name }} {{ user.last_name }}</div>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">داشبورد انبار</h1>
+            <div class="ui-subtitle">
+                <span>{{ user.first_name }} {{ user.last_name }}</span>
+                <span class="ui-subtitle-dot"></span>
+                <span>پایش موجودی‌های نیازمند شارژ</span>
             </div>
         </div>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-boxes-stacked"></i> مشاهده همهٔ موجودی‌ها
+            </a>
+        </div>
+    </header>
 
     {% if has_purchasing or has_warehouse %}
-    <div class="tab-row">
-        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="tab-btn active"><i class="fas fa-warehouse"></i> انبار</a>
-        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="tab-btn"><i class="fas fa-box-open"></i> کالاهای موجود در انبار</a>
-        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="tab-btn"><i class="fas fa-cart-shopping"></i> درخواست‌های کالا</a>
-    </div>
+    <nav class="ui-segmented" aria-label="بخش‌های انبار و خرید">
+        <a href="{% url 'warehouse_dashboard' cafe_code=cafe_code %}" class="ui-seg-item is-active">
+            <i class="fas fa-warehouse"></i> انبار
+        </a>
+        <a href="{% url 'warehouse_available_products' cafe_code=cafe_code %}" class="ui-seg-item">
+            <i class="fas fa-box-open"></i> کالاهای موجود در انبار
+        </a>
+        <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="ui-seg-item">
+            <i class="fas fa-cart-shopping"></i> درخواست‌های کالا
+        </a>
+    </nav>
     {% endif %}
 
     {% if stock_items_low %}
-    <div class="section-block">
-        <div class="section-title"><i class="fas fa-triangle-exclamation warn"></i> موجودی‌های کمتر از حداقل</div>
-        <div class="low-stock-card">
-            {% for si in stock_items_low %}
-            <div class="low-stock-item">
-                <span class="stock-name">{{ si.product.name }}</span>
-                <span class="stock-quantities">
-                    <span class="qty-current">{{ si.quantity|qty_comma }} {{ si.unit }}</span>
-                    <span class="qty-min">حداقل: {{ si.min_quantity|qty_comma }}</span>
-                </span>
-            </div>
-            {% endfor %}
-            <div style="margin-top: 10px; padding-bottom: 8px; text-align: left;">
-                <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="see-all-link">
-                    مشاهده همهٔ موجودی‌ها <i class="fas fa-arrow-left"></i>
-                </a>
-            </div>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-triangle-exclamation" style="color:var(--ui-warn);"></i>
+                موجودی‌های کمتر از حداقل
+                <span class="ui-pill is-warn">{{ stock_items_low|length }} قلم</span>
+            </h2>
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}?low_stock=on" class="ui-btn ui-btn-ghost is-sm">
+                مشاهده همهٔ موجودی‌ها <i class="fas fa-arrow-left"></i>
+            </a>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>کالا</th>
+                        <th>موجودی فعلی</th>
+                        <th>حداقل موجودی</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for si in stock_items_low %}
+                    <tr>
+                        <td style="font-weight:700;">{{ si.product.name }}</td>
+                        <td>
+                            <span class="ui-pill is-danger ui-num">{{ si.quantity|qty_comma }} {{ si.unit }}</span>
+                        </td>
+                        <td class="ui-num" style="color:var(--text-secondary);">حداقل: {{ si.min_quantity|qty_comma }}</td>
+                        <td>
+                            {% if si.quantity < 0 %}
+                            <span class="ui-pill is-danger"><span class="ui-dot"></span> موجودی منفی</span>
+                            {% else %}
+                            <span class="ui-pill is-warn"><span class="ui-dot"></span> کمبود</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% else %}
+    <div class="ui-card">
+        <div class="ui-empty">
+            <i class="fas fa-circle-check" style="color:var(--ui-ok); opacity:0.65;"></i>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">همهٔ موجودی‌ها در سطح مناسب هستند</div>
+            <p style="margin:0 0 1rem;">هیچ کالایی کمتر از حداقل تعریف‌شده نیست.</p>
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-list"></i> مشاهده لیست موجودی
+            </a>
         </div>
     </div>
     {% endif %}

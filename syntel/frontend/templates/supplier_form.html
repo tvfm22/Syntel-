@@ -1,244 +1,97 @@
 ﻿{% extends 'base.html' %}
 {% load static custom_filters %}
 
-{% block title %}{% if supplier %}ویرایش تأمین‌کننده{% else %}ایجاد تأمین‌کننده جدید{% endif %}{% endblock %}
+{% block title %}{% if supplier %}ویرایش تأمین‌کننده{% else %}ایجاد تأمین‌کننده جدید{% endif %} - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.supplier-form-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.form-header {
-    text-align: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.form-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}
-
-.form-subtitle {
-    color: #666;
-    margin-top: 5px;
-}
-
-.supplier-form {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.form-section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.form-section:last-child {
-    border-bottom: none;
-}
-
-.section-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 20px;
+.ui-section-heading {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--text-primary, #0F172A);
+    margin: 0 0 0.2rem;
     display: flex;
     align-items: center;
+    gap: 0.45rem;
 }
-
-.section-title::before {
-    content: '';
-    width: 4px;
-    height: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    margin-left: 10px;
-    border-radius: 2px;
+.ui-section-heading i {
+    color: var(--primary, #8B5CF6);
+    font-size: 0.84rem;
 }
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-}
-
-.form-input, .form-select, .form-textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: 'Vazir', sans-serif;
-    transition: border-color 0.3s ease;
-    box-sizing: border-box;
-}
-
-.form-input:focus, .form-select:focus, .form-textarea:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-row-3 {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-}
-
-.checkbox-group {
+.cat-check-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 10px;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
 }
-
-.checkbox-item {
-    display: flex;
+.cat-check-pill {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-}
-
-.checkbox-item input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-}
-
-.form-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: flex-end;
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid #e0e0e0;
-}
-
-.btn-submit, .btn-cancel {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: all 0.3s ease;
+    gap: 0.45rem;
+    padding: 0.42rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-default, #E2E8F0);
+    background: var(--gray-50, #F8FAFC);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary, #0F172A);
     cursor: pointer;
 }
-
-.btn-submit {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+.cat-check-pill input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary, #8B5CF6);
+    margin: 0;
 }
-
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.btn-cancel {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-cancel:hover {
-    background: #5a6268;
-    transform: translateY(-2px);
-}
-
-.required {
-    color: #dc3545;
-}
-
 .error-message {
-    color: #dc3545;
-    font-size: 0.8rem;
-    margin-top: 5px;
-}
-
-@media (max-width: 768px) {
-    .supplier-form-container {
-        padding: 15px;
-    }
-
-    .supplier-form {
-        padding: 20px;
-    }
-
-    .form-row, .form-row-3 {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-
-    .form-actions {
-        flex-direction: column;
-    }
-
-    .btn-submit, .btn-cancel {
-        width: 100%;
-        text-align: center;
-    }
-
-    .checkbox-group {
-        flex-direction: column;
-    }
+    color: var(--ui-danger, #DC2626);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    font-weight: 600;
 }
 </style>
+{% endblock %}
 
-<div class="supplier-form-container">
-    <div class="form-header">
-        <h1 class="form-title">
-            {% if supplier %}ویرایش تأمین‌کننده{% else %}ایجاد تأمین‌کننده جدید{% endif %}
-        </h1>
-        <p class="form-subtitle">
-            {% if supplier %}اطلاعات تأمین‌کننده را ویرایش کنید{% else %}اطلاعات تأمین‌کننده جدید را وارد کنید{% endif %}
-        </p>
-    </div>
+{% block content %}
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-store" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if supplier %}ویرایش تأمین‌کننده{% else %}ایجاد تأمین‌کننده جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if supplier %}اطلاعات تأمین‌کننده، آدرس و مشخصات بانکی را ویرایش کنید{% else %}اطلاعات تأمین‌کننده جدید را وارد کنید{% endif %}
+            </p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
-    <form method="POST" class="supplier-form">
+    <form method="POST" class="ui-form-card supplier-form">
         {% csrf_token %}
 
-        <!-- Basic Information -->
-        <div class="form-section">
-            <h3 class="section-title">اطلاعات پایه</h3>
+        <div class="ui-form-section">
+            <h2 class="ui-section-heading"><i class="fas fa-circle-info"></i> اطلاعات پایه</h2>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="name" class="form-label">
-                        نام تأمین‌کننده <span class="required">*</span>
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="name" class="ui-field-label">
+                        نام تأمین‌کننده <span style="color:var(--ui-danger);">*</span>
                     </label>
-                    <input type="text" id="name" name="name" class="form-input"
+                    <input type="text" id="name" name="name" class="ui-input"
                            value="{% if supplier %}{{ supplier.name }}{% endif %}" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="supplier_type" class="form-label">
-                        نوع تأمین‌کننده <span class="required">*</span>
+                <div class="ui-field">
+                    <label for="supplier_type" class="ui-field-label">
+                        نوع تأمین‌کننده <span style="color:var(--ui-danger);">*</span>
                     </label>
-                    <select id="supplier_type" name="supplier_type" class="form-select" required>
+                    <select id="supplier_type" name="supplier_type" class="ui-select" required>
                         {% for type_value, type_label in supplier_types %}
                         <option value="{{ type_value }}"
                                 {% if supplier and supplier.supplier_type == type_value %}selected{% endif %}>
@@ -247,253 +100,195 @@
                         {% endfor %}
                     </select>
                 </div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="contact_person" class="form-label">
-                        شخص تماس
-                    </label>
-                    <input type="text" id="contact_person" name="contact_person" class="form-input"
+                <div class="ui-field">
+                    <label for="contact_person" class="ui-field-label">شخص تماس</label>
+                    <input type="text" id="contact_person" name="contact_person" class="ui-input"
                            value="{% if supplier %}{{ supplier.contact_person }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="email" class="form-label">
-                        ایمیل
-                    </label>
-                    <input type="email" id="email" name="email" class="form-input"
+                <div class="ui-field">
+                    <label for="email" class="ui-field-label">ایمیل</label>
+                    <input type="email" id="email" name="email" class="ui-input"
                            value="{% if supplier %}{{ supplier.email }}{% endif %}">
                 </div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="phone" class="form-label">
-                        تلفن ثابت
-                    </label>
-                    <input type="text" id="phone" name="phone" class="form-input"
+                <div class="ui-field">
+                    <label for="phone" class="ui-field-label">تلفن ثابت</label>
+                    <input type="text" id="phone" name="phone" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.phone }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="mobile" class="form-label">
-                        تلفن همراه
-                    </label>
-                    <input type="text" id="mobile" name="mobile" class="form-input"
+                <div class="ui-field">
+                    <label for="mobile" class="ui-field-label">تلفن همراه</label>
+                    <input type="text" id="mobile" name="mobile" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.mobile }}{% endif %}">
                 </div>
             </div>
         </div>
 
-        <!-- Address Information -->
-        <div class="form-section">
-            <h3 class="section-title">اطلاعات آدرس</h3>
+        <div class="ui-form-section">
+            <h2 class="ui-section-heading"><i class="fas fa-location-dot"></i> اطلاعات آدرس</h2>
 
-            <div class="form-group">
-                <label for="address" class="form-label">
-                    آدرس
-                </label>
-                <textarea id="address" name="address" class="form-textarea"
+            <div class="ui-field">
+                <label for="address" class="ui-field-label">آدرس</label>
+                <textarea id="address" name="address" class="ui-textarea"
                           placeholder="آدرس کامل را وارد کنید...">{% if supplier %}{{ supplier.address }}{% endif %}</textarea>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="city" class="form-label">
-                        شهر
-                    </label>
-                    <input type="text" id="city" name="city" class="form-input"
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="city" class="ui-field-label">شهر</label>
+                    <input type="text" id="city" name="city" class="ui-input"
                            value="{% if supplier %}{{ supplier.city }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="state" class="form-label">
-                        استان
-                    </label>
-                    <input type="text" id="state" name="state" class="form-input"
+                <div class="ui-field">
+                    <label for="state" class="ui-field-label">استان</label>
+                    <input type="text" id="state" name="state" class="ui-input"
                            value="{% if supplier %}{{ supplier.state }}{% endif %}">
                 </div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="postal_code" class="form-label">
-                        کد پستی
-                    </label>
-                    <input type="text" id="postal_code" name="postal_code" class="form-input"
+                <div class="ui-field">
+                    <label for="postal_code" class="ui-field-label">کد پستی</label>
+                    <input type="text" id="postal_code" name="postal_code" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.postal_code }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="country" class="form-label">
-                        کشور
-                    </label>
-                    <input type="text" id="country" name="country" class="form-input"
+                <div class="ui-field">
+                    <label for="country" class="ui-field-label">کشور</label>
+                    <input type="text" id="country" name="country" class="ui-input"
                            value="{% if supplier %}{{ supplier.country }}{% endif %}" placeholder="ایران">
                 </div>
             </div>
         </div>
 
-        <!-- Business Information -->
-        <div class="form-section">
-            <h3 class="section-title">اطلاعات کسب‌وکار</h3>
+        <div class="ui-form-section">
+            <h2 class="ui-section-heading"><i class="fas fa-briefcase"></i> اطلاعات کسب‌وکار</h2>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="tax_id" class="form-label">
-                        شماره مالیاتی
-                    </label>
-                    <input type="text" id="tax_id" name="tax_id" class="form-input"
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="tax_id" class="ui-field-label">شماره مالیاتی</label>
+                    <input type="text" id="tax_id" name="tax_id" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.tax_id }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="registration_number" class="form-label">
-                        شماره ثبت
-                    </label>
-                    <input type="text" id="registration_number" name="registration_number" class="form-input"
+                <div class="ui-field">
+                    <label for="registration_number" class="ui-field-label">شماره ثبت</label>
+                    <input type="text" id="registration_number" name="registration_number" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.registration_number }}{% endif %}">
                 </div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="business_license" class="form-label">
-                        شماره جواز کسب
-                    </label>
-                    <input type="text" id="business_license" name="business_license" class="form-input"
+                <div class="ui-field">
+                    <label for="business_license" class="ui-field-label">شماره جواز کسب</label>
+                    <input type="text" id="business_license" name="business_license" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.business_license }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="website" class="form-label">
-                        وب‌سایت
-                    </label>
-                    <input type="url" id="website" name="website" class="form-input"
+                <div class="ui-field">
+                    <label for="website" class="ui-field-label">وب‌سایت</label>
+                    <input type="url" id="website" name="website" class="ui-input" dir="ltr"
                            value="{% if supplier %}{{ supplier.website }}{% endif %}" placeholder="https://example.com">
                 </div>
             </div>
         </div>
 
-        <!-- Banking Information -->
-        <div class="form-section">
-            <h3 class="section-title">اطلاعات بانکی</h3>
+        <div class="ui-form-section">
+            <h2 class="ui-section-heading"><i class="fas fa-building-columns"></i> اطلاعات بانکی</h2>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="bank_name" class="form-label">
-                        نام بانک
-                    </label>
-                    <input type="text" id="bank_name" name="bank_name" class="form-input"
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="bank_name" class="ui-field-label">نام بانک</label>
+                    <input type="text" id="bank_name" name="bank_name" class="ui-input"
                            value="{% if supplier %}{{ supplier.bank_name }}{% endif %}">
                 </div>
 
-                <div class="form-group">
-                    <label for="bank_account" class="form-label">
-                        شماره حساب
-                    </label>
-                    <input type="text" id="bank_account" name="bank_account" class="form-input"
+                <div class="ui-field">
+                    <label for="bank_account" class="ui-field-label">شماره حساب</label>
+                    <input type="text" id="bank_account" name="bank_account" class="ui-input ui-num"
                            value="{% if supplier %}{{ supplier.bank_account }}{% endif %}">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="bank_routing" class="form-label">
-                    شماره شبا/مسیر یابی
-                </label>
-                <input type="text" id="bank_routing" name="bank_routing" class="form-input"
+            <div class="ui-field">
+                <label for="bank_routing" class="ui-field-label">شماره شبا/مسیر یابی</label>
+                <input type="text" id="bank_routing" name="bank_routing" class="ui-input ui-num"
                        value="{% if supplier %}{{ supplier.bank_routing }}{% endif %}">
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="card_number" class="form-label">
-                        شماره کارت
-                    </label>
-                    <input type="text" id="card_number" name="card_number" class="form-input" dir="ltr"
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="card_number" class="ui-field-label">شماره کارت</label>
+                    <input type="text" id="card_number" name="card_number" class="ui-input ui-num" dir="ltr"
                            value="{% if supplier %}{{ supplier.card_number }}{% endif %}"
                            placeholder="مثلاً: 6037-9912-3456-7890" maxlength="20">
                 </div>
 
-                <div class="form-group">
-                    <label for="sheba_number" class="form-label">
-                        شماره شبا
-                    </label>
-                    <input type="text" id="sheba_number" name="sheba_number" class="form-input" dir="ltr"
+                <div class="ui-field">
+                    <label for="sheba_number" class="ui-field-label">شماره شبا</label>
+                    <input type="text" id="sheba_number" name="sheba_number" class="ui-input ui-num" dir="ltr"
                            value="{% if supplier %}{{ supplier.sheba_number }}{% endif %}"
                            placeholder="مثلاً: IR062960000000100324200001" maxlength="30">
                 </div>
             </div>
         </div>
 
-        <!-- Business Terms -->
-        <div class="form-section">
-            <h3 class="section-title">شرایط کسب‌وکار</h3>
+        <div class="ui-form-section">
+            <h2 class="ui-section-heading"><i class="fas fa-file-contract"></i> شرایط کسب‌وکار</h2>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="payment_terms" class="form-label">
-                        شرایط پرداخت
-                    </label>
-                    <input type="text" id="payment_terms" name="payment_terms" class="form-input"
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="payment_terms" class="ui-field-label">شرایط پرداخت</label>
+                    <input type="text" id="payment_terms" name="payment_terms" class="ui-input"
                            value="{% if supplier %}{{ supplier.payment_terms }}{% endif %}" placeholder="مثال: 30 روز">
                 </div>
 
-                <div class="form-group">
-                    <label for="credit_limit" class="form-label">
-                        حد اعتبار (ریال)
-                    </label>
-                    <input type="text" id="credit_limit" name="credit_limit" class="form-input js-comma"
+                <div class="ui-field">
+                    <label for="credit_limit" class="ui-field-label">حد اعتبار (ریال)</label>
+                    <input type="text" id="credit_limit" name="credit_limit" class="ui-input js-comma"
                            value="{% if supplier %}{{ supplier.credit_limit|trim_decimal:2 }}{% endif %}" inputmode="decimal" placeholder="مثلاً 5,000,000">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">
-                    دسته‌بندی‌های مرتبط
-                </label>
-                <div class="checkbox-group">
+            <div class="ui-field">
+                <label class="ui-field-label">دسته‌بندی‌های مرتبط</label>
+                <div class="cat-check-grid">
                     {% for category in categories %}
-                    <div class="checkbox-item">
+                    <label class="cat-check-pill" for="category_{{ category.id }}">
                         <input type="checkbox" id="category_{{ category.id }}" name="categories" value="{{ category.id }}"
                                {% if supplier and category in supplier.categories.all %}checked{% endif %}>
-                        <label for="category_{{ category.id }}">{{ category.name }}</label>
-                    </div>
+                        <span>{{ category.name }}</span>
+                    </label>
                     {% endfor %}
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="notes" class="form-label">
-                    یادداشت‌ها
-                </label>
-                <textarea id="notes" name="notes" class="form-textarea"
+            <div class="ui-field">
+                <label for="notes" class="ui-field-label">یادداشت‌ها</label>
+                <textarea id="notes" name="notes" class="ui-textarea"
                           placeholder="یادداشت‌های اضافی درباره تأمین‌کننده...">{% if supplier %}{{ supplier.notes }}{% endif %}</textarea>
             </div>
         </div>
 
-        <div class="form-actions">
-            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
-            <button type="submit" class="btn-submit">
-                {% if supplier %}ذخیره تغییرات{% else %}ایجاد تأمین‌کننده{% endif %}
+        <div class="ui-form-actions">
+            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>{% if supplier %}ذخیره تغییرات{% else %}ایجاد تأمین‌کننده{% endif %}</span>
             </button>
         </div>
     </form>
 </div>
 
 <script>
-// Form validation
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('.supplier-form');
 
     form.addEventListener('submit', function(e) {
         const name = document.getElementById('name').value.trim();
         const supplierType = document.getElementById('supplier_type').value;
-
         let isValid = true;
 
-        // Clear previous errors
         document.querySelectorAll('.error-message').forEach(el => el.remove());
 
         if (!name) {
@@ -521,4 +316,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-

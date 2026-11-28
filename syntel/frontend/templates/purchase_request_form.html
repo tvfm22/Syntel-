@@ -4,13 +4,29 @@
 {% block title %}ثبت درخواست کالا - Kuker{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/purchase_request_form.css' %}">
+<link rel="stylesheet" href="{% static 'css/purchase_request_form.css' %}?v=20261127a">
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
+<div class="ui-page page-container">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-cart-plus" style="color:var(--primary, #8B5CF6);"></i>
+                <span>ثبت درخواست کالا</span>
+            </h1>
+            <p class="ui-subtitle">{{ user.department_display }}</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost is-lg">
+                <i class="fas fa-list-check"></i>
+                <span>درخواست‌های من</span>
+            </a>
+        </div>
+    </header>
+
     {% include 'partials/receipt_gate_banner.html' %}
-    <form method="post" id="purchaseForm">
+    <form method="post" id="purchaseForm" style="display:flex; flex-direction:column; gap:1rem;">
         {% csrf_token %}
         {{ submitted_items|json_script:"submittedItemsData" }}
 
@@ -38,10 +54,10 @@
 
         <!-- 1. Single entry form at the top -->
         <div class="entry-form-section">
-            <h3>➕ افزودن کالا</h3>
+            <h3><i class="fas fa-plus-circle" style="color:var(--primary, #8B5CF6);"></i> افزودن کالا</h3>
             <div class="entry-fields">
                 <div class="form-group">
-                    <label>نام کالا *</label>
+                    <label for="entryProductName">نام کالا *</label>
                     <div class="autocomplete-wrap">
                         <input type="text" id="entryProductName" class="form-control ac-input"
                                placeholder="جستجو یا نام کالا..."
@@ -54,7 +70,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>دسته‌بندی (مرور کالاها)</label>
+                    <label for="entryCategorySelect">دسته‌بندی (مرور کالاها)</label>
                     <div class="autocomplete-wrap">
                         <select id="entryCategorySelect" class="form-control" onchange="onEntryCategorySelect(this)">
                             <option value="">انتخاب دسته‌بندی...</option>
@@ -68,18 +84,18 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>مقدار *</label>
-                    <input type="number" id="entryQuantity" class="form-control" step="0.01" placeholder="0"
+                    <label for="entryQuantity">مقدار *</label>
+                    <input type="number" id="entryQuantity" class="form-control ui-num" step="0.01" placeholder="0"
                            onkeydown="if(event.key==='Enter'){event.preventDefault();addItemToList();}">
                 </div>
                 <div class="form-group">
-                    <label>واحد</label>
+                    <label for="entryUnit">واحد</label>
                     <select id="entryUnit" class="form-control"
                             {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}disabled{% endif %}></select>
                 </div>
             </div>
             <div class="form-group entry-description">
-                <label>توضیحات</label>
+                <label for="entryDescription">توضیحات</label>
                 <textarea id="entryDescription" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
             </div>
             <div id="entryStockHint" class="entry-stock-hint" style="display:none;"></div>
@@ -91,7 +107,7 @@
 
         <!-- 2. Items table -->
         <div class="items-table-section">
-            <h3>📋 کالاهای افزوده شده</h3>
+            <h3><i class="fas fa-list-ul" style="color:var(--primary, #8B5CF6);"></i> کالاهای افزوده شده</h3>
             <div class="table-wrap">
                 <table class="items-table">
                     <thead>
@@ -115,8 +131,8 @@
 
         <!-- 4. Action buttons -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
             <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+            <button type="submit" class="btn btn-primary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
         </div>
     </form>
 </div>
@@ -126,11 +142,11 @@
     <div class="modal-box">
         <h3>➕ افزودن کالای جدید</h3>
         <div class="modal-field">
-            <label>نام کالا *</label>
+            <label for="newProductName">نام کالا *</label>
             <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
         </div>
         <div class="modal-field">
-            <label>واحد</label>
+            <label for="newProductUnit">واحد</label>
             <select id="newProductUnit">
                 <option value="عدد">عدد</option>
                 <option value="کیلوگرم">کیلوگرم</option>
@@ -146,13 +162,13 @@
             </select>
         </div>
         <div class="modal-field">
-            <label>توضیحات *</label>
+            <label for="newProductDescription">توضیحات *</label>
             <textarea id="newProductDescription" rows="3" placeholder="توضیحات را وارد کنید..."></textarea>
             <div class="modal-err" id="newProductErr"></div>
         </div>
         <div class="modal-actions">
-            <button class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
-            <button class="modal-btn-cancel" onclick="closeAddProductModal()">انصراف</button>
+            <button type="button" class="modal-btn-cancel" onclick="closeAddProductModal()">انصراف</button>
+            <button type="button" class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
         </div>
     </div>
 </div>

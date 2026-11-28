@@ -3,65 +3,102 @@
 
 {% block title %}{% if department %}ویرایش بخش{% else %}تعریف بخش جدید{% endif %} - Kuker{% endblock %}
 
+{% block extra_css %}
+<style>
+.ui-check-card {
+    background: var(--gray-50, #F8FAFC);
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+}
+.ui-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--text-primary, #0F172A);
+    margin: 0;
+}
+.ui-check-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary, #8B5CF6);
+    cursor: pointer;
+    margin: 0;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="ui-form-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-building"></i></div>
-            <div>
-                <h1 class="ph-title">{% if department %}ویرایش بخش{% else %}تعریف بخش جدید{% endif %}</h1>
-                <p class="page-sub">{% if department %}اطلاعات بخش را ویرایش کنید{% else %}بخش جدیدی برای کاربران درخواست‌دهنده تعریف کنید{% endif %}</p>
-            </div>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-building" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if department %}ویرایش بخش{% else %}تعریف بخش جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if department %}اطلاعات بخش را ویرایش کنید{% else %}بخش جدیدی برای کاربران درخواست‌دهنده تعریف کنید{% endif %}
+            </p>
         </div>
-        <a href="{% url 'department_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
     {% if error %}
-    <div style="background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;padding:0.85rem 1.1rem;border-radius:12px;margin-bottom:1rem;font-size:0.86rem;font-weight:600;">
-        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+    <div class="ui-banner is-danger">
+        <i class="fas fa-exclamation-triangle" style="margin-top:2px;"></i>
+        <span>{{ error }}</span>
     </div>
     {% endif %}
 
     <form method="POST" class="ui-form-card">
         {% csrf_token %}
 
-        <div class="form-group">
-            <label for="name" class="form-label">نام بخش <span style="color:var(--danger);">*</span></label>
-            <input type="text" id="name" name="name" class="form-control"
-                   value="{% if department %}{{ department.name }}{% endif %}"
-                   placeholder="مثلاً: آشپزخانه، بار، کانتر، انبار..." required>
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:0.35rem;">این نام در فرم کاربران و در فیلتر بخش درخواست‌ها نمایش داده می‌شود.</div>
-            {% if cafe %}
-            <div style="font-size:0.78rem;color:var(--primary-dark);margin-top:0.25rem;font-weight:600;">
-                🏠 این بخش برای کافه «{{ cafe.name }}» ثبت می‌شود.
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="name" class="ui-field-label">نام بخش <span style="color:var(--ui-danger);">*</span></label>
+                <input type="text" id="name" name="name" class="ui-input"
+                       value="{% if department %}{{ department.name }}{% endif %}"
+                       placeholder="مثلاً: آشپزخانه، بار، کانتر، انبار..." required>
+                <span class="ui-field-hint">این نام در فرم کاربران و در فیلتر بخش درخواست‌ها نمایش داده می‌شود.</span>
+                {% if cafe %}
+                <span class="ui-field-hint" style="color:var(--primary-dark);font-weight:700;">
+                    <i class="fas fa-store"></i> این بخش برای کافه «{{ cafe.name }}» ثبت می‌شود.
+                </span>
+                {% endif %}
             </div>
-            {% endif %}
+
+            <div class="ui-check-card">
+                <label for="is_active" class="ui-check-label">
+                    <input type="checkbox" id="is_active" name="is_active"
+                           {% if not department or department.is_active %}checked{% endif %}>
+                    <span>بخش فعال باشد</span>
+                </label>
+                <div class="ui-field-hint" style="margin-top:0.35rem;">با غیرفعال کردن، بخش در فهرست‌ها نمایش داده نمی‌شود ولی حذف نمی‌شود.</div>
+            </div>
+
+            <div class="ui-check-card">
+                <label for="is_recipe_department" class="ui-check-label">
+                    <input type="checkbox" id="is_recipe_department" name="is_recipe_department"
+                           {% if department and department.is_recipe_department %}checked{% endif %}>
+                    <span>بخش دارای رسپی (آشپزخانه و بار)</span>
+                </label>
+                <div class="ui-field-hint" style="margin-top:0.35rem;">اگر فعال باشد، کالاهای «عمومی آشپزخانه و بار» برای این بخش قابل درخواست هستند و در غیر این صورت کالاهای «عمومی سایر بخش‌ها» نمایش داده می‌شوند.</div>
+            </div>
         </div>
 
-        <div class="form-group" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:0.85rem 1rem;">
-            <label for="is_active" style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:700;font-size:0.88rem;color:var(--dark);margin:0;">
-                <input type="checkbox" id="is_active" name="is_active" style="width:18px;height:18px;accent-color:var(--primary);"
-                       {% if not department or department.is_active %}checked{% endif %}>
-                بخش فعال باشد
-            </label>
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:0.35rem;">با غیرفعال کردن، بخش در فهرست‌ها نمایش داده نمی‌شود ولی حذف نمی‌شود.</div>
-        </div>
-
-        <div class="form-group" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:0.85rem 1rem;">
-            <label for="is_recipe_department" style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-weight:700;font-size:0.88rem;color:var(--dark);margin:0;">
-                <input type="checkbox" id="is_recipe_department" name="is_recipe_department" style="width:18px;height:18px;accent-color:var(--primary);"
-                       {% if department and department.is_recipe_department %}checked{% endif %}>
-                بخش دارای رسپی (آشپزخانه و بار)
-            </label>
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:0.35rem;">اگر فعال باشد، کالاهای «عمومی آشپزخانه و بار» برای این بخش قابل درخواست هستند و در غیر این صورت کالاهای «عمومی سایر بخش‌ها» نمایش داده می‌شوند.</div>
-        </div>
-
-        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--gray-100);">
-            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-check"></i> {% if department %}ذخیره تغییرات{% else %}ایجاد بخش{% endif %}
+        <div class="ui-form-actions">
+            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>{% if department %}ذخیره تغییرات{% else %}ایجاد بخش{% endif %}</span>
             </button>
         </div>
     </form>

@@ -6,42 +6,65 @@
 {% block extra_css %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <style>
-    .dashboard-grid {
+    .md-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 2rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 1.2rem;
     }
 
-    .chart-container { position: relative; height: 350px; }
-
-    .period-filter {
-        display: flex; gap: 0.5rem; margin-bottom: 1rem;
-    }
-    .period-btn {
-        padding: 0.5rem 1rem; border: 1px solid var(--border-color);
-        border-radius: var(--radius-md); background: white; cursor: pointer;
-        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 500;
-        transition: all 0.2s;
-    }
-    .period-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
-    .period-btn.active {
-        background: var(--primary-color); color: white; border-color: var(--primary-color);
+    .chart-container {
+        position: relative;
+        height: 350px;
     }
 
-    .list-container { }
+    .list-container {
+        display: flex;
+        flex-direction: column;
+    }
+
     .list-item {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 1rem 0; border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 0;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
-    .list-item:last-child { border-bottom: none; }
-    .list-item-title { font-weight: 600; color: var(--dark-color); }
-    .list-item-subtitle { font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem; }
-    .loading { text-align: center; padding: 2rem; color: #6b7280; }
+
+    .list-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .list-item:first-child {
+        padding-top: 0;
+    }
+
+    .list-item-title {
+        font-weight: 700;
+        color: var(--text-primary, #0F172A);
+        font-size: 0.88rem;
+    }
+
+    .list-item-subtitle {
+        font-size: 0.78rem;
+        color: var(--text-secondary, #64748B);
+        margin-top: 0.2rem;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted, #94A3B8);
+    }
 
     @media (max-width: 768px) {
-        .dashboard-grid { grid-template-columns: 1fr; gap: 1rem; }
-        .chart-container { height: 250px; }
+        .md-grid {
+            grid-template-columns: 1fr;
+        }
+        .chart-container {
+            height: 260px;
+        }
     }
 
     /* Hide date and logout in header on mobile for CEO users only */
@@ -54,79 +77,86 @@
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="page-header{% if user.role == 'ceo' %} ceo-header{% endif %}">
-    <h1 class="page-title">
-        <i class="fas fa-chart-bar"></i>
-        داشبورد مدیریت
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
+<div class="ui-page is-wide">
+    <!-- Top Header -->
+    <header class="ui-topbar{% if user.role == 'ceo' %} ceo-header{% endif %}">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-bar" style="color: var(--primary, #8B5CF6);"></i>
+                داشبورد مدیریت
+            </h1>
+            <p class="ui-subtitle">
+                <span>پایش هزینه‌های دسته‌بندی‌ها و تغییرات قیمت اقلام</span>
+            </p>
         </div>
-        <a href="{% url 'logout' %}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>خروج</span>
-        </a>
-    </div>
-</div>
+        <div class="ui-topbar-actions header-actions">
+            <span class="ui-chip">
+                <i class="fas fa-calendar-alt" style="color: var(--primary, #8B5CF6);"></i>
+                <span id="persianDate"></span>
+            </span>
+            <a href="{% url 'logout' %}" class="ui-btn ui-btn-danger-soft">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>خروج</span>
+            </a>
+        </div>
+    </header>
 
-<!-- Dashboard Grid -->
-<div class="dashboard-grid">
-    <!-- Category Expenses Chart -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <i class="fas fa-chart-pie"></i>
-                هزینه‌ها به تفکیک دسته‌بندی
-            </div>
-            <div class="period-filter" style="margin-top:0.75rem;">
-                <button class="period-btn active" data-period="monthly" onclick="changePeriod('monthly')">ماهیانه</button>
-                <button class="period-btn" data-period="seasonal" onclick="changePeriod('seasonal')">فصلی</button>
-                <button class="period-btn" data-period="yearly" onclick="changePeriod('yearly')">سالانه</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="chart-container">
-                <canvas id="categoryChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Price Increases -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <i class="fas fa-arrow-trend-up"></i>
-                بالاترین رشد قیمت محصولات
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="list-container" id="priceIncreasesList">
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
+    <!-- Dashboard Grid -->
+    <div class="md-grid">
+        <!-- Category Expenses Chart -->
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    هزینه‌ها به تفکیک دسته‌بندی
+                </h2>
+                <div class="ui-segmented" role="group" aria-label="بازه زمانی">
+                    <button type="button" class="ui-seg-item period-btn active is-active" data-period="monthly" onclick="changePeriod('monthly')">ماهیانه</button>
+                    <button type="button" class="ui-seg-item period-btn" data-period="seasonal" onclick="changePeriod('seasonal')">فصلی</button>
+                    <button type="button" class="ui-seg-item period-btn" data-period="yearly" onclick="changePeriod('yearly')">سالانه</button>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
+            <div class="ui-card-body">
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </section>
 
-<!-- Supplier Debts -->
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">
-            <i class="fas fa-money-bill-wave"></i>
-            بدهی به تامین‌کنندگان
-        </div>
+        <!-- Top Price Increases -->
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-arrow-trend-up"></i>
+                    بالاترین رشد قیمت محصولات
+                </h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="list-container" id="priceIncreasesList">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>این بخش در حال توسعه است</p>
-            <small>به زودی اطلاعات بدهی تامین‌کنندگان در اینجا نمایش داده خواهد شد</small>
+
+    <!-- Supplier Debts -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-money-bill-wave"></i>
+                بدهی به تامین‌کنندگان
+            </h2>
         </div>
-    </div>
+        <div class="ui-card-body">
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <p style="margin:0 0 0.35rem; font-weight:700; color:var(--text-primary, #0F172A);">این بخش در حال توسعه است</p>
+                <small>به زودی اطلاعات بدهی تامین‌کنندگان در اینجا نمایش داده خواهد شد</small>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
@@ -171,9 +201,10 @@
     function changePeriod(period) {
         currentPeriod = period;
         document.querySelectorAll('.period-btn').forEach(btn => {
-            btn.classList.remove('active');
+            btn.classList.remove('active', 'is-active');
         });
-        document.querySelector(`[data-period="${period}"]`).classList.add('active');
+        const targetBtn = document.querySelector(`[data-period="${period}"]`);
+        if (targetBtn) targetBtn.classList.add('active', 'is-active');
         loadCategoryExpenses();
         loadPriceIncreases();
     }
@@ -192,9 +223,9 @@
         if (categoryChartInstance) { categoryChartInstance.destroy(); }
         if (!data.categories || data.categories.length === 0) {
             ctx.parentElement.innerHTML = `
-                <div class="empty-state">
+                <div class="ui-empty">
                     <i class="fas fa-chart-pie"></i>
-                    <p>داده‌ای برای نمایش وجود ندارد</p>
+                    <p style="margin:0;">داده‌ای برای نمایش وجود ندارد</p>
                 </div>`;
             return;
         }
@@ -268,7 +299,7 @@
         .then(data => { renderPriceIncreases(data); })
         .catch(error => {
             console.error('Error loading price increases:', error);
-            container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>`;
+            container.innerHTML = `<div class="ui-empty"><i class="fas fa-exclamation-triangle"></i><p style="margin:0;">خطا در بارگذاری داده‌ها</p></div>`;
         });
     }
 
@@ -284,16 +315,16 @@
     function renderPriceIncreases(data) {
         const container = document.getElementById('priceIncreasesList');
         if (!data.products || data.products.length === 0) {
-            container.innerHTML = `<div class="empty-state"><i class="fas fa-chart-line"></i><p>تغییر قیمتی یافت نشد</p><small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small></div>`;
+            container.innerHTML = `<div class="ui-empty"><i class="fas fa-chart-line"></i><p style="margin:0 0 0.3rem;">تغییر قیمتی یافت نشد</p><small>در این بازه زمانی تغییر قیمت قابل توجهی ثبت نشده است</small></div>`;
             return;
         }
         container.innerHTML = data.products.map((product, index) => `
             <div class="list-item">
                 <div class="list-item-content">
                     <div class="list-item-title">${index + 1}. ${escapeHtml(product.name)}</div>
-                    <div class="list-item-subtitle">قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} ریال → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} ریال</div>
+                    <div class="list-item-subtitle ui-num">قیمت قبلی: ${toFarsiNumber(formatNumber(Math.round(product.old_price)))} ریال → قیمت جدید: ${toFarsiNumber(formatNumber(Math.round(product.new_price)))} ریال</div>
                 </div>
-                <div><div class="badge badge-danger"><i class="fas fa-arrow-up"></i> ${toFarsiNumber(product.increase_percentage.toFixed(1))}%</div></div>
+                <div><span class="ui-pill is-danger ui-num"><i class="fas fa-arrow-up"></i> ${toFarsiNumber(product.increase_percentage.toFixed(1))}%</span></div>
             </div>
         `).join('');
     }

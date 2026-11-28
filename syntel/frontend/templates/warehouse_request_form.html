@@ -5,61 +5,6 @@
 
 {% block extra_css %}
 <style>
-    .page-container { max-width: 900px; margin: 0 auto; }
-
-    .page-header {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-3xl); box-shadow: var(--shadow-sm);
-        min-height: 58px; padding: var(--space-3) var(--space-6);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);
-        display: flex; align-items: center; justify-content: space-between;
-    }
-    .page-header h1 {
-        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
-        margin: 0; display: flex; align-items: center; gap: 0.5rem;
-    }
-    .page-header h1 i { color: var(--accent-indigo); }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-
-    .user-badge {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        background: rgba(139,92,246,0.08); color: #6d28d9;
-        padding: 0.3rem 0.85rem; border-radius: 999px;
-        font-size: 0.74rem; font-weight: 700; white-space: nowrap;
-    }
-
-    .info-box {
-        background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.18);
-        border-radius: var(--radius-lg); padding: 0.85rem 1.1rem;
-        margin-bottom: var(--space-4); font-size: 0.8rem; color: #5b21b6;
-        display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.8;
-    }
-    .info-box i { margin-top: 0.25rem; color: var(--accent-indigo); }
-
-    /* ── Entry Form ── */
-    .entry-form-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-        padding: var(--space-5);
-        margin-bottom: var(--space-4);
-    }
-
-    .entry-form-section h3 {
-        font-size: 0.92rem;
-        color: var(--text-primary);
-        margin-bottom: var(--space-4);
-        font-weight: 800;
-        display: flex; align-items: center; gap: 0.45rem;
-    }
-    .entry-form-section h3 i { color: var(--accent-indigo); }
-
     .entry-fields {
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
@@ -69,290 +14,111 @@
         .entry-fields { grid-template-columns: 1fr; }
     }
 
-    .entry-description {
-        margin-top: 0.75rem;
-    }
+    .entry-description { margin-top: 0.75rem; }
+    .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.85rem; flex-wrap: wrap; }
 
-    .entry-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-    }
-
-    .btn-add {
-        background: var(--accent-green, #22C55E);
-        color: white;
-        padding: 0.45rem 1.3rem;
-        border: none;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        cursor: pointer;
-        font-family: 'Vazir', sans-serif;
-        transition: background .15s, transform .15s;
-        display: inline-flex; align-items: center; gap: 0.35rem;
-    }
-    .btn-add:hover { background: #16A34A; }
-    .btn-add:active { transform: scale(.98); }
-    .btn-add:disabled { background: #86efac; cursor: not-allowed; }
-
-    .btn-cancel-edit {
-        background: var(--bg-subtle);
-        color: var(--text-secondary);
-        padding: 0.45rem 1rem;
-        border: 1.5px solid var(--border-default);
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: 'Vazir', sans-serif;
-        transition: all .15s;
-    }
-    .btn-cancel-edit:hover { border-color: #EF4444; color: #EF4444; background: #fff; }
-
-    /* ── Items Table ── */
-    .items-table-section {
-        margin-bottom: var(--space-4);
-    }
-
-    .items-table-section h3 {
-        font-size: 0.92rem;
-        color: var(--text-primary);
-        margin-bottom: 0.75rem;
-        font-weight: 800;
-        display: flex; align-items: center; gap: 0.45rem;
-    }
-    .items-table-section h3 i { color: var(--accent-indigo); }
-
-    .table-wrap {
-        overflow-x: auto;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-    }
-
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.84rem;
-    }
-
-    .items-table th {
-        background: var(--bg-subtle);
-        color: var(--text-muted);
-        font-weight: 700;
-        padding: 0.625rem 0.75rem;
-        text-align: right;
-        border-bottom: 2px solid var(--border-light);
-        white-space: nowrap;
-        font-size: 0.74rem;
-    }
-
-    .items-table td {
-        padding: 0.625rem 0.75rem;
-        color: var(--text-secondary);
-        border-bottom: 1px solid var(--border-light);
-        vertical-align: middle;
-    }
-
-    .items-table tr:last-child td { border-bottom: none; }
-    .items-table tr:hover td { background: var(--bg-subtle); }
-
-    .items-table .col-num {
-        text-align: center;
-        width: 40px;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
-
-    .items-table .col-qty {
-        text-align: center;
-        width: 80px;
-        font-weight: 700;
-        direction: ltr;
-    }
-
-    .items-table .col-unit {
-        text-align: center;
-        width: 70px;
-    }
-
-    .items-table .col-actions {
-        text-align: center;
-        width: 80px;
-        white-space: nowrap;
-    }
-
-    .items-table .col-desc {
-        max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: var(--text-muted);
-        font-size: 0.78rem;
-    }
+    .items-table .col-num { text-align: center; width: 42px; color: var(--text-muted); font-weight: 600; }
+    .items-table .col-qty { text-align: center; width: 85px; font-weight: 700; direction: ltr; font-variant-numeric: tabular-nums; }
+    .items-table .col-unit { text-align: center; width: 75px; }
+    .items-table .col-actions { text-align: center; width: 88px; white-space: nowrap; }
+    .items-table .col-desc { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 0.78rem; }
 
     .action-icon-btn {
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 0.95rem;
-        padding: 0.3rem 0.45rem;
-        border-radius: var(--radius-sm);
-        transition: background .15s;
-        font-family: 'Vazir', sans-serif;
-        vertical-align: middle;
+        background: transparent; border: none; cursor: pointer; font-size: 0.92rem;
+        padding: 0.32rem 0.48rem; border-radius: 8px; transition: background 0.15s ease;
+        font-family: 'Vazir', sans-serif; vertical-align: middle;
     }
-    .action-icon-btn:hover { background: var(--bg-subtle); }
-    .action-icon-btn.edit-btn { color: #059669; }
-    .action-icon-btn.delete-btn { color: #dc2626; }
-    .action-icon-btn.edit-btn:hover { background: #ecfdf5; }
-    .action-icon-btn.delete-btn:hover { background: #fef2f2; }
-
-    .empty-state {
-        text-align: center;
-        padding: 2rem 1rem;
-        color: var(--text-muted);
-        font-size: 0.84rem;
-        border: 1px dashed var(--border-strong);
-        border-radius: var(--radius-lg);
-        margin-top: 0.5rem;
-    }
-
-    /* ── Reused existing styles ── */
-    .form-group { display: flex; flex-direction: column; }
-    .form-group label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: .3rem; font-weight: 700; }
-
-    .form-control, select {
-        width: 100%; padding: .5rem .75rem; border: 1.5px solid var(--border-default); border-radius: var(--radius-md);
-        font-size: .84rem; font-family: 'Vazir', sans-serif; transition: border-color .2s, box-shadow .2s;
-        background: var(--bg-card); color: var(--text-primary);
-    }
-    .form-control:focus, select:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-    textarea.form-control { resize: vertical; min-height: 60px; }
+    .action-icon-btn.edit-btn { color: var(--ui-ok, #047857); }
+    .action-icon-btn.delete-btn { color: var(--ui-danger, #DC2626); }
+    .action-icon-btn.edit-btn:hover { background: var(--ui-ok-bg, #ECFDF5); }
+    .action-icon-btn.delete-btn:hover { background: var(--ui-danger-bg, #FEF2F2); }
 
     /* ── autocomplete ── */
     .autocomplete-wrap { position: relative; }
     .autocomplete-dropdown {
         position: absolute; top: 100%; right: 0; left: 0; z-index: 999;
-        background: var(--bg-card); border: 1px solid var(--border-default); border-top: none;
-        border-radius: 0 0 var(--radius-lg) var(--radius-lg); max-height: 200px; overflow-y: auto;
-        box-shadow: var(--shadow-lg); display: none;
+        background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0); border-top: none;
+        border-radius: 0 0 12px 12px; max-height: 220px; overflow-y: auto;
+        box-shadow: 0 12px 28px rgba(15,23,42,0.12); display: none;
     }
     .autocomplete-dropdown.open { display: block; }
     .ac-item {
         padding: 8px 12px; font-size: 13px; cursor: pointer;
-        border-bottom: 1px solid var(--border-light); transition: background .1s;
+        border-bottom: 1px solid var(--border-light, #F1F5F9); transition: background .1s;
     }
     .ac-item:last-child { border-bottom: none; }
-    .ac-item:hover, .ac-item.highlighted { background: rgba(139,92,246,0.06); }
-    .ac-item .ac-name { font-weight: 600; color: var(--text-primary); }
-    .ac-item .ac-cat  { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+    .ac-item:hover, .ac-item.highlighted { background: var(--ui-hover-row, #FAF9FF); }
+    .ac-item .ac-name { font-weight: 700; color: var(--text-primary, #0F172A); }
+    .ac-item .ac-cat  { color: var(--text-muted, #94A3B8); font-size: 11px; margin-top: 2px; }
     .ac-item.ac-add-new {
-        color: var(--accent-green); font-weight: 600; border-top: 1px solid var(--border-light); background: rgba(34,197,94,0.05);
+        color: var(--ui-ok, #047857); font-weight: 700; border-top: 1px solid var(--border-light, #F1F5F9);
+        background: var(--ui-ok-bg, #ECFDF5);
     }
-    .ac-item.ac-add-new:hover { background: rgba(34,197,94,0.1); }
+    .ac-item.ac-add-new:hover { background: #D1FAE5; }
 
-    /* ── form actions ── */
-    .form-actions { display: flex; gap: .6rem; justify-content: center; padding-top: var(--space-3); flex-wrap: wrap; }
-    .btn {
-        padding: .6rem 1.8rem; border-radius: 999px; font-size: .8rem; font-weight: 700;
-        cursor: pointer; transition: all .2s; border: none; font-family: 'Vazir', sans-serif;
-        text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;
-    }
-    .btn-primary   { background: var(--accent-green, #22C55E); color: white; }
-    .btn-primary:hover { background: #16A34A; }
-    .btn-secondary { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
-    .btn-secondary:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-
-    /* ── add-product modal ── */
-    .modal-overlay {
-        display: none; position: fixed; inset: 0; z-index: 2000;
-        background: rgba(15,23,42,.45); align-items: center; justify-content: center;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal-box {
-        background: var(--bg-card); border-radius: var(--radius-2xl); padding: 24px;
-        width: min(440px, 94vw); box-shadow: var(--shadow-xl);
-    }
-    .modal-box h3 { font-size: 16px; margin-bottom: 8px; color: var(--text-primary); font-weight: 800; display: flex; align-items: center; gap: 0.45rem; }
-    .modal-box h3 i { color: var(--accent-indigo); }
-    .modal-hint { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; line-height: 1.7; }
-    .modal-field  { margin-bottom: 14px; }
-    .modal-field label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; }
-    .modal-field input, .modal-field select, .modal-field textarea {
-        width: 100%; padding: 9px 12px; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-size: 14px; font-family: Vazir, sans-serif;
-        box-sizing: border-box;
-    }
-    .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-    .modal-btn-save {
-        flex: 1; padding: 10px; background: var(--accent-green, #22C55E); color: white; border: none;
-        border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: Vazir, sans-serif;
-        transition: background .15s;
-    }
-    .modal-btn-save:hover { background: #16A34A; }
-    .modal-btn-cancel {
-        padding: 10px 20px; background: var(--bg-subtle); color: var(--text-secondary); border: 1.5px solid var(--border-default);
-        border-radius: 999px; font-size: 14px; cursor: pointer; font-family: Vazir, sans-serif;
-    }
-    .modal-err { color: #dc2626; font-size: 13px; margin-top: 6px; }
+    .modal-err { color: var(--ui-danger, #DC2626); font-size: 0.78rem; font-weight: 600; margin-top: 4px; }
 
     /* ── stock hint ── */
-    .entry-stock-hint { margin-top: 8px; font-size: 13px; }
-    .entry-stock-hint.ok { color: #047857; }
-    .entry-stock-hint.warn { color: #b45309; }
-    .entry-stock-hint.err { color: #b91c1c; }
-    .row-stock-line { margin-top: 4px; font-size: 12px; }
-    .row-stock-line.ok { color: #047857; }
-    .row-stock-line.warn { color: #b45309; }
+    .entry-stock-hint { margin-top: 0.6rem; font-size: 0.8rem; font-weight: 600; }
+    .entry-stock-hint.ok { color: var(--ui-ok, #047857); }
+    .entry-stock-hint.warn { color: var(--ui-warn, #B45309); }
+    .entry-stock-hint.err { color: var(--ui-danger-dark, #B91C1C); }
+    .row-stock-line { margin-top: 4px; font-size: 12px; font-weight: 600; }
+    .row-stock-line.ok { color: var(--ui-ok, #047857); }
+    .row-stock-line.warn { color: var(--ui-warn, #B45309); }
     .row-stock-line .alt-btn {
-        background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
-        border-radius: 6px; padding: 2px 10px; font-size: 12px; cursor: pointer;
-        margin-right: 6px; font-family: Vazir, sans-serif;
+        background: var(--ui-warn-bg, #FFFBEB); border: 1px solid var(--ui-warn-border, #FDE68A);
+        color: var(--ui-warn, #B45309); border-radius: 6px; padding: 2px 10px;
+        font-size: 12px; cursor: pointer; margin-right: 6px; font-family: 'Vazir', sans-serif;
     }
-    .row-stock-line .alt-btn:hover { background: #fde68a; }
+    .row-stock-line .alt-btn:hover { background: #FDE68A; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-clipboard-list"></i></div>
-            <h1>ثبت درخواست از انبار</h1>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">ثبت درخواست از انبار</h1>
+            <div class="ui-subtitle">
+                <span>ثبت اقلام مورد نیاز بخش برای بررسی توسط انبار</span>
+            </div>
         </div>
-        <div class="user-badge"><i class="fas fa-user"></i> {{ user.get_role_display }}</div>
-    </div>
+        <div class="ui-topbar-actions">
+            <span class="ui-pill is-accent"><i class="fas fa-user"></i> {{ user.get_role_display }}</span>
+        </div>
+    </header>
 
-    <div class="info-box">
-        <i class="fas fa-circle-info"></i>
+    <div class="ui-banner is-info">
+        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
         <span><strong>راهنما:</strong> از طریق این فرم می‌توانید درخواست کالا از انبار ثبت نمایید. ابتدا کالاهای مورد نیاز را به لیست اضافه کرده، سپس فرم را ارسال کنید. درخواست شما توسط مسئول انبار/خرید بررسی خواهد شد.</span>
     </div>
 
     {% if messages %}
     {% for message in messages %}
-    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:.75rem;margin-bottom:1rem;color:#92400e;">
-        {{ message }}
+    <div class="ui-banner is-warn">
+        <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
+        <span>{{ message }}</span>
     </div>
     {% endfor %}
     {% endif %}
 
     {% include 'partials/receipt_gate_banner.html' %}
 
-    <form method="post" id="warehouseRequestForm">
+    <form method="post" id="warehouseRequestForm" style="display:flex;flex-direction:column;gap:1.1rem;">
         {% csrf_token %}
         {{ submitted_items|json_script:"submittedItemsData" }}
 
         <!-- 1. Single entry form at the top -->
-        <div class="entry-form-section">
-            <h3><i class="fas fa-plus-circle"></i> افزودن کالا</h3>
+        <section class="ui-form-card entry-form-section" style="margin-bottom:0;">
+            <div class="ui-card-title" style="margin-bottom:0.95rem;">
+                <i class="fas fa-plus-circle"></i> افزودن کالا
+            </div>
             <div class="entry-fields">
-                <div class="form-group">
-                    <label>نام کالا *</label>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="entryProductName">نام کالا *</label>
                     <div class="autocomplete-wrap">
-                        <input type="text" id="entryProductName" class="form-control ac-input"
+                        <input type="text" id="entryProductName" class="ui-input ac-input"
                                placeholder="جستجو یا نام کالا..."
                                autocomplete="off"
                                oninput="onAcInput(this)"
@@ -361,33 +127,35 @@
                         <div class="autocomplete-dropdown" id="entryAcDrop"></div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>مقدار *</label>
-                    <input type="number" id="entryQuantity" class="form-control" step="0.01" placeholder="0"
+                <div class="ui-field">
+                    <label class="ui-field-label" for="entryQuantity">مقدار *</label>
+                    <input type="number" id="entryQuantity" class="ui-input" step="0.01" placeholder="0"
                            onkeydown="if(event.key==='Enter'){event.preventDefault();addItemToList();}">
                 </div>
-                <div class="form-group">
-                    <label>واحد</label>
-                    <select id="entryUnit" class="form-control"
+                <div class="ui-field">
+                    <label class="ui-field-label" for="entryUnit">واحد</label>
+                    <select id="entryUnit" class="ui-select"
                             {% if user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}disabled{% endif %}></select>
                 </div>
             </div>
-            <div class="form-group entry-description">
-                <label>توضیحات</label>
-                <textarea id="entryDescription" class="form-control" rows="2" placeholder="توضیحات اختیاری..."></textarea>
+            <div class="ui-field entry-description">
+                <label class="ui-field-label" for="entryDescription">توضیحات</label>
+                <textarea id="entryDescription" class="ui-textarea" rows="2" placeholder="توضیحات اختیاری..." style="min-height:68px;"></textarea>
             </div>
             <div id="entryStockHint" class="entry-stock-hint" style="display:none;"></div>
             <div class="entry-actions">
-                <button type="button" class="btn-add" id="addToListBtn" onclick="addItemToList()"><i class="fas fa-plus"></i> افزودن</button>
-                <button type="button" class="btn-cancel-edit" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">انصراف</button>
+                <button type="button" class="ui-btn ui-btn-success" id="addToListBtn" onclick="addItemToList()"><i class="fas fa-plus"></i> افزودن</button>
+                <button type="button" class="ui-btn ui-btn-ghost" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">انصراف</button>
             </div>
-        </div>
+        </section>
 
         <!-- 2. Items table -->
-        <div class="items-table-section">
-            <h3><i class="fas fa-list-check"></i> کالاهای افزوده شده</h3>
-            <div class="table-wrap">
-                <table class="items-table">
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-list-check"></i> کالاهای افزوده شده</h2>
+            </div>
+            <div class="ui-table-scroll">
+                <table class="ui-table items-table">
                     <thead>
                         <tr>
                             <th class="col-num">#</th>
@@ -401,53 +169,58 @@
                     <tbody id="itemsTableBody"></tbody>
                 </table>
             </div>
-            <div class="empty-state" id="emptyState">هنوز کالایی اضافه نشده است. فرم بالا را پر کرده و دکمه «افزودن» را بزنید.</div>
-        </div>
+            <div class="ui-empty" id="emptyState">هنوز کالایی اضافه نشده است. فرم بالا را پر کرده و دکمه «افزودن» را بزنید.</div>
+        </section>
 
         <!-- 3. Hidden fields for POST submission -->
         <div id="hiddenFieldsContainer"></div>
 
         <!-- 4. Action buttons -->
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ثبت نهایی</button>
-            <button type="submit" class="btn btn-secondary" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
-            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
+        <div class="ui-form-actions" style="justify-content:center;border-top:none;padding-top:0;">
+            <button type="submit" class="ui-btn ui-btn-success is-lg" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ثبت نهایی</button>
+            <button type="submit" class="ui-btn ui-btn-primary is-lg" {% if receipt_gate %}disabled title="ابتدا دریافت کالاهای قبلی را تایید کنید"{% endif %}>ارسال</button>
+            <a href="{% url 'mobile_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost is-lg">انصراف</a>
         </div>
     </form>
 </div>
 
 <!-- Add new product modal -->
-<div class="modal-overlay" id="addProductModal">
-    <div class="modal-box">
-        <h3><i class="fas fa-plus-circle"></i> افزودن کالای جدید</h3>
-        <div class="modal-field">
-            <label>نام کالا *</label>
-            <input type="text" id="newProductName" placeholder="نام کالا را وارد کنید...">
+<div class="ui-modal-backdrop" id="addProductModal">
+    <div class="ui-modal is-narrow">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title"><i class="fas fa-plus-circle" style="color:var(--ui-ok)"></i> افزودن کالای جدید</h3>
+            <button type="button" class="ui-modal-close" onclick="closeAddProductModal()" aria-label="بستن"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-field">
-            <label>واحد</label>
-            <select id="newProductUnit">
-                <option value="عدد">عدد</option>
-                <option value="کیلوگرم">کیلوگرم</option>
-                <option value="گرم">گرم</option>
-                <option value="لیتر">لیتر</option>
-                <option value="بسته">بسته</option>
-                <option value="کارتن">کارتن</option>
-                <option value="جعبه">جعبه</option>
-                <option value="شیشه">شیشه</option>
-                <option value="قوطی">قوطی</option>
-                <option value="بطری">بطری</option>
-                <option value="پاکت">پاکت</option>
-            </select>
+        <div class="ui-modal-body">
+            <div class="ui-field">
+                <label class="ui-field-label" for="newProductName">نام کالا *</label>
+                <input type="text" id="newProductName" class="ui-input" placeholder="نام کالا را وارد کنید...">
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label" for="newProductUnit">واحد</label>
+                <select id="newProductUnit" class="ui-select">
+                    <option value="عدد">عدد</option>
+                    <option value="کیلوگرم">کیلوگرم</option>
+                    <option value="گرم">گرم</option>
+                    <option value="لیتر">لیتر</option>
+                    <option value="بسته">بسته</option>
+                    <option value="کارتن">کارتن</option>
+                    <option value="جعبه">جعبه</option>
+                    <option value="شیشه">شیشه</option>
+                    <option value="قوطی">قوطی</option>
+                    <option value="بطری">بطری</option>
+                    <option value="پاکت">پاکت</option>
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label" for="newProductDescription">توضیحات *</label>
+                <textarea id="newProductDescription" class="ui-textarea" rows="3" placeholder="توضیحات را وارد کنید..."></textarea>
+                <div class="modal-err" id="newProductErr"></div>
+            </div>
         </div>
-        <div class="modal-field">
-            <label>توضیحات *</label>
-            <textarea id="newProductDescription" rows="3" placeholder="توضیحات را وارد کنید..."></textarea>
-            <div class="modal-err" id="newProductErr"></div>
-        </div>
-        <div class="modal-actions">
-            <button class="modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
-            <button class="modal-btn-cancel" onclick="closeAddProductModal()">انصراف</button>
+        <div class="ui-modal-foot">
+            <button type="button" class="ui-btn ui-btn-ghost" onclick="closeAddProductModal()">انصراف</button>
+            <button type="button" class="ui-btn ui-btn-success modal-btn-save" onclick="submitNewProduct()">ذخیره و انتخاب</button>
         </div>
     </div>
 </div>

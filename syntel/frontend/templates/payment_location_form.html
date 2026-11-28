@@ -3,151 +3,143 @@
 
 {% block title %}{% if payment_location %}ویرایش روش پرداخت{% else %}ایجاد روش پرداخت{% endif %}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .plf-checks {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+    }
+    .plf-check-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: var(--gray-50, #F8FAFC);
+        padding: 0.65rem 0.9rem;
+        border-radius: 10px;
+        border: 1px solid var(--border-default, #E2E8F0);
+        cursor: pointer;
+        font-size: 0.83rem;
+        font-weight: 600;
+        color: var(--text-primary, #0F172A);
+        transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .plf-check-item:hover {
+        border-color: var(--ui-accent-border);
+        background: var(--ui-hover-row, #FAF9FF);
+    }
+    .plf-check-item input[type="checkbox"] {
+        width: 17px;
+        height: 17px;
+        accent-color: var(--primary, #8B5CF6);
+        flex-shrink: 0;
+    }
+    @media (max-width: 600px) {
+        .plf-checks { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        {% if payment_location %}ویرایش روش پرداخت{% else %}ایجاد روش پرداخت جدید{% endif %}
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
-                        </a>
+<div class="ui-page is-narrow">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-credit-card" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if payment_location %}ویرایش روش پرداخت{% else %}ایجاد روش پرداخت جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">تنظیم کد، نام و فیلدهای الزامی روش پرداخت</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> بازگشت به لیست
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-form-card">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="ui-form-section">
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="code">کد روش پرداخت *</label>
+                        <input type="text" class="ui-input ui-num" id="code" name="code" dir="ltr" style="text-align:right;"
+                               value="{% if payment_location %}{{ payment_location.code }}{% endif %}"
+                               required maxlength="20" pattern="[A-Z_]+" title="فقط حروف بزرگ و زیرخط مجاز است">
+                        <span class="ui-field-hint">کد منحصر به فرد (حروف بزرگ و زیرخط)</span>
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="name">نام روش پرداخت *</label>
+                        <input type="text" class="ui-input" id="name" name="name"
+                               value="{% if payment_location %}{{ payment_location.name }}{% endif %}" required>
                     </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="code">کد روش پرداخت *</label>
-                                    <input type="text" class="form-control" id="code" name="code" 
-                                           value="{% if payment_location %}{{ payment_location.code }}{% endif %}" 
-                                           required maxlength="20" pattern="[A-Z_]+" title="فقط حروف بزرگ و زیرخط مجاز است">
-                                    <small class="form-text text-muted">کد منحصر به فرد (حروف بزرگ و زیرخط)</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="name">نام روش پرداخت *</label>
-                                    <input type="text" class="form-control" id="name" name="name" 
-                                           value="{% if payment_location %}{{ payment_location.name }}{% endif %}" required>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="description">توضیحات</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3">{% if payment_location %}{{ payment_location.description }}{% endif %}</textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Configuration Options -->
-                        <div class="row">
-                            <div class="col-12">
-                                <h5>تنظیمات روش پرداخت</h5>
-                                <hr>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="requires_bank_info" 
-                                               name="requires_bank_info" {% if payment_location and payment_location.requires_bank_info %}checked{% endif %}>
-                                        <label class="custom-control-label" for="requires_bank_info">
-                                            نیاز به اطلاعات بانکی
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="requires_check_info" 
-                                               name="requires_check_info" {% if payment_location and payment_location.requires_check_info %}checked{% endif %}>
-                                        <label class="custom-control-label" for="requires_check_info">
-                                            نیاز به شماره چک
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="requires_card_info" 
-                                               name="requires_card_info" {% if payment_location and payment_location.requires_card_info %}checked{% endif %}>
-                                        <label class="custom-control-label" for="requires_card_info">
-                                            نیاز به اطلاعات کارت
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="requires_reference" 
-                                               name="requires_reference" {% if payment_location and payment_location.requires_reference %}checked{% endif %}>
-                                        <label class="custom-control-label" for="requires_reference">
-                                            نیاز به شماره مرجع
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="is_active" 
-                                               name="is_active" {% if not payment_location or payment_location.is_active %}checked{% endif %}>
-                                        <label class="custom-control-label" for="is_active">
-                                            فعال
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Submit Buttons -->
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> {% if payment_location %}بروزرسانی{% else %}ایجاد{% endif %} روش پرداخت
-                                </button>
-                                <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="btn btn-secondary ml-2">انصراف</a>
-                            </div>
-                        </div>
-                    </form>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="description">توضیحات</label>
+                    <textarea class="ui-textarea" id="description" name="description" rows="3">{% if payment_location %}{{ payment_location.description }}{% endif %}</textarea>
                 </div>
             </div>
-        </div>
+
+            <div class="ui-form-section">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-secondary);">تنظیمات روش پرداخت</div>
+                <div class="plf-checks">
+                    <label class="plf-check-item">
+                        <input type="checkbox" id="requires_bank_info" name="requires_bank_info"
+                               {% if payment_location and payment_location.requires_bank_info %}checked{% endif %}>
+                        <span>نیاز به اطلاعات بانکی</span>
+                    </label>
+                    <label class="plf-check-item">
+                        <input type="checkbox" id="requires_check_info" name="requires_check_info"
+                               {% if payment_location and payment_location.requires_check_info %}checked{% endif %}>
+                        <span>نیاز به شماره چک</span>
+                    </label>
+                    <label class="plf-check-item">
+                        <input type="checkbox" id="requires_card_info" name="requires_card_info"
+                               {% if payment_location and payment_location.requires_card_info %}checked{% endif %}>
+                        <span>نیاز به اطلاعات کارت</span>
+                    </label>
+                    <label class="plf-check-item">
+                        <input type="checkbox" id="requires_reference" name="requires_reference"
+                               {% if payment_location and payment_location.requires_reference %}checked{% endif %}>
+                        <span>نیاز به شماره مرجع</span>
+                    </label>
+                    <label class="plf-check-item">
+                        <input type="checkbox" id="is_active" name="is_active"
+                               {% if not payment_location or payment_location.is_active %}checked{% endif %}>
+                        <span>فعال</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="ui-form-actions">
+                <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+                <button type="submit" class="ui-btn ui-btn-primary is-lg">
+                    <i class="fas fa-save"></i> {% if payment_location %}بروزرسانی{% else %}ایجاد{% endif %} روش پرداخت
+                </button>
+            </div>
+        </form>
     </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    // Auto-generate code from name if empty
-    $('#name').on('input', function() {
-        if (!$('#code').val()) {
-            const name = $(this).val();
-            const code = name.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-            $('#code').val(code);
+document.addEventListener('DOMContentLoaded', function() {
+    var nameEl = document.getElementById('name');
+    var codeEl = document.getElementById('code');
+    if (!nameEl || !codeEl) return;
+    nameEl.addEventListener('input', function() {
+        if (!codeEl.value) {
+            var code = nameEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            codeEl.value = code;
         }
     });
 });
 </script>
 {% endblock %}
-

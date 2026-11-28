@@ -5,733 +5,241 @@
 {% block title %}{% if invoice_type == 'store' %}صورتحساب‌های فروشگاه{% else %}صورتحساب‌ها{% endif %}{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
-    :root {
-        --primary-color: #4f46e5;
-        --primary-hover: #4338ca;
-        --bg-color: #f9fafb;
-        --card-bg: #ffffff;
-        --text-main: #111827;
-        --text-muted: #6b7280;
-        --border-color: #e5e7eb;
-        --success-bg: #dcfce7;
-        --success-text: #166534;
-        --warning-bg: #fef3c7;
-        --warning-text: #92400e;
-        --danger-bg: #fee2e2;
-        --danger-text: #991b1b;
-        --info-bg: #e0e7ff;
-        --info-text: #3730a3;
-    }
-
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
-    }
-
-    /* Page Header */
-    .page-header-custom {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding-top: 1rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    .page-title-wrapper h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-main);
-        margin-bottom: 0.25rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .page-subtitle {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        margin: 0;
-    }
-
-    .action-btn {
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        border: 1px solid transparent;
+    .inv-cb {
+        width: 17px;
+        height: 17px;
         cursor: pointer;
+        accent-color: var(--primary, #8B5CF6);
+        border-radius: 4px;
     }
-
-    .btn-primary-custom {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-primary-custom:hover {
-        background-color: var(--primary-hover);
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .btn-outline-custom {
-        background-color: white;
-        border-color: var(--border-color);
-        color: var(--text-main);
-    }
-
-    .btn-outline-custom:hover {
-        background-color: #f3f4f6;
-        border-color: #d1d5db;
-    }
-
-    /* Stats Cards */
-    .stats-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: var(--card-bg);
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        transition: transform 0.2s;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
-
-    .stat-icon.blue {
-        background-color: #e0e7ff;
-        color: #4f46e5;
-    }
-
-    .stat-icon.yellow {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
-
-    .stat-icon.green {
-        background-color: #dcfce7;
-        color: #16a34a;
-    }
-
-    .stat-icon.purple {
-        background-color: #f3e8ff;
-        color: #9333ea;
-    }
-
-    .stat-info h3 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0;
-        line-height: 1.2;
-        color: var(--text-main);
-    }
-
-    .stat-info p {
-        color: var(--text-muted);
-        font-size: 0.85rem;
-        margin: 0;
-    }
-
-    /* Filters */
-    .filter-card {
-        background: var(--card-bg);
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .filter-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 1rem;
-    }
-
-    .filter-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--text-main);
-    }
-
-    .form-control-custom,
-    .form-select-custom {
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
-        width: 100%;
-        font-family: 'Vazir', inherit;
-        background-color: #fff;
-        transition: all 0.2s;
-    }
-
-    .form-control-custom:focus,
-    .form-select-custom:focus {
-        border-color: var(--primary-color);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-
-    /* Table */
-    .table-card {
-        background: var(--card-bg);
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
-
-    .table-custom {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .table-custom th {
-        background-color: #f8fafc;
-        color: var(--text-muted);
-        font-weight: 600;
-        font-size: 0.85rem;
-        padding: 1rem 1.5rem;
-        text-align: right;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .table-custom td {
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
-        color: var(--text-main);
-        font-size: 0.95rem;
-    }
-
-    .table-custom tr:last-child td {
-        border-bottom: none;
-    }
-
-    .table-custom tr:hover td {
-        background-color: #f9fafb;
-    }
-
-    /* Badges */
-    .badge-custom {
-        padding: 0.35rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
+    .inv-date-field {
         display: inline-flex;
-        align-items: center;
+        flex-direction: column;
         gap: 0.25rem;
     }
-
-    .status-sent {
-        background-color: var(--info-bg);
-        color: var(--info-text);
-    }
-
-    .status-rejected {
-        background-color: var(--danger-bg);
-        color: var(--danger-text);
-    }
-
-    .status-cancelled {
-        background-color: #f3f4f6;
-        color: #4b5563;
-    }
-
-    .payment-unpaid {
-        background-color: var(--danger-bg);
-        color: var(--danger-text);
-    }
-
-    .payment-partial {
-        background-color: var(--warning-bg);
-        color: var(--warning-text);
-    }
-
-    .payment-paid {
-        background-color: var(--success-bg);
-        color: var(--success-text);
-    }
-
-    /* Actions */
-    .action-icon {
-        width: 32px;
-        height: 32px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        color: var(--text-muted);
-        transition: all 0.2s;
-        text-decoration: none;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-    }
-
-    .action-icon:hover {
-        background-color: #f3f4f6;
-        color: var(--primary-color);
-    }
-
-    .action-icon.delete:hover {
-        background-color: #fee2e2;
-        color: #ef4444;
-    }
-
-    /* Mobile Card View */
-    .mobile-card {
-        display: none;
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .mobile-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px dashed var(--border-color);
-    }
-
-    .mobile-card-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .mobile-card-label {
-        color: var(--text-muted);
-    }
-
-    .issue-tag {
-        display: inline-flex;
-        align-items: center;
-        background: #e0e7ff;
-        color: #4338ca;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        margin-left: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .issue-tag .remove-issue {
-        margin-right: 0.5rem;
-        cursor: pointer;
-        opacity: 0.6;
-    }
-
-    .issue-tag .remove-issue:hover {
-        opacity: 1;
-    }
-
-    /* Custom Grid System for Filters */
-    .custom-row {
-        display: flex;
-        flex-wrap: wrap;
-        margin: -0.25rem;
-    }
-    .custom-col {
-        padding: 0.25rem;
-        box-sizing: border-box;
-    }
-    .col-16 {
-        width: 16.666%;
-        flex: 0 0 16.666%;
-    }
-    @media (max-width: 1200px) {
-        .col-16 {
-            width: 20%;
-            flex: 0 0 20%;
-        }
-    }
-    @media (max-width: 992px) {
-        .col-16 {
-            width: 25%;
-            flex: 0 0 25%;
-        }
-    }
-    @media (max-width: 768px) {
-        .col-16 {
-            width: 33.33%;
-            flex: 0 0 33.33%;
-        }
-    }
-    @media (max-width: 576px) {
-        .col-16 {
-            width: 50%;
-            flex: 0 0 50%;
-        }
-    }
-
-    /* Form Styling like Invoice Creation */
-    .form-label {
+    .inv-date-field label {
+        font-size: 0.72rem;
         font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .form-control, .form-select {
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        padding: 0.625rem 1rem;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-        background-color: #fff;
-        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
-    }
-
-    .form-control:focus, .form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-
-    .form-control.form-control-sm, .form-select.form-control-sm {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.875rem;
-    }
-
-    .btn-primary-custom {
-        background-color: var(--primary-color);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-weight: 500;
-        border: none;
-        transition: all 0.2s;
-    }
-
-    .btn-primary-custom:hover {
-        background-color: var(--primary-hover);
-        color: white;
-    }
-
-    .btn-primary-custom.btn-sm {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
-    }
-
-    @media (max-width: 768px) {
-        .table-view-container {
-            display: none;
-        }
-
-        .mobile-card {
-            display: block;
-        }
-
-        .stats-container {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .page-header-custom {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .page-actions {
-            width: 100%;
-            display: flex;
-            gap: 0.5rem;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-
-        .filter-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Checkbox Styling */
-    input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-        accent-color: var(--primary-color);
-        border-radius: 4px;
-    }
-
-    input[type="checkbox"]:hover {
-        transform: scale(1.1);
-    }
-
-    .table-custom th:first-child,
-    .table-custom td:first-child {
-        text-align: center;
-        width: 50px;
-        padding: 1rem 0.5rem;
-    }
-
-    #selectAll {
-        cursor: pointer;
-    }
-
-    .invoice-checkbox {
-        cursor: pointer;
+        color: var(--text-secondary, #64748B);
         margin: 0;
     }
-
-    /* Issue Badges */
-    .badge-warning {
-        background-color: #fef3c7;
-        color: #92400e;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-weight: 500;
-        display: inline-block;
+    .inv-mobile-list { display: none; flex-direction: column; gap: 0.75rem; }
+    .inv-m-card { padding: 1rem; }
+    .inv-m-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+        padding-bottom: 0.65rem; margin-bottom: 0.65rem;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
-
-    .badge-success {
-        background-color: #dcfce7;
-        color: #166534;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-weight: 500;
-        display: inline-block;
+    .inv-m-meta {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem 0.75rem; font-size: 0.8rem;
+    }
+    .inv-m-lbl { font-size: 0.72rem; color: var(--text-muted, #94A3B8); display: block; }
+    .inv-m-foot {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+        margin-top: 0.75rem; padding-top: 0.65rem;
+        border-top: 1px solid var(--border-light, #F1F5F9);
+    }
+    @media (max-width: 768px) {
+        .inv-desktop-table { display: none; }
+        .inv-mobile-list { display: flex; }
     }
 </style>
-<link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="ui-page">
     {% csrf_token %}
-    <!-- Page Header -->
-    <div class="page-header-custom">
-        <div class="page-title-wrapper">
-            <h1>
-                <i class="fas fa-file-invoice text-primary"></i>
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
                 {% if invoice_type == 'store' %}صورتحساب‌های فروشگاه{% else %}صورتحساب‌ها{% endif %}
             </h1>
-            <p class="page-subtitle">{% if invoice_type == 'store' %}مدیریت و مشاهده صورتحساب‌های فروشگاه{% else %}مدیریت و مشاهده صورتحساب‌ها{% endif %}</p>
+            <div class="ui-subtitle">
+                <span>{% if invoice_type == 'store' %}مدیریت و مشاهده صورتحساب‌های فروشگاه{% else %}مدیریت و مشاهده صورتحساب‌ها{% endif %}</span>
+                {% if search_query or selected_issue or selected_payment_status or invoice_date_filter or due_date_filter or sort %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="page-actions">
-            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="action-btn btn-primary-custom">
-                <i class="fas fa-plus"></i>
-                افزودن صورتحساب
-            </a>
-            <a href="{% url 'completed_orders_for_invoices' cafe_code=cafe_code %}" class="action-btn btn-outline-custom">
-                <i class="fas fa-shopping-cart"></i>
-                سفارش‌های تکمیل شده
-            </a>
+        <div class="ui-topbar-actions">
             {% if is_manager %}
-            <button id="bulkPaymentBtn" class="action-btn btn-outline-custom text-success" style="display: none;">
+            <button id="bulkPaymentBtn" type="button" class="ui-btn ui-btn-success" style="display: none;">
                 <i class="fas fa-money-bill-wave"></i>
-                پرداخت گروهی
+                <span>پرداخت گروهی</span>
             </button>
-            <button id="bulkDeleteBtn" class="action-btn btn-outline-custom text-danger" style="display: none;">
+            <button id="bulkDeleteBtn" type="button" class="ui-btn ui-btn-danger-soft" style="display: none;">
                 <i class="fas fa-trash"></i>
-                حذف گروهی
+                <span>حذف گروهی</span>
             </button>
             {% endif %}
-        </div>
-    </div>
-
-    <!-- Statistics Cards -->
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-icon blue">
-                <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="stat-info">
-                <h3>{{ invoices|length }}</h3>
-                <p>کل صورتحساب‌ها</p>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon purple">
-                <i class="fas fa-coins"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="paidCount">-</h3>
-                <p>پرداخت شده</p>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon orange">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-info">
-                <h3 id="unpaidCount">-</h3>
-                <p>پرداخت نشده</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters Section -->
-    <div class="filter-card">
-        <div class="filter-header">
-            <div class="filter-title">
-                <i class="fas fa-filter text-primary"></i>
-                فیلترها و جستجو
-            </div>
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="text-danger text-decoration-none small">
-                <i class="fas fa-times"></i> پاک کردن فیلترها
+            <a href="{% url 'completed_orders_for_invoices' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-shopping-cart"></i>
+                <span>سفارش‌های تکمیل شده</span>
+            </a>
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>افزودن صورتحساب</span>
             </a>
         </div>
-        <form method="get">
-            <div class="custom-row">
-                <div class="custom-col col-16">
-                    <label for="search" class="form-label small text-muted mb-1">جستجو</label>
-                    <input type="text" name="search" class="form-control form-control-sm"
-                        id="search" placeholder="جستجو در شماره صورتحساب یا نام مشتری..." value="{{ search_query }}">
-                </div>
-                <div class="custom-col col-16">
-                    <label for="issue" class="form-label small text-muted mb-1">ایرادات</label>
-                    <select name="issue" class="form-control form-control-sm" id="issue" onchange="this.form.submit()">
-                        <option value="">همه</option>
-                        {% for issue in issues %}
-                        <option value="{{ issue.id }}" {% if selected_issue|stringformat:"s" == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="custom-col col-16">
-                    <label for="payment_status" class="form-label small text-muted mb-1">وضعیت پرداخت</label>
-                    <select name="payment_status" class="form-control form-control-sm" id="payment_status" onchange="this.form.submit()">
-                        <option value="">همه</option>
-                        {% for value, label in payment_status_choices %}
-                        <option value="{{ value }}" {% if selected_payment_status == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="custom-col col-16">
-                    <label for="invoice_date" class="form-label small text-muted mb-1">تاریخ فاکتور</label>
+    </header>
+
+    <!-- نوار آمار -->
+    <section class="ui-metrics-strip cols-3" aria-label="خلاصه آمار صورتحساب‌ها">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل صورتحساب‌ها</span>
+            <div class="ui-metric-val ui-num">{{ invoices|length }}<span class="ui-metric-unit">فقره</span></div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">پرداخت شده</span>
+            <div class="ui-metric-val is-green ui-num" id="paidCount">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">پرداخت نشده</span>
+            <div class="ui-metric-val is-warn ui-num" id="unpaidCount">-</div>
+        </div>
+    </section>
+
+    <!-- فیلترها -->
+    <form method="get" class="ui-controls-card">
+        <input type="hidden" name="type" value="{{ invoice_type }}">
+        <div class="ui-controls-row">
+            <div class="ui-search">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" id="search"
+                       placeholder="جستجو در شماره صورتحساب یا فروشنده..." value="{{ search_query }}" aria-label="جستجو">
+            </div>
+
+            <select name="issue" id="issue" class="ui-select" onchange="this.form.submit()" aria-label="ایرادات">
+                <option value="">همه ایرادات</option>
+                {% for issue in issues %}
+                <option value="{{ issue.id }}" {% if selected_issue|stringformat:"s" == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="payment_status" id="payment_status" class="ui-select" onchange="this.form.submit()" aria-label="وضعیت پرداخت">
+                <option value="">همه وضعیت‌های پرداخت</option>
+                {% for value, label in payment_status_choices %}
+                <option value="{{ value }}" {% if selected_payment_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="sort" id="sort" class="ui-select" onchange="this.form.submit()" aria-label="مرتب‌سازی">
+                <option value="" {% if not sort %}selected{% endif %}>مرتب‌سازی: پیش‌فرض</option>
+                <option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>مبلغ: کم به زیاد</option>
+                <option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>مبلغ: زیاد به کم</option>
+            </select>
+
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-search"></i>
+                <span>اعمال</span>
+            </button>
+
+            {% if search_query or selected_issue or selected_payment_status or invoice_date_filter or due_date_filter or sort %}
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-danger-soft is-sm">
+                <i class="fas fa-times"></i>
+                <span>پاک‌کردن</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="ui-controls-sub">
+            <div style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:0.85rem;">
+                <div class="inv-date-field">
+                    <label for="invoice_date">تاریخ فاکتور</label>
                     {% include 'includes/jalali_date_group.html' with jd_name='invoice_date' jd_id='invoice_date' jd_value=invoice_date_filter %}
                 </div>
-                <div class="custom-col col-16">
-                    <label for="due_date" class="form-label small text-muted mb-1">تاریخ درخواست</label>
+                <div class="inv-date-field">
+                    <label for="due_date">تاریخ درخواست</label>
                     {% include 'includes/jalali_date_group.html' with jd_name='due_date' jd_id='due_date' jd_value=due_date_filter %}
                 </div>
-                <div class="custom-col col-16">
-                    <label for="sort" class="form-label small text-muted mb-1">مرتب‌سازی بر اساس مبلغ</label>
-                    <select name="sort" class="form-control form-control-sm" id="sort">
-                        <option value="" {% if not sort %}selected{% endif %}>پیش‌فرض</option>
-                        <option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>مبلغ: کم به زیاد</option>
-                        <option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>مبلغ: زیاد به کم</option>
-                    </select>
-                </div>
-                <div class="custom-col col-16 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary-custom btn-sm w-100">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-                <input type="hidden" name="type" value="{{ invoice_type }}">
             </div>
-        </form>
-    </div>
+            <span style="font-size:0.76rem;font-weight:600;color:var(--text-muted);" class="ui-num">
+                <strong style="color:var(--text-primary);">{{ invoices|length }}</strong> صورتحساب
+            </span>
+        </div>
+    </form>
 
-    <!-- Table View -->
-    <div class="table-view-container">
-        <div class="table-card">
-            <table class="table-custom">
+    <!-- جدول دسکتاپ -->
+    <section class="ui-table-card inv-desktop-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
-                        <th style="width: 50px;" title="انتخاب همه">
-                            <input type="checkbox" id="selectAll" title="انتخاب همه">
+                        <th style="width:44px;text-align:center;" title="انتخاب همه">
+                            <input type="checkbox" id="selectAll" class="inv-cb" title="انتخاب همه">
                         </th>
-                        <th>شماره صورتحساب</th>
-                        <th>فروشنده</th>
-                        <th>تاریخ صدور</th>
-                        <th>تاریخ درخواست</th>
+                        <th>شماره صورتحساب و فروشنده</th>
+                        <th>تاریخ صدور / درخواست</th>
                         <th>مبلغ (ریال)</th>
                         <th>ایرادات</th>
                         <th>پرداخت</th>
-                        <th>عملیات</th>
+                        <th style="text-align:left;">عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for invoice in invoices %}
                     <tr data-status="{{ invoice.status }}">
-                        <td>
-                            <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}"
-                                data-amount="{{ invoice.remaining_amount }}" title="انتخاب فاکتور {{ invoice.invoice_number }}">
+                        <td style="text-align:center;">
+                            <input type="checkbox" class="inv-cb invoice-checkbox" value="{{ invoice.id }}"
+                                   data-amount="{{ invoice.remaining_amount }}" title="انتخاب فاکتور {{ invoice.invoice_number }}">
                         </td>
                         <td>
                             <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
-                                class="text-primary font-weight-bold text-decoration-none">
+                               style="font-weight:700;color:var(--primary-dark,#7C3AED);text-decoration:none;" class="ui-num">
                                 {{ invoice.invoice_number }}
                             </a>
+                            <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">
+                                {{ invoice.supplier_name }}
+                            </div>
                         </td>
-                        <td>{{ invoice.supplier_name }}</td>
-                        <td>{{ invoice.invoice_date|date:"Y/m/d" }}</td>
-                        <td>{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</td>
-                        <td class="font-weight-bold">{{ invoice.total_amount|number_format }}</td>
+                        <td class="ui-num" style="font-size:0.78rem;color:var(--text-secondary);">
+                            <div>صدور: {{ invoice.invoice_date|date:"Y/m/d" }}</div>
+                            <div style="font-size:0.72rem;color:var(--text-muted);">درخواست: {{ invoice.due_date|date:"Y/m/d"|default:"-" }}</div>
+                        </td>
+                        <td>
+                            <span class="ui-money">{{ invoice.total_amount|number_format }}</span>
+                        </td>
                         <td>
                             {% if invoice.issues.exists %}
+                                <div style="display:flex;flex-wrap:wrap;gap:0.25rem;">
                                 {% for issue in invoice.issues.all %}
-                                <span class="badge badge-warning" style="font-size: 0.75rem; margin: 2px;">⚠️ {{ issue.name }}</span>
+                                    <span class="ui-pill is-warn">{{ issue.name }}</span>
                                 {% endfor %}
+                                </div>
                             {% else %}
-                                <span class="text-muted" style="font-size: 0.85rem;">✓ بدون ایراد</span>
+                                <span class="ui-pill is-ok">بدون ایراد</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge-custom payment-{{ invoice.payment_status }}">
+                            <span class="ui-pill {% if invoice.payment_status == 'paid' %}is-ok payment-paid{% elif invoice.payment_status == 'partial' %}is-warn{% else %}is-danger{% endif %} payment-{{ invoice.payment_status }}">
                                 {{ invoice.get_payment_status_display }}
                             </span>
                         </td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="مشاهده">
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;align-items:center;gap:0.2rem;">
+                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-row-action" title="مشاهده">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon" title="ویرایش">
-                                    <i class="fas fa-edit"></i>
+                                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-row-action" title="ویرایش">
+                                    <i class="fas fa-pen"></i>
                                 </a>
                                 {% if invoice.status == 'sent' and user.role == 'manager' %}
-                                <a href="{% url 'payment_create_for_invoice' cafe_code=cafe_code invoice_id=invoice.id %}" class="action-icon text-info" title="پرداخت">
+                                <a href="{% url 'payment_create_for_invoice' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-row-action" title="پرداخت">
                                     <i class="fas fa-credit-card"></i>
                                 </a>
                                 {% endif %}
                                 {% if is_manager %}
                                 <form method="post" action="{% url 'invoice_delete' cafe_code=cafe_code invoice_id=invoice.id %}"
-                                    style="display: inline;"
-                                    onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این صورتحساب را حذف کنید؟');">
+                                      style="display: inline;"
+                                      onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این صورتحساب را حذف کنید؟');">
                                     {% csrf_token %}
-                                    <button type="submit" class="action-icon delete" title="حذف">
+                                    <button type="submit" class="ui-row-action is-danger" title="حذف">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
@@ -741,132 +249,100 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
-                            صورتحسابی یافت نشد
+                        <td colspan="7">
+                            <div class="ui-empty">
+                                <i class="fas fa-inbox"></i>
+                                صورتحسابی یافت نشد
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
-    <!-- Mobile View -->
-    <div class="d-md-none">
+    <!-- کارت موبایل -->
+    <div class="inv-mobile-list">
         {% for invoice in invoices %}
-        <div class="mobile-card">
-            <div class="mobile-card-header">
-                <div class="d-flex align-items-center gap-2">
-                    <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}" title="انتخاب">
+        <div class="ui-card inv-m-card">
+            <div class="inv-m-head">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <input type="checkbox" class="inv-cb inv-m-cb" data-sync-id="{{ invoice.id }}" title="انتخاب">
                     <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
-                        class="font-weight-bold text-primary text-decoration-none">
+                       style="font-weight:800;color:var(--primary-dark,#7C3AED);text-decoration:none;" class="ui-num">
                         {{ invoice.invoice_number }}
                     </a>
                 </div>
-                <div>
-                    {% if invoice.issues.exists %}
-                        {% for issue in invoice.issues.all %}
-                        <span class="badge badge-warning" style="font-size: 0.7rem; margin: 2px;">⚠️ {{ issue.name }}</span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="badge badge-success" style="font-size: 0.7rem;">✓ بدون ایراد</span>
-                    {% endif %}
-                </div>
+                <span class="ui-pill {% if invoice.payment_status == 'paid' %}is-ok{% elif invoice.payment_status == 'partial' %}is-warn{% else %}is-danger{% endif %} payment-{{ invoice.payment_status }}">
+                    {{ invoice.get_payment_status_display }}
+                </span>
             </div>
-            <div class="mobile-card-body">
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">فروشنده:</span>
-                    <span>{{ invoice.supplier_name }}</span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">تاریخ صدور:</span>
-                    <span>{{ invoice.invoice_date|date:"Y/m/d" }}</span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">تاریخ درخواست:</span>
-                    <span>{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">مبلغ:</span>
-                    <span class="font-weight-bold">{{ invoice.total_amount|number_format }} ریال</span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">ایرادات:</span>
-                    <span>
-                        {% if invoice.issues.exists %}
-                            {% for issue in invoice.issues.all %}
-                            <span class="badge badge-warning" style="font-size: 0.7rem; margin: 2px;">⚠️ {{ issue.name }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-success" style="font-size: 0.85rem;">✓ بدون ایراد</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">وضعیت پرداخت:</span>
-                    <span class="badge-custom payment-{{ invoice.payment_status }}">
-                        {{ invoice.get_payment_status_display }}
-                    </span>
-                </div>
+            <div class="inv-m-meta">
+                <div><span class="inv-m-lbl">فروشنده</span>{{ invoice.supplier_name }}</div>
+                <div><span class="inv-m-lbl">مبلغ</span><span class="ui-money">{{ invoice.total_amount|number_format }} ریال</span></div>
+                <div><span class="inv-m-lbl">تاریخ صدور</span><span class="ui-num">{{ invoice.invoice_date|date:"Y/m/d" }}</span></div>
+                <div><span class="inv-m-lbl">تاریخ درخواست</span><span class="ui-num">{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</span></div>
             </div>
-            <div class="mobile-card-footer mt-3 pt-2 border-top d-flex justify-content-end gap-2">
-                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">مشاهده</a>
-                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-sm btn-outline-custom">ویرایش</a>
+            <div style="margin-top:0.55rem;display:flex;flex-wrap:wrap;gap:0.25rem;">
+                {% if invoice.issues.exists %}
+                    {% for issue in invoice.issues.all %}
+                    <span class="ui-pill is-warn">{{ issue.name }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="ui-pill is-ok">بدون ایراد</span>
+                {% endif %}
+            </div>
+            <div class="inv-m-foot">
+                <div></div>
+                <div style="display:flex;gap:0.4rem;">
+                    <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-btn ui-btn-ghost is-sm">مشاهده</a>
+                    <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-btn ui-btn-soft is-sm">ویرایش</a>
+                </div>
             </div>
         </div>
         {% empty %}
-        <div class="text-center py-5 text-muted">
-            <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
-            صورتحسابی یافت نشد
+        <div class="ui-card">
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                صورتحسابی یافت نشد
+            </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
+    <!-- صفحه‌بندی -->
     {% if invoices.has_other_pages %}
-    <div class="d-flex justify-content-center mt-4">
-        <nav aria-label="Page navigation">
-            <ul class="pagination">
-                {% if invoices.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ invoices.previous_page_number }}">قبلی</a>
-                </li>
-                {% endif %}
+    <nav class="ui-pagination" aria-label="صفحه‌بندی">
+        {% if invoices.has_previous %}
+        <a href="?page={{ invoices.previous_page_number }}">قبلی</a>
+        {% endif %}
 
-                {% for num in invoices.paginator.page_range %}
-                {% if invoices.number == num %}
-                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num > invoices.number|add:'-3' and num < invoices.number|add:'3' %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                </li>
-                {% endif %}
-                {% endfor %}
+        {% for num in invoices.paginator.page_range %}
+        {% if invoices.number == num %}
+        <span class="is-active">{{ num }}</span>
+        {% elif num > invoices.number|add:'-3' and num < invoices.number|add:'3' %}
+        <a href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+        {% endfor %}
 
-                {% if invoices.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ invoices.next_page_number }}">بعدی</a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
+        {% if invoices.has_next %}
+        <a href="?page={{ invoices.next_page_number }}">بعدی</a>
+        {% endif %}
+    </nav>
     {% endif %}
-</div>
 
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/jalali_date_group.js' %}"></script>
 <script>
-    // Update stats counts based on table data
     document.addEventListener('DOMContentLoaded', function () {
         const rows = document.querySelectorAll('tr[data-status]');
         let paid = 0, unpaid = 0;
 
         rows.forEach(row => {
-            // Check payment status badge class
             const paymentBadge = row.querySelector('.payment-paid');
             if (paymentBadge) {
                 paid++;
@@ -878,21 +354,34 @@
         document.getElementById('paidCount').textContent = paid;
         document.getElementById('unpaidCount').textContent = unpaid;
 
-        // Bulk selection logic
         const selectAll = document.getElementById('selectAll');
         const checkboxes = document.querySelectorAll('.invoice-checkbox');
+        const mobileCheckboxes = document.querySelectorAll('.inv-m-cb');
         const bulkPaymentBtn = document.getElementById('bulkPaymentBtn');
         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
 
         if (selectAll) {
             selectAll.addEventListener('change', function () {
                 checkboxes.forEach(cb => cb.checked = this.checked);
+                mobileCheckboxes.forEach(cb => cb.checked = this.checked);
                 updateBulkActions();
             });
         }
 
         checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateBulkActions);
+            cb.addEventListener('change', function () {
+                const m = document.querySelector(`.inv-m-cb[data-sync-id="${this.value}"]`);
+                if (m) m.checked = this.checked;
+                updateBulkActions();
+            });
+        });
+
+        mobileCheckboxes.forEach(mcb => {
+            mcb.addEventListener('change', function () {
+                const d = document.querySelector(`.invoice-checkbox[value="${this.dataset.syncId}"]`);
+                if (d) d.checked = this.checked;
+                updateBulkActions();
+            });
         });
 
         function updateBulkActions() {
@@ -901,7 +390,6 @@
             if (bulkDeleteBtn) bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
         }
 
-        // Bulk Payment Handler
         if (bulkPaymentBtn) {
             bulkPaymentBtn.addEventListener('click', function() {
                 const checked = Array.from(document.querySelectorAll('.invoice-checkbox:checked'));
@@ -909,20 +397,20 @@
                     alert('لطفاً حداقل یک فاکتور را انتخاب کنید.');
                     return;
                 }
-                
+
                 const count = checked.length;
                 if (confirm(`آیا مطمئن هستید که می‌خواهید ${count} فاکتور را پرداخت کنید؟`)) {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = "{% url 'invoice_bulk_payment' cafe_code=cafe_code %}";
-                    
+
                     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
                     const csrfInput = document.createElement('input');
                     csrfInput.type = 'hidden';
                     csrfInput.name = 'csrfmiddlewaretoken';
                     csrfInput.value = csrfToken;
                     form.appendChild(csrfInput);
-                    
+
                     checked.forEach(cb => {
                         const input = document.createElement('input');
                         input.type = 'hidden';
@@ -930,14 +418,13 @@
                         input.value = cb.value;
                         form.appendChild(input);
                     });
-                    
+
                     document.body.appendChild(form);
                     form.submit();
                 }
             });
         }
 
-        // Bulk Delete Handler
         if (bulkDeleteBtn) {
             bulkDeleteBtn.addEventListener('click', function() {
                 const checked = Array.from(document.querySelectorAll('.invoice-checkbox:checked'));
@@ -945,20 +432,20 @@
                     alert('لطفاً حداقل یک فاکتور را انتخاب کنید.');
                     return;
                 }
-                
+
                 const count = checked.length;
                 if (confirm(`آیا مطمئن هستید که می‌خواهید ${count} فاکتور را حذف کنید؟ این عمل قابل بازگشت نیست.`)) {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = "{% url 'invoice_bulk_delete' cafe_code=cafe_code %}";
-                    
+
                     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
                     const csrfInput = document.createElement('input');
                     csrfInput.type = 'hidden';
                     csrfInput.name = 'csrfmiddlewaretoken';
                     csrfInput.value = csrfToken;
                     form.appendChild(csrfInput);
-                    
+
                     checked.forEach(cb => {
                         const input = document.createElement('input');
                         input.type = 'hidden';
@@ -966,7 +453,7 @@
                         input.value = cb.value;
                         form.appendChild(input);
                     });
-                    
+
                     document.body.appendChild(form);
                     form.submit();
                 }
@@ -975,5 +462,3 @@
     });
 </script>
 {% endblock %}
-
-

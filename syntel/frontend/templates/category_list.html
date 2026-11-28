@@ -1,263 +1,174 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}مدیریت دسته‌بندی‌ها - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.category-list-container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.search-section {
-    background: var(--bg-card);
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-xs);
-    margin-bottom: 20px;
-}
-
-.search-form {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.search-input {
-    flex: 1;
-    min-width: 220px;
-    padding: 9px 14px;
-    border: 1px solid var(--border-medium);
-    border-radius: 10px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    background: var(--bg-input);
-    color: var(--text-primary);
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--accent-indigo);
-    background: #FFFFFF;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
 .categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    gap: 1rem;
 }
-
-.category-card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-xs);
-    overflow: hidden;
+.cat-card-inner {
     display: flex;
     flex-direction: column;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
 }
-
-.category-card:hover {
-    border-color: #C7D2FE;
-    box-shadow: var(--shadow-md);
-}
-
-.category-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid #F1F5F9;
+.cat-card-head {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border-light, #F1F5F9);
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0.45rem;
 }
-
-.category-name {
-    font-size: 1.02rem;
+.cat-name {
+    font-size: 0.96rem;
     font-weight: 800;
-    color: var(--text-primary);
-    margin: 0 0 6px 0;
-}
-
-.category-stats {
-    font-size: 0.8rem;
+    color: var(--text-primary, #0F172A);
     margin: 0;
+    line-height: 1.4;
+}
+.cat-badges {
     display: flex;
     align-items: center;
-    gap: 6px;
     flex-wrap: wrap;
+    gap: 0.4rem;
 }
-
-.count-badge {
-    display: inline-flex;
-    align-items: center;
-    background: #EEF2FF;
-    color: #4F46E5;
-    border: 1px solid #E0E7FF;
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.recipe-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: #ECFDF5;
-    color: #059669;
-    border: 1px solid #A7F3D0;
-    border-radius: 999px;
-    padding: 2px 9px;
-    font-size: 0.72rem;
-    font-weight: 700;
-}
-
-.category-body {
-    padding: 14px 18px;
+.cat-card-body {
+    padding: 0.95rem 1.2rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0.65rem;
 }
-
-.category-description {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-    line-height: 1.5;
+.cat-desc {
+    color: var(--text-secondary, #64748B);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    margin: 0;
 }
-
-.category-actions {
+.cat-actions {
     margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid #F1F5F9;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light, #F1F5F9);
     display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-.btn-edit, .btn-delete {
-    display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
+    justify-content: flex-end;
+    gap: 0.35rem;
 }
-
-.btn-edit {
-    background: #F8FAFC;
-    color: #334155;
-    border-color: #E2E8F0;
-}
-.btn-edit:hover {
-    background: #F1F5F9;
-    border-color: #CBD5E1;
-}
-
-.btn-delete {
-    background: #FEF2F2;
-    color: #DC2626;
-    border-color: #FECACA;
-}
-.btn-delete:hover {
-    background: #FEE2E2;
-}
-
-@media (max-width: 768px) {
-    .search-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
+@media (max-width: 640px) {
     .categories-grid {
         grid-template-columns: 1fr;
     }
 }
 </style>
+{% endblock %}
 
-<div class="category-list-container">
-    <div class="page-header">
-        <h1 class="page-title">
-            <i class="fas fa-tags"></i>
-            مدیریت دسته‌بندی‌ها
-        </h1>
-        <div class="header-actions">
-            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> دسته‌بندی جدید
+{% block content %}
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-tags" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                مدیریت دسته‌بندی‌ها
+            </h1>
+            <p class="ui-subtitle">
+                <span>گروه‌بندی کالاهای کافه و تعیین دسته‌های مواد غذایی</span>
+                {% if search_query %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-box"></i>
+                <span>محصولات</span>
+            </a>
+            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>دسته‌بندی جدید</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <div class="search-section">
-        <form method="GET" class="search-form">
-            <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در دسته‌بندی‌ها..." class="search-input">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i> جستجو
-            </button>
-        </form>
-    </div>
+    <form method="GET" class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div class="ui-search">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="{{ search_query }}" placeholder="جستجو در دسته‌بندی‌ها..." aria-label="جستجو">
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-search"></i>
+                    <span>جستجو</span>
+                </button>
+                {% if search_query %}
+                <a href="{% url 'category_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-danger-soft">
+                    <i class="fas fa-xmark"></i>
+                    <span>پاک‌کردن</span>
+                </a>
+                {% endif %}
+                <span class="ui-chip ui-num">{{ categories|length|number_format }} دسته‌بندی</span>
+            </div>
+        </div>
+    </form>
 
     {% if categories %}
     <div class="categories-grid">
         {% for category in categories %}
-        <div class="category-card">
-            <div class="category-header">
-                <div>
-                    <h3 class="category-name">
-                        {% if category.parent %}
-                            <span style="color: var(--text-muted); font-size: 0.85em; font-weight: 600;">{{ category.parent.name }} › </span>
-                        {% endif %}
-                        {{ category.name }}
-                    </h3>
-                    <div class="category-stats">
-                        <span class="count-badge">{{ category.product_count }} محصول</span>
-                        {% if category.requires_recipe %}
-                        <span class="recipe-badge" title="کالاهای این دسته در رسپی منو مصرف می‌شوند">
-                            <i class="fas fa-utensils"></i> مواد غذایی
-                        </span>
-                        {% endif %}
-                    </div>
+        <article class="ui-card cat-card-inner">
+            <div class="cat-card-head">
+                <h3 class="cat-name">
+                    {% if category.parent %}
+                    <span style="color:var(--text-muted);font-size:0.84em;font-weight:600;">{{ category.parent.name }} › </span>
+                    {% endif %}
+                    {{ category.name }}
+                </h3>
+                <div class="cat-badges">
+                    <span class="ui-pill is-accent ui-num">{{ category.product_count|number_format }} محصول</span>
+                    {% if category.requires_recipe %}
+                    <span class="ui-pill is-ok recipe-badge" title="کالاهای این دسته در رسپی منو مصرف می‌شوند">
+                        <i class="fas fa-utensils" style="font-size:0.65rem;"></i> مواد غذایی
+                    </span>
+                    {% endif %}
                 </div>
             </div>
-            <div class="category-body">
+            <div class="cat-card-body">
                 {% if category.parent %}
-                <p class="category-description" style="color: #4F46E5; font-weight: 600; margin-bottom: 6px;">
-                    <i class="fas fa-layer-group"></i> زیر دسته از: {{ category.parent.name }}
-                </p>
+                <div class="ui-chip" style="align-self:flex-start;color:var(--primary-dark);background:rgba(139,92,246,0.08);">
+                    <i class="fas fa-layer-group"></i> زیردسته از: {{ category.parent.name }}
+                </div>
                 {% endif %}
                 {% if category.description %}
-                <p class="category-description">{{ category.description }}</p>
+                <p class="cat-desc">{{ category.description }}</p>
                 {% else %}
-                <p class="category-description" style="color: var(--text-muted); font-style: italic;">بدون توضیحات</p>
+                <p class="cat-desc" style="color:var(--text-muted);font-style:italic;">بدون توضیحات</p>
                 {% endif %}
-                <div class="category-actions">
-                    <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn-edit">
-                        <i class="fas fa-edit"></i> ویرایش
+                <div class="cat-actions">
+                    <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="ui-row-action">
+                        <i class="fas fa-pen"></i> ویرایش
                     </a>
-                    <a href="{% url 'category_delete' cafe_code=cafe_code category_id=category.id %}" class="btn-delete">
-                        <i class="fas fa-trash"></i> حذف
+                    <a href="{% url 'category_delete' cafe_code=cafe_code category_id=category.id %}" class="ui-row-action is-danger">
+                        <i class="fas fa-trash-can"></i> حذف
                     </a>
                 </div>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
     {% else %}
-    <div class="table-card">
-        <div class="empty-state">
+    <section class="ui-table-card">
+        <div class="ui-empty">
             <i class="fas fa-tags"></i>
-            <h3>هیچ دسته‌بندی یافت نشد</h3>
-            <p>هیچ دسته‌بندی با معیارهای جستجوی شما یافت نشد.</p>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">هیچ دسته‌بندی یافت نشد</div>
+            <p style="margin:0 0 1rem;">هیچ دسته‌بندی با معیارهای جستجوی شما یافت نشد.</p>
+            <a href="{% url 'category_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> دسته‌بندی جدید
+            </a>
         </div>
-    </div>
+    </section>
     {% endif %}
 </div>
 {% endblock %}

@@ -6,119 +6,125 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0">
-                        {% if purchase_order %}ویرایش سفارش خرید{% else %}ایجاد سفارش خرید{% endif %}
-                    </h4>
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-pen" style="color:var(--primary, #8B5CF6);"></i>
+                <span>{% if purchase_order %}ویرایش سفارش خرید{% else %}ایجاد سفارش خرید{% endif %}</span>
+            </h1>
+            <p class="ui-subtitle">مشخصات سفارش خرید و اطلاعات تأمین‌کننده را ثبت کنید</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
+
+    <form method="post" class="ui-form-card" style="max-width:none;">
+        {% csrf_token %}
+
+        <div class="ui-form-section">
+            <div class="ui-form-grid cols-2">
+                <div style="display:flex; flex-direction:column; gap:0.85rem;">
+                    <h2 class="ui-card-title"><i class="fas fa-circle-info"></i> اطلاعات سفارش</h2>
+                    <div class="ui-field">
+                        <label for="order_number" class="ui-field-label">شماره سفارش</label>
+                        <input type="text" class="ui-input ui-num" id="order_number" name="order_number"
+                               value="{% if purchase_order %}{{ purchase_order.order_number }}{% endif %}"
+                               placeholder="اگر خالی باشد، به صورت خودکار تولید می‌شود">
+                    </div>
+                    <div class="ui-field">
+                        <label for="delivery_date" class="ui-field-label">تاریخ تحویل</label>
+                        <input type="date" class="ui-input ui-num" id="delivery_date" name="delivery_date"
+                               value="{% if purchase_order and purchase_order.delivery_date %}{{ purchase_order.delivery_date|date:'Y-m-d' }}{% endif %}">
+                    </div>
+                    <div class="ui-field">
+                        <label for="payment_terms" class="ui-field-label">شرایط پرداخت</label>
+                        <textarea class="ui-textarea" id="payment_terms" name="payment_terms" rows="3"
+                                  placeholder="مثال: پرداخت نقدی، چکی، اعتباری">{{ purchase_order.payment_terms|default:'' }}</textarea>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
 
-                        <!-- Order Information -->
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <h5 class="mb-3">اطلاعات سفارش</h5>
-                                <div class="mb-3">
-                                    <label for="order_number" class="form-label">شماره سفارش</label>
-                                    <input type="text" class="form-control" id="order_number" name="order_number"
-                                           value="{% if purchase_order %}{{ purchase_order.order_number }}{% endif %}"
-                                           placeholder="اگر خالی باشد، به صورت خودکار تولید می‌شود">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="delivery_date" class="form-label">تاریخ تحویل</label>
-                                    <input type="date" class="form-control" id="delivery_date" name="delivery_date"
-                                           value="{% if purchase_order and purchase_order.delivery_date %}{{ purchase_order.delivery_date|date:'Y-m-d' }}{% endif %}">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="payment_terms" class="form-label">شرایط پرداخت</label>
-                                    <textarea class="form-control" id="payment_terms" name="payment_terms" rows="3"
-                                              placeholder="مثال: پرداخت نقدی، چکی، اعتباری">{{ purchase_order.payment_terms|default:'' }}</textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h5 class="mb-3">اطلاعات تأمین‌کننده</h5>
-                                <div class="mb-3">
-                                    <label for="supplier_name" class="form-label">نام تأمین‌کننده *</label>
-                                    <input type="text" class="form-control" id="supplier_name" name="supplier_name"
-                                           value="{{ purchase_order.supplier_name|default:'' }}" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="supplier_contact" class="form-label">اطلاعات تماس تأمین‌کننده</label>
-                                    <input type="text" class="form-control" id="supplier_contact" name="supplier_contact"
-                                           value="{{ purchase_order.supplier_contact|default:'' }}"
-                                           placeholder="تلفن، ایمیل، موبایل">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="supplier_address" class="form-label">آدرس تأمین‌کننده</label>
-                                    <textarea class="form-control" id="supplier_address" name="supplier_address" rows="3">{{ purchase_order.supplier_address|default:'' }}</textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Order Items -->
-                        <h5 class="mb-3">اقلام سفارش</h5>
-                        <div class="table-responsive mb-4">
-                            <table class="table table-bordered">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>نام کالا</th>
-                                        <th>واحد</th>
-                                        <th>مقدار</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in items %}
-                                        <tr>
-                                            <td>{{ item.name }}</td>
-                                            <td>{{ item.unit }}</td>
-                                            <td>{{ item.quantity|trim_decimal }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="mb-4">
-                            <label for="notes" class="form-label">توضیحات</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"
-                                      placeholder="توضیحات اضافی درباره سفارش">{{ purchase_order.notes|default:'' }}</textarea>
-                        </div>
-
-                        <!-- Request Information (Read-only) -->
-                        {% if purchase_request %}
-                            <div class="alert alert-info">
-                                <h6>اطلاعات درخواست کالا:</h6>
-                                <p class="mb-1"><strong>شماره درخواست:</strong> {{ purchase_request.request_number }}</p>
-                                <p class="mb-1"><strong>بخش:</strong> {{ purchase_request.user.department_display }}</p>
-                                <p class="mb-1"><strong>کاربر:</strong> {{ purchase_request.user.get_full_name|default:purchase_request.user.username }}</p>
-                                <p class="mb-0"><strong>تاریخ ایجاد:</strong> {{ purchase_request.created_at|date:"Y/m/d H:i" }}</p>
-                            </div>
-                        {% endif %}
-
-                        <!-- Action Buttons -->
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> بازگشت
-                            </a>
-                            <div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i>
-                                    {% if purchase_order %}ذخیره تغییرات{% else %}ایجاد سفارش{% endif %}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                <div style="display:flex; flex-direction:column; gap:0.85rem;">
+                    <h2 class="ui-card-title"><i class="fas fa-truck"></i> اطلاعات تأمین‌کننده</h2>
+                    <div class="ui-field">
+                        <label for="supplier_name" class="ui-field-label">نام تأمین‌کننده *</label>
+                        <input type="text" class="ui-input" id="supplier_name" name="supplier_name"
+                               value="{{ purchase_order.supplier_name|default:'' }}" required>
+                    </div>
+                    <div class="ui-field">
+                        <label for="supplier_contact" class="ui-field-label">اطلاعات تماس تأمین‌کننده</label>
+                        <input type="text" class="ui-input" id="supplier_contact" name="supplier_contact"
+                               value="{{ purchase_order.supplier_contact|default:'' }}"
+                               placeholder="تلفن، ایمیل، موبایل">
+                    </div>
+                    <div class="ui-field">
+                        <label for="supplier_address" class="ui-field-label">آدرس تأمین‌کننده</label>
+                        <textarea class="ui-textarea" id="supplier_address" name="supplier_address" rows="3">{{ purchase_order.supplier_address|default:'' }}</textarea>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <div class="ui-form-section">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> اقلام سفارش</h2>
+            <div class="ui-table-card" style="box-shadow:none;">
+                <div class="ui-table-scroll">
+                    <table class="ui-table">
+                        <thead>
+                            <tr>
+                                <th>نام کالا</th>
+                                <th>واحد</th>
+                                <th>مقدار</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                                <tr>
+                                    <td style="font-weight:700;">{{ item.name }}</td>
+                                    <td><span class="ui-chip">{{ item.unit }}</span></td>
+                                    <td class="ui-num" style="font-weight:700;">{{ item.quantity|trim_decimal }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="notes" class="ui-field-label">توضیحات</label>
+                <textarea class="ui-textarea" id="notes" name="notes" rows="3"
+                          placeholder="توضیحات اضافی درباره سفارش">{{ purchase_order.notes|default:'' }}</textarea>
+            </div>
+        </div>
+
+        {% if purchase_request %}
+        <div class="ui-banner is-info" style="flex-direction:column; gap:0.35rem; margin-bottom:1rem;">
+            <div style="font-weight:800;">اطلاعات درخواست کالا:</div>
+            <div><strong>شماره درخواست:</strong> <span class="ui-num">{{ purchase_request.request_number }}</span></div>
+            <div><strong>بخش:</strong> {{ purchase_request.user.department_display }}</div>
+            <div><strong>کاربر:</strong> {{ purchase_request.user.get_full_name|default:purchase_request.user.username }}</div>
+            <div><strong>تاریخ ایجاد:</strong> <span class="ui-num">{{ purchase_request.created_at|date:"Y/m/d H:i" }}</span></div>
+        </div>
+        {% endif %}
+
+        <div class="ui-form-actions">
+            <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-save"></i>
+                <span>{% if purchase_order %}ذخیره تغییرات{% else %}ایجاد سفارش{% endif %}</span>
+            </button>
+        </div>
+    </form>
+
 </div>
 {% endblock %}
-
-

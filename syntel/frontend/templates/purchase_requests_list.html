@@ -4,280 +4,174 @@
 
 {% block extra_css %}
 <style>
-    /* ===== درخواست‌ها — هماهنگ با تم داشبورد (Kuker) ===== */
-    .requests-page {
-        max-width: 1000px;
-        margin: 0 auto;
-    }
+    .requests-page .ui-table-scroll .data-table { min-width: 660px; }
 
-    /* ---------- هدر صفحه ---------- */
-    .req-header-title {
-        display: flex; align-items: center; gap: 1rem; min-width: 0;
-    }
-    .req-brand {
-        display: flex; align-items: center; justify-content: center;
-        gap: 0.5rem; direction: ltr; flex-shrink: 0;
-    }
-    .requests-page .table-meta {
-        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        padding: 0.25rem 0.75rem; border-radius: 999px; white-space: nowrap;
-    }
-
-    /* جدولِ نمای مسئول خرید در عرض کم نباید بریده شود */
-    .requests-page .table-scroll {
-        overflow-x: auto; -webkit-overflow-scrolling: touch;
-    }
-    .requests-page .table-scroll .data-table { min-width: 660px; }
-
-    /* ---------- تولبار: جستجو/فیلتر ---------- */
-    .req-toolbar-row {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: var(--space-3);
-    }
-
-    .req-spacer { flex: 1; }
-
-    .req-select {
-        height: 40px; padding: 0 0.75rem;
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        background: var(--bg-card); color: var(--text-primary);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
-        cursor: pointer; transition: all var(--transition-fast);
-    }
-
-    .req-select:focus {
-        outline: none;
-        border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    }
-
-    /* ---------- نشان وضعیت (نقطه + برچسب) ---------- */
+    /* نشان وضعیت (نقطه + برچسب) */
     .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
     .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-    .st-draft                    { color: var(--gray-500); }
-    .st-draft .dot               { background: var(--border-strong); }
-    .st-pending_manager_approval { color: #2563EB; }
-    .st-pending_manager_approval .dot { background: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
-    .st-pending                  { color: #B45309; }
-    .st-pending .dot             { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.12); }
-    .st-purchased                { color: #15803D; }
-    .st-purchased .dot           { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
+    .st-draft                    { color: var(--text-muted, #94A3B8); }
+    .st-draft .dot               { background: var(--border-strong, #CBD5E1); }
+    .st-pending_manager_approval { color: var(--ui-info, #2563EB); }
+    .st-pending_manager_approval .dot { background: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+    .st-pending                  { color: var(--ui-warn, #B45309); }
+    .st-pending .dot             { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12); }
+    .st-purchased                { color: var(--ui-ok, #047857); }
+    .st-purchased .dot           { background: #10B981; box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12); }
     .st-partial                  { color: #EA580C; }
-    .st-partial .dot             { background: #F97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
-    .st-rejected                 { color: #DC2626; }
-    .st-rejected .dot            { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+    .st-partial .dot             { background: #F97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12); }
+    .st-rejected                 { color: var(--ui-danger, #DC2626); }
+    .st-rejected .dot            { background: #EF4444; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
 
-    /* ---------- کارت درخواست (نمای درخواست‌های من) ---------- */
+    /* کارت درخواست (نمای درخواست‌های من) */
     .req-list { display: flex; flex-direction: column; gap: 0.65rem; }
 
     .req-card {
         display: flex; align-items: stretch; gap: 0.5rem;
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        padding: 0.35rem 0.35rem 0.35rem 0.85rem;
-        transition: all var(--transition-fast);
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 14px;
+        padding: 0.45rem 0.65rem 0.45rem 0.85rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-
     .req-card:hover {
-        border-color: rgba(139, 92, 246, 0.4);
-        box-shadow: var(--shadow-sm);
+        border-color: var(--ui-accent-border, rgba(139, 92, 246, 0.28));
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
     }
 
     .req-main {
-        flex: 1; min-width: 0;
+        flex: 1; min-width: 0; min-height: 44px;
         display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.25rem;
         text-decoration: none; color: inherit;
-        padding: 0.55rem 0;
+        padding: 0.45rem 0.25rem;
     }
 
     .req-id {
-        font-size: 0.92rem; font-weight: 700; color: var(--text-primary);
+        font-size: 0.92rem; font-weight: 800; color: var(--text-primary, #0F172A);
         display: inline-flex; align-items: center; gap: 0.45rem;
+        font-variant-numeric: tabular-nums;
     }
-
-    .req-id i { color: var(--accent-indigo); font-size: 0.82rem; }
+    .req-id i { color: var(--primary, #8B5CF6); font-size: 0.82rem; }
 
     .req-meta {
         display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 1rem;
-        font-size: 0.78rem; color: var(--text-secondary);
+        font-size: 0.78rem; color: var(--text-secondary, #64748B);
+        font-variant-numeric: tabular-nums;
     }
+    .req-meta i { color: var(--text-muted, #94A3B8); font-size: 0.75rem; margin-left: 0.25rem; }
 
-    .req-meta i { color: var(--text-muted); font-size: 0.75rem; margin-left: 0.25rem; }
+    .req-side { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
 
-    .req-side {
-        display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;
-    }
-
-    /* چیپ‌های عملیات — هماهنگ با user_list */
     .act-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        height: 32px; padding: 0 0.7rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default);
-        background: var(--bg-card);
-        color: var(--text-secondary);
-        font-size: 0.78rem; font-weight: 500;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+        min-height: 40px; padding: 0 0.85rem;
+        border-radius: 10px;
+        border: 1px solid var(--border-default, #E2E8F0);
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-secondary, #64748B);
+        font-size: 0.8rem; font-weight: 600;
         text-decoration: none; white-space: nowrap;
-        transition: all var(--transition-fast);
+        transition: all 0.15s ease;
     }
-
     .act-chip i { font-size: 0.78rem; }
-
-    .act-view:hover { color: var(--primary-dark); border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.07); }
-    .act-edit:hover { color: #059669; border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.07); }
-
+    .act-edit:hover {
+        color: var(--ui-ok, #047857);
+        border-color: var(--ui-ok-border, #D1FAE5);
+        background: var(--ui-ok-bg, #ECFDF5);
+    }
     .act-locked {
-        color: var(--text-muted); cursor: not-allowed;
-        background: var(--bg-subtle); border-style: dashed;
+        color: var(--text-muted, #94A3B8); cursor: not-allowed;
+        background: var(--gray-50, #F8FAFC); border-style: dashed;
     }
 
-    /* ---------- سربرگ روز ---------- */
-    .day-section { margin-bottom: 1.5rem; }
-
+    /* سربرگ روز */
+    .day-section { margin-bottom: 1.25rem; }
     .day-header {
         display: flex; align-items: center; gap: 0.6rem;
         margin-bottom: 0.7rem;
-        font-size: 0.88rem; font-weight: 700; color: var(--text-primary);
+        font-size: 0.88rem; font-weight: 800; color: var(--text-primary, #0F172A);
     }
-
     .day-header .day-icon {
-        width: 30px; height: 30px; flex-shrink: 0;
-        border-radius: var(--radius-sm);
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
+        width: 32px; height: 32px; flex-shrink: 0;
+        border-radius: 9px;
+        background: var(--gray-50, #F8FAFC); border: 1px solid var(--border-default, #E2E8F0);
         display: flex; align-items: center; justify-content: center;
-        color: var(--accent-indigo); font-size: 0.78rem;
+        color: var(--primary, #8B5CF6); font-size: 0.8rem;
     }
-
-    .day-header .day-date {
-        color: var(--text-muted); font-weight: 500; font-size: 0.76rem;
+    .day-header .day-date { color: var(--text-muted, #94A3B8); font-weight: 500; font-size: 0.76rem; }
+    .day-header::after { content: ''; flex: 1; height: 1px; background: var(--border-light, #F1F5F9); }
+    .day-header.today .day-icon {
+        border-color: var(--ui-accent-border, rgba(139, 92, 246, 0.28));
+        background: var(--ui-accent-tint, rgba(139, 92, 246, 0.08));
     }
-
-    .day-header::after { content: ''; flex: 1; height: 1px; background: var(--border-light); }
-
-    .day-header.today .day-icon { border-color: rgba(139,92,246,0.35); background: rgba(139,92,246,0.07); }
-
-    /* ---------- جدول (نمای مسئول خرید/مدیر) — سازگار با partial جدولی ---------- */
-    .status-badge {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        padding: 0.28rem 0.65rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700; white-space: nowrap;
-    }
-    .status-badge.status-draft                    { background: var(--bg-subtle);         color: var(--gray-500); }
-    .status-badge.status-pending_manager_approval { background: rgba(59,130,246,0.10);    color: #2563EB; }
-    .status-badge.status-pending                  { background: rgba(245,158,11,0.12);    color: #B45309; }
-    .status-badge.status-purchased                { background: rgba(34,197,94,0.10);     color: #15803D; }
-    .status-badge.status-partial                  { background: rgba(249,115,22,0.10);    color: #EA580C; }
-    .status-badge.status-rejected                 { background: rgba(239,68,68,0.10);     color: #DC2626; }
-
-    .action-btn {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
-        background: var(--bg-subtle); color: var(--text-primary);
-        border: 1px solid var(--border-default);
-        font-size: 0.76rem; font-weight: 600; text-decoration: none;
-        transition: all var(--transition-fast);
-    }
-    .action-btn:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
 
     .req-scroll-hint {
         display: none;
-        padding: 0 var(--space-5) 0.5rem;
-        font-size: 0.74rem; font-weight: 500; color: var(--text-muted);
+        padding: 0.5rem 1rem;
+        font-size: 0.74rem; font-weight: 600; color: var(--text-muted, #94A3B8);
         text-align: center;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
 
-    /* ---------- ریسپانسیو ---------- */
     @media (max-width: 1023px) {
-        /* لوگوی برند در نوار بالای موبایل و سایدبار هست؛ نسخهٔ داخل هدر تکراری است */
-        .req-brand { display: none; }
-        .req-header-title { justify-content: center; }
-
-        .requests-page .page-header {
-            gap: 0.6rem; padding-top: 0.9rem; padding-bottom: 0.9rem;
-        }
-        .requests-page .page-title { justify-content: center; font-size: 1.05rem; }
-        .requests-page .header-actions {
-            flex-direction: column; align-items: stretch; gap: 0.5rem;
-        }
-        .requests-page .header-actions .btn {
-            width: 100%; justify-content: center;
-        }
-        .requests-page .header-actions .table-meta { align-self: center; }
-
-        .requests-page .table-scroll .data-table { min-width: 620px; }
         .req-scroll-hint { display: block; }
     }
 
     @media (max-width: 768px) {
-        .req-card { flex-direction: column; padding: 0.6rem 0.85rem; }
-        .req-main { padding: 0; gap: 0.45rem; }
-        .req-side { padding-top: 0.55rem; border-top: 1px dashed var(--border-light); }
-        .req-side .act-chip { flex: 1; justify-content: center; }
+        .requests-page .ui-topbar-actions { width: 100%; }
+        .requests-page .ui-topbar-actions .ui-btn { width: 100%; }
+        .req-card { flex-direction: column; padding: 0.65rem 0.85rem; }
+        .req-main { padding: 0.2rem 0; gap: 0.45rem; }
+        .req-side { padding-top: 0.55rem; border-top: 1px dashed var(--border-default, #E2E8F0); }
+        .req-side .act-chip { flex: 1; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="requests-page">
+<div class="ui-page requests-page" style="max-width:1040px;">
 
-    <!-- هدر صفحه -->
-    <div class="page-header">
-        <div class="req-header-title">
-            <div class="req-brand">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient-req)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <defs>
-                        <linearGradient id="k-gradient-req" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#ec4899" />
-                            <stop offset="100%" stop-color="#8b5cf6" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M17 4v16"></path>
-                    <path d="M6 4l11 8"></path>
-                    <path d="M17 12l-11 8"></path>
-                </svg>
-                <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>
-            </div>
-            <h1 class="page-title">
-                {% if is_mobile_user %}
-                <i class="fas fa-list-check"></i> درخواست‌های من
-                {% else %}
-                <i class="fas fa-list-check"></i> درخواست‌های کاربران
-                {% endif %}
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-list-check" style="color:var(--primary, #8B5CF6);"></i>
+                <span>{% if is_mobile_user %}درخواست‌های من{% else %}درخواست‌های کاربران{% endif %}</span>
             </h1>
+            <p class="ui-subtitle">
+                <span class="ui-chip ui-num">{{ requests|length }} درخواست</span>
+            </p>
         </div>
-        <div class="header-actions">
-            <span class="table-meta">{{ requests|length }} درخواست</span>
+        <div class="ui-topbar-actions">
             {% if is_mobile_user %}
-            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> ثبت درخواست جدید
+            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary is-lg">
+                <i class="fas fa-plus"></i>
+                <span>ثبت درخواست جدید</span>
             </a>
             {% endif %}
         </div>
-    </div>
+    </header>
 
     {% if not is_mobile_user %}
     <!-- فیلتر بخش (مسئول خرید/مدیر) -->
-    <div class="filters-container">
-        <div class="req-toolbar-row">
-            <label for="department" style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">
-                <i class="fas fa-filter" style="margin-left: 0.3rem;"></i> فیلتر بخش:
-            </label>
-            <select name="department" id="department" class="req-select"
-                hx-get="{% url 'purchase_requests_list' cafe_code=cafe_code %}"
-                hx-target="#requests-container" hx-trigger="change">
-                <option value="">همه</option>
-                {% for dept_id, dept_name in departments %}
-                <option value="{{ dept_name }}" {% if selected_department == dept_name %}selected{% endif %}>
-                    {{ dept_name }}
-                </option>
-                {% endfor %}
-            </select>
+    <div class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div style="display:flex; align-items:center; gap:0.65rem; flex-wrap:wrap;">
+                <label for="department" style="font-size:0.82rem; font-weight:700; color:var(--text-secondary);">
+                    <i class="fas fa-filter" style="margin-left:0.3rem; color:var(--primary, #8B5CF6);"></i>
+                    <span>فیلتر بخش:</span>
+                </label>
+                <select name="department" id="department" class="ui-select"
+                    hx-get="{% url 'purchase_requests_list' cafe_code=cafe_code %}"
+                    hx-target="#requests-container" hx-trigger="change">
+                    <option value="">همه</option>
+                    {% for dept_id, dept_name in departments %}
+                    <option value="{{ dept_name }}" {% if selected_department == dept_name %}selected{% endif %}>
+                        {{ dept_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -367,31 +261,30 @@
             </div>
             {% endif %}
         {% else %}
-            <div class="table-card">
-                <div class="card-body">
-                    <div class="empty-state">
-                        <i class="fas fa-inbox" style="font-size: 2.6rem; color: var(--text-muted); margin-bottom: 0.9rem;"></i>
-                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">هیچ درخواستی ثبت نشده است</h3>
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">اولین درخواست کالای خود را ثبت کنید.</p>
-                        <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> ثبت درخواست جدید
-                        </a>
-                    </div>
+            <section class="ui-card">
+                <div class="ui-empty">
+                    <i class="fas fa-inbox"></i>
+                    <div style="font-size:1rem; font-weight:800; color:var(--text-primary); margin-bottom:0.35rem;">هیچ درخواستی ثبت نشده است</div>
+                    <div style="margin-bottom:1.1rem;">اولین درخواست کالای خود را ثبت کنید.</div>
+                    <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary is-lg">
+                        <i class="fas fa-plus"></i>
+                        <span>ثبت درخواست جدید</span>
+                    </a>
                 </div>
-            </div>
+            </section>
         {% endif %}
     {% else %}
         {% if requests %}
-        <div class="table-card">
-            <div class="table-header">
-                <div class="table-title"><i class="fas fa-clipboard-list"></i> همهٔ درخواست‌ها</div>
-                <span class="table-meta">{{ requests|length }} درخواست</span>
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-clipboard-list"></i> همهٔ درخواست‌ها</h2>
+                <span class="ui-chip ui-num">{{ requests|length }} درخواست</span>
             </div>
             <div class="req-scroll-hint">
                 <i class="fas fa-arrows-left-right"></i> برای دیدن بقیهٔ ستون‌ها جدول را به چپ و راست بکشید
             </div>
-            <div class="table-scroll">
-                <table class="data-table">
+            <div class="ui-table-scroll">
+                <table class="ui-table data-table">
                     <thead>
                         <tr>
                             <th>درخواست</th>
@@ -399,46 +292,48 @@
                             <th>کاربر</th>
                             <th>تاریخ</th>
                             <th>وضعیت</th>
-                            <th style="text-align: left;">عملیات</th>
+                            <th style="text-align:left;">عملیات</th>
                         </tr>
                     </thead>
                     <tbody id="requests-container">
                         {% for req in requests %}
                         <tr>
-                            <td><strong>{{ req.request_number }}</strong></td>
-                            <td>{{ req.user.department_display }}</td>
+                            <td class="ui-num" style="font-weight:700;">{{ req.request_number }}</td>
+                            <td><span class="ui-chip">{{ req.user.department_display }}</span></td>
                             <td>{{ req.user.first_name }} {{ req.user.last_name|default:req.user.username }}</td>
-                            <td>{{ req.created_at|jalali_date }} — {{ req.created_at|jalali_time }}</td>
+                            <td class="ui-num" style="color:var(--text-secondary);">{{ req.created_at|jalali_date }} — {{ req.created_at|jalali_time }}</td>
                             <td>
-                                <span class="status-badge status-{{ req.status }}">
+                                <span class="ui-pill {% if req.status == 'purchased' %}is-ok{% elif req.status == 'pending' %}is-warn{% elif req.status == 'pending_manager_approval' %}is-info{% elif req.status == 'partial' %}is-accent{% elif req.status == 'rejected' %}is-danger{% else %}is-muted{% endif %}">
                                     {{ req.get_status_display }}
                                 </span>
                             </td>
-                            <td style="text-align: left;">
-                                <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="action-btn">
-                                    <i class="far fa-eye"></i> مشاهده
-                                </a>
-                                {% if user.role == 'purchasing' %}
-                                <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="action-btn">
-                                    <i class="fas fa-cart-shopping"></i> ثبت خرید
-                                </a>
-                                {% endif %}
+                            <td style="text-align:left;">
+                                <div style="display:inline-flex; gap:0.25rem; flex-wrap:wrap; justify-content:flex-end;">
+                                    <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="ui-row-action">
+                                        <i class="far fa-eye"></i>
+                                        <span>مشاهده</span>
+                                    </a>
+                                    {% if user.role == 'purchasing' %}
+                                    <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=req.id %}" class="ui-row-action">
+                                        <i class="fas fa-cart-shopping"></i>
+                                        <span>ثبت خرید</span>
+                                    </a>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
         {% else %}
-        <div class="table-card">
-            <div class="card-body">
-                <div class="empty-state">
-                    <i class="fas fa-inbox" style="font-size: 2.6rem; color: var(--text-muted); margin-bottom: 0.9rem;"></i>
-                    <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">هیچ درخواستی یافت نشد</h3>
-                </div>
+        <section class="ui-card">
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <div style="font-size:1rem; font-weight:800; color:var(--text-primary);">هیچ درخواستی یافت نشد</div>
             </div>
-        </div>
+        </section>
         {% endif %}
     {% endif %}
 </div>

@@ -5,564 +5,448 @@
 
 {% block extra_css %}
 <style>
-    .debt-remaining { display: inline-flex; align-items: baseline; gap: 0.3rem; }
-    .unit { font-size: 0.72rem; color: var(--text-muted); }
-
-    /* دکمه پرداخت هر ردیف — فرم کامل در مودال باز می‌شود تا جدول مرتب بماند */
-    .pay-open-btn {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        height: 34px; padding: 0 0.9rem; border: none; border-radius: var(--radius-md);
-        background: var(--accent-green); color: white; font-family: 'Vazir', sans-serif;
-        font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap;
-        transition: all var(--transition-fast);
+    .cdp-form-control,
+    .ui-field .form-control {
+        width: 100%;
+        height: 38px;
+        padding: 0 0.85rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 10px;
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-primary, #0F172A);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.83rem;
+        font-variant-numeric: tabular-nums;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .pay-open-btn:hover { background: #16A34A; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-
-    .pay-account-select {
-        height: 40px; padding: 0 0.6rem; min-width: 170px;
-        border: 2px solid var(--border-default); border-radius: var(--radius-md);
-        font-family: 'Vazir', sans-serif; font-size: 0.8rem;
-        background: white; color: var(--text-primary);
-    }
-    .pay-account-select:focus {
-        outline: none; border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+    .cdp-form-control:focus,
+    .ui-field .form-control:focus {
+        outline: none;
+        border-color: var(--primary, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
 
-    /* مودال ثبت پرداخت */
-    .pay-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100;
-        opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
-    }
-    .pay-modal-backdrop.show { opacity: 1; pointer-events: auto; }
-    .pay-modal {
-        position: fixed; top: 50%; left: 50%;
-        transform: translate(-50%, -50%) scale(0.96);
-        width: min(480px, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto;
-        background: var(--bg-card); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
-        z-index: 101; opacity: 0; pointer-events: none;
-        transition: all 0.2s ease; padding: 1.1rem 1.25rem;
-    }
-    .pay-modal.show {
-        opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1);
-    }
-    .pay-modal-header {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
-    }
-    .pay-modal-title { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
-    .pay-modal-title i { color: var(--accent-green); margin-left: 0.4rem; }
-    .pay-modal-close {
-        width: 32px; height: 32px; border-radius: 50%; border: none;
-        background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
-    }
-    .pay-modal-close:hover { background: var(--border-default); }
-    .pay-modal-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    .cdp-top-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
         gap: 1rem;
+        align-items: start;
     }
-    .pay-modal-grid .full { grid-column: 1 / -1; }
-    .pay-modal-footer { display: flex; gap: 0.75rem; margin-top: 1.1rem; }
-
-    .debt-table-wrap { overflow-x: auto; }
-    .debt-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 680px; }
-    .debt-table thead th {
-        background: var(--bg-subtle); padding: 0.75rem 1rem; text-align: right;
-        font-weight: 700; color: var(--text-primary); border-bottom: 2px solid var(--border-default);
-        white-space: nowrap;
+    @media (max-width: 900px) {
+        .cdp-top-grid { grid-template-columns: 1fr; }
     }
-    .debt-table tbody td {
-        padding: 0.75rem 1rem; color: var(--text-secondary);
-        border-bottom: 1px solid var(--border-light); vertical-align: middle;
+
+    .offlist-form {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
     }
-    .debt-table tbody tr:hover { background: var(--bg-subtle); }
-
-    .amount { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
-    .desc-cell { max-width: 220px; white-space: normal; line-height: 1.5; }
-
-    .receipt-thumb {
-        width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-md);
-        border: 1px solid var(--border-default); cursor: pointer;
-        transition: all var(--transition-fast);
-    }
-    .receipt-thumb:hover { transform: scale(1.08); box-shadow: var(--shadow-md); }
-
-    .status-pill {
-        display: inline-block; padding: 0.3rem 0.75rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700; white-space: nowrap;
-    }
-    .status-pill.pending { background: rgba(249,115,22,0.1); color: #EA580C; }
-    .status-pill.paid { background: rgba(34,197,94,0.1); color: #16A34A; }
-
-    .empty-cell { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
-    .empty-cell i { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
-
-    .help-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; }
-
-    /* دکمه‌های عملیات ردیف: ویرایش پرداخت */
-    .row-actions { display: flex; align-items: center; gap: 0.4rem; }
-    .row-action {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 32px; height: 32px; border-radius: var(--radius-md);
-        border: 1px solid var(--border-default); background: white;
-        color: var(--text-secondary); cursor: pointer; text-decoration: none;
-        transition: all var(--transition-fast); font-size: 0.8rem;
-    }
-    .row-action:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .row-action-danger:hover { border-color: var(--danger); color: var(--danger); }
-
-    .offlist-form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
-    .offlist-form .form-group { margin-bottom: 0; flex: 1; min-width: 180px; }
-    .offlist-form .form-group.wide { flex: 2; }
-    .offlist-form .form-control { height: 42px; }
+    .offlist-form .ui-field { flex: 1 1 175px; }
+    .offlist-form .ui-field.wide { flex: 2 1 220px; }
 
     /* picker انتخاب تأمین‌کننده */
     .sup-picker { position: relative; }
     .sup-dropdown {
         position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 60;
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 12px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
         max-height: 240px; overflow-y: auto; display: none;
     }
     .sup-dropdown.show { display: block; }
     .sup-item {
         padding: 0.55rem 0.8rem; cursor: pointer;
-        border-bottom: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
     .sup-item:last-child { border-bottom: none; }
-    .sup-item:hover { background: var(--bg-subtle); }
-    .sup-item-name { font-weight: 700; color: var(--text-primary); font-size: 0.85rem; }
-    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .sup-item:hover { background: var(--ui-hover-row, #FAF9FF); }
+    .sup-item-name { font-weight: 700; color: var(--text-primary, #0F172A); font-size: 0.84rem; }
+    .sup-item-bank { font-size: 0.72rem; color: var(--text-muted, #94A3B8); margin-top: 0.12rem; }
 
-    /* نام تأمین‌کننده قابل کلیک — باز کردن الرت اطلاعات بانکی */
+    /* نام تأمین‌کننده قابل کلیک */
     .sup-name-btn {
         background: none; border: none; padding: 0; margin: 0;
         font-family: 'Vazir', sans-serif; font-weight: 700; font-size: inherit;
-        color: var(--accent-indigo); cursor: pointer; text-align: right;
+        color: var(--primary-dark, #7C3AED); cursor: pointer; text-align: right;
         display: inline-flex; align-items: center; gap: 0.35rem;
         -webkit-tap-highlight-color: transparent;
     }
     .sup-name-btn:hover { text-decoration: underline; }
-    .sup-name-btn i { font-size: 0.7rem; color: var(--text-muted); }
-    .sup-name-btn:hover i { color: var(--accent-indigo); }
+    .sup-name-btn i { font-size: 0.72rem; color: var(--text-muted, #94A3B8); }
+    .sup-name-btn:hover i { color: var(--primary, #8B5CF6); }
 
-    /* الرت اطلاعات بانکی تأمین‌کننده */
-    .supinfo-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100;
-        opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    .receipt-thumb {
+        width: 44px; height: 44px; object-fit: cover; border-radius: 8px;
+        border: 1px solid var(--border-default, #E2E8F0); cursor: pointer;
+        transition: transform 0.15s ease;
     }
+    .receipt-thumb:hover { transform: scale(1.06); }
+
+    /* مودال‌ها */
+    .pay-modal-backdrop,
+    .supinfo-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    }
+    .pay-modal-backdrop.show,
     .supinfo-modal-backdrop.show { opacity: 1; pointer-events: auto; }
+
+    .pay-modal,
     .supinfo-modal {
         position: fixed; top: 50%; left: 50%;
-        transform: translate(-50%, -50%) scale(0.96);
-        width: min(440px, calc(100vw - 2rem)); max-height: 85vh; overflow-y: auto;
-        background: var(--bg-card); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
-        z-index: 101; opacity: 0; pointer-events: none;
-        transition: all 0.2s ease; padding: 1.1rem 1.25rem;
+        transform: translate(-50%, -50%) scale(0.97);
+        width: min(480px, calc(100vw - 2rem)); max-height: 86vh; overflow-y: auto;
+        background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 18px; box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+        z-index: 2001; opacity: 0; pointer-events: none;
+        transition: all 0.2s ease; padding: 1.2rem 1.35rem;
     }
+    .pay-modal.show,
     .supinfo-modal.show {
         opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1);
     }
+    .pay-modal-header,
     .supinfo-modal-header {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem;
+        display: flex; justify-content: space-between; align-items: center;
+        padding-bottom: 0.85rem; margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
-    .supinfo-modal-title { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
-    .supinfo-modal-title i { color: var(--accent-purple); margin-left: 0.4rem; }
-    .supinfo-modal-close {
-        width: 32px; height: 32px; border-radius: 50%; border: none;
-        background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
-    }
-    .supinfo-modal-close:hover { background: var(--border-default); }
-    .supinfo-rows { margin: 0; }
+    .pay-modal-title,
+    .supinfo-modal-title { font-size: 0.98rem; font-weight: 800; color: var(--text-primary, #0F172A); }
+    .pay-modal-title i { color: var(--ui-ok, #047857); margin-left: 0.4rem; }
+    .supinfo-modal-title i { color: var(--primary, #8B5CF6); margin-left: 0.4rem; }
+
     .supinfo-row {
-        display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
-        padding: 0.5rem 0; border-bottom: 1px solid var(--border-light);
-        font-size: 0.85rem;
+        display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+        padding: 0.55rem 0; border-bottom: 1px solid var(--border-light, #F1F5F9);
+        font-size: 0.84rem;
     }
     .supinfo-row:last-child { border-bottom: none; }
-    .supinfo-row span { color: var(--text-secondary); flex-shrink: 0; }
-    .supinfo-row b { color: var(--text-primary); text-align: left; font-weight: 700; word-break: break-word; flex: 1; }
-    /* دکمه کپی شماره‌های بانکی */
+    .supinfo-row span { color: var(--text-secondary, #64748B); flex-shrink: 0; }
+    .supinfo-row b { color: var(--text-primary, #0F172A); text-align: left; font-weight: 700; word-break: break-word; flex: 1; font-variant-numeric: tabular-nums; }
     .supinfo-copy {
-        width: 30px; height: 30px; border-radius: var(--radius-md); flex-shrink: 0;
-        border: 1px solid var(--border-default); background: white; color: var(--text-secondary);
+        width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+        border: 1px solid var(--border-default, #E2E8F0); background: var(--bg-card, #FFFFFF);
+        color: var(--text-secondary, #64748B);
         display: inline-flex; align-items: center; justify-content: center;
-        cursor: pointer; font-size: 0.75rem;
-        transition: all var(--transition-fast); -webkit-tap-highlight-color: transparent;
+        cursor: pointer; font-size: 0.78rem; transition: all 0.15s ease;
     }
-    .supinfo-copy:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .supinfo-copy.copied { border-color: var(--accent-green); color: var(--accent-green); }
-
-    /* کشویی پرداخت خارج از لیست */
-    .offlist-summary {
-        list-style: none; cursor: pointer; user-select: none;
-        display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-    }
-    .offlist-summary::-webkit-details-marker { display: none; }
-    .offlist-summary:hover { background: var(--bg-subtle); }
-    .offlist-chevron {
-        color: var(--text-secondary); font-size: 0.9rem; flex-shrink: 0;
-        transition: transform var(--transition-fast);
-    }
-    .offlist-details[open] .offlist-chevron { transform: rotate(180deg); }
-
-    @media (max-width: 640px) {
-        .debt-table { font-size: 0.78rem; }
-        .debt-table thead th, .debt-table tbody td { padding: 0.5rem 0.6rem; }
-        .pay-account-select { width: 100%; }
-    }
-
-    /* مجموع بدهی — مینیمال */
-    .debt-total {
-        display: flex; align-items: center; justify-content: space-between;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg); padding: 0.8rem 1.25rem;
-        margin-bottom: 1.5rem; font-size: 0.9rem;
-        max-width: 480px;
-    }
-    .debt-total-label {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        color: var(--text-secondary); font-weight: 600;
-    }
-    .debt-total-label i { color: var(--accent-purple); }
-    .debt-total-value {
-        font-weight: 800; color: var(--danger); font-size: 1.15rem; white-space: nowrap;
-    }
-
-    /* ردیف بالا: مجموع بدهی و ثبت پرداخت خارج از لیست — کنار هم (دسکتاپ)
-       باکس مجموع بدهی ارتفاعش ثابت می‌ماند: با باز شدن کشویی خارج از لیست کشیده نمی‌شود */
-    .debt-top-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        align-items: start;
-    }
-    .debt-top-row .debt-total { margin-bottom: 0; max-width: none; align-self: start; }
-    /* کشویی خارج از لیست — همان قالب و ابعاد باکس مجموع بدهی */
-    .debt-top-row .offlist-details {
-        margin-bottom: 0; padding: 0;
-        border: 1px solid var(--border-light); border-radius: var(--radius-lg);
-        box-shadow: none; background: var(--bg-card);
-    }
-    .debt-top-row .offlist-summary {
-        padding: 0.8rem 1.25rem; border-radius: var(--radius-lg); background: transparent;
-    }
-    .debt-top-row .offlist-summary .card-title {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);
-    }
-    .debt-top-row .offlist-summary .card-title i { color: var(--accent-purple); }
-    .debt-top-row .offlist-details .card-body {
-        padding: 1rem 1.25rem 1.1rem;
-    }
+    .supinfo-copy:hover { border-color: var(--primary, #8B5CF6); color: var(--primary-dark, #7C3AED); }
+    .supinfo-copy.copied { border-color: var(--ui-ok, #047857); color: var(--ui-ok, #047857); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header{% if user.role == 'ceo' %} ceo-header{% endif %}">
-    <div class="ph-main"><div class="ph-icon"><i class="fas fa-hand-holding-usd"></i></div><div><h1 class="ph-title">پرداخت بدهی تأمین‌کنندگان</h1><p class="page-sub">مشاهده بدهی‌های معوق و ثبت رسید پرداخت تأمین‌کنندگان</p></div></div><h1 class="page-title" style="display:none;">
-        <i class="fas fa-hand-holding-usd"></i>
-        پرداخت بدهی تأمین‌کنندگان
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-hand-holding-usd" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                پرداخت بدهی تأمین‌کنندگان
+            </h1>
+            <div class="ui-subtitle">
+                <span>مشاهده بدهی‌های معوق و ثبت رسید پرداخت تأمین‌کنندگان</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-num" id="persianDate"></span>
+            </div>
         </div>
+    </header>
+
+    <!-- ردیف بالا: مجموع بدهی + کشویی پرداخت خارج از لیست -->
+    <div class="cdp-top-grid">
+        <section class="ui-metrics-strip" style="grid-template-columns:1fr;">
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">مجموع بدهی در انتظار</span>
+                <div class="ui-metric-val is-danger ui-num" id="pendingAmount">۰</div>
+                <span class="ui-metric-hint">تومان</span>
+            </div>
+        </section>
+
+        <details class="ui-details">
+            <summary>
+                <i class="fas fa-plus-circle"></i>
+                <span>ثبت پرداخت خارج از لیست</span>
+            </summary>
+            <div class="ui-card-body">
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem;">برای پرداخت‌هایی که در لیست بدهی‌ها تعریف نشده‌اند</div>
+                <form method="post" action="{% url 'debt_pay_offlist' cafe_code=cafe_code %}"
+                      enctype="multipart/form-data" class="offlist-form">
+                    {% csrf_token %}
+                    <div class="ui-field sup-picker">
+                        <label class="ui-field-label" for="off_company">نام تأمین‌کننده <span style="color:var(--ui-danger);">*</span></label>
+                        <input type="text" id="off_company" name="company" class="cdp-form-control sup-input" required
+                               autocomplete="off" placeholder="جستجو یا تایپ نام...">
+                        <input type="hidden" name="supplier_id" class="sup-hidden" value="">
+                        <div class="sup-dropdown"></div>
+                    </div>
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="off_amount">مبلغ پرداختی (تومان) <span style="color:var(--ui-danger);">*</span></label>
+                        <input type="text" id="off_amount" name="amount" class="form-control js-comma" required
+                               inputmode="numeric" placeholder="مثلاً ۱٬۵۰۰٬۰۰۰">
+                    </div>
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="off_account">پرداخت از حساب (بانک)</label>
+                        <select id="off_account" name="account_id" class="ui-select">
+                            <option value="">— انتخاب حساب —</option>
+                            {% for acc in payment_accounts %}
+                            <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="off_photo">تصویر رسید (اختیاری)</label>
+                        <input type="file" id="off_photo" name="payment_photo" class="cdp-form-control"
+                               accept="image/*" style="padding-top:0.4rem;">
+                    </div>
+                    <div class="ui-field wide">
+                        <label class="ui-field-label" for="off_desc">توضیحات</label>
+                        <input type="text" id="off_desc" name="description" class="cdp-form-control"
+                               placeholder="توضیحات اختیاری">
+                    </div>
+                    <div style="flex:0 0 auto;">
+                        <button type="submit" class="ui-btn ui-btn-primary" style="height:38px;">
+                            <i class="fas fa-check"></i>
+                            ثبت پرداخت
+                        </button>
+                    </div>
+                </form>
+                <div class="ui-field-hint" style="margin-top:0.55rem;">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود و در لیست پرداخت‌ها نمایش داده می‌شود</div>
+            </div>
+        </details>
     </div>
-</div>
 
-<!-- ردیف بالا: مجموع بدهی و ثبت پرداخت خارج از لیست — کنار هم -->
-<div class="debt-top-row">
-
-<!-- مجموع بدهی (مینیمال) -->
-<div class="debt-total">
-    <span class="debt-total-label"><i class="fas fa-hand-holding-usd"></i>مجموع بدهی</span>
-    <span class="debt-total-value" id="pendingAmount">۰</span>
-</div>
-
-<!-- ثبت پرداخت خارج از لیست — کشویی: با لمس روی عنوان باز می‌شود -->
-<details class="card offlist-details">
-    <summary class="card-header offlist-summary">
-        <div class="card-title">
-            <i class="fas fa-plus-circle"></i>
-            ثبت پرداخت خارج از لیست
+    <!-- بدهی‌های در انتظار پرداخت -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-list"></i>
+                لیست بدهی‌ها
+            </h2>
+            <span class="ui-pill is-warn ui-num">{{ pending_debts|length }} در انتظار</span>
         </div>
-        <i class="fas fa-chevron-down offlist-chevron"></i>
-    </summary>
-    <div class="card-body">
-        <small class="text-muted">برای پرداخت‌هایی که در لیست بدهی‌ها تعریف نشده‌اند</small>
-        <form method="post" action="{% url 'debt_pay_offlist' cafe_code=cafe_code %}"
-              enctype="multipart/form-data" class="offlist-form">
-            {% csrf_token %}
-            <div class="form-group sup-picker">
-                <label for="off_company">نام تأمین‌کننده <span style="color:var(--danger);">*</span></label>
-                <input type="text" id="off_company" name="company" class="form-control sup-input" required
-                       autocomplete="off" placeholder="جستجو و انتخاب از تأمین‌کنندگان یا تایپ نام جدید...">
-                <input type="hidden" name="supplier_id" class="sup-hidden" value="">
-                <div class="sup-dropdown"></div>
-            </div>
-            <div class="form-group">
-                <label for="off_amount">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
-                <input type="text" id="off_amount" name="amount" class="form-control js-comma" required
-                       inputmode="numeric" placeholder="مبلغ پرداختی — مثلاً ۱٬۵۰۰٬۰۰۰">
-            </div>
-            <div class="form-group">
-                <label for="off_account">پرداخت از حساب (بانک)</label>
-                <select id="off_account" name="account_id" class="form-control">
-                    <option value="">— انتخاب حساب —</option>
-                    {% for acc in payment_accounts %}
-                    <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>تأمین‌کننده</th>
+                        <th>مبلغ بدهی</th>
+                        <th>تاریخ بدهی</th>
+                        <th>توضیحات</th>
+                        <th>اولویت</th>
+                        <th style="text-align:left;">پرداخت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for debt in pending_debts %}
+                    <tr>
+                        <td>
+                            {% if debt.supplier %}
+                            <button type="button" class="sup-name-btn supinfo-open"
+                                    data-name="{{ debt.supplier.name }}"
+                                    data-bank="{{ debt.supplier.bank_name|default:'' }}"
+                                    data-card="{{ debt.supplier.card_number|default:'' }}"
+                                    data-sheba="{{ debt.supplier.sheba_number|default:'' }}"
+                                    data-account="{{ debt.supplier.bank_account|default:'' }}"
+                                    data-contact="{{ debt.supplier.contact_person|default:'' }}"
+                                    data-mobile="{{ debt.supplier.mobile|default:'' }}"
+                                    title="مشاهده اطلاعات بانکی تأمین‌کننده">
+                                {{ debt.company }} <i class="fas fa-info-circle"></i>
+                            </button>
+                            {% else %}
+                            <strong>{{ debt.company }}</strong>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display:inline-flex;align-items:baseline;gap:0.28rem;">
+                                <span class="ui-num" style="font-weight:800;color:var(--text-primary);" data-fa>{{ debt.remaining_amt|floatformat:"0" }}</span>
+                                <span style="font-size:0.72rem;color:var(--text-muted);">تومان</span>
+                            </div>
+                            {% if debt.paid_sum > 0 %}
+                            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.12rem;" class="ui-num">پرداخت شده: {{ debt.paid_sum|floatformat:"0" }} تومان</div>
+                            {% endif %}
+                        </td>
+                        <td class="ui-num" style="color:var(--text-secondary);">{{ debt.debt_date|jalali_date }}</td>
+                        <td style="max-width:220px;white-space:normal;line-height:1.5;color:var(--text-secondary);">{{ debt.description|default:"—" }}</td>
+                        <td>
+                            {% if debt.priority == 'high' %}<span class="ui-pill is-danger">بالا</span>
+                            {% elif debt.priority == 'low' %}<span class="ui-pill is-info">پایین</span>
+                            {% else %}<span class="ui-pill is-warn">متوسط</span>{% endif %}
+                        </td>
+                        <td style="text-align:left;">
+                            <button type="button" class="ui-btn ui-btn-success is-sm pay-open-btn"
+                                    data-pay-url="{% url 'debt_pay' cafe_code=cafe_code debt_id=debt.id %}"
+                                    data-company="{{ debt.company }}">
+                                <i class="fas fa-hand-holding-usd"></i> پرداخت
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="ui-empty">
+                                <i class="fas fa-inbox"></i>
+                                بدهی در انتظار پرداختی وجود ندارد
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
-                </select>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- مودال ثبت پرداخت بدهی -->
+    <div class="pay-modal-backdrop" id="payModalBackdrop"></div>
+    <div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-label="ثبت پرداخت بدهی">
+        <div class="pay-modal-header">
+            <div class="pay-modal-title"><i class="fas fa-hand-holding-usd"></i> ثبت پرداخت — <span id="payCompany"></span></div>
+            <button type="button" class="ui-modal-close" id="payModalClose" aria-label="بستن">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" action="" id="payForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="ui-form-grid cols-2" style="margin-bottom:0.85rem;">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="pay_account">پرداخت از حساب (بانک)</label>
+                    <select id="pay_account" name="account_id" class="ui-select">
+                        <option value="">— انتخاب حساب —</option>
+                        {% for acc in payment_accounts %}
+                        <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="pay_amount">مبلغ پرداختی (تومان) <span style="color:var(--ui-danger);">*</span></label>
+                    <input type="text" id="pay_amount" name="paid_amount" class="form-control js-comma" required
+                           inputmode="numeric" placeholder="مثلاً ۱٬۵۰۰٬۰۰۰">
+                </div>
             </div>
-            <div class="form-group">
-                <label for="off_photo">تصویر رسید (اختیاری)</label>
-                <input type="file" id="off_photo" name="payment_photo" class="form-control"
-                       accept="image/*" style="padding-top:0.35rem;">
+            <div class="ui-field" style="margin-bottom:0.75rem;">
+                <label class="ui-field-label" for="pay_photo">تصویر رسید (اختیاری)</label>
+                <input type="file" id="pay_photo" name="payment_photo" class="cdp-form-control" accept="image/*"
+                       style="padding-top:0.4rem;">
             </div>
-            <div class="form-group wide">
-                <label for="off_desc">توضیحات</label>
-                <input type="text" id="off_desc" name="description" class="form-control"
-                       placeholder="توضیحات اختیاری">
-            </div>
-            <div class="form-group" style="flex:0 0 auto; min-width:0;">
-                <label style="visibility:hidden;">ثبت</label>
-                <button type="submit" class="btn btn-primary" style="height:42px;">
+            <div class="ui-field-hint" style="margin-bottom:1rem;">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود — اگر باقی‌مانده بدهی ۱٬۰۰۰٬۰۰۰ تومان یا کمتر شود، بدهی بسته می‌شود</div>
+            <div style="display:flex;gap:0.55rem;justify-content:flex-end;">
+                <button type="button" class="ui-btn ui-btn-ghost" id="payModalCancel">انصراف</button>
+                <button type="submit" class="ui-btn ui-btn-primary">
                     <i class="fas fa-check"></i>
-                    ثبت پرداخت
+                    ثبت و تایید پرداخت
                 </button>
             </div>
         </form>
-        <div class="help-note">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود و در لیست پرداخت‌ها نمایش داده می‌شود</div>
     </div>
-</details>
 
-</div>
-
-<!-- بدهی‌های در انتظار پرداخت -->
-<div class="table-card">
-    <div class="table-header">
-        <div class="table-title">
-            <i class="fas fa-list"></i>
-            لیست بدهی‌ها
-        </div>
-        <span class="status-pill pending">{{ pending_debts|length }} در انتظار</span>
-    </div>
-    <div class="debt-table-wrap">
-        <table class="debt-table">
-            <thead>
-                <tr>
-                    <th>تأمین‌کننده</th>
-                    <th>مبلغ بدهی</th>
-                    <th>تاریخ بدهی</th>
-                    <th>توضیحات</th>
-                    <th>اولویت</th>
-                    <th>پرداخت</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for debt in pending_debts %}
-                <tr>
-                    <td>
-                        {% if debt.supplier %}
-                        <button type="button" class="sup-name-btn supinfo-open"
-                                data-name="{{ debt.supplier.name }}"
-                                data-bank="{{ debt.supplier.bank_name|default:'' }}"
-                                data-card="{{ debt.supplier.card_number|default:'' }}"
-                                data-sheba="{{ debt.supplier.sheba_number|default:'' }}"
-                                data-account="{{ debt.supplier.bank_account|default:'' }}"
-                                data-contact="{{ debt.supplier.contact_person|default:'' }}"
-                                data-mobile="{{ debt.supplier.mobile|default:'' }}"
-                                title="مشاهده اطلاعات بانکی تأمین‌کننده">
-                            {{ debt.company }} <i class="fas fa-info-circle"></i>
-                        </button>
-                        {% else %}
-                        <strong>{{ debt.company }}</strong>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="debt-remaining">
-                            <span class="amount" data-fa>{{ debt.remaining_amt|floatformat:"0" }}</span>
-                            <span class="unit">تومان</span>
-                        </div>
-                        {% if debt.paid_sum > 0 %}
-                        <div class="help-note" style="margin-top:0.15rem;">پرداخت شده: {{ debt.paid_sum|floatformat:"0" }} تومان</div>
-                        {% endif %}
-                    </td>
-                    <td>{{ debt.debt_date|jalali_date }}</td>
-                    <td class="desc-cell">{{ debt.description|default:"—" }}</td>
-                    <td>
-                        {% if debt.priority == 'high' %}<span class="badge badge-danger">بالا</span>
-                        {% elif debt.priority == 'low' %}<span class="badge badge-info">پایین</span>
-                        {% else %}<span class="badge badge-warning">متوسط</span>{% endif %}
-                    </td>
-                    <td>
-                        <button type="button" class="pay-open-btn"
-                                data-pay-url="{% url 'debt_pay' cafe_code=cafe_code debt_id=debt.id %}"
-                                data-company="{{ debt.company }}">
-                            <i class="fas fa-hand-holding-usd"></i> پرداخت
-                        </button>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="empty-cell">
-                        <i class="fas fa-inbox"></i>
-                        بدهی در انتظار پرداختی وجود ندارد
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- مودال ثبت پرداخت بدهی — فرم از داخل جدول خارج شده تا جدول خلاصه و مرتب بماند -->
-<div class="pay-modal-backdrop" id="payModalBackdrop"></div>
-<div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-label="ثبت پرداخت بدهی">
-    <div class="pay-modal-header">
-        <div class="pay-modal-title"><i class="fas fa-hand-holding-usd"></i> ثبت پرداخت — <span id="payCompany"></span></div>
-        <button type="button" class="pay-modal-close" id="payModalClose" aria-label="بستن">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <form method="post" action="" id="payForm" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="pay-modal-grid">
-            <div class="form-group">
-                <label for="pay_account">پرداخت از حساب (بانک)</label>
-                <select id="pay_account" name="account_id" class="form-control pay-account-select">
-                    <option value="">— انتخاب حساب —</option>
-                    {% for acc in payment_accounts %}
-                    <option value="{{ acc.id }}">{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="pay_amount">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
-                <input type="text" id="pay_amount" name="paid_amount" class="form-control js-comma" required
-                       inputmode="numeric" placeholder="مثلاً ۱٬۵۰۰٬۰۰۰">
-            </div>
-            <div class="form-group full">
-                <label for="pay_photo">تصویر رسید (اختیاری)</label>
-                <input type="file" id="pay_photo" name="payment_photo" class="form-control" accept="image/*"
-                       style="padding-top:0.35rem;">
-            </div>
-        </div>
-        <div class="help-note">تاریخ و ساعت ثبت به صورت خودکار درج می‌شود — اگر باقی‌مانده بدهی ۱٬۰۰۰٬۰۰۰ تومان یا کمتر شود، بدهی بسته می‌شود</div>
-        <div class="pay-modal-footer">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-check"></i>
-                ثبت و تایید پرداخت
+    <!-- الرت اطلاعات بانکی تأمین‌کننده -->
+    <div class="supinfo-modal-backdrop" id="supinfoBackdrop"></div>
+    <div class="supinfo-modal" id="supinfoModal" role="dialog" aria-modal="true" aria-label="اطلاعات بانکی تأمین‌کننده">
+        <div class="supinfo-modal-header">
+            <div class="supinfo-modal-title"><i class="fas fa-university"></i> اطلاعات بانکی — <span id="supinfoName"></span></div>
+            <button type="button" class="ui-modal-close" id="supinfoClose" aria-label="بستن">
+                <i class="fas fa-times"></i>
             </button>
-            <button type="button" class="btn btn-secondary" id="payModalCancel">انصراف</button>
         </div>
-    </form>
-</div>
-
-<!-- الرت اطلاعات بانکی تأمین‌کننده — با کلیک روی نام تأمین‌کننده باز می‌شود -->
-<div class="supinfo-modal-backdrop" id="supinfoBackdrop"></div>
-<div class="supinfo-modal" id="supinfoModal" role="dialog" aria-modal="true" aria-label="اطلاعات بانکی تأمین‌کننده">
-    <div class="supinfo-modal-header">
-        <div class="supinfo-modal-title"><i class="fas fa-university"></i> اطلاعات بانکی — <span id="supinfoName"></span></div>
-        <button type="button" class="supinfo-modal-close" id="supinfoClose" aria-label="بستن">
-            <i class="fas fa-times"></i>
-        </button>
+        <div id="supinfoRows"></div>
+        <div class="ui-field-hint" style="margin-top:0.75rem;">برای ویرایش این اطلاعات به صفحه مدیریت تأمین‌کنندگان بروید</div>
     </div>
-    <div class="supinfo-rows" id="supinfoRows"></div>
-    <div class="help-note" style="margin-top:0.7rem;">برای ویرایش این اطلاعات به صفحه مدیریت تأمین‌کنندگان بروید</div>
-</div>
 
-<!-- لیست پرداخت‌های ثبت شده -->
-<div class="table-card">
-    <div class="table-header">
-        <div class="table-title">
-            <i class="fas fa-check-circle"></i>
-            لیست پرداخت‌ها
-        </div>
-        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-            <span style="font-size:0.8rem; color:var(--text-secondary);">بازه زمانی:</span>
-            <div class="period-filter">
-                <a href="?period=week" class="period-btn{% if selected_period == 'week' %} active{% endif %}">هفته</a>
-                <a href="?period=month" class="period-btn{% if selected_period == 'month' %} active{% endif %}">ماه</a>
-                <a href="?period=season" class="period-btn{% if selected_period == 'season' %} active{% endif %}">فصل</a>
-                <a href="?period=year" class="period-btn{% if selected_period == 'year' %} active{% endif %}">سال</a>
+    <!-- لیست پرداخت‌های ثبت شده -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-check-circle"></i>
+                لیست پرداخت‌ها
+            </h2>
+            <div style="display:flex;align-items:center;gap:0.65rem;flex-wrap:wrap;">
+                <span style="font-size:0.76rem;color:var(--text-secondary);font-weight:600;">بازه زمانی:</span>
+                <div class="ui-segmented">
+                    <a href="?period=week" class="ui-seg-item{% if selected_period == 'week' %} is-active{% endif %}">هفته</a>
+                    <a href="?period=month" class="ui-seg-item{% if selected_period == 'month' %} is-active{% endif %}">ماه</a>
+                    <a href="?period=season" class="ui-seg-item{% if selected_period == 'season' %} is-active{% endif %}">فصل</a>
+                    <a href="?period=year" class="ui-seg-item{% if selected_period == 'year' %} is-active{% endif %}">سال</a>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="debt-table-wrap">
-        <table class="debt-table">
-            <thead>
-                <tr>
-                    <th>تأمین‌کننده</th>
-                    <th>مبلغ بدهی</th>
-                    <th>مبلغ پرداخت شده</th>
-                    <th>تاریخ و زمان پرداخت</th>
-                    <th>حساب پرداخت</th>
-                    <th>تصویر رسید</th>
-                    <th>پرداخت توسط</th>
-                    <th>عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for payment in payments %}
-                <tr>
-                    <td>
-                        {% if payment.debt and payment.debt.supplier %}
-                        <button type="button" class="sup-name-btn supinfo-open"
-                                data-name="{{ payment.debt.supplier.name }}"
-                                data-bank="{{ payment.debt.supplier.bank_name|default:'' }}"
-                                data-card="{{ payment.debt.supplier.card_number|default:'' }}"
-                                data-sheba="{{ payment.debt.supplier.sheba_number|default:'' }}"
-                                data-account="{{ payment.debt.supplier.bank_account|default:'' }}"
-                                data-contact="{{ payment.debt.supplier.contact_person|default:'' }}"
-                                data-mobile="{{ payment.debt.supplier.mobile|default:'' }}"
-                                title="مشاهده اطلاعات بانکی تأمین‌کننده">
-                            {{ payment.company }} <i class="fas fa-info-circle"></i>
-                        </button>
-                        {% else %}
-                        <strong>{{ payment.company }}</strong>
-                        {% endif %}
-                        {% if payment.is_off_list %}<span class="badge badge-info">خارج از لیست</span>{% endif %}
-                    </td>
-                    <td><span class="amount" data-fa>{{ payment.debt_amount|floatformat:"0" }}</span></td>
-                    <td><span class="amount" data-fa>{{ payment.amount|floatformat:"0" }}</span></td>
-                    <td style="white-space:nowrap;">{{ payment.paid_at|jalali_datetime }}</td>
-                    <td>{% if payment.account_display %}{{ payment.account_display.bank_name }}{% if payment.account_display.account_name %} — {{ payment.account_display.account_name }}{% endif %}{% else %}—{% endif %}</td>
-                    <td>
-                        {% if payment.payment_photo %}
-                        <a href="{{ payment.payment_photo.url }}" target="_blank" title="مشاهده تصویر رسید">
-                            <img src="{{ payment.payment_photo.url }}" alt="رسید پرداخت {{ payment.company }}"
-                                 class="receipt-thumb">
-                        </a>
-                        {% else %}
-                        <span class="text-muted">—</span>
-                        {% endif %}
-                    </td>
-                    <td>{% if payment.paid_by %}{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}{% else %}—{% endif %}</td>
-                    <td>
-                        <div class="row-actions">
-                            <a href="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}" class="row-action" title="ویرایش پرداخت">
-                                <i class="fas fa-edit"></i>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>تأمین‌کننده</th>
+                        <th>مبلغ بدهی</th>
+                        <th>مبلغ پرداخت شده</th>
+                        <th>تاریخ و زمان</th>
+                        <th>حساب و پرداخت‌کننده</th>
+                        <th>رسید</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr>
+                        <td>
+                            {% if payment.debt and payment.debt.supplier %}
+                            <button type="button" class="sup-name-btn supinfo-open"
+                                    data-name="{{ payment.debt.supplier.name }}"
+                                    data-bank="{{ payment.debt.supplier.bank_name|default:'' }}"
+                                    data-card="{{ payment.debt.supplier.card_number|default:'' }}"
+                                    data-sheba="{{ payment.debt.supplier.sheba_number|default:'' }}"
+                                    data-account="{{ payment.debt.supplier.bank_account|default:'' }}"
+                                    data-contact="{{ payment.debt.supplier.contact_person|default:'' }}"
+                                    data-mobile="{{ payment.debt.supplier.mobile|default:'' }}"
+                                    title="مشاهده اطلاعات بانکی تأمین‌کننده">
+                                {{ payment.company }} <i class="fas fa-info-circle"></i>
+                            </button>
+                            {% else %}
+                            <strong>{{ payment.company }}</strong>
+                            {% endif %}
+                            {% if payment.is_off_list %}<span class="ui-pill is-info" style="margin-right:0.35rem;">خارج از لیست</span>{% endif %}
+                        </td>
+                        <td><span class="ui-num" style="font-weight:700;" data-fa>{{ payment.debt_amount|floatformat:"0" }}</span></td>
+                        <td><span class="ui-money" data-fa>{{ payment.amount|floatformat:"0" }}</span></td>
+                        <td class="ui-num" style="white-space:nowrap;color:var(--text-secondary);">{{ payment.paid_at|jalali_datetime }}</td>
+                        <td>
+                            <div style="font-size:0.81rem;color:var(--text-primary);">{% if payment.account_display %}{{ payment.account_display.bank_name }}{% if payment.account_display.account_name %} — {{ payment.account_display.account_name }}{% endif %}{% else %}—{% endif %}</div>
+                            <div style="font-size:0.72rem;color:var(--text-muted);">{% if payment.paid_by %}{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}{% else %}—{% endif %}</div>
+                        </td>
+                        <td>
+                            {% if payment.payment_photo %}
+                            <a href="{{ payment.payment_photo.url }}" target="_blank" title="مشاهده تصویر رسید">
+                                <img src="{{ payment.payment_photo.url }}" alt="رسید پرداخت {{ payment.company }}"
+                                     class="receipt-thumb">
                             </a>
-                            <a href="{% url 'debt_payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="row-action row-action-danger" title="حذف پرداخت">
-                                <i class="fas fa-trash"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="empty-cell">
-                        <i class="fas fa-money-check-alt"></i>
-                        هنوز پرداختی ثبت نشده است
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                            {% else %}
+                            <span style="color:var(--text-muted);">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;align-items:center;gap:0.25rem;">
+                                <a href="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}" class="ui-row-action" title="ویرایش پرداخت">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'debt_payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="ui-row-action is-danger" title="حذف پرداخت">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="ui-empty">
+                                <i class="fas fa-money-check-alt"></i>
+                                هنوز پرداختی ثبت نشده است
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
 </div>
 {% endblock %}
 
@@ -570,7 +454,6 @@
 {{ suppliers_data|json_script:"suppliers-data" }}
 <script src="{% static 'js/supplier_picker.js' %}"></script>
 <script>
-    // الرت اطلاعات بانکی تأمین‌کننده — مستقل از بقیه اسکریپت‌ها
     (function() {
         var backdrop = document.getElementById('supinfoBackdrop');
         var modal = document.getElementById('supinfoModal');
@@ -578,7 +461,6 @@
         var rowsEl = document.getElementById('supinfoRows');
         if (!modal || !backdrop || !nameEl || !rowsEl) return;
 
-        // شماره‌هایی که دکمه کپی دارند
         var COPYABLE = ['شماره حساب', 'شماره کارت', 'شماره شبا'];
 
         function makeRow(label, value) {
@@ -608,7 +490,6 @@
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(value).then(done);
                     } else {
-                        // مرورگرهای قدیمی — textarea موقت
                         var ta = document.createElement('textarea');
                         ta.value = value;
                         document.body.appendChild(ta);
@@ -661,7 +542,6 @@
     })();
 </script>
 <script>
-    // مودال ثبت پرداخت — مستقل از بقیه اسکریپت‌ها: خطای سایر بخش‌ها روی آن اثر ندارد
     (function() {
         var backdrop = document.getElementById('payModalBackdrop');
         var modal = document.getElementById('payModal');
@@ -696,17 +576,14 @@
     const toFa = n => String(n);
     const formatNum = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-    // نمایش اعداد انگلیسی برای مقادیر مبلغ
     document.querySelectorAll('[data-fa]').forEach(el => {
         const num = Number(el.textContent.replace(/,/g, ''));
         if (!isNaN(num)) el.textContent = toFa(formatNum(num));
     });
 
-    // جمع مبلغ بدهی‌های در انتظار
     const pendingAmount = document.getElementById('pendingAmount');
     if (pendingAmount) pendingAmount.textContent = toFa(formatNum({{ total_pending_amount|floatformat:"0" }}));
 
-    // تاریخ امروز شمسی
     const persianDateEl = document.getElementById('persianDate');
     if (persianDateEl) persianDateEl.textContent =
         new Intl.DateTimeFormat('fa-IR-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());

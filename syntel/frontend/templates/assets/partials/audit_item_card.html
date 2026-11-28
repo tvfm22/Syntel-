@@ -28,38 +28,38 @@
                 <span>{{ card.obj.asset.category.name }}</span>
                 <span>•</span>
                 {% endif %}
-                <span>کد: {{ card.obj.asset.code }}</span>
+                <span class="ui-num">کد: {{ card.obj.asset.code }}</span>
             </div>
 
             <div class="aic-badges">
                 {% if card.obj.asset_unit %}
-                <span class="aic-badge aic-badge-tag">
+                <span class="ui-pill is-accent ui-num">
                     <i class="fas fa-tag"></i> پلاک: {{ card.obj.asset_unit.asset_tag }}
                 </span>
                 {% endif %}
                 {% if card.obj.is_unexpected_item %}
-                <span class="aic-badge aic-badge-unexpected">خارج از لیست</span>
+                <span class="ui-pill is-accent">خارج از لیست</span>
                 {% endif %}
                 {% if card.obj.needs_recount %}
-                <span class="aic-badge aic-badge-recount">
+                <span class="ui-pill is-warn">
                     <i class="fas fa-redo"></i> نیازمند بازشماری
                 </span>
                 {% endif %}
                 {% if saved_just_now %}
-                <span class="aic-badge aic-badge-saved">
+                <span class="ui-pill is-ok">
                     <i class="fas fa-check-circle"></i> ذخیره شد
                 </span>
                 {% elif card.obj.is_counted %}
-                <span class="aic-badge aic-badge-counted">
+                <span class="ui-pill is-ok">
                     <i class="fas fa-check"></i> شمارش شده
                 </span>
                 {% else %}
-                <span class="aic-badge aic-badge-pending">شمارش‌نشده</span>
+                <span class="ui-pill is-muted">شمارش‌نشده</span>
                 {% endif %}
             </div>
 
             {% if include_expected %}
-            <div class="aic-system-hint">
+            <div class="aic-system-hint ui-num">
                 {% if card.is_serialized %}
                     وضعیت ثبت‌شده در سیستم: <strong>{{ card.expected_status_label }}</strong>
                 {% else %}
@@ -184,15 +184,17 @@
 <div id="auditProgressHeader" hx-swap-oob="true" class="am-progress-card"
      data-uncounted="{{ progress.uncounted_items }}">
     <div class="am-progress-meta">
-        <strong>{{ progress.counted_items }} از {{ progress.total_items }} قلم شمارش شده</strong>
-        <span>{{ progress.progress_pct }}%</span>
+        <strong class="ui-num">{{ progress.counted_items }} از {{ progress.total_items }} قلم شمارش شده</strong>
+        <span class="ui-num" style="font-weight:700;">{{ progress.progress_pct }}%</span>
     </div>
     <div class="am-progress-track">
         <div class="am-progress-fill" style="width: {{ progress.progress_pct }}%;"></div>
     </div>
     {% if progress.recount_items > 0 %}
-    <div class="am-recount-pill">
-        <i class="fas fa-redo"></i> {{ progress.recount_items }} قلم نیازمند بازشماری
+    <div style="margin-top:0.5rem;">
+        <span class="ui-pill is-warn ui-num">
+            <i class="fas fa-redo"></i> {{ progress.recount_items }} قلم نیازمند بازشماری
+        </span>
     </div>
     {% endif %}
 </div>

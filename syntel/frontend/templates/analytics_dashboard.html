@@ -1,222 +1,245 @@
 ﻿{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}داشبورد تحلیلی{% endblock %}
+{% block title %}داشبورد تحلیلی - Kuker{% endblock %}
 
 {% block extra_head %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <style>
-.analytics-card {
-    transition: transform 0.2s;
-}
-.analytics-card:hover {
-    transform: translateY(-2px);
-}
-.metric-value {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #007bff;
-}
-.metric-label {
-    font-size: 0.9rem;
-    color: #6c757d;
-}
+    .ad-nav-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 0.9rem;
+    }
+
+    .ad-nav-tile {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 14px;
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-primary, #0F172A);
+        text-decoration: none;
+        text-align: right;
+        cursor: pointer;
+        font-family: 'Vazir', sans-serif;
+        transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .ad-nav-tile:hover {
+        border-color: var(--primary, #8B5CF6);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md, 0 4px 14px rgba(15, 23, 42, 0.06));
+        color: var(--text-primary, #0F172A);
+    }
+
+    .ad-nav-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .ad-split {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.2rem;
+    }
+
+    .ad-act-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
+    }
+
+    .ad-act-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .ad-act-item:first-child {
+        padding-top: 0;
+    }
+
+    @media (max-width: 900px) {
+        .ad-split {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-chart-line"></i> داشبورد تحلیلی سیستم خرید
-                    </h3>
-                    <div class="card-tools">
-                        <small class="text-muted">آخرین بروزرسانی: {{ now|date:"Y/m/d H:i" }}</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Quick Metrics Row -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card analytics-card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <div class="metric-value">{{ total_requests|default:0 }}</div>
-                                    <div class="metric-label">کل درخواست‌های خرید</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card analytics-card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <div class="metric-value">{{ approved_requests|default:0 }}</div>
-                                    <div class="metric-label">درخواست‌های تأیید شده</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card analytics-card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <div class="metric-value">{{ pending_approvals|default:0 }}</div>
-                                    <div class="metric-label">در انتظار تأیید</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card analytics-card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <div class="metric-value">{{ total_suppliers|default:0 }}</div>
-                                    <div class="metric-label">تأمین‌کنندگان فعال</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-line" style="color: var(--primary, #8B5CF6);"></i>
+                داشبورد تحلیلی سیستم خرید
+            </h1>
+            <p class="ui-subtitle">آخرین بروزرسانی: <span class="ui-num">{{ now|date:"Y/m/d H:i" }}</span></p>
+        </div>
+        <div class="ui-topbar-actions">
+            <button type="button" class="ui-btn ui-btn-ghost" onclick="exportDashboard()">
+                <i class="fas fa-download"></i>
+                <span>خروجی گزارش (PDF/Excel)</span>
+            </button>
+        </div>
+    </header>
 
-                    <!-- Analytics Navigation -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">گزارش‌های تحلیلی</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="btn btn-outline-primary btn-block">
-                                                <i class="fas fa-shopping-cart"></i>
-                                                <br>
-                                                <strong>تحلیل خریدها</strong>
-                                                <br>
-                                                <small>روند درخواست‌ها و تحلیل محصولات</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="btn btn-outline-success btn-block">
-                                                <i class="fas fa-dollar-sign"></i>
-                                                <br>
-                                                <strong>تحلیل مالی</strong>
-                                                <br>
-                                                <small>هزینه‌ها و پرداخت‌ها</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'supplier_analytics' cafe_code=cafe_code %}" class="btn btn-outline-info btn-block">
-                                                <i class="fas fa-truck"></i>
-                                                <br>
-                                                <strong>تحلیل تأمین‌کنندگان</strong>
-                                                <br>
-                                                <small>عملکرد و امتیازدهی</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'inventory_analytics' cafe_code=cafe_code %}" class="btn btn-outline-warning btn-block">
-                                                <i class="fas fa-boxes"></i>
-                                                <br>
-                                                <strong>تحلیل موجودی</strong>
-                                                <br>
-                                                <small>موجودی و مصرف محصولات</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'executive_summary' cafe_code=cafe_code %}" class="btn btn-outline-danger btn-block">
-                                                <i class="fas fa-chart-pie"></i>
-                                                <br>
-                                                <strong>خلاصه مدیریتی</strong>
-                                                <br>
-                                                <small>شاخص‌های کلیدی عملکرد</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="btn btn-outline-primary btn-block">
-                                                <i class="fas fa-layer-group"></i>
-                                                <br>
-                                                <strong>تحلیل خرید بر اساس دسته‌بندی</strong>
-                                                <br>
-                                                <small>فیلتر دسته‌بندی و فروشنده</small>
-                                            </a>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <button class="btn btn-outline-secondary btn-block" onclick="exportDashboard()">
-                                                <i class="fas fa-download"></i>
-                                                <br>
-                                                <strong>خروجی گزارش</strong>
-                                                <br>
-                                                <small>PDF/Excel</small>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Quick Metrics Row -->
+    <section class="ui-metrics-strip">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل درخواست‌های خرید</span>
+            <div class="ui-metric-val is-accent ui-num">{{ total_requests|default:0 }}</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">درخواست‌های تأیید شده</span>
+            <div class="ui-metric-val is-green ui-num">{{ approved_requests|default:0 }}</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">در انتظار تأیید</span>
+            <div class="ui-metric-val is-warn ui-num">{{ pending_approvals|default:0 }}</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تأمین‌کنندگان فعال</span>
+            <div class="ui-metric-val ui-num">{{ total_suppliers|default:0 }}</div>
+        </div>
+    </section>
 
-                    <!-- Recent Activity -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">فعالیت‌های اخیر</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="list-group list-group-flush">
-                                        {% for activity in recent_activities %}
-                                        <div class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ activity.title }}</h6>
-                                                <small>{{ activity.date|timesince }}</small>
-                                            </div>
-                                            <p class="mb-1">{{ activity.description }}</p>
-                                            <small class="text-muted">{{ activity.user }}</small>
-                                        </div>
-                                        {% empty %}
-                                        <div class="list-group-item text-center text-muted">
-                                            فعالیتی یافت نشد
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">هشدارها و اعلان‌ها</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                        {{ pending_approvals }} درخواست خرید در انتظار تأیید هستند
-                                    </div>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle"></i>
-                                        {{ overdue_invoices }} فاکتور سررسید گذشته دارند
-                                    </div>
-                                    <div class="alert alert-success">
-                                        <i class="fas fa-check-circle"></i>
-                                        {{ completed_today }} سفارش امروز تکمیل شده است
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Analytics Navigation -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-compass"></i> گزارش‌های تحلیلی</h2>
+        </div>
+        <div class="ui-card-body">
+            <div class="ad-nav-grid">
+                <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-accent-tint); color: var(--primary-dark, #7C3AED);">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
-                </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">تحلیل خریدها</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">روند درخواست‌ها و تحلیل محصولات</small>
+                    </div>
+                </a>
+                <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-ok-bg); color: var(--ui-ok);">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">تحلیل مالی</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">هزینه‌ها و پرداخت‌ها</small>
+                    </div>
+                </a>
+                <a href="{% url 'supplier_analytics' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-info-bg); color: var(--ui-info);">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">تحلیل تأمین‌کنندگان</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">عملکرد و امتیازدهی</small>
+                    </div>
+                </a>
+                <a href="{% url 'inventory_analytics' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-warn-bg); color: var(--ui-warn);">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">تحلیل موجودی</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">موجودی و مصرف محصولات</small>
+                    </div>
+                </a>
+                <a href="{% url 'executive_summary' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-danger-bg); color: var(--ui-danger);">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">خلاصه مدیریتی</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">شاخص‌های کلیدی عملکرد</small>
+                    </div>
+                </a>
+                <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="ad-nav-tile">
+                    <div class="ad-nav-icon" style="background: var(--ui-accent-tint); color: var(--primary-dark, #7C3AED);">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">تحلیل خرید بر اساس دسته‌بندی</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">فیلتر دسته‌بندی و فروشنده</small>
+                    </div>
+                </a>
+                <button type="button" class="ad-nav-tile" onclick="exportDashboard()">
+                    <div class="ad-nav-icon" style="background: var(--gray-100, #F1F5F9); color: var(--text-secondary, #64748B);">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.88rem;">خروجی گزارش</strong>
+                        <small style="color: var(--text-secondary, #64748B); font-size: 0.76rem;">PDF/Excel</small>
+                    </div>
+                </button>
             </div>
         </div>
+    </section>
+
+    <!-- Recent Activity & Alerts -->
+    <div class="ad-split">
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-clock-rotate-left"></i> فعالیت‌های اخیر</h2>
+            </div>
+            <div class="ui-card-body">
+                {% for activity in recent_activities %}
+                <div class="ad-act-item">
+                    <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                        <strong style="font-size: 0.85rem;">{{ activity.title }}</strong>
+                        <small style="color: var(--text-muted, #94A3B8);">{{ activity.date|timesince }}</small>
+                    </div>
+                    <p style="margin: 0.2rem 0; font-size: 0.8rem; color: var(--text-secondary, #64748B);">{{ activity.description }}</p>
+                    <small style="color: var(--text-muted, #94A3B8);">{{ activity.user }}</small>
+                </div>
+                {% empty %}
+                <div class="ui-empty" style="padding: 1.75rem;">
+                    <i class="fas fa-inbox"></i>
+                    <p style="margin: 0;">فعالیتی یافت نشد</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-bell"></i> هشدارها و اعلان‌ها</h2>
+            </div>
+            <div class="ui-card-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div class="ui-banner is-warn">
+                    <i class="fas fa-exclamation-triangle" style="margin-top: 0.2rem;"></i>
+                    <span>{{ pending_approvals }} درخواست خرید در انتظار تأیید هستند</span>
+                </div>
+                <div class="ui-banner is-info">
+                    <i class="fas fa-info-circle" style="margin-top: 0.2rem;"></i>
+                    <span>{{ overdue_invoices }} فاکتور سررسید گذشته دارند</span>
+                </div>
+                <div class="ui-banner is-ok">
+                    <i class="fas fa-check-circle" style="margin-top: 0.2rem;"></i>
+                    <span>{{ completed_today }} سفارش امروز تکمیل شده است</span>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
 <script>
 function exportDashboard() {
-    // Export functionality - to be implemented
     alert('قابلیت خروجی گزارش به زودی اضافه خواهد شد');
 }
 
-// Auto refresh dashboard every 5 minutes
 setInterval(function() {
     // Optional: implement auto-refresh
 }, 300000);
 </script>
 {% endblock %}
-

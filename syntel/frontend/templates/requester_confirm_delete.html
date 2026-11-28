@@ -1,17 +1,32 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}تأیید حذف درخواست‌کننده - Kuker{% endblock %}
 
 {% block content %}
-<div class="ui-confirm-card">
-    <div class="confirm-icon"><i class="fas fa-trash-can"></i></div>
-    <h1 class="ph-title" style="margin-bottom:0.4rem;">تأیید حذف درخواست‌کننده</h1>
-    <p class="page-sub" style="margin-bottom:1rem;">آیا مطمئن هستید که می‌خواهید درخواست‌کننده «<b>{{ requester.get_name_display }}</b>» را حذف کنید؟</p>
-    <p style="color:var(--danger);font-size:0.82rem;font-weight:700;margin-bottom:1.5rem;">این عملیات قابل بازگشت نیست.</p>
-    <form method="post" style="display:flex;gap:0.75rem;justify-content:center;">
-        {% csrf_token %}
-        <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-        <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> حذف</button>
-    </form>
+<div class="ui-page is-narrow">
+    <div class="ui-confirm-card">
+        <div style="width:52px;height:52px;border-radius:14px;background:var(--ui-danger-bg);color:var(--ui-danger);border:1px solid var(--ui-danger-border);display:inline-flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:0.85rem;">
+            <i class="fas fa-trash-can"></i>
+        </div>
+        <h1 class="ui-title" style="justify-content:center;margin-bottom:0.35rem;">تأیید حذف درخواست‌کننده</h1>
+        <p class="ui-subtitle" style="justify-content:center;margin-bottom:1.1rem;">
+            آیا مطمئن هستید که می‌خواهید درخواست‌کننده «<b>{{ requester.get_name_display }}</b>» را حذف کنید؟
+        </p>
+
+        <div class="ui-banner is-warn" style="text-align:right;margin-bottom:1.35rem;">
+            <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
+            <span>این عملیات قابل بازگشت نیست.</span>
+        </div>
+
+        <form method="post" class="ui-form-actions" style="justify-content:center;margin-top:0;padding-top:1rem;">
+            {% csrf_token %}
+            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-danger">
+                <i class="fas fa-trash"></i>
+                <span>حذف</span>
+            </button>
+        </form>
+    </div>
 </div>
 {% endblock %}

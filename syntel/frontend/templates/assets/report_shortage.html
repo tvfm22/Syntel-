@@ -5,86 +5,103 @@
 
 {% block extra_css %}
 <style>
-    .rs-wrap { max-width: 1360px; margin: 0 auto; }
+    .rs-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; align-items: end; }
     .rs-chart-wrap { height: 280px; position: relative; }
-    .rs-thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+    .rs-thumb { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default, #E2E8F0); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rs-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="ph-title">
-                <h1>گزارش کسری اموال نسبت به حد استاندارد سکشن</h1>
-                <div class="page-sub">اقلامی که موجودی سالم آن‌ها کمتر از حداقل استاندارد (min_expected_quantity) است</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-exclamation-triangle" style="color: var(--ui-warn, #B45309);"></i>
+                گزارش کسری اموال نسبت به حد استاندارد سکشن
+            </h1>
+            <p class="ui-subtitle">اقلامی که موجودی سالم آن‌ها کمتر از حداقل استاندارد (min_expected_quantity) است</p>
         </div>
-        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
-        </a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های گزارش اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> مرکز گزارش‌ها</a>
+            <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-coins"></i> ارزش سکشن‌ها</a>
+            <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-balance-scale"></i> مغایرت</a>
+            <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-line"></i> شکستگی</a>
+            <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-exclamation-triangle"></i> کسری</a>
+            <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-tools"></i> تعمیرات و گارانتی</a>
+            <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-history"></i> کاردکس</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">دسته‌بندی</label>
-                <select name="category" class="filter-select">
-                    <option value="">همه دسته‌بندی‌ها</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">نمایش</button>
-                <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="rs-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">دسته‌بندی</label>
+                    <select name="category" class="ui-select">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary" style="flex:1;">نمایش</button>
+                    <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-rotate-left"></i></a>
+                </div>
             </div>
         </div>
     </form>
 
-    <div class="stats-grid" style="margin-bottom:1.25rem;">
-        <div class="stat-card">
-            <div class="stat-value warning">{{ rows|length }}</div>
-            <div class="stat-label">تعداد ردیف‌های دارای کسری</div>
+    <section class="ui-metrics-strip cols-3">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تعداد ردیف‌های دارای کسری</span>
+            <div class="ui-metric-val is-warn ui-num">{{ rows|length }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value danger">{{ total_shortage_qty|number_format }}</div>
-            <div class="stat-label">مجموع تعداد کسری</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع تعداد کسری</span>
+            <div class="ui-metric-val is-danger ui-num">{{ total_shortage_qty|number_format }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value primary">{{ total_estimated_cost|number_format }} ریال</div>
-            <div class="stat-label">برآورد بودجه جایگزینی</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">برآورد بودجه جایگزینی</span>
+            <div class="ui-metric-val is-accent ui-num">{{ total_estimated_cost|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-    </div>
+    </section>
 
     {% if rows %}
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-chart-bar"></i> مقایسه موجودی سالم با حد استاندارد</div>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-chart-bar"></i> مقایسه موجودی سالم با حد استاندارد</h2>
         </div>
-        <div class="card-body">
+        <div class="ui-card-body">
             <div class="rs-chart-wrap"><canvas id="shortageChart"></canvas></div>
         </div>
-    </div>
+    </section>
     {% endif %}
 
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-list-ol"></i> فهرست کسری‌ها و اقدام خرید جایگزین</div>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list-ol"></i> فهرست کسری‌ها و اقدام خرید جایگزین</h2>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>سکشن</th>
@@ -111,10 +128,10 @@
                                 </div>
                             </div>
                         </td>
-                        <td>{{ r.stock.quantity_healthy }}</td>
-                        <td>{{ r.stock.min_expected_quantity }}</td>
-                        <td><span class="badge badge-danger">{{ r.shortage_qty }}</span></td>
-                        <td>{{ r.estimated_cost|number_format }} ریال</td>
+                        <td class="ui-num">{{ r.stock.quantity_healthy }}</td>
+                        <td class="ui-num">{{ r.stock.min_expected_quantity }}</td>
+                        <td><span class="ui-pill is-danger ui-num">{{ r.shortage_qty }}</span></td>
+                        <td class="ui-money">{{ r.estimated_cost|number_format }} ریال</td>
                         <td>
                             {% if replacement_request_url %}
                             <form method="post" action="{{ replacement_request_url }}" style="margin:0;">
@@ -125,22 +142,22 @@
                                 <input type="hidden" name="quantity" value="{{ r.shortage_qty }}">
                                 <input type="hidden" name="name" value="{{ r.asset.name }}">
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="btn btn-primary" style="height:36px; font-size:0.78rem;">
+                                <button type="submit" class="ui-btn ui-btn-primary is-sm">
                                     <i class="fas fa-cart-plus"></i> ایجاد درخواست خرید جایگزین
                                 </button>
                             </form>
                             {% else %}
-                            <span class="badge badge-neutral">مسیر خرید جایگزین در حال اتصال</span>
+                            <span class="ui-pill is-muted">مسیر خرید جایگزین در حال اتصال</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" style="text-align:center; padding:2rem;">تمام اقلام مطابق حد استاندارد هستند و کسری وجود ندارد.</td></tr>
+                    <tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">تمام اقلام مطابق حد استاندارد هستند و کسری وجود ندارد.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}
 

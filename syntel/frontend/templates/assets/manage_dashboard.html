@@ -5,627 +5,278 @@
 
 {% block extra_css %}
 <style>
-    .ad-wrap {
-        max-width: 1320px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    /* ===== Minimal Header ===== */
-    .ad-header {
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-2xl);
-        padding: 1.25rem 1.5rem;
-        box-shadow: var(--shadow-sm);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .ad-header-left {
-        display: flex;
-        align-items: center;
-        gap: 0.9rem;
-        min-width: 0;
-    }
-    .ad-header-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: var(--radius-md);
-        background: rgba(139, 92, 246, 0.10);
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-    .ad-header-title {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-        line-height: 1.35;
-    }
-    .ad-header-sub {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        margin-top: 0.15rem;
-    }
-    .ad-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-    }
-    .ad-btn-primary {
-        height: 40px;
-        padding: 0 1.1rem;
-        border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: #FFFFFF;
-        font-size: 0.83rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        border: none;
-        cursor: pointer;
-        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-        box-shadow: 0 2px 10px rgba(139, 92, 246, 0.22);
-    }
-    .ad-btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.30);
-        color: #FFFFFF;
-    }
-    .ad-btn-ghost {
-        height: 40px;
-        padding: 0 1rem;
-        border-radius: var(--radius-md);
-        background: var(--bg-card);
-        color: var(--text-primary);
-        border: 1px solid var(--border-default);
-        font-size: 0.83rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        cursor: pointer;
-        transition: all var(--transition-fast);
-    }
-    .ad-btn-ghost:hover {
-        background: var(--gray-50);
-        border-color: var(--primary-light);
-        color: var(--primary-dark);
-    }
-
-    /* ===== Segmented Sub-Nav Bar ===== */
-    .ad-subnav {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl);
-        padding: 0.35rem;
-        box-shadow: var(--shadow-xs);
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-    .ad-subnav::-webkit-scrollbar { display: none; }
-    .ad-subnav-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.55rem 0.9rem;
-        border-radius: var(--radius-md);
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        white-space: nowrap;
-        transition: background var(--transition-fast), color var(--transition-fast);
-    }
-    .ad-subnav-link i { font-size: 0.8rem; opacity: 0.85; }
-    .ad-subnav-link:hover {
-        background: var(--gray-100);
-        color: var(--text-primary);
-    }
-    .ad-subnav-link.is-active {
-        background: rgba(139, 92, 246, 0.10);
-        color: var(--primary-dark);
-        font-weight: 700;
-    }
-    .ad-subnav-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 6px;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        background: #FEF3C7;
-        color: #B45309;
-    }
-
-    /* ===== Minimal KPI Grid ===== */
-    .ad-kpis {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1rem;
-    }
-    @media (max-width: 1100px) {
-        .ad-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 560px) {
-        .ad-kpis { grid-template-columns: 1fr; }
-    }
-    .ad-kpi {
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl);
-        padding: 1.15rem 1.25rem;
-        box-shadow: var(--shadow-sm);
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
-        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    }
-    .ad-kpi:hover {
-        border-color: var(--border-strong);
-        box-shadow: var(--shadow-md);
-    }
-    .ad-kpi-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-    }
-    .ad-kpi-label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-    .ad-kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.88rem;
-    }
-    .ad-kpi-icon.purple { background: rgba(139, 92, 246, 0.10); color: var(--primary); }
-    .ad-kpi-icon.green  { background: #ECFDF5; color: #059669; }
-    .ad-kpi-icon.amber  { background: #FFFBEB; color: #D97706; }
-    .ad-kpi-icon.rose   { background: #FEF2F2; color: #DC2626; }
-    .ad-kpi-value {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        line-height: 1.25;
-        font-variant-numeric: tabular-nums;
-    }
-    .ad-kpi-unit {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-right: 0.25rem;
-    }
-    .ad-kpi-meta {
-        font-size: 0.76rem;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-        padding-top: 0.55rem;
-        border-top: 1px solid var(--border-light);
-    }
-    .ad-kpi-meta strong { color: var(--text-secondary); font-weight: 700; }
-
-    /* ===== Section Headings ===== */
     .ad-section-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        margin-bottom: 0.85rem;
+        margin-bottom: 0.75rem;
     }
+
     .ad-section-title {
         font-size: 0.96rem;
         font-weight: 800;
-        color: var(--text-primary);
+        color: var(--text-primary, #0F172A);
         display: flex;
         align-items: center;
         gap: 0.5rem;
         margin: 0;
     }
-    .ad-section-title i { color: var(--primary); font-size: 0.9rem; }
+
+    .ad-section-title i {
+        color: var(--primary, #8B5CF6);
+        font-size: 0.9rem;
+    }
+
     .ad-section-link {
         font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--primary-dark);
+        font-weight: 700;
+        color: var(--primary-dark, #7C3AED);
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
+        text-decoration: none;
     }
-    .ad-section-link:hover { opacity: 0.75; }
 
-    /* ===== Departments Minimal Cards ===== */
+    .ad-section-link:hover {
+        opacity: 0.8;
+    }
+
     .ad-dept-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
         gap: 1rem;
     }
+
     .ad-dept-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl);
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
         padding: 1.15rem 1.25rem;
-        box-shadow: var(--shadow-sm);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
         display: flex;
         flex-direction: column;
         gap: 0.9rem;
-        transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
+
     .ad-dept-card:hover {
         transform: translateY(-2px);
         border-color: rgba(139, 92, 246, 0.35);
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
     }
+
     .ad-dept-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
     }
+
     .ad-dept-name {
-        font-size: 0.98rem;
+        font-size: 0.96rem;
         font-weight: 800;
-        color: var(--text-primary);
+        color: var(--text-primary, #0F172A);
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-    .ad-dept-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--primary);
-        flex-shrink: 0;
-    }
-    .ad-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        white-space: nowrap;
-    }
-    .ad-chip.ok     { background: #ECFDF5; color: #047857; }
-    .ad-chip.danger { background: #FEF2F2; color: #B91C1C; }
-    .ad-chip.warn   { background: #FFFBEB; color: #B45309; }
-    .ad-chip.muted  { background: var(--gray-100); color: var(--gray-600); }
 
     .ad-dept-metrics {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 0.5rem;
-        background: var(--gray-50);
-        border-radius: var(--radius-md);
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-light, #F1F5F9);
+        border-radius: 10px;
         padding: 0.65rem 0.5rem;
         text-align: center;
     }
+
     .ad-dept-metric-val {
         font-size: 1rem;
         font-weight: 800;
-        color: var(--text-primary);
+        color: var(--text-primary, #0F172A);
         line-height: 1.2;
+        font-variant-numeric: tabular-nums;
     }
-    .ad-dept-metric-val.green { color: #059669; }
-    .ad-dept-metric-val.red   { color: #DC2626; }
+
+    .ad-dept-metric-val.green { color: var(--ui-ok, #047857); }
+    .ad-dept-metric-val.red   { color: var(--ui-danger, #DC2626); }
+
     .ad-dept-metric-lbl {
         font-size: 0.7rem;
-        color: var(--text-muted);
+        color: var(--text-muted, #94A3B8);
         margin-top: 0.2rem;
     }
+
     .ad-dept-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
         padding-top: 0.75rem;
-        border-top: 1px solid var(--border-light);
+        border-top: 1px solid var(--border-light, #F1F5F9);
         margin-top: auto;
     }
+
     .ad-dept-value {
         font-size: 0.8rem;
         font-weight: 700;
-        color: var(--text-secondary);
+        color: var(--text-secondary, #64748B);
+        font-variant-numeric: tabular-nums;
     }
+
     .ad-dept-actions {
         display: flex;
         align-items: center;
         gap: 0.4rem;
     }
-    .ad-icon-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default);
-        background: var(--bg-card);
-        color: var(--text-secondary);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.78rem;
-        transition: all var(--transition-fast);
-    }
-    .ad-icon-btn:hover {
-        border-color: #FCA5A5;
-        background: #FEF2F2;
-        color: #DC2626;
-    }
-    .ad-open-link {
-        height: 32px;
-        padding: 0 0.75rem;
-        border-radius: var(--radius-sm);
-        background: rgba(139, 92, 246, 0.08);
-        color: var(--primary-dark);
-        font-size: 0.78rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        transition: background var(--transition-fast);
-    }
-    .ad-open-link:hover {
-        background: rgba(139, 92, 246, 0.16);
-        color: var(--primary-dark);
-    }
-
-    /* ===== Minimal Surface & Table ===== */
-    .ad-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-    .ad-card-head {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border-light);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-    .ad-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.84rem;
-    }
-    .ad-table thead th {
-        text-align: right;
-        padding: 0.75rem 1.15rem;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--text-muted);
-        background: var(--gray-50);
-        border-bottom: 1px solid var(--border-light);
-        white-space: nowrap;
-    }
-    .ad-table tbody td {
-        padding: 0.85rem 1.15rem;
-        border-bottom: 1px solid var(--border-light);
-        color: var(--text-primary);
-        vertical-align: middle;
-    }
-    .ad-table tbody tr:last-child td { border-bottom: none; }
-    .ad-table tbody tr:hover { background: var(--bg-subtle); }
 
     .ad-thumb {
         width: 38px;
         height: 38px;
         border-radius: 10px;
         object-fit: cover;
-        border: 1px solid var(--border-default);
+        border: 1px solid var(--border-default, #E2E8F0);
         flex-shrink: 0;
     }
+
     .ad-thumb-empty {
         width: 38px;
         height: 38px;
         border-radius: 10px;
-        background: var(--gray-100);
-        color: var(--gray-400);
+        background: var(--gray-100, #F1F5F9);
+        color: var(--text-muted, #94A3B8);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 0.85rem;
         flex-shrink: 0;
     }
-    .ad-empty {
-        text-align: center;
-        padding: 2.5rem 1.25rem;
-        color: var(--text-muted);
-    }
-    .ad-empty i {
-        font-size: 1.75rem;
-        opacity: 0.45;
-        margin-bottom: 0.6rem;
-        display: block;
-    }
-    .ad-empty p { font-size: 0.85rem; margin-bottom: 0.9rem; }
-
-    /* Action buttons inside tables */
-    .ad-mini-btn {
-        height: 30px;
-        padding: 0 0.75rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.76rem;
-        font-weight: 700;
-        border: 1px solid transparent;
-        cursor: pointer;
-        font-family: 'Vazir', sans-serif;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        transition: all var(--transition-fast);
-    }
-    .ad-mini-btn.ok { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
-    .ad-mini-btn.ok:hover { background: #10B981; color: #FFFFFF; }
-    .ad-mini-btn.danger { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
-    .ad-mini-btn.danger:hover { background: #EF4444; color: #FFFFFF; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ad-wrap">
+<div class="ui-page is-wide">
 
     <!-- Header -->
-    <div class="ad-header">
-        <div class="ad-header-left">
-            <div class="ad-header-icon"><i class="fas fa-couch"></i></div>
-            <div>
-                <h1 class="ad-header-title">اموال و اثاثیه</h1>
-                <div class="ad-header-sub">
-                    {% if is_manager %}
-                        مدیریت تجهیزات و ظروف سکشن‌های کافه {{ cafe.name }}
-                    {% else %}
-                        اموال در اختیار بخش{% if department %} «{{ department.name }}»{% endif %}
-                    {% endif %}
-                </div>
-            </div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-couch" style="color: var(--primary, #8B5CF6);"></i>
+                اموال و اثاثیه
+            </h1>
+            <p class="ui-subtitle">
+                {% if is_manager %}
+                    مدیریت تجهیزات و ظروف سکشن‌های کافه {{ cafe.name }}
+                {% else %}
+                    اموال در اختیار بخش{% if department %} «{{ department.name }}»{% endif %}
+                {% endif %}
+            </p>
         </div>
 
-        <div class="ad-header-actions">
+        <div class="ui-topbar-actions">
             {% if is_manager %}
-                <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="ad-btn-ghost">
+                <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                     <i class="fas fa-plus"></i> کالای جدید
                 </a>
-                <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ad-btn-primary">
+                <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
                     <i class="fas fa-clipboard-check"></i> انبارگردانی
                 </a>
             {% elif department %}
-                <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=department.id %}" class="ad-btn-ghost">
+                <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=department.id %}" class="ui-btn ui-btn-ghost">
                     <i class="fas fa-heart-crack"></i> گزارش خرابی
                 </a>
-                <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ad-btn-primary">
+                <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
                     <i class="fas fa-clipboard-check"></i> انبارگردانی بخش
                 </a>
             {% endif %}
         </div>
-    </div>
+    </header>
 
-    <!-- Clean Sub-Navigation Strip -->
+    <!-- Clean Segmented Sub-Navigation Bar -->
     {% if is_manager %}
-    <nav class="ad-subnav" aria-label="زیربخش‌های اموال">
-        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ad-subnav-link is-active">
-            <i class="fas fa-th-large"></i> نمای کلی
-        </a>
-        <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-boxes-stacked"></i> کاتالوگ اموال
-        </a>
-        <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-sitemap"></i> دسته‌بندی‌ها
-        </a>
-        <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-microchip"></i> پلاک‌دارها
-        </a>
-        <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-exchange-alt"></i> انتقال‌ها
-            {% if pending_handshakes_count %}<span class="ad-subnav-pill">{{ pending_handshakes_count }}</span>{% endif %}
-        </a>
-        <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-hourglass-half"></i> کارتابل تأیید
-            {% if pending_approvals_count %}<span class="ad-subnav-pill">{{ pending_approvals_count }}</span>{% endif %}
-        </a>
-        <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-file-invoice"></i> ورود از فاکتور
-        </a>
-        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-chart-pie"></i> گزارش‌ها
-        </a>
-    </nav>
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab is-active">
+                <i class="fas fa-th-large"></i> نمای کلی
+            </a>
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-boxes-stacked"></i> کاتالوگ اموال
+            </a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-sitemap"></i> دسته‌بندی‌ها
+            </a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-microchip"></i> پلاک‌دارها
+            </a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-exchange-alt"></i> انتقال‌ها
+                {% if pending_handshakes_count %}<span class="ui-pill is-warn" style="padding:0 6px; font-size:0.68rem;">{{ pending_handshakes_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-hourglass-half"></i> کارتابل تأیید
+                {% if pending_approvals_count %}<span class="ui-pill is-warn" style="padding:0 6px; font-size:0.68rem;">{{ pending_approvals_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-file-invoice"></i> ورود از فاکتور
+            </a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-clipboard-check"></i> انبارگردانی
+            </a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-chart-pie"></i> گزارش‌ها
+            </a>
+        </nav>
+    </div>
     {% elif department %}
-    <nav class="ad-subnav" aria-label="زیربخش‌های اموال بخش">
-        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ad-subnav-link is-active">
-            <i class="fas fa-th-large"></i> نمای کلی بخش
-        </a>
-        <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ad-subnav-link">
-            <i class="fas fa-boxes-stacked"></i> موجودی کامل بخش
-        </a>
-        <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-exchange-alt"></i> انتقال‌ها
-            {% if incoming_transfers %}<span class="ad-subnav-pill">{{ incoming_transfers|length }}</span>{% endif %}
-        </a>
-        <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ad-subnav-link">
-            <i class="fas fa-clipboard-check"></i> انبارگردانی‌ها
-        </a>
-    </nav>
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال بخش">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab is-active">
+                <i class="fas fa-th-large"></i> نمای کلی بخش
+            </a>
+            <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ui-pill-tab">
+                <i class="fas fa-boxes-stacked"></i> موجودی کامل بخش
+            </a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-exchange-alt"></i> انتقال‌ها
+                {% if incoming_transfers %}<span class="ui-pill is-warn" style="padding:0 6px; font-size:0.68rem;">{{ incoming_transfers|length }}</span>{% endif %}
+            </a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab">
+                <i class="fas fa-clipboard-check"></i> انبارگردانی‌ها
+            </a>
+        </nav>
+    </div>
     {% endif %}
 
     {% if is_manager %}
-    <!-- KPI Row -->
-    <div class="ad-kpis">
-        <div class="ad-kpi">
-            <div class="ad-kpi-top">
-                <span class="ad-kpi-label">ارزش تخمینی اموال</span>
-                <span class="ad-kpi-icon green"><i class="fas fa-coins"></i></span>
-            </div>
-            <div class="ad-kpi-value">{{ total_value|number_format }}<span class="ad-kpi-unit">ریال</span></div>
-            <div class="ad-kpi-meta">
-                <span>کالاهای فعال کاتالوگ</span>
-                <strong>{{ catalog_count }} قلم</strong>
-            </div>
+    <!-- KPI Strip -->
+    <section class="ui-metrics-strip">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">ارزش تخمینی اموال</span>
+            <div class="ui-metric-val is-green ui-num">{{ total_value|number_format }}<span class="ui-metric-unit">ریال</span></div>
+            <span class="ui-metric-hint">کالاهای فعال کاتالوگ: <strong>{{ catalog_count }} قلم</strong></span>
         </div>
 
-        <div class="ad-kpi">
-            <div class="ad-kpi-top">
-                <span class="ad-kpi-label">اقلام سالم</span>
-                <span class="ad-kpi-icon purple"><i class="fas fa-check-circle"></i></span>
-            </div>
-            <div class="ad-kpi-value">{{ total_healthy|number_format }}<span class="ad-kpi-unit">عدد</span></div>
-            <div class="ad-kpi-meta">
-                <span>معیوب / نیازمند بررسی</span>
-                <strong>{{ total_damaged|number_format }} عدد</strong>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">اقلام سالم</span>
+            <div class="ui-metric-val is-accent ui-num">{{ total_healthy|number_format }}<span class="ui-metric-unit">عدد</span></div>
+            <span class="ui-metric-hint">معیوب / نیازمند بررسی: <strong>{{ total_damaged|number_format }} عدد</strong></span>
         </div>
 
-        <div class="ad-kpi">
-            <div class="ad-kpi-top">
-                <span class="ad-kpi-label">در انتظار بررسی</span>
-                <span class="ad-kpi-icon amber"><i class="fas fa-hourglass-half"></i></span>
-            </div>
-            <div class="ad-kpi-value">{{ pending_approvals_count|add:pending_handshakes_count }}<span class="ad-kpi-unit">مورد</span></div>
-            <div class="ad-kpi-meta">
-                <span>تأیید مدیر: <strong>{{ pending_approvals_count }}</strong></span>
-                <span>تحویل مقصد: <strong>{{ pending_handshakes_count }}</strong></span>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">در انتظار بررسی</span>
+            <div class="ui-metric-val is-warn ui-num">{{ pending_approvals_count|add:pending_handshakes_count }}<span class="ui-metric-unit">مورد</span></div>
+            <span class="ui-metric-hint">تأیید مدیر: <strong>{{ pending_approvals_count }}</strong> · تحویل مقصد: <strong>{{ pending_handshakes_count }}</strong></span>
         </div>
 
-        <div class="ad-kpi">
-            <div class="ad-kpi-top">
-                <span class="ad-kpi-label">کسری و تعمیرات</span>
-                <span class="ad-kpi-icon rose"><i class="fas fa-wrench"></i></span>
-            </div>
-            <div class="ad-kpi-value">{{ total_shortages }}<span class="ad-kpi-unit">کسری</span></div>
-            <div class="ad-kpi-meta">
-                <span>پلاک‌های در تعمیر / معیوب</span>
-                <strong>{{ repairs_count }} دستگاه</strong>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کسری و تعمیرات</span>
+            <div class="ui-metric-val is-danger ui-num">{{ total_shortages }}<span class="ui-metric-unit">کسری</span></div>
+            <span class="ui-metric-hint">پلاک‌های در تعمیر / معیوب: <strong>{{ repairs_count }} دستگاه</strong></span>
         </div>
-    </div>
+    </section>
 
     <!-- Departments Section -->
     <section>
@@ -642,13 +293,13 @@
             <div class="ad-dept-card">
                 <div class="ad-dept-top">
                     <div class="ad-dept-name">
-                        <span class="ad-dept-dot"></span>
+                        <span class="ui-dot" style="color: var(--primary, #8B5CF6);"></span>
                         <span>{{ row.department.name }}</span>
                     </div>
                     {% if row.shortages > 0 %}
-                        <span class="ad-chip danger">{{ row.shortages }} کسری</span>
+                        <span class="ui-pill is-danger ui-num">{{ row.shortages }} کسری</span>
                     {% else %}
-                        <span class="ad-chip ok">استاندارد</span>
+                        <span class="ui-pill is-ok">استاندارد</span>
                     {% endif %}
                 </div>
 
@@ -670,10 +321,10 @@
                 <div class="ad-dept-footer">
                     <div class="ad-dept-value">{{ row.value|number_format }} ریال</div>
                     <div class="ad-dept-actions">
-                        <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=row.department.id %}" class="ad-icon-btn" title="ثبت خرابی / اسقاط">
+                        <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=row.department.id %}" class="ui-btn ui-btn-danger-soft is-sm" title="ثبت خرابی / اسقاط">
                             <i class="fas fa-heart-crack"></i>
                         </a>
-                        <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=row.department.id %}" class="ad-open-link">
+                        <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=row.department.id %}" class="ui-btn ui-btn-soft is-sm">
                             مدیریت <i class="fas fa-chevron-left" style="font-size:0.65rem;"></i>
                         </a>
                     </div>
@@ -682,26 +333,26 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="ad-card">
-            <div class="ad-empty">
+        <div class="ui-card">
+            <div class="ui-empty">
                 <i class="fas fa-store-slash"></i>
-                <p>هنوز هیچ سکشن فعالی برای این کافه تعریف نشده است.</p>
+                <p style="margin:0;">هنوز هیچ سکشن فعالی برای این کافه تعریف نشده است.</p>
             </div>
         </div>
         {% endif %}
     </section>
 
     <!-- Recent Movements -->
-    <section class="ad-card">
-        <div class="ad-card-head">
-            <h2 class="ad-section-title"><i class="fas fa-clock-rotate-left"></i> آخرین گردش‌های اموال</h2>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-clock-rotate-left"></i> آخرین گردش‌های اموال</h2>
             <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ad-section-link">
                 مشاهده کاردکس کامل <i class="fas fa-arrow-left"></i>
             </a>
         </div>
         {% if recent_movements %}
-        <div style="overflow-x:auto;">
-            <table class="ad-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تاریخ</th>
@@ -715,8 +366,8 @@
                 <tbody>
                     {% for mv in recent_movements %}
                     <tr>
-                        <td style="color:var(--text-secondary); white-space:nowrap;">{{ mv.created_at|jalali_datetime }}</td>
-                        <td><span class="ad-chip muted">{{ mv.get_movement_type_display }}</span></td>
+                        <td class="ui-num" style="color:var(--text-secondary); white-space:nowrap;">{{ mv.created_at|jalali_datetime }}</td>
+                        <td><span class="ui-pill is-muted">{{ mv.get_movement_type_display }}</span></td>
                         <td>
                             <div style="font-weight:700;">{{ mv.asset.name }}</div>
                             {% if mv.asset_unit %}<div style="font-size:0.73rem; color:var(--text-muted);">پلاک: {{ mv.asset_unit.asset_tag }}</div>{% endif %}
@@ -724,9 +375,9 @@
                         <td style="color:var(--text-secondary);">
                             {{ mv.from_department.name|default:'—' }} <span style="opacity:0.5;">←</span> {{ mv.to_department.name|default:'—' }}
                         </td>
-                        <td style="font-weight:700;">{{ mv.quantity }}</td>
+                        <td class="ui-num" style="font-weight:700;">{{ mv.quantity }}</td>
                         <td>
-                            <span class="ad-chip {% if mv.status == 'approved' %}ok{% elif mv.status == 'rejected' %}danger{% else %}warn{% endif %}">
+                            <span class="ui-pill {% if mv.status == 'approved' %}is-ok{% elif mv.status == 'rejected' %}is-danger{% else %}is-warn{% endif %}">
                                 {{ mv.get_status_display }}
                             </span>
                         </td>
@@ -736,10 +387,10 @@
             </table>
         </div>
         {% else %}
-        <div class="ad-empty">
+        <div class="ui-empty">
             <i class="fas fa-box-open"></i>
-            <p>هنوز هیچ گردشی در بخش اموال ثبت نشده است.</p>
-            <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="ad-btn-ghost">
+            <p style="margin:0 0 0.75rem;">هنوز هیچ گردشی در بخش اموال ثبت نشده است.</p>
+            <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-plus"></i> تعریف اولین کالای اموالی
             </a>
         </div>
@@ -748,74 +399,65 @@
 
     {% else %}
         {% if not department %}
-        <div class="ad-card">
-            <div class="ad-empty">
+        <div class="ui-card">
+            <div class="ui-empty">
                 <i class="fas fa-user-lock"></i>
-                <p>حساب کاربری شما به هیچ بخشی در این کافه متصل نیست. لطفاً با مدیر هماهنگ کنید.</p>
+                <p style="margin:0;">حساب کاربری شما به هیچ بخشی در این کافه متصل نیست. لطفاً با مدیر هماهنگ کنید.</p>
             </div>
         </div>
         {% else %}
-        <!-- Requester KPI Row -->
-        <div class="ad-kpis">
-            <div class="ad-kpi">
-                <div class="ad-kpi-top">
-                    <span class="ad-kpi-label">موجودی سالم بخش</span>
-                    <span class="ad-kpi-icon green"><i class="fas fa-check-circle"></i></span>
-                </div>
-                <div class="ad-kpi-value">{{ total_healthy|number_format }}<span class="ad-kpi-unit">عدد</span></div>
-                <div class="ad-kpi-meta"><span>بخش</span><strong>{{ department.name }}</strong></div>
+        <!-- Requester KPI Strip -->
+        <section class="ui-metrics-strip">
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">موجودی سالم بخش</span>
+                <div class="ui-metric-val is-green ui-num">{{ total_healthy|number_format }}<span class="ui-metric-unit">عدد</span></div>
+                <span class="ui-metric-hint">بخش: <strong>{{ department.name }}</strong></span>
             </div>
 
-            <div class="ad-kpi">
-                <div class="ad-kpi-top">
-                    <span class="ad-kpi-label">اقلام معیوب</span>
-                    <span class="ad-kpi-icon rose"><i class="fas fa-exclamation-circle"></i></span>
-                </div>
-                <div class="ad-kpi-value">{{ total_damaged|number_format }}<span class="ad-kpi-unit">عدد</span></div>
-                <div class="ad-kpi-meta"><span>گزارش‌های در انتظار تأیید</span><strong>{{ pending_reports|length }}</strong></div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">اقلام معیوب</span>
+                <div class="ui-metric-val is-danger ui-num">{{ total_damaged|number_format }}<span class="ui-metric-unit">عدد</span></div>
+                <span class="ui-metric-hint">گزارش‌های در انتظار تأیید: <strong>{{ pending_reports|length }}</strong></span>
             </div>
 
-            <div class="ad-kpi">
-                <div class="ad-kpi-top">
-                    <span class="ad-kpi-label">انتقال منتظر تحویل</span>
-                    <span class="ad-kpi-icon amber"><i class="fas fa-truck-loading"></i></span>
-                </div>
-                <div class="ad-kpi-value">{{ incoming_transfers|length }}<span class="ad-kpi-unit">مورد</span></div>
-                <div class="ad-kpi-meta"><span>نیازمند تأیید شما</span><strong>{% if incoming_transfers %}اقدام لازم{% else %}تکمیل{% endif %}</strong></div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">انتقال منتظر تحویل</span>
+                <div class="ui-metric-val is-warn ui-num">{{ incoming_transfers|length }}<span class="ui-metric-unit">مورد</span></div>
+                <span class="ui-metric-hint">نیازمند تأیید شما: <strong>{% if incoming_transfers %}اقدام لازم{% else %}تکمیل{% endif %}</strong></span>
             </div>
 
-            <div class="ad-kpi">
-                <div class="ad-kpi-top">
-                    <span class="ad-kpi-label">انبارگردانی فعال</span>
-                    <span class="ad-kpi-icon purple"><i class="fas fa-clipboard-check"></i></span>
-                </div>
-                <div class="ad-kpi-value">{{ active_audits|length }}<span class="ad-kpi-unit">جلسه</span></div>
-                <div class="ad-kpi-meta"><span>وضعیت شمارش</span><strong>{% if active_audits %}باز{% else %}ندارد{% endif %}</strong></div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">انبارگردانی فعال</span>
+                <div class="ui-metric-val is-accent ui-num">{{ active_audits|length }}<span class="ui-metric-unit">جلسه</span></div>
+                <span class="ui-metric-hint">وضعیت شمارش: <strong>{% if active_audits %}باز{% else %}ندارد{% endif %}</strong></span>
             </div>
-        </div>
+        </section>
 
         {% if incoming_transfers %}
-        <section class="ad-card" style="border-color:#FDE68A;">
-            <div class="ad-card-head" style="background:#FFFBEB;">
-                <h2 class="ad-section-title" style="color:#92400E;"><i class="fas fa-truck-loading" style="color:#D97706;"></i> انتقال‌های ورودی نیازمند تأیید تحویل</h2>
+        <section class="ui-table-card" style="border-color: var(--ui-warn-border);">
+            <div class="ui-card-head" style="background: var(--ui-warn-bg);">
+                <h2 class="ui-card-title" style="color: var(--ui-warn);">
+                    <i class="fas fa-truck-loading" style="color: var(--ui-warn);"></i>
+                    انتقال‌های ورودی نیازمند تأیید تحویل
+                </h2>
             </div>
-            <div style="overflow-x:auto;">
-                <table class="ad-table">
+            <div class="ui-table-scroll">
+                <table class="ui-table">
                     <thead><tr><th>کالا / پلاک</th><th>از بخش</th><th>تعداد</th><th>اقدام</th></tr></thead>
                     <tbody>
                         {% for tr in incoming_transfers %}
                         <tr>
                             <td><strong>{{ tr.asset.name }}</strong>{% if tr.asset_unit %} <span style="color:var(--text-muted); font-size:0.78rem;">({{ tr.asset_unit.asset_tag }})</span>{% endif %}</td>
                             <td>{{ tr.from_department.name|default:'—' }}</td>
-                            <td style="font-weight:700;">{{ tr.quantity }}</td>
+                            <td class="ui-num" style="font-weight:700;">{{ tr.quantity }}</td>
                             <td style="display:flex; gap:0.4rem;">
                                 <form method="post" action="{% url 'asset_transfer_confirm' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
                                     {% csrf_token %}
-                                    <button type="submit" class="ad-mini-btn ok"><i class="fas fa-check"></i> تأیید تحویل</button>
+                                    <button type="submit" class="ui-btn ui-btn-success is-sm"><i class="fas fa-check"></i> تأیید تحویل</button>
                                 </form>
                                 <form method="post" action="{% url 'asset_transfer_reject' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
                                     {% csrf_token %}
-                                    <button type="submit" class="ad-mini-btn danger"><i class="fas fa-times"></i> رد</button>
+                                    <button type="submit" class="ui-btn ui-btn-danger-soft is-sm"><i class="fas fa-times"></i> رد</button>
                                 </form>
                             </td>
                         </tr>
@@ -826,16 +468,16 @@
         </section>
         {% endif %}
 
-        <section class="ad-card">
-            <div class="ad-card-head">
-                <h2 class="ad-section-title"><i class="fas fa-boxes-stacked"></i> اموال فعلی بخش «{{ department.name }}»</h2>
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-boxes-stacked"></i> اموال فعلی بخش «{{ department.name }}»</h2>
                 <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ad-section-link">
                     مشاهده کامل <i class="fas fa-arrow-left"></i>
                 </a>
             </div>
             {% if stocks %}
-            <div style="overflow-x:auto;">
-                <table class="ad-table">
+            <div class="ui-table-scroll">
+                <table class="ui-table">
                     <thead><tr><th>کالا</th><th>سالم</th><th>معیوب</th><th>حد استاندارد</th></tr></thead>
                     <tbody>
                         {% for st in stocks %}
@@ -853,18 +495,18 @@
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="ad-chip ok">{{ st.quantity_healthy }}</span></td>
-                            <td><span class="ad-chip {% if st.quantity_damaged > 0 %}danger{% else %}muted{% endif %}">{{ st.quantity_damaged }}</span></td>
-                            <td style="color:var(--text-secondary);">{{ st.min_expected_quantity }}</td>
+                            <td><span class="ui-pill is-ok ui-num">{{ st.quantity_healthy }}</span></td>
+                            <td><span class="ui-pill {% if st.quantity_damaged > 0 %}is-danger{% else %}is-muted{% endif %} ui-num">{{ st.quantity_damaged }}</span></td>
+                            <td class="ui-num" style="color:var(--text-secondary);">{{ st.min_expected_quantity }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% else %}
-            <div class="ad-empty">
+            <div class="ui-empty">
                 <i class="fas fa-box-open"></i>
-                <p>هنوز مالی برای بخش «{{ department.name }}» ثبت نشده است.</p>
+                <p style="margin:0;">هنوز مالی برای بخش «{{ department.name }}» ثبت نشده است.</p>
             </div>
             {% endif %}
         </section>

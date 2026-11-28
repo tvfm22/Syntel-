@@ -6,248 +6,78 @@
 
 {% block extra_css %}
 <style>
-    :root {
-        --primary-color: #4f46e5;
-        --primary-hover: #4338ca;
-        --bg-color: #f9fafb;
-        --card-bg: #ffffff;
-        --text-main: #111827;
-        --text-muted: #6b7280;
-        --border-color: #e5e7eb;
+    .inv-kv-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.9rem 1.25rem;
     }
-
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
+    .inv-kv-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .inv-kv-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.65rem 0.85rem;
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-light, #F1F5F9);
+        border-radius: 10px;
     }
-
-    .minimal-card {
-        background: var(--card-bg);
+    .inv-kv-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted, #94A3B8); }
+    .inv-kv-value { font-size: 0.88rem; font-weight: 700; color: var(--text-primary, #0F172A); }
+    .inv-summary-panel {
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-default, #E2E8F0);
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border: 1px solid var(--border-color);
-        padding: 0;
-        margin-bottom: 2rem;
-        overflow: hidden;
-    }
-
-    .card-header-custom {
-        background-color: #f8fafc;
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.2rem;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column;
+        gap: 0.55rem;
     }
-
-    .card-body-custom {
-        padding: 1.5rem;
-    }
-
-    .page-header {
-        margin-bottom: 2rem;
+    .inv-summary-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        font-size: 0.86rem;
+        color: var(--text-secondary, #64748B);
     }
-
-    .page-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-main);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+    .inv-summary-row.is-total {
+        margin-top: 0.35rem;
+        padding-top: 0.7rem;
+        border-top: 1px dashed var(--border-strong, #CBD5E1);
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--text-primary, #0F172A);
     }
-
-    .form-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .form-control-static {
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        padding: 0.625rem 1rem;
-        font-size: 0.95rem;
-        background-color: #f9fafb;
-        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
-        min-height: 38px;
-        display: flex;
-        align-items: center;
-    }
-
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-main);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
-    .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-    }
-
-    .grid-4 {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-    }
-
-    .grid-5 {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 1rem;
-    }
-
     @media (max-width: 768px) {
-        .grid-2, .grid-3, .grid-4, .grid-5 {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .invoice-item-row {
-        background-color: #fafafa;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border-color);
-    }
-
-    .summary-panel {
-        background-color: #f8fafc;
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 1px solid var(--border-color);
-    }
-
-    .summary-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-        font-size: 0.95rem;
-        color: var(--text-muted);
-    }
-
-    .summary-row.total {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px dashed var(--border-color);
-        font-weight: 700;
-        color: var(--text-main);
-        font-size: 1.2rem;
-    }
-
-    .btn-primary-custom {
-        background-color: var(--primary-color);
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        border: none;
-        transition: all 0.2s;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-primary-custom:hover {
-        background-color: var(--primary-hover);
-        transform: translateY(-1px);
-        color: white;
-    }
-
-    .btn-outline-custom {
-        background-color: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-main);
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.2s;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-outline-custom:hover {
-        background-color: #f3f4f6;
-        border-color: #d1d5db;
-        color: var(--text-main);
-    }
-
-    .issue-tag {
-        display: inline-flex;
-        align-items: center;
-        background: #e0e7ff;
-        color: #4338ca;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        margin-left: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .status-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-
-    .status-badge.draft {
-        background: #f3f4f6;
-        color: #6b7280;
-    }
-
-    .status-badge.sent {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .status-badge.approved {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-badge.paid {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-badge.rejected {
-        background: #fee2e2;
-        color: #991b1b;
+        .inv-kv-grid, .inv-kv-grid.cols-2 { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h1 class="page-title">
-            <span>📄</span>
-            مشاهده فاکتور
-        </h1>
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                مشاهده فاکتور <span class="ui-num">{{ invoice.invoice_number|default:"-" }}</span>
+                <span class="ui-pill {% if invoice.status == 'approved' or invoice.status == 'paid' %}is-ok{% elif invoice.status == 'sent' %}is-info{% elif invoice.status == 'cancelled' or invoice.status == 'rejected' %}is-danger{% else %}is-muted{% endif %}">
+                    {{ invoice.get_status_display }}
+                </span>
+            </h1>
+            <div class="ui-subtitle">
+                <span>{{ invoice.supplier_name }}</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-num">{{ invoice.invoice_date|date:"Y/m/d" }}</span>
+            </div>
+        </div>
+        <div class="ui-topbar-actions">
             {% if invoice.status == 'draft' %}
             <form method="post" action="{% url 'invoice_send' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;">
                 {% csrf_token %}
-                <button type="submit" class="btn-outline-custom">
-                    📤 ارسال فاکتور
+                <button type="submit" class="ui-btn ui-btn-soft">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>ارسال فاکتور</span>
                 </button>
             </form>
             {% endif %}
@@ -255,8 +85,9 @@
                 {% if user.is_superuser or user.role in 'manager,finance_manager,ceo,admin' or user.secondary_role in 'manager,finance_manager,ceo,admin' %}
                 <form method="post" action="{% url 'invoice_approve' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;">
                     {% csrf_token %}
-                    <button type="submit" class="btn-primary-custom" style="background-color: #16a34a;">
-                        ✅ تأیید فاکتور
+                    <button type="submit" class="ui-btn ui-btn-success">
+                        <i class="fas fa-check"></i>
+                        <span>تأیید فاکتور</span>
                     </button>
                 </form>
                 {% endif %}
@@ -264,226 +95,209 @@
             {% if invoice.status != 'paid' and invoice.status != 'partially_paid' and invoice.status != 'cancelled' %}
             <form method="post" action="{% url 'invoice_cancel' cafe_code=cafe_code invoice_id=invoice.id %}" style="margin: 0;" onsubmit="return confirm('آیا از لغو این فاکتور مطمئن هستید؟');">
                 {% csrf_token %}
-                <button type="submit" class="btn-outline-custom" style="color: #dc2626; border-color: #fca5a5;">
-                    ❌ لغو فاکتور
+                <button type="submit" class="ui-btn ui-btn-danger-soft">
+                    <i class="fas fa-ban"></i>
+                    <span>لغو فاکتور</span>
                 </button>
             </form>
             {% endif %}
-            <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn-primary-custom">
-                ✏️ ویرایش
+            <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-pen"></i>
+                <span>ویرایش</span>
             </a>
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn-outline-custom">
-                بازگشت به لیست
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به لیست</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- Basic Information Card -->
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h3 class="section-title">
-                <span>ℹ️</span>
-                اطلاعات پایه
-            </h3>
-            <span class="status-badge {{ invoice.status }}">
-                {{ invoice.get_status_display }}
-            </span>
+    <!-- اطلاعات پایه -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-info-circle"></i> اطلاعات پایه</h2>
         </div>
-        <div class="card-body-custom">
-            <div class="grid-3">
-                <div>
-                    <label class="form-label">شماره فاکتور</label>
-                    <div class="form-control-static">{{ invoice.invoice_number|default:"-" }}</div>
+        <div class="ui-card-body" style="display:flex;flex-direction:column;gap:0.9rem;">
+            <div class="inv-kv-grid">
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">شماره فاکتور</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.invoice_number|default:"-" }}</span>
                 </div>
-                <div>
-                    <label class="form-label">تاریخ فاکتور</label>
-                    <div class="form-control-static">{{ invoice.invoice_date|date:"Y/m/d" }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">تاریخ فاکتور</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.invoice_date|date:"Y/m/d" }}</span>
                 </div>
-                <div>
-                    <label class="form-label">تاریخ سررسید</label>
-                    <div class="form-control-static">{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">تاریخ سررسید</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.due_date|date:"Y/m/d"|default:"-" }}</span>
                 </div>
             </div>
-            <div class="grid-2" style="margin-top: 1rem;">
-                <div>
-                    <label class="form-label">تأمین‌کننده</label>
-                    <div class="form-control-static">{{ invoice.supplier_name }}</div>
+            <div class="inv-kv-grid cols-2">
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">تأمین‌کننده</span>
+                    <span class="inv-kv-value">{{ invoice.supplier_name }}</span>
                 </div>
-                <div>
-                    <label class="form-label">شرایط پرداخت</label>
-                    <div class="form-control-static">{{ invoice.payment_terms|default:"-" }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">شرایط پرداخت</span>
+                    <span class="inv-kv-value">{{ invoice.payment_terms|default:"-" }}</span>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Invoice Items Card -->
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h3 class="section-title">
-                <span>📦</span>
-                اقلام فاکتور
-            </h3>
+    <!-- اقلام فاکتور -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-boxes-stacked"></i> اقلام فاکتور</h2>
+            <span class="ui-chip ui-num">{{ items|length }} قلم</span>
         </div>
-        <div class="card-body-custom">
-            {% for item in items %}
-            <div class="invoice-item-row">
-                <div class="grid-5">
-                    <div>
-                        <label class="form-label">شرح محصول</label>
-                        <div class="form-control-static">{{ item.description }}</div>
-                    </div>
-                    <div>
-                        <label class="form-label">واحد</label>
-                        <div class="form-control-static">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>شرح محصول</th>
+                        <th>واحد</th>
+                        <th>تعداد</th>
+                        <th>قیمت واحد (ریال)</th>
+                        <th>مبلغ کل (ریال)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td style="font-weight:700;">{{ item.description }}</td>
+                        <td>
                             {% if item.order_item %}
-                                {{ item.order_item.request_item.unit.name }}
+                                <span class="ui-chip">{{ item.order_item.request_item.unit.name }}</span>
                             {% else %}
-                                -
+                                <span style="color:var(--text-muted);">-</span>
                             {% endif %}
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label">تعداد</label>
-                        <div class="form-control-static">{{ item.quantity }}</div>
-                    </div>
-                    <div>
-                        <label class="form-label">قیمت واحد (ریال)</label>
-                        <div class="form-control-static">{{ item.unit_price|floatformat:0|intcomma }}</div>
-                    </div>
-                    <div>
-                        <label class="form-label">مبلغ کل (ریال)</label>
-                        <div class="form-control-static">{{ item.line_total|floatformat:0|intcomma }}</div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+                        </td>
+                        <td class="ui-num" style="font-weight:700;">{{ item.quantity }}</td>
+                        <td class="ui-num">{{ item.unit_price|floatformat:0|intcomma }}</td>
+                        <td class="ui-money">{{ item.line_total|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5"><div class="ui-empty">قلمی برای این فاکتور ثبت نشده است.</div></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
+    </section>
 
-    <!-- Financial Summary Card -->
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h3 class="section-title">
-                <span>💰</span>
-                خلاصه مالی
-            </h3>
+    <!-- خلاصه مالی -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-coins"></i> خلاصه مالی</h2>
         </div>
-        <div class="card-body-custom">
-            <div class="grid-3">
-                <div>
-                    <label class="form-label">نرخ تخفیف (%)</label>
-                    <div class="form-control-static">{{ invoice.discount_rate|floatformat:2 }}</div>
+        <div class="ui-card-body" style="display:flex;flex-direction:column;gap:1.1rem;">
+            <div class="inv-kv-grid">
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">نرخ تخفیف (%)</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.discount_rate|floatformat:2 }}</span>
                 </div>
-                <div>
-                    <label class="form-label">مبلغ تخفیف (ریال)</label>
-                    <div class="form-control-static">{{ invoice.discount_amount|floatformat:0|intcomma }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">مبلغ تخفیف (ریال)</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.discount_amount|floatformat:0|intcomma }}</span>
                 </div>
-                <div>
-                    <label class="form-label">نرخ مالیات (%)</label>
-                    <div class="form-control-static">{{ invoice.tax_rate|floatformat:2 }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">نرخ مالیات (%)</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.tax_rate|floatformat:2 }}</span>
                 </div>
-                <div>
-                    <label class="form-label">مبلغ مالیات (ریال)</label>
-                    <div class="form-control-static">{{ invoice.tax_amount|floatformat:0|intcomma }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">مبلغ مالیات (ریال)</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.tax_amount|floatformat:0|intcomma }}</span>
                 </div>
-                <div>
-                    <label class="form-label">هزینه حمل (ریال)</label>
-                    <div class="form-control-static">{{ invoice.shipping_cost|floatformat:0|intcomma }}</div>
+                <div class="inv-kv-item">
+                    <span class="inv-kv-label">هزینه حمل (ریال)</span>
+                    <span class="inv-kv-value ui-num">{{ invoice.shipping_cost|floatformat:0|intcomma }}</span>
                 </div>
             </div>
-            <div style="margin-top: 1.5rem;">
-                <div class="summary-panel">
-                    <div class="summary-row">
-                        <span>جمع اقلام:</span>
-                        <span>{{ invoice.subtotal|floatformat:0|intcomma }} ریال</span>
-                    </div>
-                    {% if invoice.discount_amount > 0 %}
-                    <div class="summary-row">
-                        <span>تخفیف:</span>
-                        <span>-{{ invoice.discount_amount|floatformat:0|intcomma }} ریال</span>
-                    </div>
-                    {% endif %}
-                    <div class="summary-row">
-                        <span>مالیات:</span>
-                        <span>{{ invoice.tax_amount|floatformat:0|intcomma }} ریال</span>
-                    </div>
-                    {% if invoice.shipping_cost > 0 %}
-                    <div class="summary-row">
-                        <span>هزینه حمل:</span>
-                        <span>{{ invoice.shipping_cost|floatformat:0|intcomma }} ریال</span>
-                    </div>
-                    {% endif %}
-                    <div class="summary-row total">
-                        <span>مبلغ کل:</span>
-                        <span>{{ invoice.total_amount|floatformat:0|intcomma }} ریال</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Additional Information Card -->
+            <div class="inv-summary-panel">
+                <div class="inv-summary-row">
+                    <span>جمع اقلام:</span>
+                    <span class="ui-num" style="font-weight:700;color:var(--text-primary);">{{ invoice.subtotal|floatformat:0|intcomma }} ریال</span>
+                </div>
+                {% if invoice.discount_amount > 0 %}
+                <div class="inv-summary-row">
+                    <span>تخفیف:</span>
+                    <span class="ui-num" style="color:var(--ui-danger);font-weight:700;">-{{ invoice.discount_amount|floatformat:0|intcomma }} ریال</span>
+                </div>
+                {% endif %}
+                <div class="inv-summary-row">
+                    <span>مالیات:</span>
+                    <span class="ui-num">{{ invoice.tax_amount|floatformat:0|intcomma }} ریال</span>
+                </div>
+                {% if invoice.shipping_cost > 0 %}
+                <div class="inv-summary-row">
+                    <span>هزینه حمل:</span>
+                    <span class="ui-num">{{ invoice.shipping_cost|floatformat:0|intcomma }} ریال</span>
+                </div>
+                {% endif %}
+                <div class="inv-summary-row is-total">
+                    <span>مبلغ کل:</span>
+                    <span class="ui-money" style="font-size:1.1rem;">{{ invoice.total_amount|floatformat:0|intcomma }} ریال</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- اطلاعات تکمیلی -->
     {% if invoice.notes or invoice.issues.exists %}
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h3 class="section-title">
-                <span>📝</span>
-                اطلاعات تکمیلی
-            </h3>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-clipboard-list"></i> اطلاعات تکمیلی</h2>
         </div>
-        <div class="card-body-custom">
+        <div class="ui-card-body" style="display:flex;flex-direction:column;gap:0.9rem;">
             {% if invoice.notes %}
-            <div style="margin-bottom: 1rem;">
-                <label class="form-label">توضیحات</label>
-                <div class="form-control-static" style="min-height: 80px; align-items: flex-start;">
-                    {{ invoice.notes|linebreaks }}
-                </div>
+            <div class="inv-kv-item">
+                <span class="inv-kv-label">توضیحات</span>
+                <div style="font-size:0.86rem;line-height:1.7;color:var(--text-primary);">{{ invoice.notes|linebreaks }}</div>
             </div>
             {% endif %}
             {% if invoice.issues.exists %}
             <div>
-                <label class="form-label">ایرادات ثبت شده</label>
-                <div style="margin-top: 0.5rem;">
+                <div class="inv-kv-label" style="margin-bottom:0.4rem;">ایرادات ثبت شده</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
                     {% for issue in invoice.issues.all %}
-                    <span class="issue-tag">{{ issue.name }}</span>
+                    <span class="ui-pill is-warn">{{ issue.name }}</span>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
         </div>
-    </div>
+    </section>
     {% endif %}
 
-    <!-- Payment Information -->
+    <!-- اطلاعات پرداخت -->
     {% if invoice.payment_records %}
-    <div class="minimal-card">
-        <div class="card-header-custom">
-            <h3 class="section-title">
-                <span>💳</span>
-                اطلاعات پرداخت
-            </h3>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-credit-card"></i> اطلاعات پرداخت</h2>
         </div>
-        <div class="card-body-custom">
-            <div class="summary-panel">
-                <div class="summary-row">
+        <div class="ui-card-body">
+            <div class="inv-summary-panel">
+                <div class="inv-summary-row">
                     <span>مبلغ پرداخت شده:</span>
-                    <span>{{ invoice.paid_amount|floatformat:0|intcomma }} ریال</span>
+                    <span class="ui-money">{{ invoice.paid_amount|floatformat:0|intcomma }} ریال</span>
                 </div>
-                <div class="summary-row">
+                <div class="inv-summary-row">
                     <span>مانده:</span>
-                    <span>{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</span>
+                    <span class="ui-num" style="font-weight:700;color:var(--text-primary);">{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</span>
                 </div>
-                <div class="summary-row">
+                <div class="inv-summary-row">
                     <span>وضعیت پرداخت:</span>
-                    <span class="status-badge {{ invoice.payment_status }}">
+                    <span class="ui-pill {% if invoice.payment_status == 'paid' %}is-ok{% elif invoice.payment_status == 'partial' %}is-warn{% else %}is-danger{% endif %}">
                         {{ invoice.get_payment_status_display }}
                     </span>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
     {% endif %}
+
 </div>
 {% endblock %}
-

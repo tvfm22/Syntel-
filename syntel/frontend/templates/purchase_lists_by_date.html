@@ -6,50 +6,17 @@
 
 {% block extra_css %}
 <style>
-    .date-group {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: var(--shadow-xs);
-    }
-
-    .date-header {
-        display: flex;
-        align-items: center;
-        gap: 0.65rem;
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid var(--border-light);
-    }
-    .date-header i {
-        color: var(--accent-indigo);
-        background: #EEF2FF;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-    }
-
     .departments-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 0.85rem;
     }
-
     .department-card {
-        padding: 0.9rem 1.1rem;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg);
-        background: #F8FAFC;
-        transition: all 0.2s ease;
+        padding: 0.9rem 1.05rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 12px;
+        background: var(--gray-50, #F8FAFC);
+        transition: all 0.16s ease;
         text-decoration: none;
         color: inherit;
         display: flex;
@@ -57,69 +24,67 @@
         justify-content: space-between;
         gap: 0.75rem;
     }
-
     .department-card:hover {
-        border-color: #C7D2FE;
-        background: #EEF2FF;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-sm);
+        border-color: var(--ui-accent-border, rgba(139, 92, 246, 0.28));
+        background: var(--ui-accent-tint, rgba(139, 92, 246, 0.08));
+        transform: translateY(-1px);
     }
-
     .department-name {
-        font-size: 0.92rem;
+        font-size: 0.9rem;
         font-weight: 700;
-        color: var(--text-primary);
-    }
-
-    .department-count {
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: #4F46E5;
-        background: #FFFFFF;
-        border: 1px solid #E0E7FF;
-        padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        white-space: nowrap;
+        color: var(--text-primary, #0F172A);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-calendar-alt"></i>
-        لیست خرید به تفکیک تاریخ و بخش
-    </h1>
-    <div class="header-actions">
-        <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت به داشبورد مالی
-        </a>
-    </div>
-</div>
+<div class="ui-page">
 
-{% if purchase_days %}
-    {% for date_str, date_info in purchase_days.items %}
-    <div class="date-group">
-        <div class="date-header">
-            <i class="fas fa-calendar-day"></i>
-            <span>{{ date_info.date_obj|jalali_date }}</span>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-calendar-alt" style="color:var(--primary, #8B5CF6);"></i>
+                <span>لیست خرید به تفکیک تاریخ و بخش</span>
+            </h1>
+            <p class="ui-subtitle">مشاهده گزارش روزانه خرید و تامین به تفکیک دپارتمان‌ها</p>
         </div>
-        <div class="departments-grid">
-            {% for role, dept_info in date_info.departments.items %}
-            <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="department-card">
-                <div class="department-name">{{ dept_info.name }}</div>
-                <div class="department-count">{{ dept_info.count }} درخواست</div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به داشبورد مالی</span>
             </a>
-            {% endfor %}
         </div>
-    </div>
-    {% endfor %}
-{% else %}
-    <div class="table-card">
-        <div class="empty-state">
-            <i class="fas fa-clipboard-list"></i>
-            <p>هنوز هیچ لیست خرید تاییدشده‌ای وجود ندارد</p>
-        </div>
-    </div>
-{% endif %}
+    </header>
+
+    {% if purchase_days %}
+        {% for date_str, date_info in purchase_days.items %}
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>{{ date_info.date_obj|jalali_date }}</span>
+                </h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="departments-grid">
+                    {% for role, dept_info in date_info.departments.items %}
+                    <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="department-card">
+                        <span class="department-name">{{ dept_info.name }}</span>
+                        <span class="ui-pill is-accent ui-num">{{ dept_info.count }} درخواست</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endfor %}
+    {% else %}
+        <section class="ui-card">
+            <div class="ui-empty">
+                <i class="fas fa-clipboard-list"></i>
+                <div>هنوز هیچ لیست خرید تاییدشده‌ای وجود ندارد</div>
+            </div>
+        </section>
+    {% endif %}
+
+</div>
 {% endblock %}

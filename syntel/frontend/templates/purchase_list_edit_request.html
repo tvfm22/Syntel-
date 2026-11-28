@@ -5,61 +5,34 @@
 
 {% block extra_css %}
 <style>
-    .pler-wrap { max-width: 1000px; margin: 0 auto; }
-    .pler-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
     .request-meta {
         display: flex; gap: 1.5rem; margin-bottom: 1.25rem;
-        padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); flex-wrap: wrap;
+        padding-bottom: 1rem; border-bottom: 1px solid var(--border-light, #F1F5F9); flex-wrap: wrap;
     }
     .meta-item { display: flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; }
-    .meta-item label { color: var(--text-muted); font-weight: 600; margin: 0; }
-    .meta-item span { color: var(--text-primary); font-weight: 700; }
-
-    .status-badge {
-        display: inline-block; padding: 0.22rem 0.7rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
-    }
-    .status-purchased, .confirmed-badge { background: #D1FAE5; color: #065F46; }
-    .status-pending, .not-confirmed-badge { background: #FEF3C7; color: #92400E; }
-
-    .form-input-sm {
-        height: 36px; padding: 0 0.65rem; border: 1px solid var(--border-default);
-        border-radius: 8px; font-size: 0.85rem; font-family: 'Vazir', sans-serif;
-        background: var(--bg-input); width: 100px; text-align: center;
-    }
-    .form-select-sm {
-        height: 36px; padding: 0 0.65rem; border: 1px solid var(--border-default);
-        border-radius: 8px; font-size: 0.82rem; font-family: 'Vazir', sans-serif;
-        background: var(--bg-input); min-width: 150px;
-    }
-    .form-actions {
-        display: flex; justify-content: flex-end; gap: 0.65rem;
-        padding-top: 1.25rem; border-top: 1px solid var(--border-light); margin-top: 1.25rem;
-    }
+    .meta-item label { color: var(--text-muted, #94A3B8); font-weight: 600; margin: 0; }
+    .meta-item span { color: var(--text-primary, #0F172A); font-weight: 700; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="pler-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-pen-to-square"></i></div>
-            <div class="ph-title">
-                <h1>ویرایش درخواست</h1>
-                <div class="page-sub">ویرایش اقلام خریداری‌شده و وضعیت تامین</div>
-            </div>
+<div class="ui-page" style="max-width:1000px;">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-pen-to-square" style="color:var(--primary, #8B5CF6);"></i>
+                <span>ویرایش درخواست</span>
+            </h1>
+            <p class="ui-subtitle">ویرایش اقلام خریداری‌شده و وضعیت تامین</p>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-right"></i> بازگشت
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
             </a>
         </div>
-    </div>
+    </header>
 
     <div class="ui-form-card" style="max-width:none;">
         <div class="request-meta">
@@ -69,20 +42,20 @@
             </div>
             <div class="meta-item">
                 <label>تاریخ ایجاد:</label>
-                <span>{{ purchase_request.created_at|jalali_datetime }}</span>
+                <span class="ui-num">{{ purchase_request.created_at|jalali_datetime }}</span>
             </div>
             <div class="meta-item">
                 <label>وضعیت:</label>
-                <span class="status-badge {% if purchase_request.status == 'purchased' %}status-purchased{% else %}status-pending{% endif %}">
+                <span class="ui-pill {% if purchase_request.status == 'purchased' %}is-ok{% else %}is-warn{% endif %}">
                     {{ purchase_request.get_status_display }}
                 </span>
             </div>
             <div class="meta-item">
                 <label>تایید نهایی:</label>
                 {% if purchase_request.manager_confirmed %}
-                    <span class="status-badge confirmed-badge"><i class="fas fa-check"></i> تایید شده</span>
+                    <span class="ui-pill is-ok"><i class="fas fa-check"></i> تایید شده</span>
                 {% else %}
-                    <span class="status-badge not-confirmed-badge">در انتظار تایید</span>
+                    <span class="ui-pill is-warn">در انتظار تایید</span>
                 {% endif %}
             </div>
         </div>
@@ -92,8 +65,8 @@
             <input type="hidden" name="date" value="{{ date_str }}">
             <input type="hidden" name="role" value="{{ role }}">
 
-            <div style="overflow-x:auto;">
-                <table class="data-table">
+            <div class="ui-table-scroll">
+                <table class="ui-table">
                     <thead>
                         <tr>
                             <th>نام قلم</th>
@@ -105,18 +78,20 @@
                     <tbody>
                         {% for item in purchase_request.items.all %}
                         <tr>
-                            <td style="font-weight:700;color:var(--text-primary);">{{ item.name }}</td>
-                            <td>{{ item.quantity|trim_decimal }} {{ item.unit }}</td>
+                            <td style="font-weight:700;">{{ item.name }}</td>
+                            <td class="ui-num">{{ item.quantity|trim_decimal }} {{ item.unit }}</td>
                             <td>
-                                <input type="number"
-                                       name="purchased_quantity_{{ item.id }}"
-                                       value="{{ item.purchased_quantity|default:0|trim_decimal }}"
-                                       min="0" step="any"
-                                       class="form-input-sm">
-                                {{ item.unit }}
+                                <div style="display:inline-flex; align-items:center; gap:0.45rem;">
+                                    <input type="number"
+                                           name="purchased_quantity_{{ item.id }}"
+                                           value="{{ item.purchased_quantity|default:0|trim_decimal }}"
+                                           min="0" step="any"
+                                           class="ui-input ui-num" style="width:105px; height:36px; text-align:center;">
+                                    <span style="font-size:0.8rem; color:var(--text-secondary);">{{ item.unit }}</span>
+                                </div>
                             </td>
                             <td>
-                                <select name="supply_status_{{ item.id }}" class="form-select-sm">
+                                <select name="supply_status_{{ item.id }}" class="ui-select" style="min-width:160px;">
                                     <option value="pending" {% if item.supply_status == 'pending' %}selected{% endif %}>در انتظار</option>
                                     <option value="purchased" {% if item.supply_status == 'purchased' %}selected{% endif %}>خرید</option>
                                     <option value="from_stock" {% if item.supply_status == 'from_stock' %}selected{% endif %}>تامین از انبار</option>
@@ -126,20 +101,22 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-                                هیچ قلمی یافت نشد
-                            </td>
+                            <td colspan="4" class="ui-empty">هیچ قلمی یافت نشد</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            <div class="form-actions">
-                <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="btn btn-secondary">انصراف</a>
-                <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> ذخیره تغییرات</button>
+            <div class="ui-form-actions">
+                <a href="{% url 'purchase_day_detail' cafe_code=cafe_code %}?date={{ date_str }}&role={{ role }}" class="ui-btn ui-btn-ghost">انصراف</a>
+                <button type="submit" class="ui-btn ui-btn-success">
+                    <i class="fas fa-save"></i>
+                    <span>ذخیره تغییرات</span>
+                </button>
             </div>
         </form>
     </div>
+
 </div>
 {% endblock %}

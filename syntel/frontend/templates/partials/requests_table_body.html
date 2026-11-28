@@ -1,25 +1,30 @@
 ﻿{% for request in requests %}
     <tr>
-        <td>{{ request.request_number }}</td>
-        <td>{{ request.user.department_display }}</td>
+        <td class="ui-num" style="font-weight:700;">{{ request.request_number }}</td>
+        <td><span class="ui-chip">{{ request.user.department_display }}</span></td>
         <td>{{ request.user.username }}</td>
-        <td>{{ request.created_at|date:"d/m/Y H:i" }}</td>
+        <td class="ui-num" style="color:var(--text-secondary);">{{ request.created_at|date:"d/m/Y H:i" }}</td>
         <td>
-            <span class="status-badge status-{{ request.status }}">
+            <span class="ui-pill {% if request.status == 'purchased' %}is-ok{% elif request.status == 'partial' %}is-info{% elif request.status == 'pending' %}is-warn{% else %}is-muted{% endif %}">
                 {% if request.status == 'pending' %}منتظر
                 {% elif request.status == 'purchased' %}خریداری شد
                 {% elif request.status == 'partial' %}کسری دارد
                 {% endif %}
             </span>
         </td>
-        <td>
-            <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=request.id %}" class="action-btn">مشاهده</a>
-            <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=request.id %}" class="action-btn" style="background: #2196F3;">ثبت خرید</a>
+        <td style="text-align:left;">
+            <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=request.id %}" class="ui-row-action">
+                <i class="far fa-eye"></i>
+                <span>مشاهده</span>
+            </a>
+            <a href="{% url 'update_purchase_request' cafe_code=cafe_code request_id=request.id %}" class="ui-row-action">
+                <i class="fas fa-cart-shopping"></i>
+                <span>ثبت خرید</span>
+            </a>
         </td>
     </tr>
 {% empty %}
     <tr>
-        <td colspan="6" class="no-data">درخواست معلق‌ای وجود ندارد</td>
+        <td colspan="6" class="ui-empty">درخواست معلق‌ای وجود ندارد</td>
     </tr>
 {% endfor %}
-

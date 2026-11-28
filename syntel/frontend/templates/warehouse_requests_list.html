@@ -4,155 +4,100 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ درخواست‌های انبار من — هماهنگ با توکن‌های سیستم ═══ */
-    .wr-wrap { max-width: 900px; margin: 0 auto; }
-    .wr-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .ph-title h1 {
-        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.4; margin: 0;
-    }
-    .ph-title .page-sub {
-        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
-        margin-top: 0.1rem; line-height: 1.7;
-    }
-    .wr-count {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.15rem 0.65rem; border-radius: 999px;
-        background: rgba(139,92,246,0.08); color: #6d28d9;
-        font-size: 0.72rem; font-weight: 700;
-    }
-
-    /* ── کارت درخواست ── */
     .wr-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);
-        border-inline-start: 4px solid var(--border-strong);
-        transition: all var(--transition-fast);
+        border-inline-start: 3px solid var(--border-strong, #CBD5E1);
     }
-    .wr-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-    .wr-card.pending          { border-inline-start-color: var(--accent-orange); }
-    .wr-card.approved_from_stock, .wr-card.fulfilled { border-inline-start-color: var(--accent-green); }
-    .wr-card.approved_purchase { border-inline-start-color: var(--accent-blue); }
-    .wr-card.partial          { border-inline-start-color: #8B5CF6; }
-    .wr-card.declined         { border-inline-start-color: #EF4444; }
+    .wr-card.pending { border-inline-start-color: var(--ui-warn, #B45309); }
+    .wr-card.approved_from_stock, .wr-card.fulfilled { border-inline-start-color: var(--ui-ok, #047857); }
+    .wr-card.approved_purchase { border-inline-start-color: var(--ui-info, #2563EB); }
+    .wr-card.partial { border-inline-start-color: var(--primary, #8B5CF6); }
+    .wr-card.declined { border-inline-start-color: var(--ui-danger, #DC2626); }
 
-    .wr-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
-    .wr-id { font-size: 0.92rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem; }
-    .wr-id i { color: var(--accent-indigo); }
-    .wr-date { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem; }
-    .wr-status {
-        padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;
-    }
-    .wr-status.pending          { background: #fef3c7; color: #92400e; }
-    .wr-status.approved_from_stock { background: #d1fae5; color: #065f46; }
-    .wr-status.approved_purchase { background: #dbeafe; color: #1e40af; }
-    .wr-status.partial          { background: #ede9fe; color: #5b21b6; }
-    .wr-status.declined         { background: #fee2e2; color: #991b1b; }
-    .wr-status.fulfilled        { background: #d1fae5; color: #065f46; }
-
-    /* ── اقلام ── */
     .wr-items {
-        background: var(--bg-subtle); border-radius: var(--radius-lg);
-        padding: var(--space-2) var(--space-4);
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-light, #F1F5F9);
+        border-radius: 12px;
+        padding: 0.4rem 0.9rem;
     }
     .wr-item {
-        display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
-        padding: 0.45rem 0; font-size: 0.84rem; flex-wrap: wrap;
+        display: flex; justify-content: space-between; align-items: center; gap: 0.65rem;
+        padding: 0.55rem 0; font-size: 0.84rem; flex-wrap: wrap;
     }
-    .wr-item + .wr-item { border-top: 1px solid var(--border-light); }
-    .wr-item-name { font-weight: 600; color: var(--text-primary); }
-    .wr-item-side { display: flex; align-items: center; gap: 0.6rem; }
-    .wr-item-qty { color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; }
-    .wr-supply {
-        font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.55rem; border-radius: 999px; white-space: nowrap;
-    }
-    .wr-supply.pending      { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-light); }
-    .wr-supply.from_stock   { background: #d1fae5; color: #065f46; }
-    .wr-supply.to_purchase  { background: #dbeafe; color: #1e40af; }
-    .wr-supply.declined     { background: #fee2e2; color: #991b1b; }
-
-    /* ── خالی ── */
-    .wr-empty {
-        text-align: center; padding: 3.5rem 2rem; color: var(--text-muted);
-        background: var(--bg-card); border-radius: var(--radius-3xl);
-        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
-    }
-    .wr-empty .icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; color: var(--accent-indigo); }
-    .wr-empty h3 { font-size: 1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.35rem; }
-    .wr-empty p { font-size: 0.82rem; margin-bottom: var(--space-4); }
+    .wr-item + .wr-item { border-top: 1px solid var(--border-light, #F1F5F9); }
+    .wr-item-name { font-weight: 700; color: var(--text-primary, #0F172A); }
+    .wr-item-side { display: inline-flex; align-items: center; gap: 0.6rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="wr-wrap">
+<div class="ui-page is-narrow">
 
-    <!-- سربرگ صفحه -->
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-clipboard-list"></i></div>
-            <div class="ph-title">
-                <h1>درخواست‌های انبار من</h1>
-                <div class="page-sub">تاریخچهٔ درخواست‌های ثبت‌شدهٔ شما و وضعیت تأمین هر قلم</div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">درخواست‌های انبار من</h1>
+            <div class="ui-subtitle">
+                <span>تاریخچهٔ درخواست‌های ثبت‌شدهٔ شما و وضعیت تأمین هر قلم</span>
+                {% if requests %}
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-num" style="font-weight:700;color:var(--primary-dark);">{{ requests|length }} درخواست</span>
+                {% endif %}
             </div>
         </div>
-        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="btn btn-primary" style="font-size:0.8rem;">
-            <i class="fas fa-plus"></i> درخواست جدید
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> درخواست جدید
+            </a>
+        </div>
+    </header>
 
     {% if requests %}
-    <div style="font-size:0.76rem;color:var(--text-muted);margin-bottom:var(--space-3);font-weight:600;">
-        <i class="fas fa-layer-group"></i> {{ requests|length }} درخواست ثبت شده
-    </div>
-    {% for req in requests %}
-    <div class="wr-card {{ req.status }}">
-        <div class="wr-head">
-            <div>
-                <div class="wr-id">
-                    درخواست {{ req.request_number }}
+        {% for req in requests %}
+        <article class="ui-card wr-card {{ req.status }}">
+            <div class="ui-card-head">
+                <div>
+                    <div class="ui-card-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        درخواست {{ req.request_number }}
+                    </div>
+                    <div class="ui-subtitle" style="margin-top:0.2rem;">
+                        <i class="fas fa-clock"></i> {{ req.created_at|jalali_datetime }}
+                    </div>
                 </div>
-                <div class="wr-date"><i class="fas fa-clock"></i> {{ req.created_at|jalali_datetime }}</div>
-            </div>
-            <span class="wr-status {{ req.status }}">{{ req.get_status_display }}</span>
-        </div>
-
-        <div class="wr-items">
-            {% for item in req.items.all %}
-            <div class="wr-item">
-                <span class="wr-item-name">{{ item.name }}</span>
-                <span class="wr-item-side">
-                    <span class="wr-item-qty">{{ item.quantity|qty_comma }} {{ item.unit }}</span>
-                    <span class="wr-supply {{ item.supply_status }}">
-                        {% if item.supply_status == 'pending' %}در انتظار
-                        {% elif item.supply_status == 'from_stock' %}تامین از انبار
-                        {% elif item.supply_status == 'to_purchase' %}ارجاع به خرید
-                        {% elif item.supply_status == 'declined' %}عدم تامین
-                        {% endif %}
-                    </span>
+                <span class="ui-pill {% if req.status == 'pending' %}is-warn{% elif req.status == 'approved_from_stock' or req.status == 'fulfilled' %}is-ok{% elif req.status == 'approved_purchase' %}is-info{% elif req.status == 'partial' %}is-accent{% elif req.status == 'declined' %}is-danger{% else %}is-muted{% endif %}">
+                    {{ req.get_status_display }}
                 </span>
             </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endfor %}
+            <div class="ui-card-body">
+                <div class="wr-items">
+                    {% for item in req.items.all %}
+                    <div class="wr-item">
+                        <span class="wr-item-name">{{ item.name }}</span>
+                        <span class="wr-item-side">
+                            <span class="ui-chip ui-num">{{ item.quantity|qty_comma }} {{ item.unit }}</span>
+                            <span class="ui-pill {% if item.supply_status == 'from_stock' %}is-ok{% elif item.supply_status == 'to_purchase' %}is-info{% elif item.supply_status == 'declined' %}is-danger{% else %}is-muted{% endif %}">
+                                {% if item.supply_status == 'pending' %}در انتظار
+                                {% elif item.supply_status == 'from_stock' %}تامین از انبار
+                                {% elif item.supply_status == 'to_purchase' %}ارجاع به خرید
+                                {% elif item.supply_status == 'declined' %}عدم تامین
+                                {% endif %}
+                            </span>
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </article>
+        {% endfor %}
     {% else %}
-    <div class="wr-empty">
-        <div class="icon"><i class="fas fa-inbox"></i></div>
-        <h3>هیچ درخواستی ثبت نشده است</h3>
-        <p>برای ثبت اولین درخواست، از دکمهٔ زیر استفاده کنید</p>
-        <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> ثبت اولین درخواست
-        </a>
+    <div class="ui-card">
+        <div class="ui-empty">
+            <i class="fas fa-inbox"></i>
+            <div style="font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:0.35rem;">هیچ درخواستی ثبت نشده است</div>
+            <p style="margin:0 0 1.2rem;">برای ثبت اولین درخواست، از دکمهٔ زیر استفاده کنید</p>
+            <a href="{% url 'warehouse_request_form' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> ثبت اولین درخواست
+            </a>
+        </div>
     </div>
     {% endif %}
 

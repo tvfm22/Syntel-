@@ -3,46 +3,61 @@
 
 {% block title %}{% if unit %}ویرایش واحد{% else %}ایجاد واحد جدید{% endif %} - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.error-message { color: var(--danger); font-size: 0.8rem; margin-top: 0.35rem; font-weight: 600; }
+.error-message {
+    color: var(--ui-danger, #DC2626);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    font-weight: 600;
+}
 </style>
+{% endblock %}
 
-<div class="ui-form-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-scale-balanced"></i></div>
-            <div>
-                <h1 class="ph-title">{% if unit %}ویرایش واحد{% else %}ایجاد واحد جدید{% endif %}</h1>
-                <p class="page-sub">{% if unit %}اطلاعات واحد را ویرایش کنید{% else %}اطلاعات واحد اندازه‌گیری جدید را وارد کنید{% endif %}</p>
-            </div>
+{% block content %}
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-scale-balanced" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if unit %}ویرایش واحد{% else %}ایجاد واحد جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if unit %}اطلاعات واحد اندازه‌گیری را ویرایش کنید{% else %}اطلاعات واحد اندازه‌گیری جدید را وارد کنید{% endif %}
+            </p>
         </div>
-        <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
     <form method="POST" class="ui-form-card unit-form">
         {% csrf_token %}
 
-        <div class="form-group">
-            <label for="name" class="form-label">نام واحد <span style="color:var(--danger);">*</span></label>
-            <input type="text" id="name" name="name" class="form-control"
-                   value="{% if unit %}{{ unit.name }}{% endif %}" required>
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:0.35rem;">مثال: کیلوگرم، لیتر، عدد، بسته</div>
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="name" class="ui-field-label">نام واحد <span style="color:var(--ui-danger);">*</span></label>
+                <input type="text" id="name" name="name" class="ui-input"
+                       value="{% if unit %}{{ unit.name }}{% endif %}" required>
+                <span class="ui-field-hint">مثال: کیلوگرم، لیتر، عدد، بسته</span>
+            </div>
+
+            <div class="ui-field">
+                <label for="symbol" class="ui-field-label">نماد واحد</label>
+                <input type="text" id="symbol" name="symbol" class="ui-input"
+                       value="{% if unit %}{{ unit.symbol }}{% endif %}" placeholder="اختیاری">
+                <span class="ui-field-hint">مثال: kg، L، عدد، بسته (برای نمایش در جداول)</span>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="symbol" class="form-label">نماد واحد</label>
-            <input type="text" id="symbol" name="symbol" class="form-control"
-                   value="{% if unit %}{{ unit.symbol }}{% endif %}" placeholder="اختیاری">
-            <div style="font-size:0.78rem;color:var(--gray-500);margin-top:0.35rem;">مثال: kg، L، عدد، بسته (برای نمایش در جداول)</div>
-        </div>
-
-        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--gray-100);">
-            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-check"></i> {% if unit %}ذخیره تغییرات{% else %}ایجاد واحد{% endif %}
+        <div class="ui-form-actions">
+            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>{% if unit %}ذخیره تغییرات{% else %}ایجاد واحد{% endif %}</span>
             </button>
         </div>
     </form>

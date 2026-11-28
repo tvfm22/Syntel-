@@ -4,299 +4,292 @@
 {% block title %}ثبت فاکتور جدید{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/invoice_register.css' %}">
+<link rel="stylesheet" href="{% static 'css/invoice_register.css' %}?v=20261127a">
 <link href="{% static 'vendor/select2/select2.min.css' %}" rel="stylesheet" />
 <script src="{% static 'vendor/jquery/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'vendor/select2/select2.min.js' %}"></script>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-11">
-            
-            <div class="page-header">
-                <div class="page-title">
-                    <i class="fas fa-file-invoice text-primary"></i>
-                    <span>ثبت فاکتور جدید</span>
-                </div>
-                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn btn-outline-custom btn-sm">
-                    <i class="fas fa-arrow-left ml-2"></i> بازگشت
-                </a>
-            </div>
+<div class="ui-page is-wide">
 
-            <form method="post" id="invoice-form">
-                {% csrf_token %}
-
-                <!-- اطلاعات اصلی -->
-                <div class="minimal-card">
-                    <div class="card-body-custom pt-4 pb-4">
-                        <div class="d-flex align-items-center mb-4 border-bottom pb-2">
-                            <span class="text-primary ml-2" style="font-size: 1.1rem;">
-                                <i class="fas fa-info-circle"></i>
-                            </span>
-                            <h6 class="font-weight-bold m-0" style="font-size: 1rem; color: var(--text-main);">اطلاعات پایه</h6>
-                        </div>
-
-                        <div class="custom-row">
-                            <div class="custom-col col-20">
-                                <label for="supplier_name" class="form-label small text-muted mb-1">فروشگاه</label>
-                                <input type="text" class="form-control form-control-sm" id="supplier_name" name="supplier_name"
-                                       placeholder="نام فروشگاه..." required
-                                       value="{% if default_supplier %}{{ default_supplier.name }}{% endif %}">
-                                <input type="hidden" id="supplier_id" name="supplier" value="{% if default_supplier %}{{ default_supplier.id }}{% endif %}">
-                            </div>
-                            <div class="custom-col col-20">
-                                <label for="invoice_number" class="form-label small text-muted mb-1">شماره فاکتور</label>
-                                <input type="text" class="form-control form-control-sm" id="invoice_number" name="invoice_number" required>
-                            </div>
-                            <div class="custom-col col-20">
-                                <label for="invoice_date" class="form-label small text-muted mb-1">تاریخ فاکتور</label>
-                                <input type="hidden" id="invoice_date" name="invoice_date" value="1404/01/01">
-                                <div class="date-input-group">
-                                    <input type="number" name="invoice_year" id="invoice_year" placeholder="سال" min="1300" max="1500">
-                                    <span class="date-separator">/</span>
-                                    <input type="number" name="invoice_month" id="invoice_month" placeholder="ماه" min="1" max="12">
-                                    <span class="date-separator">/</span>
-                                    <input type="number" name="invoice_day" id="invoice_day" placeholder="روز" min="1" max="31">
-                                </div>
-                            </div>
-                            <div class="custom-col col-20">
-                                <label for="request_date" class="form-label small text-muted mb-1">تاریخ درخواست</label>
-                                <input type="hidden" id="request_date" name="request_date" value="1404/01/01">
-                                <div class="date-input-group">
-                                    <input type="number" name="request_year" id="request_year" placeholder="سال" min="1300" max="1500">
-                                    <span class="date-separator">/</span>
-                                    <input type="number" name="request_month" id="request_month" placeholder="ماه" min="1" max="12">
-                                    <span class="date-separator">/</span>
-                                    <input type="number" name="request_day" id="request_day" placeholder="روز" min="1" max="31">
-                                </div>
-                            </div>
-                            
-                            <div class="custom-col col-20">
-                                <label for="total_cash_discount" class="form-label small text-muted mb-1">تخفیف</label>
-                                <input type="text" class="form-control form-control-sm money-input" id="total_cash_discount" name="total_cash_discount" placeholder="0">
-                            </div>
-                            <div class="custom-col col-20">
-                                <label for="shipping_cost" class="form-label small text-muted mb-1">هزینه ارسال</label>
-                                <input type="text" class="form-control form-control-sm money-input" id="shipping_cost" name="shipping_cost" placeholder="0">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- اقلام فاکتور -->
-                <div class="minimal-card">
-                    <div class="card-header-custom">
-                        <div class="section-title">
-                            <i class="fas fa-list text-primary"></i> اقلام فاکتور
-                        </div>
-                        <button type="button" class="btn btn-sm btn-primary-custom" id="add-item">
-                            <i class="fas fa-plus ml-1"></i> افزودن آیتم
-                        </button>
-                    </div>
-                    
-                    <div class="card-body-custom p-0">
-                        <div class="table-responsive">
-                            <table class="table-minimal" id="items-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 20%">شرح کالا</th>
-                                        <th style="width: 15%">دسته‌بندی</th>
-                                        <th style="width: 12%">درخواست‌کننده</th>
-                                        <th style="width: 8%">تعداد</th>
-                                        <th style="width: 15%">قیمت واحد</th>
-                                        <th style="width: 10%">مالیات</th>
-                                        <th style="width: 10%">تخفیف</th>
-                                        <th style="width: 10%">مجموع</th>
-                                        <th style="width: 5%"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="items-tbody">
-                                    <tr class="item-row">
-                                        <td>
-                                            <div class="input-wrapper">
-                                                <input type="text" class="form-control form-control-sm description-input" id="description_0" name="description_0" placeholder="شرح کالا" required autocomplete="off">
-                                                <input type="hidden" class="product-id-input" name="product_id_0" value="">
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <select class="form-select form-select-sm category-select" name="category_0">
-                                                <option value="">انتخاب...</option>
-                                                {% for category in categories %}
-                                                <option value="{{ category.id }}">
-                                                    {% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <select class="form-select form-select-sm" name="requester_0">
-                                                <option value="">انتخاب...</option>
-                                                {% for requester in requesters %}
-                                                <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="number" step="0.01" class="form-control form-control-sm quantity-input" name="quantity_0" placeholder="0" required>
-                                        </td>
-                                        <td>
-                                            <input type="text" class="form-control form-control-sm money-input unit-price-input" name="unit_price_0" placeholder="0" required>
-                                        </td>
-                                        <td>
-                                            <input type="text" class="form-control form-control-sm money-input tax-input" name="tax_amount_0" placeholder="0">
-                                        </td>
-                                        <td>
-                                            <input type="text" class="form-control form-control-sm money-input discount-input" name="discount_amount_0" placeholder="0">
-                                        </td>
-                                        <td>
-                                            <span class="line-total font-weight-bold text-primary">0</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <button type="button" class="btn-action remove-item">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <!-- یادداشت‌ها و ایرادات -->
-                    <div class="col-lg-8">
-                        <div class="minimal-card h-100">
-                            <div class="card-header-custom">
-                                <div class="section-title">
-                                    <i class="fas fa-clipboard-check text-primary"></i>
-                                    توضیحات تکمیلی
-                                </div>
-                            </div>
-                            
-                            <div class="card-body-custom">
-                                <div class="mb-4">
-                                    <label class="form-label">موارد ایراد</label>
-                                    <div class="d-flex gap-2 mb-2">
-                                        <select id="issue-select" class="form-select" style="max-width: 300px;">
-                                            <option value="">انتخاب مورد ایراد...</option>
-                                            {% for issue in issues %}
-                                            <option value="{{ issue.id }}">{{ issue.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button type="button" id="add-issue" class="btn btn-outline-custom btn-sm">افزودن</button>
-                                    </div>
-                                    <div id="issues-tags" class="d-flex flex-wrap"></div>
-                                    <input type="hidden" name="issues" id="issues-input" value="">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="notes" class="form-label">یادداشت‌ها</label>
-                                    <textarea class="form-control" id="notes" name="notes" rows="4"
-                                              placeholder="توضیحات اضافی در مورد فاکتور..."></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- خلاصه مالی -->
-                    <div class="col-lg-4">
-                        <div class="minimal-card summary-panel">
-                            <h5 class="mb-4 font-weight-bold">خلاصه فاکتور</h5>
-                            
-                            <div class="summary-row">
-                                <span>جمع اقلام:</span>
-                                <span id="items-total">0 ریال</span>
-                            </div>
-                            <div class="summary-row">
-                                <span>هزینه ارسال:</span>
-                                <span id="shipping-display">0 ریال</span>
-                            </div>
-                            <div class="summary-row text-danger">
-                                <span>تخفیف‌ها:</span>
-                                <span id="total-discount-display">0 ریال</span>
-                            </div>
-                            
-                            <div class="summary-row total">
-                                <span>مبلغ قابل پرداخت:</span>
-                                <span id="grand-total" class="text-primary">0 ریال</span>
-                            </div>
-
-                            <!-- بخش پرداخت -->
-                            <div class="mt-4 pt-3 border-top">
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="add-payment" name="add_payment">
-                                    <label class="form-check-label" for="add-payment">
-                                        ثبت پرداخت همراه با فاکتور
-                                    </label>
-                                </div>
-
-                                <div id="payment-section" style="display: none; max-width: 100%; margin-bottom: 30px;">
-                                    <div style="display: grid; grid-template-columns: 200px 200px; gap: 8px 6px; align-items: start;">
-                                        <div>
-                                            <label for="payment-amount" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">مبلغ پرداخت</label>
-                                            <input type="text" class="form-control form-control-sm js-comma" id="payment-amount" name="payment_amount" inputmode="numeric" placeholder="مبلغ" style="height: 34px; font-size: 0.875rem; width: 200px;">
-                                            <small class="text-muted" style="font-size: 0.7rem; display: block; margin-top: 3px;">خالی = تمام مبلغ</small>
-                                        </div>
-                                        
-                                        <div>
-                                            <label for="payment-location" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">محل پرداخت</label>
-                                            <select class="form-select form-select-sm" id="payment-location" name="payment_location_id" style="height: 34px; font-size: 0.875rem; width: 200px;">
-                                                <option value="">انتخاب کنید...</option>
-                                                {% for location in payment_locations %}
-                                                <option value="{{ location.id }}">{{ location.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                    
-                                        <div>
-                                            <label for="payment-date" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">تاریخ پرداخت</label>
-                                            <input type="hidden" id="payment-date" name="payment_date" value="{{ today|date:'Y-m-d' }}">
-                                            <div class="date-input-group" style="width: 200px;">
-                                                <input type="number" name="payment_year" id="payment_year" placeholder="سال" min="1300" max="1500">
-                                                <span class="date-separator">/</span>
-                                                <input type="number" name="payment_month" id="payment_month" placeholder="ماه" min="1" max="12">
-                                                <span class="date-separator">/</span>
-                                                <input type="number" name="payment_day" id="payment_day" placeholder="روز" min="1" max="31">
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <label for="payment-notes" class="form-label" style="font-size: 0.875rem; margin-bottom: 6px; display: block; font-weight: 600;">توضیحات</label>
-                                            <input type="text" class="form-control form-control-sm" id="payment-notes" name="payment_notes" placeholder="توضیحات..." style="height: 34px; font-size: 0.875rem; width: 200px;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 d-grid gap-2">
-                                <button type="submit" class="btn btn-primary-custom btn-block w-100">
-                                    <i class="fas fa-check ml-2"></i> ثبت نهایی فاکتور
-                                </button>
-                                <button type="submit" name="save_draft" class="btn btn-outline-custom btn-block w-100">
-                                    <i class="fas fa-save ml-2"></i> ذخیره پیش‌نویس
-                                </button>
-                                <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn btn-link text-muted text-decoration-none text-center w-100">
-                                    انصراف
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data for JS -->
-                <script type="application/json" id="categories-data">
-                    [{% for category in categories %}{"id": {{ category.id }}, "name": "{{ category.name|escapejs }}", "parent": "{% if category.parent %}{{ category.parent.name|escapejs }}{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]
-                </script>
-                <script type="application/json" id="requesters-data">
-                    [{% for requester in requesters %}{"id": {{ requester.id }}, "label": "{{ requester.get_name_display|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
-                </script>
-
-            </form>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                <span>ثبت فاکتور جدید</span>
+            </h1>
+            <p class="ui-subtitle">ثبت فاکتور خرید به همراه اقلام، تخفیف، مالیات و پرداخت</p>
         </div>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
+
+    <form method="post" id="invoice-form">
+        {% csrf_token %}
+
+        <!-- اطلاعات پایه -->
+        <section class="ir-card">
+            <div class="ir-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-info-circle"></i>
+                    اطلاعات پایه
+                </h2>
+            </div>
+            <div class="ir-card-body">
+                <div class="ir-base-grid">
+                    <div>
+                        <label for="supplier_name" class="ir-field-label">فروشگاه</label>
+                        <input type="text" class="form-control form-control-sm" id="supplier_name" name="supplier_name"
+                               placeholder="نام فروشگاه..." required
+                               value="{% if default_supplier %}{{ default_supplier.name }}{% endif %}">
+                        <input type="hidden" id="supplier_id" name="supplier" value="{% if default_supplier %}{{ default_supplier.id }}{% endif %}">
+                    </div>
+                    <div>
+                        <label for="invoice_number" class="ir-field-label">شماره فاکتور</label>
+                        <input type="text" class="form-control form-control-sm" id="invoice_number" name="invoice_number" required>
+                    </div>
+                    <div>
+                        <label for="invoice_date" class="ir-field-label">تاریخ فاکتور</label>
+                        <input type="hidden" id="invoice_date" name="invoice_date" value="1404/01/01">
+                        <div class="date-input-group">
+                            <input type="number" name="invoice_year" id="invoice_year" placeholder="سال" min="1300" max="1500">
+                            <span class="date-separator">/</span>
+                            <input type="number" name="invoice_month" id="invoice_month" placeholder="ماه" min="1" max="12">
+                            <span class="date-separator">/</span>
+                            <input type="number" name="invoice_day" id="invoice_day" placeholder="روز" min="1" max="31">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="request_date" class="ir-field-label">تاریخ درخواست</label>
+                        <input type="hidden" id="request_date" name="request_date" value="1404/01/01">
+                        <div class="date-input-group">
+                            <input type="number" name="request_year" id="request_year" placeholder="سال" min="1300" max="1500">
+                            <span class="date-separator">/</span>
+                            <input type="number" name="request_month" id="request_month" placeholder="ماه" min="1" max="12">
+                            <span class="date-separator">/</span>
+                            <input type="number" name="request_day" id="request_day" placeholder="روز" min="1" max="31">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="total_cash_discount" class="ir-field-label">تخفیف</label>
+                        <input type="text" class="form-control form-control-sm money-input ui-num" id="total_cash_discount" name="total_cash_discount" placeholder="0">
+                    </div>
+                    <div>
+                        <label for="shipping_cost" class="ir-field-label">هزینه ارسال</label>
+                        <input type="text" class="form-control form-control-sm money-input ui-num" id="shipping_cost" name="shipping_cost" placeholder="0">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- اقلام فاکتور -->
+        <section class="ir-card">
+            <div class="ir-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-list"></i>
+                    اقلام فاکتور
+                </h2>
+                <button type="button" class="ui-btn ui-btn-soft is-sm" id="add-item">
+                    <i class="fas fa-plus"></i> افزودن آیتم
+                </button>
+            </div>
+            <div class="ui-table-scroll">
+                <table class="table-minimal" id="items-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%">شرح کالا</th>
+                            <th style="width: 15%">دسته‌بندی</th>
+                            <th style="width: 12%">درخواست‌کننده</th>
+                            <th style="width: 8%">تعداد</th>
+                            <th style="width: 15%">قیمت واحد</th>
+                            <th style="width: 10%">مالیات</th>
+                            <th style="width: 10%">تخفیف</th>
+                            <th style="width: 10%">مجموع</th>
+                            <th style="width: 5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-tbody">
+                        <tr class="item-row">
+                            <td>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-control form-control-sm description-input" id="description_0" name="description_0" placeholder="شرح کالا" required autocomplete="off">
+                                    <input type="hidden" class="product-id-input" name="product_id_0" value="">
+                                </div>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm category-select" name="category_0">
+                                    <option value="">انتخاب...</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">
+                                        {% if category.parent %}{{ category.parent.name }} › {% endif %}{{ category.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm" name="requester_0">
+                                    <option value="">انتخاب...</option>
+                                    {% for requester in requesters %}
+                                    <option value="{{ requester.id }}">{{ requester.get_name_display }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" class="form-control form-control-sm quantity-input ui-num" name="quantity_0" placeholder="0" required>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm money-input unit-price-input ui-num" name="unit_price_0" placeholder="0" required>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm money-input tax-input ui-num" name="tax_amount_0" placeholder="0">
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm money-input discount-input ui-num" name="discount_amount_0" placeholder="0">
+                            </td>
+                            <td>
+                                <span class="line-total ui-money">0</span>
+                            </td>
+                            <td style="text-align:center;">
+                                <button type="button" class="btn-action remove-item" title="حذف ردیف">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- پایین صفحه: توضیحات و خلاصه مالی -->
+        <div class="ir-bottom-grid">
+            <section class="ir-card" style="margin-bottom:0;">
+                <div class="ir-card-head">
+                    <h2 class="ui-card-title">
+                        <i class="fas fa-clipboard-check"></i>
+                        توضیحات تکمیلی
+                    </h2>
+                </div>
+                <div class="ir-card-body" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div>
+                        <label class="ir-field-label" for="issue-select">موارد ایراد</label>
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                            <select id="issue-select" class="form-select" style="max-width:300px;flex:1;">
+                                <option value="">انتخاب مورد ایراد...</option>
+                                {% for issue in issues %}
+                                <option value="{{ issue.id }}">{{ issue.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="add-issue" class="ui-btn ui-btn-ghost">افزودن</button>
+                        </div>
+                        <div id="issues-tags" style="display:flex;flex-wrap:wrap;"></div>
+                        <input type="hidden" name="issues" id="issues-input" value="">
+                    </div>
+
+                    <div>
+                        <label for="notes" class="ir-field-label">یادداشت‌ها</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4"
+                                  placeholder="توضیحات اضافی در مورد فاکتور..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="summary-panel">
+                <h3 class="ui-card-title" style="margin-bottom:1rem;">
+                    <i class="fas fa-calculator"></i>
+                    خلاصه فاکتور
+                </h3>
+
+                <div class="summary-row">
+                    <span>جمع اقلام:</span>
+                    <span id="items-total" class="ui-num" style="font-weight:700;color:var(--text-primary);">0 ریال</span>
+                </div>
+                <div class="summary-row">
+                    <span>هزینه ارسال:</span>
+                    <span id="shipping-display" class="ui-num">0 ریال</span>
+                </div>
+                <div class="summary-row" style="color:var(--ui-danger);">
+                    <span>تخفیف‌ها:</span>
+                    <span id="total-discount-display" class="ui-num">0 ریال</span>
+                </div>
+
+                <div class="summary-row total">
+                    <span>مبلغ قابل پرداخت:</span>
+                    <span id="grand-total" class="ui-money" style="font-size:1.1rem;">0 ریال</span>
+                </div>
+
+                <!-- بخش پرداخت -->
+                <div style="margin-top:1rem;padding-top:0.9rem;border-top:1px solid var(--border-light,#F1F5F9);">
+                    <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.84rem;font-weight:700;color:var(--text-primary);">
+                        <input class="form-check-input" type="checkbox" id="add-payment" name="add_payment" style="margin:0;accent-color:var(--primary,#8B5CF6);">
+                        <span>ثبت پرداخت همراه با فاکتور</span>
+                    </label>
+
+                    <div id="payment-section" style="display: none; margin-top: 0.65rem;">
+                        <div class="ir-pay-grid ir-card" style="border:none;box-shadow:none;margin-bottom:0;background:transparent;">
+                            <div>
+                                <label for="payment-amount" class="ir-field-label">مبلغ پرداخت</label>
+                                <input type="text" class="form-control form-control-sm js-comma ui-num" id="payment-amount" name="payment_amount" inputmode="numeric" placeholder="مبلغ">
+                                <small style="font-size:0.7rem;color:var(--text-muted);display:block;margin-top:0.2rem;">خالی = تمام مبلغ</small>
+                            </div>
+
+                            <div>
+                                <label for="payment-location" class="ir-field-label">محل پرداخت</label>
+                                <select class="form-select form-select-sm" id="payment-location" name="payment_location_id">
+                                    <option value="">انتخاب کنید...</option>
+                                    {% for location in payment_locations %}
+                                    <option value="{{ location.id }}">{{ location.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="payment-date" class="ir-field-label">تاریخ پرداخت</label>
+                                <input type="hidden" id="payment-date" name="payment_date" value="{{ today|date:'Y-m-d' }}">
+                                <div class="date-input-group">
+                                    <input type="number" name="payment_year" id="payment_year" placeholder="سال" min="1300" max="1500">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="payment_month" id="payment_month" placeholder="ماه" min="1" max="12">
+                                    <span class="date-separator">/</span>
+                                    <input type="number" name="payment_day" id="payment_day" placeholder="روز" min="1" max="31">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="payment-notes" class="ir-field-label">توضیحات</label>
+                                <input type="text" class="form-control form-control-sm" id="payment-notes" name="payment_notes" placeholder="توضیحات...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:1.15rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary is-lg" style="width:100%;">
+                        <i class="fas fa-check"></i> ثبت نهایی فاکتور
+                    </button>
+                    <button type="submit" name="save_draft" class="ui-btn ui-btn-ghost" style="width:100%;">
+                        <i class="fas fa-save"></i> ذخیره پیش‌نویس
+                    </button>
+                    <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost" style="width:100%;border-color:transparent;">
+                        انصراف
+                    </a>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Data for JS -->
+        <script type="application/json" id="categories-data">
+            [{% for category in categories %}{"id": {{ category.id }}, "name": "{{ category.name|escapejs }}", "parent": "{% if category.parent %}{{ category.parent.name|escapejs }}{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+        </script>
+        <script type="application/json" id="requesters-data">
+            [{% for requester in requesters %}{"id": {{ requester.id }}, "label": "{{ requester.get_name_display|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+        </script>
+
+    </form>
 </div>
 {% endblock %}
 
@@ -307,4 +300,3 @@
      hidden></div>
 <script src="{% static 'js/invoice_register.js' %}?v=20261123"></script>
 {% endblock %}
-

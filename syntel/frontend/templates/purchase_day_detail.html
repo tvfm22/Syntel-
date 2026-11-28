@@ -5,63 +5,41 @@
 
 {% block extra_css %}
 <style>
-    .pdd-wrap { max-width: 1360px; margin: 0 auto; }
-    .pdd-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
-    .status-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.22rem 0.7rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    }
-    .status-purchased    { background: #D1FAE5; color: #065F46; }
-    .status-from_stock   { background: #DBEAFE; color: #1E40AF; }
-    .status-not_supplied { background: #FEE2E2; color: #991B1B; }
-    .status-pending      { background: #FEF3C7; color: #92400E; }
-
-    .confirmed-badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        background: #D1FAE5; color: #065F46; padding: 0.22rem 0.7rem;
-        border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    }
-    .not-confirmed-badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        background: #FEF3C7; color: #92400E; padding: 0.22rem 0.7rem;
-        border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    }
-
-    .difference-positive, .difference-negative { color: #DC2626; font-weight: 700; }
-    .difference-zero { color: var(--text-muted); }
-    .difference-not-supplied { color: var(--text-muted); font-style: italic; }
+    .difference-positive, .difference-negative { color: var(--ui-danger, #DC2626); font-weight: 700; }
+    .difference-zero { color: var(--text-muted, #94A3B8); }
+    .difference-not-supplied { color: var(--text-muted, #94A3B8); font-style: italic; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="pdd-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-calendar-check"></i></div>
-            <div class="ph-title">
-                <h1>لیست خرید {{ role_name }}</h1>
-                <div class="page-sub">تاریخ: <strong>{{ date|jalali_date }}</strong></div>
-            </div>
+<div class="ui-page is-wide">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-calendar-check" style="color:var(--primary, #8B5CF6);"></i>
+                <span>لیست خرید {{ role_name }}</span>
+            </h1>
+            <p class="ui-subtitle">
+                <span>تاریخ: <strong>{{ date|jalali_date }}</strong></span>
+            </p>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'export_purchase_day_pdf' cafe_code=cafe_code %}?date={{ date|iso_date }}&role={{ role }}" class="btn btn-danger">
-                <i class="fas fa-file-pdf"></i> دانلود PDF
+        <div class="ui-topbar-actions">
+            <a href="{% url 'export_purchase_day_pdf' cafe_code=cafe_code %}?date={{ date|iso_date }}&role={{ role }}" class="ui-btn ui-btn-danger">
+                <i class="fas fa-file-pdf"></i>
+                <span>دانلود PDF</span>
             </a>
-            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-right"></i> بازگشت
+            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
             </a>
         </div>
-    </div>
+    </header>
 
     {% if all_items %}
-    <div class="table-card">
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="ui-table data-table">
                 <thead>
                     <tr>
                         <th>درخواست‌دهنده</th>
@@ -77,22 +55,22 @@
                 <tbody>
                     {% for item_data in all_items %}
                     <tr>
-                        <td style="font-weight:700;color:var(--text-primary);">{{ item_data.request.user.get_full_name|default:item_data.request.user.username }}</td>
-                        <td style="font-weight:600;color:var(--text-primary);">{{ item_data.item.name }}</td>
-                        <td>{{ item_data.item.quantity|trim_decimal }} {{ item_data.item.unit }}</td>
-                        <td style="font-weight:700;">{{ item_data.supplied_quantity|trim_decimal }} {{ item_data.item.unit }}</td>
+                        <td style="font-weight:700;">{{ item_data.request.user.get_full_name|default:item_data.request.user.username }}</td>
+                        <td style="font-weight:600;">{{ item_data.item.name }}</td>
+                        <td class="ui-num">{{ item_data.item.quantity|trim_decimal }} {{ item_data.item.unit }}</td>
+                        <td class="ui-num" style="font-weight:700;">{{ item_data.supplied_quantity|trim_decimal }} {{ item_data.item.unit }}</td>
                         <td>
                             {% if item_data.item.supply_status == 'purchased' %}
-                                <span class="status-badge status-purchased"><i class="fas fa-shopping-cart"></i> خرید</span>
+                                <span class="ui-pill is-ok"><i class="fas fa-shopping-cart"></i> خرید</span>
                             {% elif item_data.item.supply_status == 'from_stock' %}
-                                <span class="status-badge status-from_stock"><i class="fas fa-warehouse"></i> تامین از انبار</span>
+                                <span class="ui-pill is-info"><i class="fas fa-warehouse"></i> تامین از انبار</span>
                             {% elif item_data.item.supply_status == 'not_supplied' %}
-                                <span class="status-badge status-not_supplied"><i class="fas fa-times-circle"></i> تامین نشده</span>
+                                <span class="ui-pill is-danger"><i class="fas fa-times-circle"></i> تامین نشده</span>
                             {% else %}
-                                <span class="status-badge status-pending"><i class="fas fa-clock"></i> در انتظار</span>
+                                <span class="ui-pill is-warn"><i class="fas fa-clock"></i> در انتظار</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="ui-num">
                             {% if item_data.item.supply_status == 'not_supplied' %}
                                 <span class="difference-not-supplied">-</span>
                             {% elif item_data.new_difference == 0 %}
@@ -103,12 +81,12 @@
                                 <span class="difference-negative">+{{ item_data.display_difference }} {{ item_data.item.unit }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ item_data.request.processed_at|jalali_datetime }}</td>
+                        <td class="ui-num" style="color:var(--text-secondary);">{{ item_data.request.processed_at|jalali_datetime }}</td>
                         <td>
                             {% if item_data.request.manager_confirmed %}
-                                <span class="confirmed-badge"><i class="fas fa-check"></i> تایید شده</span>
+                                <span class="ui-pill is-ok"><i class="fas fa-check"></i> تایید شده</span>
                             {% else %}
-                                <span class="not-confirmed-badge"><i class="fas fa-hourglass-half"></i> در انتظار تایید</span>
+                                <span class="ui-pill is-warn"><i class="fas fa-hourglass-half"></i> در انتظار تایید</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -116,14 +94,15 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% else %}
-    <div class="table-card">
-        <div class="empty-state">
+    <section class="ui-card">
+        <div class="ui-empty">
             <i class="fas fa-clipboard-list"></i>
-            <p>هیچ درخواستی یافت نشد</p>
+            <div>هیچ درخواستی یافت نشد</div>
         </div>
-    </div>
+    </section>
     {% endif %}
+
 </div>
 {% endblock %}

@@ -5,125 +5,130 @@
 
 {% block extra_css %}
 <style>
-    .wap-wrap { max-width: 1000px; margin: 0 auto; padding-bottom: 80px; }
-    .wap-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
-    .step-card {
-        background: var(--bg-card); border-radius: var(--radius-xl); padding: 1.25rem 1.5rem;
-        margin-bottom: 1rem; box-shadow: var(--shadow-xs); border: 1px solid var(--border-light);
-    }
-    .step-title {
-        font-size: 0.95rem; font-weight: 800; color: var(--text-primary);
-        margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.6rem;
-    }
     .step-badge {
-        min-width: 26px; height: 26px; border-radius: 50%; background: var(--accent-indigo); color: white;
-        display: inline-flex; align-items: center; justify-content: center; font-size: 0.76rem; font-weight: 800;
+        min-width: 24px; height: 24px; border-radius: 50%;
+        background: var(--primary, #8B5CF6); color: #FFFFFF;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.74rem; font-weight: 800;
     }
-    .hint { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.7; }
+    .hint { font-size: 0.79rem; color: var(--text-secondary, #64748B); margin-bottom: 0.85rem; line-height: 1.7; }
 
     /* product & warehouse items */
     .product-item, .warehouse-item {
         display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        padding: 0.85rem 1rem; border: 1px solid var(--border-default); border-radius: 12px; margin-bottom: 0.6rem;
-        background: var(--bg-card); cursor: pointer; transition: all 0.15s; font-family: 'Vazir', sans-serif; width: 100%; text-align: right;
+        padding: 0.85rem 1rem; border: 1px solid var(--border-default, #E2E8F0); border-radius: 12px; margin-bottom: 0.6rem;
+        background: var(--bg-card, #FFFFFF); cursor: pointer; transition: all 0.15s ease;
+        font-family: 'Vazir', sans-serif; width: 100%; text-align: right;
     }
-    .product-item:hover, .warehouse-item:hover { border-color: var(--accent-indigo); background: #EEF2FF; }
-    .product-item.active, .warehouse-item.active { border-color: var(--accent-indigo); background: #EEF2FF; box-shadow: 0 0 0 2px rgba(139,92,246,0.12); }
-    .product-name, .warehouse-name { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
-    .product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-    .product-arrow { color: var(--text-muted); font-size: 0.85rem; }
+    .product-item:hover, .warehouse-item:hover {
+        border-color: var(--primary, #8B5CF6);
+        background: var(--ui-hover-row, #FAF9FF);
+    }
+    .product-item.active, .warehouse-item.active {
+        border-color: var(--primary, #8B5CF6);
+        background: var(--ui-accent-tint, rgba(139,92,246,0.08));
+        box-shadow: 0 0 0 2px rgba(139,92,246,0.12);
+    }
+    .product-name, .warehouse-name { font-size: 0.9rem; font-weight: 700; color: var(--text-primary, #0F172A); }
+    .product-meta { font-size: 0.75rem; color: var(--text-muted, #94A3B8); margin-top: 2px; }
+    .product-arrow { color: var(--text-muted, #94A3B8); font-size: 0.85rem; }
 
     /* warehouse supply rows */
     .wh-row {
-        padding: 1rem; border: 1px solid var(--border-default); border-radius: 12px; margin-bottom: 0.65rem; background: var(--bg-card);
+        padding: 0.95rem 1rem; border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 12px; margin-bottom: 0.65rem; background: var(--gray-50, #F8FAFC);
     }
-    .wh-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .wh-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
     .wh-badge {
-        background: rgba(139,92,246,0.12); color: #6D28D9; font-size: 0.78rem; font-weight: 700;
-        padding: 3px 10px; border-radius: 999px;
+        background: var(--ui-accent-tint, rgba(139,92,246,0.08));
+        color: var(--primary-dark, #7C3AED);
+        border: 1px solid var(--ui-accent-border, rgba(139,92,246,0.28));
+        font-size: 0.76rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
     }
-    .wh-avail { font-size: 0.82rem; color: var(--text-primary); font-weight: 700; margin-right: auto; }
+    .wh-avail { font-size: 0.82rem; color: var(--text-primary, #0F172A); font-weight: 700; margin-right: auto; font-variant-numeric: tabular-nums; }
     .wh-controls { display: flex; gap: 8px; align-items: center; }
     .qty-input {
-        flex: 1; height: 38px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px;
-        font-size: 0.88rem; font-family: 'Vazir', sans-serif; min-width: 0; background: var(--bg-input);
+        flex: 1; height: 38px; padding: 0 12px; border: 1px solid var(--border-default, #E2E8F0); border-radius: 10px;
+        font-size: 0.86rem; font-family: 'Vazir', sans-serif; min-width: 0; background: var(--bg-card, #FFFFFF);
     }
-    .qty-input:focus { outline: none; border-color: var(--accent-indigo); background: #fff; box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+    .qty-input:focus { outline: none; border-color: var(--primary, #8B5CF6); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
     .add-btn {
-        height: 38px; padding: 0 18px; border: none; border-radius: 10px; background: var(--accent-indigo); color: white;
+        height: 38px; padding: 0 18px; border: none; border-radius: 10px;
+        background: var(--primary, #8B5CF6); color: #FFFFFF;
         font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif; white-space: nowrap;
+        transition: background 0.15s ease;
     }
+    .add-btn:hover { background: var(--primary-dark, #7C3AED); }
     .add-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
-    .qty-warning { font-size: 0.75rem; color: #DC2626; margin-top: 6px; display: none; font-weight: 600; }
+    .qty-warning { font-size: 0.75rem; color: var(--ui-danger, #DC2626); margin-top: 6px; display: none; font-weight: 600; }
 
-    /* review table */
-    .review-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-    .review-table th {
-        background: var(--bg-subtle); color: var(--text-secondary); padding: 0.65rem 0.75rem; font-weight: 700;
-        text-align: right; white-space: nowrap; font-size: 0.76rem; border-bottom: 1px solid var(--border-default);
-    }
-    .review-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-    .review-table tr:last-child td { border-bottom: none; }
     .status-select {
-        height: 34px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: 8px;
-        font-size: 0.8rem; font-family: 'Vazir', sans-serif; background: white;
+        height: 34px; padding: 0 0.75rem 0 1.9rem; border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 9px; font-size: 0.78rem; font-weight: 600; font-family: 'Vazir', sans-serif;
+        background-color: var(--bg-card, #FFFFFF);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: left 0.6rem center; background-size: 11px 11px;
+        -webkit-appearance: none; appearance: none; color: var(--text-primary, #0F172A);
     }
     .remove-btn {
-        border: none; background: #FEF2F2; color: #DC2626; width: 30px; height: 30px;
+        border: 1px solid var(--ui-danger-border, #FECACA); background: var(--ui-danger-bg, #FEF2F2);
+        color: var(--ui-danger, #DC2626); width: 30px; height: 30px;
         border-radius: 8px; cursor: pointer; font-size: 0.8rem;
+        display: inline-flex; align-items: center; justify-content: center;
     }
-    .empty-review { text-align: center; color: var(--text-muted); font-size: 0.84rem; padding: 1.5rem 0; }
-
-    .submit-bar-bottom {
-        display: flex; justify-content: flex-end; background: var(--bg-card);
-        border: 1px solid var(--border-light); border-radius: var(--radius-xl);
-        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm);
-    }
+    .remove-btn:hover { background: var(--ui-danger-bg-hover, #FEE2E2); }
+    .empty-review { text-align: center; color: var(--text-muted, #94A3B8); font-size: 0.84rem; padding: 1.5rem 0; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="wap-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-box-open"></i></div>
-            <div class="ph-title">
-                <h1>کالاهای موجود در انبار</h1>
-                <div class="page-sub">انتخاب محصول و انبار و ثبت درخواست تامین از موجودی</div>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">کالاهای موجود در انبار</h1>
+            <div class="ui-subtitle">
+                <span>انتخاب محصول و انبار و ثبت درخواست تامین از موجودی</span>
             </div>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchasing_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> بازگشت
             </a>
         </div>
-    </div>
+    </header>
 
-    <form method="post" id="mainForm">
+    <form method="post" id="mainForm" style="display:flex;flex-direction:column;gap:1.1rem;">
         {% csrf_token %}
 
-        <div class="step-card">
-            <div class="step-title"><span class="step-badge">۱</span> محصول را انتخاب کنید</div>
-            <div class="hint">فقط کالاهایی نمایش داده می‌شوند که هم‌اکنون در انبار موجودی دارند.</div>
-            <div id="productList"></div>
-        </div>
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><span class="step-badge">۱</span> محصول را انتخاب کنید</h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="hint">فقط کالاهایی نمایش داده می‌شوند که هم‌اکنون در انبار موجودی دارند.</div>
+                <div id="productList"></div>
+            </div>
+        </section>
 
-        <div class="step-card" id="warehouseCard" style="display:none;">
-            <div class="step-title"><span class="step-badge">۲</span> انبار و مقدار را مشخص کنید</div>
-            <div class="hint">انبار دارای موجودی را انتخاب کرده، مقدار مورد نیاز را وارد کنید و دکمه «افزودن» را بزنید.</div>
-            <div id="warehouseList"></div>
-        </div>
+        <section class="ui-card" id="warehouseCard" style="display:none;">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><span class="step-badge">۲</span> انبار و مقدار را مشخص کنید</h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="hint">انبار دارای موجودی را انتخاب کرده، مقدار مورد نیاز را وارد کنید و دکمه «افزودن» را بزنید.</div>
+                <div id="warehouseList"></div>
+            </div>
+        </section>
 
-        <div class="step-card">
-            <div class="step-title"><span class="step-badge"><i class="fas fa-check"></i></span> جدول بررسی اقلام</div>
-            <div class="hint">برای هر قلم وضعیت نهایی را تعیین کنید: تامین از انبار (کسر موجودی)، ارسال به لیست خرید، یا تامین نشده.</div>
-            <div style="overflow-x:auto;">
-                <table class="review-table" id="reviewTable">
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><span class="step-badge"><i class="fas fa-check"></i></span> جدول بررسی اقلام</h2>
+            </div>
+            <div class="ui-card-body" style="padding-bottom:0.4rem;">
+                <div class="hint" style="margin-bottom:0.4rem;">برای هر قلم وضعیت نهایی را تعیین کنید: تامین از انبار (کسر موجودی)، ارسال به لیست خرید، یا تامین نشده.</div>
+            </div>
+            <div class="ui-table-scroll">
+                <table class="ui-table" id="reviewTable">
                     <thead>
                         <tr>
                             <th>کالا</th>
@@ -136,9 +141,9 @@
                     <tbody id="reviewBody">
                         {% for row in submitted_rows %}
                         <tr data-row-idx="{{ forloop.counter0 }}">
-                            <td>{{ row.product.name }}</td>
+                            <td style="font-weight:700;">{{ row.product.name }}</td>
                             <td>{{ row.warehouse.name }}</td>
-                            <td>{{ row.qty|qty_comma }}{% if row.product.unit %} {{ row.product.unit.name }}{% endif %}</td>
+                            <td class="ui-num">{{ row.qty|qty_comma }}{% if row.product.unit %} {{ row.product.unit.name }}{% endif %}</td>
                             <td>
                                 <select name="status" class="status-select">
                                     <option value="from_stock" {% if row.status == 'from_stock' %}selected{% endif %}>تامین از انبار</option>
@@ -157,12 +162,14 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div class="submit-bar-bottom">
-            <button type="submit" class="btn btn-primary" onclick="return confirmSubmit()">
-                <i class="fas fa-check"></i> تایید نهایی و ثبت
-            </button>
+        <div class="ui-card">
+            <div class="ui-card-body" style="display:flex;justify-content:flex-end;">
+                <button type="submit" class="ui-btn ui-btn-primary" onclick="return confirmSubmit()">
+                    <i class="fas fa-check"></i> تایید نهایی و ثبت
+                </button>
+            </div>
         </div>
     </form>
 </div>

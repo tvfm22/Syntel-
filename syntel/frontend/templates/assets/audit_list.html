@@ -5,122 +5,170 @@
 
 {% block extra_css %}
 <style>
-    .aa-wrap { max-width: 1200px; margin: 0 auto; }
-    .aa-header {
-        display: flex; align-items: center; justify-content: space-between;
-        flex-wrap: wrap; gap: 0.85rem; margin-bottom: 1.25rem;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 1rem 1.25rem; box-shadow: var(--shadow-sm);
-    }
-    .aa-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-    .aa-filter-bar {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 1rem 1.25rem;
-        margin-bottom: 1.25rem; box-shadow: var(--shadow-xs);
-    }
     .aa-filter-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 0.75rem; align-items: end;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+        gap: 0.75rem;
+        align-items: end;
     }
+
     .aa-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 1rem;
     }
+
     .aa-card {
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: var(--radius-xl); padding: 1.15rem; box-shadow: var(--shadow-sm);
-        display: flex; flex-direction: column; gap: 0.75rem;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
+        padding: 1.15rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
-    .aa-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-    .aa-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
-    .aa-card-title { font-weight: 800; font-size: 1rem; color: var(--text-primary); }
-    .aa-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; font-size: 0.76rem; color: var(--text-secondary); }
-    .aa-pill {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.74rem; font-weight: 700;
+
+    .aa-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(139, 92, 246, 0.35);
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
     }
-    .aa-pill-purple { background: rgba(139,92,246,0.12); color: #6D28D9; }
-    .aa-pill-blue { background: #EFF6FF; color: #1D4ED8; }
-    .aa-pill-orange { background: #FFF7ED; color: #C2410C; }
-    .aa-pill-green { background: #ECFDF5; color: #047857; }
-    .aa-pill-red { background: #FEF2F2; color: #B91C1C; }
-    .aa-pill-gray { background: #F1F5F9; color: #475569; }
+
+    .aa-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .aa-card-title {
+        font-weight: 800;
+        font-size: 0.98rem;
+        color: var(--text-primary, #0F172A);
+    }
+
+    .aa-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        font-size: 0.76rem;
+        color: var(--text-secondary, #64748B);
+    }
+
     .aa-progress-track {
-        height: 8px; background: #E2E8F0; border-radius: 999px; overflow: hidden;
+        height: 8px;
+        background: var(--gray-100, #F1F5F9);
+        border-radius: 999px;
+        overflow: hidden;
     }
+
     .aa-progress-fill {
-        height: 100%; background: linear-gradient(90deg, #8B5CF6, #10B981);
-        border-radius: 999px; transition: width 0.25s ease;
+        height: 100%;
+        background: var(--primary, #8B5CF6);
+        border-radius: 999px;
+        transition: width 0.25s ease;
     }
+
     .aa-card-footer {
-        display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: auto; padding-top: 0.5rem;
-        border-top: 1px solid var(--border-light);
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: auto;
+        padding-top: 0.65rem;
+        border-top: 1px solid var(--border-light, #F1F5F9);
     }
-    .aa-card-footer .btn { flex: 1; justify-content: center; height: 40px; font-size: 0.82rem; }
+
+    .aa-card-footer .ui-btn {
+        flex: 1;
+        height: 38px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="aa-wrap">
-    <div class="aa-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-clipboard-check"></i></div>
-            <div class="ph-title">
-                <h1>انبارگردانی اموال و اثاثیه سکشن‌ها</h1>
-                <div class="page-sub">شمارش دوره‌ای، موردی و تحویل و تحول تجهیزات و ظروف سکشن‌ها</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-clipboard-check" style="color: var(--primary, #8B5CF6);"></i>
+                انبارگردانی اموال و اثاثیه سکشن‌ها
+            </h1>
+            <p class="ui-subtitle">شمارش دوره‌ای، موردی و تحویل و تحول تجهیزات و ظروف سکشن‌ها</p>
         </div>
-        <div class="aa-actions">
+        <div class="ui-topbar-actions">
             {% if is_manager %}
-            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-chart-bar"></i> گزارش‌های اموال
             </a>
-            <a href="{% url 'asset_audit_create' cafe_code=cafe_code %}" class="btn btn-primary">
+            <a href="{% url 'asset_audit_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i> شروع انبارگردانی جدید
             </a>
             {% endif %}
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-sitemap"></i> دسته‌بندی‌ها</a>
+            {% endif %}
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-hourglass-half"></i> کارتابل تأیید</a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-file-invoice"></i> ورود از فاکتور</a>
+            {% endif %}
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+            {% endif %}
+        </nav>
     </div>
 
-    <form method="get" class="aa-filter-bar">
-        <div class="aa-filter-grid">
-            {% if is_manager %}
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for dept in departments %}
-                    <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="filter-group">
-                <label class="filter-label">نوع شمارش</label>
-                <select name="audit_type" class="filter-select">
-                    <option value="">همه انواع</option>
-                    {% for val, label in audit_type_choices %}
-                    <option value="{{ val }}" {% if selected_type == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">وضعیت</label>
-                <select name="status" class="filter-select">
-                    <option value="">همه وضعیت‌ها</option>
-                    {% for val, label in status_choices %}
-                    <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">
-                    <i class="fas fa-filter"></i> فیلتر
-                </button>
-                <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary" title="پاک کردن فیلترها">
-                    <i class="fas fa-rotate-left"></i>
-                </a>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="aa-filter-grid">
+                {% if is_manager %}
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="ui-field">
+                    <label class="ui-field-label">نوع شمارش</label>
+                    <select name="audit_type" class="ui-select">
+                        <option value="">همه انواع</option>
+                        {% for val, label in audit_type_choices %}
+                        <option value="{{ val }}" {% if selected_type == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">وضعیت</label>
+                    <select name="status" class="ui-select">
+                        <option value="">همه وضعیت‌ها</option>
+                        {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary" style="flex:1;">
+                        <i class="fas fa-filter"></i> فیلتر
+                    </button>
+                    <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost" title="پاک کردن فیلترها">
+                        <i class="fas fa-rotate-left"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </form>
@@ -134,36 +182,36 @@
                     <div class="aa-card-title">{{ audit.title }}</div>
                     <div class="aa-meta" style="margin-top:0.25rem;">
                         <span><i class="fas fa-sitemap"></i> {{ audit.department.name }}</span>
-                        <span><i class="far fa-calendar"></i> {{ audit.created_at|jalali_datetime }}</span>
+                        <span class="ui-num"><i class="far fa-calendar"></i> {{ audit.created_at|jalali_datetime }}</span>
                     </div>
                 </div>
                 {% if audit.status == 'approved' %}
-                    <span class="aa-pill aa-pill-green">{{ audit.get_status_display }}</span>
+                    <span class="ui-pill is-ok">{{ audit.get_status_display }}</span>
                 {% elif audit.status == 'submitted' %}
-                    <span class="aa-pill aa-pill-blue">{{ audit.get_status_display }}</span>
+                    <span class="ui-pill is-info">{{ audit.get_status_display }}</span>
                 {% elif audit.status == 'recount_requested' %}
-                    <span class="aa-pill aa-pill-orange">{{ audit.get_status_display }}</span>
+                    <span class="ui-pill is-warn">{{ audit.get_status_display }}</span>
                 {% elif audit.status == 'cancelled' %}
-                    <span class="aa-pill aa-pill-red">{{ audit.get_status_display }}</span>
+                    <span class="ui-pill is-danger">{{ audit.get_status_display }}</span>
                 {% else %}
-                    <span class="aa-pill aa-pill-purple">{{ audit.get_status_display }}</span>
+                    <span class="ui-pill is-accent">{{ audit.get_status_display }}</span>
                 {% endif %}
             </div>
 
             <div class="aa-meta">
-                <span class="aa-pill aa-pill-gray">{{ audit.get_audit_type_display }}</span>
+                <span class="ui-pill is-muted">{{ audit.get_audit_type_display }}</span>
                 {% if audit.blind_count %}
-                <span class="aa-pill aa-pill-purple"><i class="fas fa-eye-slash"></i> شمارش کور</span>
+                <span class="ui-pill is-accent"><i class="fas fa-eye-slash"></i> شمارش کور</span>
                 {% endif %}
                 {% if audit.recount_items > 0 %}
-                <span class="aa-pill aa-pill-orange"><i class="fas fa-redo"></i> {{ audit.recount_items }} بازشماری</span>
+                <span class="ui-pill is-warn ui-num"><i class="fas fa-redo"></i> {{ audit.recount_items }} بازشماری</span>
                 {% endif %}
             </div>
 
             <div>
                 <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; margin-bottom:0.35rem;">
                     <span>پیشرفت شمارش</span>
-                    <span>{{ audit.counted_items }} از {{ audit.total_items }} قلم ({{ audit.progress_pct }}%)</span>
+                    <span class="ui-num">{{ audit.counted_items }} از {{ audit.total_items }} قلم ({{ audit.progress_pct }}%)</span>
                 </div>
                 <div class="aa-progress-track">
                     <div class="aa-progress-fill" style="width: {{ audit.progress_pct }}%;"></div>
@@ -171,7 +219,7 @@
             </div>
 
             <div class="aa-card-footer">
-                <a href="{% url 'asset_audit_count' cafe_code=cafe_code audit_id=audit.id %}" class="btn btn-primary">
+                <a href="{% url 'asset_audit_count' cafe_code=cafe_code audit_id=audit.id %}" class="ui-btn ui-btn-primary">
                     {% if audit.status == 'in_progress' or audit.status == 'recount_requested' %}
                         <i class="fas fa-tasks"></i> شروع / ادامه شمارش
                     {% else %}
@@ -179,7 +227,7 @@
                     {% endif %}
                 </a>
                 {% if is_manager and audit.status != 'in_progress' %}
-                <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=audit.id %}" class="btn btn-success">
+                <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=audit.id %}" class="ui-btn ui-btn-success">
                     <i class="fas fa-check-double"></i> بررسی مدیر
                 </a>
                 {% endif %}
@@ -188,11 +236,11 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="card">
-        <div class="empty-state">
+    <div class="ui-card">
+        <div class="ui-empty">
             <i class="fas fa-clipboard-list"></i>
             <p style="font-weight:700; color:var(--text-primary); margin-bottom:0.35rem;">جلسه انبارگردانی ثبت نشده است</p>
-            <p style="font-size:0.85rem;">با تغییر فیلترها یا ایجاد جلسه جدید می‌توانید انبارگردانی اموال را آغاز کنید.</p>
+            <p style="font-size:0.85rem; margin:0;">با تغییر فیلترها یا ایجاد جلسه جدید می‌توانید انبارگردانی اموال را آغاز کنید.</p>
         </div>
     </div>
     {% endif %}

@@ -6,169 +6,86 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
-    /* ═══ سوابق حرکت موجودی — همهٔ انواع حرکت با لینک حواله ═══ */
-    .mov-wrap { max-width: 1250px; margin: 0 auto; }
-    /* ── هدر یکدست صفحه ── */
-    .mov-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
+    .mov-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 0.75rem;
+        align-items: end;
     }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(59,130,246,0.1); color: var(--accent-blue);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .ph-title { min-width: 0; }
-    .ph-title h1 {
-        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.4; margin: 0;
-    }
-    .ph-title .page-sub {
-        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
-        margin-top: 0.1rem; line-height: 1.7;
-    }
-
-    .filter-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: var(--space-3); align-items: end;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4); margin-bottom: var(--space-4);
-    }
-    .filter-field { display: flex; flex-direction: column; gap: 0.3rem; }
-    .filter-field label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
-    .filter-field input, .filter-field select {
-        padding: 0.5rem 0.75rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
-        font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
-    }
-    .filter-field input:focus, .filter-field select:focus { outline: none; border-color: var(--accent-indigo); }
-    .filter-actions { display: flex; gap: 0.5rem; align-items: center; }
-
-    .table-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); overflow: hidden;
-    }
-    .table-card table { width: 100%; border-collapse: collapse; }
-    .table-card thead th {
-        padding: 0.7rem 1rem; text-align: right; font-size: 0.74rem; font-weight: 700;
-        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
-        border-bottom: 1px solid var(--border-light); white-space: nowrap;
-    }
-    .table-card tbody td {
-        padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-light);
-        font-size: 0.84rem; vertical-align: middle;
-    }
-    .table-card tbody tr:hover td { background: var(--bg-subtle, #f8fafc); }
-    .table-card tbody tr:last-child td { border-bottom: none; }
-
-    .tx-badge, .v-mini {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.22rem 0.65rem; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
-    }
-    .tx-in         { background: #d1fae5; color: #065f46; }
-    .tx-out        { background: #fee2e2; color: #991b1b; }
-    .tx-adjustment { background: #fce7f3; color: #9d174d; }
-    .tx-initial    { background: #f1f5f9; color: #475569; }
-    .v-mini {
-        background: var(--bg-subtle, #f1f5f9); color: var(--text-secondary);
-        text-decoration: none; font-size: 0.7rem; border: 1px solid var(--border-light);
-    }
-    .v-mini:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
     .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
-
-    .pagination { display: flex; justify-content: center; gap: 0.45rem; padding: 1.1rem; flex-wrap: wrap; }
-    .page-link {
-        padding: 0.4rem 0.8rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); text-decoration: none;
-        color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
-        background: var(--bg-card); transition: all var(--transition-fast);
-    }
-    .page-link:hover, .page-link.active {
-        background: var(--accent-indigo); border-color: var(--accent-indigo); color: white;
-    }
-    .btn { padding: 0.5rem 1rem; border: none; border-radius: var(--radius-md);
-        font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer;
-        display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;
-        transition: all var(--transition-fast); }
-    .btn-primary { background: var(--accent-indigo); color: white; }
-    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
-    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
-    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mov-wrap">
+<div class="ui-page">
 
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-chart-line"></i></div>
-            <div class="ph-title">
-                <h1>سوابق حرکت موجودی</h1>
-                <div class="page-sub">همهٔ انواع حرکت (ورود، خروج، تعدیل، موجودی اولیه) با لینک به حوالهٔ مبدأ</div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">سوابق حرکت موجودی</h1>
+            <div class="ui-subtitle">
+                <span>همهٔ انواع حرکت (ورود، خروج، تعدیل، موجودی اولیه) با لینک به حوالهٔ مبدأ</span>
             </div>
         </div>
-        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
-            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-file-invoice"></i> حواله‌ها
             </a>
         </div>
-    </div>
+    </header>
 
     <!-- فیلترها -->
-    <form method="get" class="filter-grid">
-        <div class="filter-field">
-            <label>انبار</label>
-            <select name="warehouse">
-                <option value="">همه</option>
-                {% for wh in warehouses %}
-                <option value="{{ wh.id }}"{% if f.warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>نوع حرکت</label>
-            <select name="tx_type">
-                <option value="">همه</option>
-                {% for key, label in tx_types.items %}
-                <option value="{{ key }}"{% if f.tx_type == key %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>نوع حواله</label>
-            <select name="voucher_type">
-                <option value="">همه</option>
-                {% for key, label in voucher_types.items %}
-                <option value="{{ key }}"{% if f.voucher_type == key %} selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-field">
-            <label>از تاریخ (شمسی)</label>
-            {% include 'includes/jalali_date_group.html' with jd_name='date_from' jd_id='mov_date_from' jd_value=f.date_from %}
-        </div>
-        <div class="filter-field">
-            <label>تا تاریخ (شمسی)</label>
-            {% include 'includes/jalali_date_group.html' with jd_name='date_to' jd_id='mov_date_to' jd_value=f.date_to %}
-        </div>
-        <div class="filter-field">
-            <label>جستجوی شماره حواله</label>
-            <input type="text" name="search" value="{{ f.search }}" placeholder="RCV-0001...">
-        </div>
-        <div class="filter-actions">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> جستجو</button>
-            <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="btn btn-outline"><i class="fas fa-rotate-right"></i> پاک</a>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-card-body mov-filter-grid">
+            <div class="ui-field">
+                <label class="ui-field-label">انبار</label>
+                <select name="warehouse" class="ui-select">
+                    <option value="">همه</option>
+                    {% for wh in warehouses %}
+                    <option value="{{ wh.id }}"{% if f.warehouse == wh.id|stringformat:'s' %} selected{% endif %}>{{ wh.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">نوع حرکت</label>
+                <select name="tx_type" class="ui-select">
+                    <option value="">همه</option>
+                    {% for key, label in tx_types.items %}
+                    <option value="{{ key }}"{% if f.tx_type == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">نوع حواله</label>
+                <select name="voucher_type" class="ui-select">
+                    <option value="">همه</option>
+                    {% for key, label in voucher_types.items %}
+                    <option value="{{ key }}"{% if f.voucher_type == key %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">از تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='date_from' jd_id='mov_date_from' jd_value=f.date_from %}
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">تا تاریخ (شمسی)</label>
+                {% include 'includes/jalali_date_group.html' with jd_name='date_to' jd_id='mov_date_to' jd_value=f.date_to %}
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">جستجوی شماره حواله</label>
+                <input type="text" name="search" class="ui-input" value="{{ f.search }}" placeholder="RCV-0001...">
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-search"></i> جستجو</button>
+                <a href="{% url 'stock_movements' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-rotate-right"></i> پاک</a>
+            </div>
         </div>
     </form>
 
     <!-- جدول -->
-    <div class="table-card">
-        <div style="overflow-x:auto">
-            <table>
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تاریخ</th><th>کالا</th><th>انبار</th>
@@ -179,11 +96,11 @@
                 <tbody>
                     {% for tx in page_obj %}
                     <tr>
-                        <td style="font-size:0.78rem;color:var(--text-secondary)">{{ tx.created_at|jalali_datetime }}</td>
+                        <td class="ui-num" style="font-size:0.78rem;color:var(--text-secondary);white-space:nowrap;">{{ tx.created_at|jalali_datetime }}</td>
                         <td style="font-weight:700">{{ tx.stock_item.product.name }}</td>
-                        <td style="font-size:0.8rem"><i class="fas fa-warehouse" style="color:var(--accent-indigo);font-size:0.72rem"></i> {{ tx.stock_item.warehouse.name }}</td>
+                        <td style="font-size:0.8rem"><i class="fas fa-warehouse" style="color:var(--primary);font-size:0.72rem"></i> {{ tx.stock_item.warehouse.name }}</td>
                         <td>
-                            <span class="tx-badge tx-{{ tx.transaction_type }}">
+                            <span class="ui-pill {% if tx.transaction_type == 'in' %}is-ok{% elif tx.transaction_type == 'out' %}is-danger{% elif tx.transaction_type == 'adjustment' %}is-accent{% else %}is-muted{% endif %}">
                                 {% if tx.transaction_type == 'in' %}<i class="fas fa-arrow-down"></i>
                                 {% elif tx.transaction_type == 'out' %}<i class="fas fa-arrow-up"></i>
                                 {% elif tx.transaction_type == 'adjustment' %}<i class="fas fa-scale-balanced"></i>
@@ -191,31 +108,31 @@
                                 {{ tx_types|get_item:tx.transaction_type }}
                             </span>
                         </td>
-                        <td style="font-weight:700">{{ tx.quantity|qty_comma }} {{ tx.unit.name|default:'' }}</td>
-                        <td style="font-size:0.8rem;color:var(--text-secondary)">
+                        <td class="ui-num" style="font-weight:700;white-space:nowrap;">{{ tx.quantity|qty_comma }} {{ tx.unit.name|default:'' }}</td>
+                        <td class="ui-num" style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">
                             {{ tx.previous_quantity|qty_comma }} ← {{ tx.new_quantity|qty_comma }}
                         </td>
                         <td>
                             {% if tx.voucher %}
-                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=tx.voucher_id %}" class="v-mini">
+                            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=tx.voucher_id %}" class="ui-pill is-muted" style="text-decoration:none;">
                                 <span class="mono">{{ tx.voucher.voucher_number }}</span>
                                 — {{ voucher_types|get_item:tx.voucher.voucher_type }}
                             </a>
                             {% elif tx.reference_type == 'warehouse_request' %}
-                            <span class="v-mini" style="color:#b45309"><i class="fas fa-truck-ramp-box"></i> تامین درخواست انبار {{ tx.reference_id|request_number }}</span>
+                            <span class="ui-pill is-warn"><i class="fas fa-truck-ramp-box"></i> تامین درخواست انبار {{ tx.reference_id|request_number }}</span>
                             {% else %}
-                            <span class="v-mini" style="background:transparent;border-color:transparent">{{ tx.reference_type|default:'—' }}</span>
+                            <span class="ui-chip">{{ tx.reference_type|default:'—' }}</span>
                             {% endif %}
                         </td>
                         <td style="font-size:0.78rem;color:var(--text-secondary)">{% if tx.created_by %}{{ tx.created_by.get_full_name|default:tx.created_by.username }}{% else %}—{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9">
-                            <div style="text-align:center;padding:3.5rem 1rem">
-                                <i class="fas fa-chart-line" style="font-size:2.6rem;color:var(--text-muted);display:block;margin-bottom:0.8rem"></i>
-                                <h3 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.4rem">حرکتی یافت نشد</h3>
-                                <p style="color:var(--text-muted);font-size:0.82rem">{% if f.warehouse or f.tx_type or f.search %}فیلترها را تغییر دهید{% else %}هنوز حرکتی روی موجودی ثبت نشده است{% endif %}</p>
+                        <td colspan="8">
+                            <div class="ui-empty">
+                                <i class="fas fa-chart-line"></i>
+                                <div style="color:var(--text-primary);font-size:0.96rem;font-weight:800;margin-bottom:0.3rem;">حرکتی یافت نشد</div>
+                                <p style="margin:0;">{% if f.warehouse or f.tx_type or f.search %}فیلترها را تغییر دهید{% else %}هنوز حرکتی روی موجودی ثبت نشده است{% endif %}</p>
                             </div>
                         </td>
                     </tr>
@@ -225,9 +142,9 @@
         </div>
 
         {% if page_obj.has_other_pages %}
-        <div class="pagination">
+        <div class="ui-pagination">
             {% if page_obj.has_previous %}
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}
+            <a href="?page={{ page_obj.previous_page_number }}
                 {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
                 {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
                 {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
@@ -235,9 +152,9 @@
             {% endif %}
             {% for num in page_obj.paginator.page_range %}
                 {% if page_obj.number == num %}
-                <span class="page-link active">{{ num }}</span>
+                <span class="is-active">{{ num }}</span>
                 {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
-                <a class="page-link" href="?page={{ num }}
+                <a href="?page={{ num }}
                     {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
                     {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
                     {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
@@ -245,7 +162,7 @@
                 {% endif %}
             {% endfor %}
             {% if page_obj.has_next %}
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}
+            <a href="?page={{ page_obj.next_page_number }}
                 {% if f.warehouse %}&warehouse={{ f.warehouse }}{% endif %}{% if f.tx_type %}&tx_type={{ f.tx_type }}{% endif %}
                 {% if f.voucher_type %}&voucher_type={{ f.voucher_type }}{% endif %}
                 {% if f.date_from %}&date_from={{ f.date_from }}{% endif %}{% if f.date_to %}&date_to={{ f.date_to }}{% endif %}
@@ -253,7 +170,7 @@
             {% endif %}
         </div>
         {% endif %}
-    </div>
+    </section>
 
 </div>
 {% endblock %}

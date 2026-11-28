@@ -8,84 +8,82 @@
     <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
     <link href="{% static 'fonts/vazirmatn.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/ui_system.css' %}?v=20261127a">
     <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
     <style>
         body {
-            font-family: 'Vazirmatn', sans-serif;
-            background-color: #f8f9fa;
+            font-family: 'Vazirmatn', 'Vazir', sans-serif;
+            background-color: #F4F6FB;
+            color: #0F172A;
+            margin: 0;
         }
-        .dashboard-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .pd-nav {
+            background: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            padding: 0.7rem 1.5rem;
+            margin-bottom: 1.5rem;
         }
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        .pd-nav .navbar-brand {
+            font-weight: 800;
+            font-size: 1.15rem;
+            color: #0F172A;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .card-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
+        .pd-nav .navbar-brand i { color: #8B5CF6; }
+        .pd-nav .nav-link {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748B;
+            padding: 0.45rem 0.85rem;
+            border-radius: 8px;
+        }
+        .pd-nav .nav-link:hover,
+        .pd-nav .nav-link.active {
+            color: #7C3AED;
+            background: rgba(139, 92, 246, 0.08);
+        }
+        .pd-section-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0F172A;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin: 0 auto 15px;
+            gap: 0.45rem;
+            margin: 0;
         }
-        .bg-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .bg-success-custom { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .bg-info-custom { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .bg-warning-custom { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-        .bg-danger-custom { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-        .bg-secondary-custom { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.5rem;
-        }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        .metric-label {
-            font-size: 0.9rem;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .pd-section-title i { color: #8B5CF6; }
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
         }
         .activity-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #e9ecef;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #F1F5F9;
         }
-        .activity-item:last-child {
-            border-bottom: none;
-        }
+        .activity-item:last-child { border-bottom: none; }
         .activity-time {
-            font-size: 0.8rem;
-            color: #6c757d;
+            font-size: 0.76rem;
+            color: #94A3B8;
+            font-variant-numeric: tabular-nums;
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary-custom mb-4">
-        <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg pd-nav">
+        <div class="container-fluid" style="max-width:1280px;">
             <a class="navbar-brand" href="{% if user.role == 'admin' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% else %}#{% endif %}">
                 <i class="bi bi-building"></i>
-                Kuker - سیستم مدیریت خرید
+                <span>Kuker - سیستم مدیریت خرید</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto gap-1">
                     <li class="nav-item">
                         <a class="nav-link active" href="{% url 'dashboard' cafe_code=cafe_code %}">
                             <i class="bi bi-house-door"></i>
@@ -135,236 +133,188 @@
         </div>
     </nav>
 
-    <div class="container-fluid">
+    <div class="ui-page" style="padding-inline: 1rem;">
         <!-- Welcome Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <h2 class="card-title mb-2">
-                            <i class="bi bi-house-door text-primary"></i>
-                            خوش آمدید، {{ username }}
-                        </h2>
-                        <p class="card-text text-muted">نقش شما: {{ role }}</p>
-                        <p class="card-text">به سیستم مدیریت خرید Kuker خوش آمدید. از منوی بالا برای دسترسی به بخش‌های مختلف استفاده کنید.</p>
-                    </div>
-                </div>
+        <header class="ui-topbar">
+            <div class="ui-heading">
+                <h1 class="ui-title">
+                    <i class="bi bi-house-door" style="color:#8B5CF6;"></i>
+                    <span>خوش آمدید، {{ username }}</span>
+                </h1>
+                <p class="ui-subtitle">
+                    <span>نقش شما: {{ role }}</span>
+                    <span class="ui-subtitle-dot"></span>
+                    <span>به سیستم مدیریت خرید Kuker خوش آمدید</span>
+                </p>
             </div>
-        </div>
+            <div class="ui-topbar-actions">
+                {% if user.role == 'kitchen' or user.role == 'bar' or user.role == 'counter' %}
+                <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>درخواست خرید جدید</span>
+                </a>
+                {% endif %}
+                {% if user.role == 'purchasing' or user.role == 'manager' %}
+                <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-soft">
+                    <i class="bi bi-list-check"></i>
+                    <span>مشاهده درخواست‌ها</span>
+                </a>
+                {% endif %}
+                {% if user.role == 'manager' %}
+                <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                    <i class="bi bi-graph-up"></i>
+                    <span>داشبورد مالی</span>
+                </a>
+                {% endif %}
+                {% if user.role == 'purchasing' or user.role == 'manager' %}
+                <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>گزارش‌ها</span>
+                </a>
+                {% endif %}
+            </div>
+        </header>
 
         <!-- Purchase Request Metrics -->
         {% if user.role == 'purchasing' or user.role == 'manager' %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <h4 class="mb-3">
-                    <i class="bi bi-clipboard-data"></i>
-                    آمار درخواست‌های خرید
-                </h4>
+        <h2 class="pd-section-title">
+            <i class="bi bi-clipboard-data"></i>
+            <span>آمار درخواست‌های خرید</span>
+        </h2>
+        <section class="ui-metrics-strip">
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">کل درخواست‌ها</span>
+                <div class="ui-metric-val is-accent">{{ total_requests|default:0 }}</div>
+                <span class="ui-metric-hint">مجموع ثبت‌شده</span>
             </div>
-        </div>
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-primary-custom text-white">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </div>
-                        <div class="metric-value">{{ total_requests|default:0 }}</div>
-                        <div class="metric-label">کل درخواست‌ها</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">در انتظار</span>
+                <div class="ui-metric-val is-warn">{{ pending_requests|default:0 }}</div>
+                <span class="ui-metric-hint">در صف بررسی</span>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-warning-custom text-white">
-                            <i class="bi bi-clock"></i>
-                        </div>
-                        <div class="metric-value">{{ pending_requests|default:0 }}</div>
-                        <div class="metric-label">در انتظار</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">تأیید شده</span>
+                <div class="ui-metric-val">{{ approved_requests|default:0 }}</div>
+                <span class="ui-metric-hint">آماده تأمین</span>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-info-custom text-white">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="metric-value">{{ approved_requests|default:0 }}</div>
-                        <div class="metric-label">تأیید شده</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">تکمیل شده</span>
+                <div class="ui-metric-val is-green">{{ completed_requests|default:0 }}</div>
+                <span class="ui-metric-hint">تحویل یا خریداری‌شده</span>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-success-custom text-white">
-                            <i class="bi bi-check2-all"></i>
-                        </div>
-                        <div class="metric-value">{{ completed_requests|default:0 }}</div>
-                        <div class="metric-label">تکمیل شده</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
         {% endif %}
 
         <!-- Financial Metrics -->
         {% if user.role == 'manager' %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <h4 class="mb-3">
-                    <i class="bi bi-cash-stack"></i>
-                    آمار مالی
-                </h4>
+        <h2 class="pd-section-title">
+            <i class="bi bi-cash-stack"></i>
+            <span>آمار مالی</span>
+        </h2>
+        <section class="ui-metrics-strip cols-3">
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">کل پرداخت‌ها</span>
+                <div class="ui-metric-val is-green">{{ total_payments|default:0 }}</div>
+                <span class="ui-metric-hint">تراکنش‌های ثبت‌شده</span>
             </div>
-        </div>
-        <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-success-custom text-white">
-                            <i class="bi bi-cash"></i>
-                        </div>
-                        <div class="metric-value">{{ total_payments|default:0 }}</div>
-                        <div class="metric-label">کل پرداخت‌ها</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">کل فاکتورها</span>
+                <div class="ui-metric-val is-accent">{{ total_invoices|default:0 }}</div>
+                <span class="ui-metric-hint">فاکتورهای خرید</span>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-info-custom text-white">
-                            <i class="bi bi-receipt"></i>
-                        </div>
-                        <div class="metric-value">{{ total_invoices|default:0 }}</div>
-                        <div class="metric-label">کل فاکتورها</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">بدهی معوق</span>
+                <div class="ui-metric-val is-danger">{{ outstanding_amount|default:0 }}<span class="ui-metric-unit">ریال</span></div>
+                <span class="ui-metric-hint">مانده پرداخت‌نشده</span>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-danger-custom text-white">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <div class="metric-value">{{ outstanding_amount|default:0 }}</div>
-                        <div class="metric-label">بدهی معوق (ریال)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
         {% endif %}
 
         <!-- Supplier and Inventory Metrics -->
         {% if user.role == 'purchasing' or user.role == 'manager' %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <h4 class="mb-3">
-                    <i class="bi bi-shop"></i>
-                    تأمین‌کنندگان و موجودی
-                </h4>
+        <h2 class="pd-section-title">
+            <i class="bi bi-shop"></i>
+            <span>تأمین‌کنندگان و موجودی</span>
+        </h2>
+        <section class="ui-metrics-strip cols-3">
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">تأمین‌کنندگان فعال</span>
+                <div class="ui-metric-val">{{ total_suppliers|default:0 }}</div>
+                <span class="ui-metric-hint">طرف‌های قرارداد</span>
             </div>
-        </div>
-        <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-secondary-custom text-white">
-                            <i class="bi bi-truck"></i>
-                        </div>
-                        <div class="metric-value">{{ total_suppliers|default:0 }}</div>
-                        <div class="metric-label">تأمین‌کنندگان فعال</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">کل محصولات</span>
+                <div class="ui-metric-val is-accent">{{ total_products|default:0 }}</div>
+                <span class="ui-metric-hint">اقلام تعریف‌شده</span>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-primary-custom text-white">
-                            <i class="bi bi-box-seam"></i>
-                        </div>
-                        <div class="metric-value">{{ total_products|default:0 }}</div>
-                        <div class="metric-label">کل محصولات</div>
-                    </div>
-                </div>
+            <div class="ui-metric-cell">
+                <span class="ui-metric-label">محصولات کم‌موجودی</span>
+                <div class="ui-metric-val is-warn">{{ low_stock_products|default:0 }}</div>
+                <span class="ui-metric-hint">نیازمند تأمین</span>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-body text-center">
-                        <div class="card-icon bg-warning-custom text-white">
-                            <i class="bi bi-exclamation-circle"></i>
-                        </div>
-                        <div class="metric-value">{{ low_stock_products|default:0 }}</div>
-                        <div class="metric-label">محصولات کم‌موجودی</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
         {% endif %}
 
         <!-- Charts Row -->
         {% if user.role == 'purchasing' or user.role == 'manager' and monthly_requests %}
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <section class="ui-card h-100">
+                    <div class="ui-card-head">
+                        <h3 class="ui-card-title">
                             <i class="bi bi-graph-up"></i>
-                            روند ماهانه درخواست‌ها
-                        </h5>
+                            <span>روند ماهانه درخواست‌ها</span>
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="ui-card-body">
                         <div class="chart-container">
                             <canvas id="monthlyRequestsChart"></canvas>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
-            <div class="col-md-6 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
+            <div class="col-md-6">
+                <section class="ui-card h-100">
+                    <div class="ui-card-head">
+                        <h3 class="ui-card-title">
                             <i class="bi bi-pie-chart"></i>
-                            توزیع بر اساس بخش
-                        </h5>
+                            <span>توزیع بر اساس بخش</span>
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="ui-card-body">
                         <div class="chart-container">
                             <canvas id="departmentChart"></canvas>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
         {% endif %}
 
         <!-- Recent Activities -->
         {% if recent_activities %}
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <section class="ui-card h-100">
+                    <div class="ui-card-head">
+                        <h3 class="ui-card-title">
                             <i class="bi bi-activity"></i>
-                            فعالیت‌های اخیر
-                        </h5>
+                            <span>فعالیت‌های اخیر</span>
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="ui-card-body">
                         <div class="activity-list">
                             {% for activity in recent_activities %}
                             <div class="activity-item">
-                                <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
                                     <div>
-                                        <strong>{{ activity.user.username }}</strong>
-                                        <span class="text-muted">{{ activity.get_action_display }}</span>
+                                        <strong style="font-size:0.86rem;">{{ activity.user.username }}</strong>
+                                        <span class="text-muted" style="font-size:0.82rem;">{{ activity.get_action_display }}</span>
                                         {% if activity.request %}
-                                        <br>
-                                        <small class="text-muted">درخواست {{ activity.request.request_number }}</small>
+                                        <div class="ui-num" style="font-size:0.75rem; color:#64748B;">درخواست {{ activity.request.request_number }}</div>
                                         {% endif %}
                                     </div>
-                                    <small class="activity-time">{{ activity.created_at|date:"H:i" }}</small>
+                                    <span class="activity-time">{{ activity.created_at|date:"H:i" }}</span>
                                 </div>
                                 {% if activity.description %}
                                 <div class="mt-1">
@@ -375,83 +325,40 @@
                             {% endfor %}
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
-            <div class="col-md-6 mb-3">
-                <div class="card dashboard-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
+            <div class="col-md-6">
+                <section class="ui-card h-100">
+                    <div class="ui-card-head">
+                        <h3 class="ui-card-title">
                             <i class="bi bi-star"></i>
-                            عملکرد تأمین‌کنندگان برتر
-                        </h5>
+                            <span>عملکرد تأمین‌کنندگان برتر</span>
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="ui-card-body">
                         {% if supplier_performance %}
                         <div class="supplier-list">
                             {% for supplier in supplier_performance %}
-                            <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom" style="border-color:#F1F5F9 !important;">
                                 <div>
-                                    <strong>{{ supplier.name }}</strong>
-                                    <br>
-                                    <small class="text-muted">{{ supplier.total_orders }} سفارش</small>
+                                    <strong style="font-size:0.88rem;">{{ supplier.name }}</strong>
+                                    <div class="ui-num" style="font-size:0.75rem; color:#64748B;">{{ supplier.total_orders }} سفارش</div>
                                 </div>
-                                <div class="text-end">
-                                    <div class="fw-bold">{{ supplier.rating }}/5</div>
-                                    <small class="text-muted">{{ supplier.on_time_delivery_rate }}%</small>
+                                <div class="text-end ui-num">
+                                    <span class="ui-pill is-ok">{{ supplier.rating }}/5</span>
+                                    <div style="font-size:0.74rem; color:#64748B; margin-top:2px;">{{ supplier.on_time_delivery_rate }}%</div>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
                         {% else %}
-                        <p class="text-muted text-center">اطلاعاتی موجود نیست</p>
+                        <div class="ui-empty" style="padding:2rem 1rem;">اطلاعاتی موجود نیست</div>
                         {% endif %}
                     </div>
-                </div>
+                </section>
             </div>
         </div>
         {% endif %}
-
-        <!-- Quick Actions -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-lightning"></i>
-                            اقدامات سریع
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap justify-content-center">
-                            {% if user.role == 'kitchen' or user.role == 'bar' or user.role == 'counter' %}
-                            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary quick-action-btn">
-                                <i class="bi bi-plus-circle"></i>
-                                درخواست خرید جدید
-                            </a>
-                            {% endif %}
-                            {% if user.role == 'purchasing' or user.role == 'manager' %}
-                            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-info quick-action-btn">
-                                <i class="bi bi-list-check"></i>
-                                مشاهده درخواست‌ها
-                            </a>
-                            {% endif %}
-                            {% if user.role == 'manager' %}
-                            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="btn btn-success quick-action-btn">
-                                <i class="bi bi-graph-up"></i>
-                                داشبورد مالی
-                            </a>
-                            {% endif %}
-                            {% if user.role == 'purchasing' or user.role == 'manager' %}
-                            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary quick-action-btn">
-                                <i class="bi bi-file-earmark-bar-graph"></i>
-                                گزارش‌ها
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
@@ -479,36 +386,28 @@
                 datasets: [{
                     label: 'کل درخواست‌ها',
                     data: monthlyData.map(item => item.count),
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    tension: 0.4
+                    borderColor: '#8B5CF6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    tension: 0.35
                 }, {
                     label: 'تأیید شده',
                     data: monthlyData.map(item => item.approved),
-                    borderColor: '#4facfe',
-                    backgroundColor: 'rgba(79, 172, 254, 0.1)',
-                    tension: 0.4
+                    borderColor: '#2563EB',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.35
                 }, {
                     label: 'تکمیل شده',
                     data: monthlyData.map(item => item.completed),
-                    borderColor: '#43e97b',
-                    backgroundColor: 'rgba(67, 233, 123, 0.1)',
-                    tension: 0.4
+                    borderColor: '#047857',
+                    backgroundColor: 'rgba(4, 120, 87, 0.1)',
+                    tension: 0.35
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true } }
             }
         });
         {% endif %}
@@ -527,26 +426,21 @@
                 datasets: [{
                     data: deptData.map(item => item.total),
                     backgroundColor: [
-                        '#667eea',
-                        '#764ba2',
-                        '#f093fb',
-                        '#f5576c',
-                        '#4facfe'
+                        '#8B5CF6',
+                        '#2563EB',
+                        '#047857',
+                        '#B45309',
+                        '#64748B'
                     ]
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
         {% endif %}
     </script>
 </body>
 </html>
-

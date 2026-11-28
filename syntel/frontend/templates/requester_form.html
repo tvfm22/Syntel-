@@ -1,39 +1,46 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}افزودن درخواست‌کننده - Kuker{% endblock %}
 
 {% block content %}
-<div class="ui-form-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-user-plus"></i></div>
-            <div>
-                <h1 class="ph-title">افزودن درخواست‌کننده جدید</h1>
-                <p class="page-sub">واحد درخواست‌کننده را از فهرست انتخاب کنید</p>
-            </div>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-user-plus" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                افزودن درخواست‌کننده جدید
+            </h1>
+            <p class="ui-subtitle">واحد درخواست‌کننده را از فهرست انتخاب کنید</p>
         </div>
-        <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
-    <div class="ui-form-card">
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="name" class="form-label">نام درخواست‌کننده *</label>
-                <select name="name" id="name" class="form-control" required>
+    <form method="post" class="ui-form-card">
+        {% csrf_token %}
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="name" class="ui-field-label">نام درخواست‌کننده <span style="color:var(--ui-danger);">*</span></label>
+                <select name="name" id="name" class="ui-select" required>
                     <option value="">انتخاب کنید...</option>
                     <option value="kitchen">آشپزخانه</option>
                     <option value="bar">بار</option>
                     <option value="facilities">تاسیسات</option>
                 </select>
             </div>
-            <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--gray-100);">
-                <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> ذخیره</button>
-            </div>
-        </form>
-    </div>
+        </div>
+        <div class="ui-form-actions">
+            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>ذخیره</span>
+            </button>
+        </div>
+    </form>
 </div>
 {% endblock %}

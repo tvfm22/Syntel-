@@ -3,114 +3,100 @@
 
 {% block title %}ثبت خرید {{ purchase_request.request_number }} - Kuker{% endblock %}
 
-{% block extra_css %}
-<style>
-    .pru-wrap { max-width: 920px; margin: 0 auto; }
-    .pru-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-    .request-info {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        padding: 1rem 1.35rem; border-radius: var(--radius-xl); margin-bottom: 1rem;
-        box-shadow: var(--shadow-xs); display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;
-    }
-    .info-row { display: flex; flex-direction: column; gap: 2px; }
-    .info-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-    .info-value { font-size: 0.88rem; color: var(--text-primary); font-weight: 700; }
-    .instruction {
-        background: #EFF6FF; border: 1px solid #BFDBFE; padding: 0.75rem 1rem;
-        border-radius: var(--radius-lg); margin-bottom: 1rem; color: #1E40AF; font-size: 0.82rem;
-    }
-    .qty-input {
-        height: 36px; padding: 0 0.65rem; border: 1px solid var(--border-default);
-        border-radius: 8px; font-size: 0.85rem; width: 130px; font-family: 'Vazir', sans-serif;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="pru-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-cart-Flatbed"></i></div>
-            <div class="ph-title">
-                <h1>ثبت اقلام خریداری‌شده</h1>
-                <div class="page-sub">شناسه درخواست: {{ purchase_request.request_number }}</div>
-            </div>
+<div class="ui-page is-narrow" style="max-width:920px;">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-cart-flatbed" style="color:var(--primary, #8B5CF6);"></i>
+                <span>ثبت اقلام خریداری‌شده</span>
+            </h1>
+            <p class="ui-subtitle">شناسه درخواست: <span class="ui-num">{{ purchase_request.request_number }}</span></p>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-right"></i> بازگشت
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
             </a>
         </div>
+    </header>
+
+    <section class="ui-card">
+        <div class="ui-card-body" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.85rem;">
+            <div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">شناسه درخواست</div>
+                <div class="ui-num" style="font-size:0.88rem; font-weight:700;">{{ purchase_request.request_number }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">بخش</div>
+                <div style="font-size:0.88rem; font-weight:700;">{{ purchase_request.user.department_display }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">کاربر</div>
+                <div style="font-size:0.88rem; font-weight:700;">{{ purchase_request.user.username }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">تاریخ ثبت</div>
+                <div class="ui-num" style="font-size:0.88rem; font-weight:700;">{{ purchase_request.created_at|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">وضعیت</div>
+                <div style="margin-top:2px;">
+                    <span class="ui-pill {% if purchase_request.status == 'purchased' %}is-ok{% elif purchase_request.status == 'partial' %}is-info{% elif purchase_request.status == 'pending' %}is-warn{% else %}is-muted{% endif %}">
+                        {% if purchase_request.status == 'pending' %}منتظر
+                        {% elif purchase_request.status == 'purchased' %}خریداری شد
+                        {% elif purchase_request.status == 'partial' %}کسری دارد
+                        {% else %}{{ purchase_request.get_status_display }}{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="ui-banner is-info">
+        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
+        <span><strong>توضیح:</strong> برای هر کالا، مقدار واقعی خریداری‌شده را وارد کنید. در صورت عدم خرید، خالی بگذارید.</span>
     </div>
 
-    <div class="request-info">
-        <div class="info-row">
-            <span class="info-label">شناسه درخواست</span>
-            <span class="info-value">{{ purchase_request.request_number }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">بخش</span>
-            <span class="info-value">{{ purchase_request.user.department_display }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">کاربر</span>
-            <span class="info-value">{{ purchase_request.user.username }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">تاریخ ثبت</span>
-            <span class="info-value">{{ purchase_request.created_at|date:"d/m/Y H:i" }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">وضعیت</span>
-            <span class="info-value">
-                {% if purchase_request.status == 'pending' %}منتظر
-                {% elif purchase_request.status == 'purchased' %}خریداری شد
-                {% elif purchase_request.status == 'partial' %}کسری دارد
-                {% else %}{{ purchase_request.get_status_display }}{% endif %}
-            </span>
-        </div>
-    </div>
-
-    <div class="instruction">
-        <i class="fas fa-circle-info"></i> <strong>توضیح:</strong> برای هر کالا، مقدار واقعی خریداری‌شده را وارد کنید. در صورت عدم خرید، خالی بگذارید.
-    </div>
-
-    <form method="post">
+    <form method="post" style="display:flex; flex-direction:column; gap:1rem;">
         {% csrf_token %}
-        <div class="table-card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>نام کالا</th>
-                        <th>مقدار درخواستی</th>
-                        <th>واحد</th>
-                        <th>مقدار خریداری‌شده</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                    <tr>
-                        <td style="font-weight:700;color:var(--text-primary);">{{ item.name }}</td>
-                        <td>{{ item.quantity|qty_comma }}</td>
-                        <td>{{ item.unit }}</td>
-                        <td>
-                            <input type="hidden" name="item_id" value="{{ item.id }}">
-                            <input type="number" name="purchased_quantity" class="qty-input" step="0.01" placeholder="مقدار خریداری" value="{{ item.purchased_quantity|default:'' }}">
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <section class="ui-table-card">
+            <div class="ui-table-scroll">
+                <table class="ui-table">
+                    <thead>
+                        <tr>
+                            <th>نام کالا</th>
+                            <th>مقدار درخواستی</th>
+                            <th>واحد</th>
+                            <th>مقدار خریداری‌شده</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td style="font-weight:700;">{{ item.name }}</td>
+                            <td class="ui-num">{{ item.quantity|qty_comma }}</td>
+                            <td><span class="ui-chip">{{ item.unit }}</span></td>
+                            <td>
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <input type="number" name="purchased_quantity" class="ui-input ui-num" style="width:135px; height:36px;" step="0.01" placeholder="مقدار خریداری" value="{{ item.purchased_quantity|default:'' }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-        <div style="display:flex;justify-content:flex-end;gap:0.65rem;">
-            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> ذخیره تغییرات</button>
+        <div class="ui-form-actions" style="border-top:none; padding-top:0;">
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-success">
+                <i class="fas fa-save"></i>
+                <span>ذخیره تغییرات</span>
+            </button>
         </div>
     </form>
+
 </div>
 {% endblock %}

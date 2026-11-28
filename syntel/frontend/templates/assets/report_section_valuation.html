@@ -5,124 +5,137 @@
 
 {% block extra_css %}
 <style>
-    .rv-wrap { max-width: 1360px; margin: 0 auto; }
-    .rv-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 1px solid var(--border-default); }
+    .rv-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 0.85rem; align-items: end; }
+    .rv-thumb { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; cursor: pointer; border: 1px solid var(--border-default, #E2E8F0); }
     .rv-chart-wrap { height: 290px; position: relative; }
-    .rv-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
-        display: none; align-items: center; justify-content: center; padding: 1rem;
-    }
-    .rv-modal-backdrop.is-open { display: flex; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rv-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon green"><i class="fas fa-coins"></i></div>
-            <div class="ph-title">
-                <h1>صورتبرداری و ارزش ریالی اموال به تفکیک سکشن</h1>
-                <div class="page-sub">نمای کلی موجودی سالم، معیوب و ارزش ریالی اموال</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-coins" style="color: var(--ui-ok, #047857);"></i>
+                صورتبرداری و ارزش ریالی اموال به تفکیک سکشن
+            </h1>
+            <p class="ui-subtitle">نمای کلی موجودی سالم، معیوب و ارزش ریالی اموال</p>
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <a href="{% url 'asset_report_valuation_export' cafe_code=cafe_code fmt='excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_report_valuation_export' cafe_code=cafe_code fmt='excel' %}?{{ request.GET.urlencode }}" class="ui-btn ui-btn-success">
                 <i class="fas fa-file-excel"></i> خروجی Excel
             </a>
-            <a href="{% url 'asset_report_valuation_export' cafe_code=cafe_code fmt='pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger">
+            <a href="{% url 'asset_report_valuation_export' cafe_code=cafe_code fmt='pdf' %}?{{ request.GET.urlencode }}" class="ui-btn ui-btn-danger">
                 <i class="fas fa-file-pdf"></i> خروجی PDF
             </a>
-            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
             </a>
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های گزارش اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> مرکز گزارش‌ها</a>
+            <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-coins"></i> ارزش سکشن‌ها</a>
+            <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-balance-scale"></i> مغایرت</a>
+            <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-line"></i> شکستگی</a>
+            <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exclamation-triangle"></i> کسری</a>
+            <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-tools"></i> تعمیرات و گارانتی</a>
+            <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-history"></i> کاردکس</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            {% if is_global_admin %}
-            <div class="filter-group">
-                <label class="filter-label">کافه</label>
-                <select name="cafe" class="filter-select">
-                    <option value="all" {% if selected_cafe_val == 'all' %}selected{% endif %}>همه کافه‌ها</option>
-                    {% for c in available_cafes %}
-                    <option value="{{ c.id }}" {% if selected_cafe_val == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">دسته‌بندی</label>
-                <select name="category" class="filter-select">
-                    <option value="">همه دسته‌ها</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">روش ردیابی</label>
-                <select name="tracking_mode" class="filter-select">
-                    <option value="">همه</option>
-                    <option value="quantity" {% if selected_mode == 'quantity' %}selected{% endif %}>تعدادی</option>
-                    <option value="serialized" {% if selected_mode == 'serialized' %}selected{% endif %}>پلاکدار</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">جستجو</label>
-                <input type="text" name="q" value="{{ search_q }}" class="filter-input" placeholder="نام یا کد کالا...">
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">نمایش</button>
-                <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="rv-filter-grid">
+                {% if is_global_admin %}
+                <div class="ui-field">
+                    <label class="ui-field-label">کافه</label>
+                    <select name="cafe" class="ui-select">
+                        <option value="all" {% if selected_cafe_val == 'all' %}selected{% endif %}>همه کافه‌ها</option>
+                        {% for c in available_cafes %}
+                        <option value="{{ c.id }}" {% if selected_cafe_val == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">دسته‌بندی</label>
+                    <select name="category" class="ui-select">
+                        <option value="">همه دسته‌ها</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">روش ردیابی</label>
+                    <select name="tracking_mode" class="ui-select">
+                        <option value="">همه</option>
+                        <option value="quantity" {% if selected_mode == 'quantity' %}selected{% endif %}>تعدادی</option>
+                        <option value="serialized" {% if selected_mode == 'serialized' %}selected{% endif %}>پلاکدار</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">جستجو</label>
+                    <div class="ui-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="q" value="{{ search_q }}" class="ui-input" placeholder="نام یا کد کالا...">
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary" style="flex:1;">نمایش</button>
+                    <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-rotate-left"></i></a>
+                </div>
             </div>
         </div>
     </form>
 
-    <div class="stats-grid" style="margin-bottom:1.25rem;">
-        <div class="stat-card">
-            <div class="stat-value success">{{ grand_total_value|number_format }} ریال</div>
-            <div class="stat-label">ارزش کل اموال</div>
+    <section class="ui-metrics-strip">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">ارزش کل اموال</span>
+            <div class="ui-metric-val is-green ui-num">{{ grand_total_value|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value primary">{{ grand_healthy|number_format }}</div>
-            <div class="stat-label">مجموع اقلام سالم</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع اقلام سالم</span>
+            <div class="ui-metric-val is-accent ui-num">{{ grand_healthy|number_format }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value warning">{{ grand_damaged|number_format }}</div>
-            <div class="stat-label">مجموع اقلام معیوب</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع اقلام معیوب</span>
+            <div class="ui-metric-val is-warn ui-num">{{ grand_damaged|number_format }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ grand_total_qty|number_format }}</div>
-            <div class="stat-label">مجموع کل تعداد</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع کل تعداد</span>
+            <div class="ui-metric-val ui-num">{{ grand_total_qty|number_format }}</div>
         </div>
-    </div>
+    </section>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-chart-bar"></i> توزیع ارزش اموال بر اساس سکشن</div>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-chart-bar"></i> توزیع ارزش اموال بر اساس سکشن</h2>
         </div>
-        <div class="card-body">
+        <div class="ui-card-body">
             <div class="rv-chart-wrap"><canvas id="valuationSectionChart"></canvas></div>
         </div>
-    </div>
+    </section>
 
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-table"></i> جزئیات صورتبرداری اموال ({{ rows|length }} ردیف)</div>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-table"></i> جزئیات صورتبرداری اموال ({{ rows|length }} ردیف)</h2>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تصویر</th>
@@ -151,41 +164,46 @@
                         {% if show_cafe_column %}<td>{{ r.cafe_name }}</td>{% endif %}
                         <td><strong>{{ r.department_name }}</strong></td>
                         <td>
-                            <div style="font-weight:700; color:var(--text-primary);">{{ r.asset_name }}</div>
+                            <div style="font-weight:700;">{{ r.asset_name }}</div>
                             <div style="font-size:0.73rem; color:var(--text-muted);">{{ r.asset_code }} • {{ r.tracking_mode_display }}</div>
                         </td>
                         <td>{{ r.category_name }}</td>
-                        <td><span class="badge badge-success">{{ r.quantity_healthy }}</span></td>
-                        <td><span class="badge {% if r.quantity_damaged > 0 %}badge-warning{% else %}badge-neutral{% endif %}">{{ r.quantity_damaged }}</span></td>
-                        <td><strong>{{ r.total_quantity }}</strong></td>
-                        <td>{{ r.unit_value|number_format }}</td>
-                        <td><strong style="color:#059669;">{{ r.total_value|number_format }}</strong></td>
+                        <td><span class="ui-pill is-ok ui-num">{{ r.quantity_healthy }}</span></td>
+                        <td><span class="ui-pill {% if r.quantity_damaged > 0 %}is-warn{% else %}is-muted{% endif %} ui-num">{{ r.quantity_damaged }}</span></td>
+                        <td class="ui-num"><strong>{{ r.total_quantity }}</strong></td>
+                        <td class="ui-num">{{ r.unit_value|number_format }}</td>
+                        <td class="ui-money">{{ r.total_value|number_format }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="10" style="text-align:center; padding:2rem;">موردی یافت نشد.</td></tr>
+                    <tr><td colspan="10"><div class="ui-empty" style="padding:1.5rem;">موردی یافت نشد.</div></td></tr>
                     {% endfor %}
                 </tbody>
                 {% if rows %}
                 <tfoot>
-                    <tr style="background:#ECFDF5; font-weight:800;">
+                    <tr style="background:var(--ui-ok-bg); font-weight:800;">
                         <td colspan="{% if show_cafe_column %}5{% else %}4{% endif %}">جمع کل</td>
-                        <td>{{ grand_healthy }}</td>
-                        <td>{{ grand_damaged }}</td>
-                        <td>{{ grand_total_qty }}</td>
+                        <td class="ui-num">{{ grand_healthy }}</td>
+                        <td class="ui-num">{{ grand_damaged }}</td>
+                        <td class="ui-num">{{ grand_total_qty }}</td>
                         <td>—</td>
-                        <td style="color:#065F46;">{{ grand_total_value|number_format }} ریال</td>
+                        <td class="ui-money">{{ grand_total_value|number_format }} ریال</td>
                     </tr>
                 </tfoot>
                 {% endif %}
             </table>
         </div>
-    </div>
+    </section>
 </div>
 
-<div id="valLightbox" class="rv-modal-backdrop" onclick="this.classList.remove('is-open')">
-    <div style="background:#fff; padding:1rem; border-radius:16px; max-width:520px; text-align:center;" onclick="event.stopPropagation();">
-        <div id="valLightboxTitle" style="font-weight:800; margin-bottom:0.5rem;"></div>
-        <img id="valLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+<div id="valLightbox" class="ui-modal-backdrop" onclick="this.classList.remove('is-open')">
+    <div class="ui-modal is-narrow" onclick="event.stopPropagation();">
+        <div class="ui-modal-head">
+            <div id="valLightboxTitle" class="ui-modal-title"></div>
+            <button type="button" class="ui-modal-close" onclick="document.getElementById('valLightbox').classList.remove('is-open')" aria-label="بستن">&times;</button>
+        </div>
+        <div class="ui-modal-body" style="text-align:center;">
+            <img id="valLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+        </div>
     </div>
 </div>
 {% endblock %}

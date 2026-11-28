@@ -1,152 +1,156 @@
 ﻿{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}تحلیل خریدها{% endblock %}
+{% block title %}تحلیل خریدها - Kuker{% endblock %}
 
 {% block extra_head %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <style>
-.chart-container {
-    position: relative;
-    height: 400px;
-    width: 100%;
-}
-.filter-section {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-}
+    .pa-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.85rem;
+        align-items: end;
+    }
+
+    .pa-charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.2rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 360px;
+        width: 100%;
+    }
+
+    @media (max-width: 900px) {
+        .pa-charts-grid {
+            grid-template-columns: 1fr;
+        }
+        .chart-container {
+            height: 290px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-shopping-cart"></i> تحلیل خریدها
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
-                        </a>
-                    </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-shopping-cart" style="color: var(--primary, #8B5CF6);"></i>
+                تحلیل خریدها
+            </h1>
+            <p class="ui-subtitle">توزیع وضعیت درخواست‌ها، آمار بخش‌ها، روند ماهانه و محبوب‌ترین کالاها</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به داشبورد</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Date Range Filter -->
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="pa-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="start_date">از تاریخ:</label>
+                    <input type="date" name="start_date" id="start_date" class="ui-input" value="{{ start_date|date:'Y-m-d' }}">
                 </div>
-                <div class="card-body">
-                    <!-- Date Range Filter -->
-                    <div class="filter-section">
-                        <form method="get" class="row">
-                            <div class="col-md-4">
-                                <label for="start_date">از تاریخ:</label>
-                                <input type="date" name="start_date" id="start_date" class="form-control"
-                                       value="{{ start_date|date:'Y-m-d' }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label for="end_date">تا تاریخ:</label>
-                                <input type="date" name="end_date" id="end_date" class="form-control"
-                                       value="{{ end_date|date:'Y-m-d' }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label>&nbsp;</label><br>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-filter"></i> اعمال فیلتر
-                                </button>
-                                <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times"></i> پاک کردن
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Status Distribution Chart -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">توزیع وضعیت درخواست‌ها</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="statusChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">درخواست‌ها بر اساس بخش</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="departmentChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monthly Trends -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">روند ماهانه درخواست‌ها</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="monthlyTrendsChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Top Products Table -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title">محبوب‌ترین محصولات</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>نام محصول</th>
-                                                    <th>کل مقدار درخواست شده</th>
-                                                    <th>تعداد درخواست‌ها</th>
-                                                    <th>میانگین مقدار در درخواست</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for product in top_products %}
-                                                <tr>
-                                                    <td>{{ product.name }}</td>
-                                                    <td>{{ product.total_quantity|floatformat:0 }}</td>
-                                                    <td>{{ product.request_count }}</td>
-                                                    <td>{{ product.avg_quantity|floatformat:1 }}</td>
-                                                </tr>
-                                                {% empty %}
-                                                <tr>
-                                                    <td colspan="4" class="text-center text-muted">داده‌ای یافت نشد</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="end_date">تا تاریخ:</label>
+                    <input type="date" name="end_date" id="end_date" class="ui-input" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="submit" class="ui-btn ui-btn-primary">
+                        <i class="fas fa-filter"></i>
+                        <span>اعمال فیلتر</span>
+                    </button>
+                    <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                        <i class="fas fa-times"></i>
+                        <span>پاک کردن</span>
+                    </a>
                 </div>
             </div>
         </div>
+    </form>
+
+    <!-- Status & Department Charts -->
+    <div class="pa-charts-grid">
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-chart-pie"></i> توزیع وضعیت درخواست‌ها</h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-building"></i> درخواست‌ها بر اساس بخش</h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="chart-container">
+                    <canvas id="departmentChart"></canvas>
+                </div>
+            </div>
+        </section>
     </div>
+
+    <!-- Monthly Trends -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-chart-line"></i> روند ماهانه درخواست‌ها</h2>
+        </div>
+        <div class="ui-card-body">
+            <div class="chart-container">
+                <canvas id="monthlyTrendsChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Top Products Table -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-star"></i> محبوب‌ترین محصولات</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>نام محصول</th>
+                        <th>کل مقدار درخواست شده</th>
+                        <th>تعداد درخواست‌ها</th>
+                        <th>میانگین مقدار در درخواست</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in top_products %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ product.name }}</td>
+                        <td class="ui-num">{{ product.total_quantity|floatformat:0 }}</td>
+                        <td class="ui-num">{{ product.request_count }}</td>
+                        <td class="ui-num">{{ product.avg_quantity|floatformat:1 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <div class="ui-empty" style="padding: 1.5rem;">داده‌ای یافت نشد</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 {{ status_counts|json_script:"status-counts-data" }}
@@ -160,7 +164,7 @@ function _parseJsonEl(id, fallback) {
     if (typeof val === 'string') { try { val = JSON.parse(val); } catch (e) {} }
     return val == null ? fallback : val;
 }
-// Status Distribution Chart
+
 const statusCtx = document.getElementById('statusChart').getContext('2d');
 const statusData = _parseJsonEl('status-counts-data', []);
 new Chart(statusCtx, {
@@ -170,22 +174,17 @@ new Chart(statusCtx, {
         datasets: [{
             data: statusData.map(item => item.count),
             backgroundColor: [
-                '#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d'
+                '#8B5CF6', '#047857', '#B45309', '#DC2626', '#64748B'
             ]
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        }
+        plugins: { legend: { display: false } }
     }
 });
 
-// Department Chart
 const deptCtx = document.getElementById('departmentChart').getContext('2d');
 const deptData = _parseJsonEl('dept-requests-data', []);
 new Chart(deptCtx, {
@@ -195,21 +194,17 @@ new Chart(deptCtx, {
         datasets: [{
             label: 'تعداد درخواست‌ها',
             data: deptData.map(item => item.count),
-            backgroundColor: '#007bff'
+            backgroundColor: '#8B5CF6',
+            borderRadius: 6
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+        scales: { y: { beginAtZero: true } }
     }
 });
 
-// Monthly Trends Chart
 const trendsCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
 const trendsData = _parseJsonEl('monthly-trends-data', []);
 new Chart(trendsCtx, {
@@ -219,21 +214,16 @@ new Chart(trendsCtx, {
         datasets: [{
             label: 'تعداد درخواست‌ها',
             data: trendsData.map(item => item.count),
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-            tension: 0.1
+            borderColor: '#8B5CF6',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            tension: 0.2
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+        scales: { y: { beginAtZero: true } }
     }
 });
 </script>
 {% endblock %}
-

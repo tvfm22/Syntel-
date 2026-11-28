@@ -5,55 +5,81 @@
 
 {% block extra_css %}
 <style>
-    .pay-form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1rem;
+    .dpe-form-control,
+    .ui-field .form-control {
+        width: 100%;
+        height: 38px;
+        padding: 0 0.85rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 10px;
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-primary, #0F172A);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.83rem;
+        font-variant-numeric: tabular-nums;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .pay-form-grid .full { grid-column: 1 / -1; }
-    .page-note {
-        background: var(--primary-light); border: 1px solid #C4B5FD; color: var(--primary-dark);
-        padding: 0.8rem 1.1rem; border-radius: 12px; font-size: 0.84rem; margin-bottom: 1.25rem;
+    .dpe-form-control:focus,
+    .ui-field .form-control:focus {
+        outline: none;
+        border-color: var(--primary, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
-    .info-rows {
-        background: var(--gray-50); border: 1px solid var(--gray-200);
-        border-radius: 12px; padding: 0.75rem 1.1rem; margin-bottom: 1.25rem;
+    textarea.dpe-form-control {
+        height: auto;
+        min-height: 70px;
+        padding: 0.6rem 0.85rem;
     }
-    .info-row {
-        display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
-        padding: 0.45rem 0; border-bottom: 1px solid var(--gray-200); font-size: 0.85rem;
+    .dpe-info-rows {
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 12px;
+        padding: 0.75rem 1.05rem;
+        margin-bottom: 1.15rem;
     }
-    .info-row:last-child { border-bottom: none; }
-    .info-row span { color: var(--gray-500); flex-shrink: 0; }
-    .info-row b { color: var(--dark); text-align: left; font-weight: 700; }
+    .dpe-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.75rem;
+        padding: 0.42rem 0;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
+        font-size: 0.84rem;
+    }
+    .dpe-info-row:last-child { border-bottom: none; }
+    .dpe-info-row span { color: var(--text-secondary, #64748B); flex-shrink: 0; }
+    .dpe-info-row b { color: var(--text-primary, #0F172A); text-align: left; font-weight: 700; font-variant-numeric: tabular-nums; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ui-form-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-money-check-dollar"></i></div>
-            <div>
-                <h1 class="ph-title">ویرایش پرداخت — {{ payment.company }}</h1>
-                <p class="page-sub">ویرایش مبلغ، حساب بانکی و تصویر رسید پرداخت</p>
-            </div>
-        </div>
-        <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+<div class="ui-page is-narrow">
 
-    <div class="page-note">
-        <i class="fas fa-info-circle"></i>
-        با تغییر مبلغ، وضعیت بدهی (در انتظار / پرداخت‌شده) دوباره محاسبه می‌شود.
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-money-check-dollar" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                ویرایش پرداخت — {{ payment.company }}
+            </h1>
+            <p class="ui-subtitle">ویرایش مبلغ، حساب بانکی و تصویر رسید پرداخت</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-banner is-info">
+        <i class="fas fa-info-circle" style="margin-top:0.2rem;"></i>
+        <span>با تغییر مبلغ، وضعیت بدهی (در انتظار / پرداخت‌شده) دوباره محاسبه می‌شود.</span>
     </div>
 
     <div class="ui-form-card">
-        <div class="info-rows">
-            <div class="info-row"><span>مبلغ کل بدهی</span><b>{{ payment.debt_amount|number_format }} تومان</b></div>
-            <div class="info-row"><span>تاریخ و زمان پرداخت (سیستمی)</span><b>{{ payment.paid_at|jalali_datetime }}</b></div>
-            <div class="info-row">
+        <div class="dpe-info-rows">
+            <div class="dpe-info-row"><span>مبلغ کل بدهی</span><b>{{ payment.debt_amount|number_format }} تومان</b></div>
+            <div class="dpe-info-row"><span>تاریخ و زمان پرداخت (سیستمی)</span><b>{{ payment.paid_at|jalali_datetime }}</b></div>
+            <div class="dpe-info-row">
                 <span>پرداخت توسط</span>
                 <b>{% if payment.paid_by %}{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}{% else %}—{% endif %}</b>
             </div>
@@ -62,59 +88,64 @@
         <form method="post" action="{% url 'debt_payment_edit' cafe_code=cafe_code payment_id=payment.id %}"
               enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="pay-form-grid">
-                <div class="form-group">
-                    <label for="edit_pay_amount" class="form-label">مبلغ پرداختی (تومان) <span style="color:var(--danger);">*</span></label>
-                    <input type="text" id="edit_pay_amount" name="amount" class="form-control js-comma" required
-                           inputmode="numeric" value="{{ payment.amount|floatformat:'0' }}">
+
+            <div class="ui-form-section">
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label for="edit_pay_amount" class="ui-field-label">مبلغ پرداختی (تومان) <span style="color:var(--ui-danger);">*</span></label>
+                        <input type="text" id="edit_pay_amount" name="amount" class="form-control js-comma" required
+                               inputmode="numeric" value="{{ payment.amount|floatformat:'0' }}">
+                    </div>
+                    <div class="ui-field">
+                        <label for="edit_pay_account" class="ui-field-label">پرداخت از حساب (بانک)</label>
+                        <select id="edit_pay_account" name="account_id" class="ui-select">
+                            <option value="">— انتخاب حساب —</option>
+                            {% for acc in payment_accounts %}
+                            <option value="{{ acc.id }}"{% if payment.account and payment.account.id == acc.id %} selected{% endif %}>{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="edit_pay_account" class="form-label">پرداخت از حساب (بانک)</label>
-                    <select id="edit_pay_account" name="account_id" class="form-control">
-                        <option value="">— انتخاب حساب —</option>
-                        {% for acc in payment_accounts %}
-                        <option value="{{ acc.id }}"{% if payment.account and payment.account.id == acc.id %} selected{% endif %}>{{ acc.bank_name }}{% if acc.account_name %} — {{ acc.account_name }}{% endif %}</option>
-                        {% endfor %}
-                    </select>
+
+                <div class="ui-field">
+                    <label for="edit_pay_desc" class="ui-field-label">توضیحات</label>
+                    <textarea id="edit_pay_desc" name="description" class="dpe-form-control" rows="2">{{ payment.description }}</textarea>
                 </div>
-                <div class="form-group full">
-                    <label for="edit_pay_desc" class="form-label">توضیحات</label>
-                    <textarea id="edit_pay_desc" name="description" class="form-control" rows="2"
-                              style="height:auto; min-height:60px; padding-top:0.6rem;">{{ payment.description }}</textarea>
-                </div>
+
                 {% if payment.payment_photo %}
-                <div class="form-group full">
-                    <label class="form-label">رسید فعلی</label>
+                <div class="ui-field">
+                    <label class="ui-field-label">رسید فعلی</label>
                     <div>
                         <a href="{{ payment.payment_photo.url }}" target="_blank">
                             <img src="{{ payment.payment_photo.url }}" alt="رسید پرداخت {{ payment.company }}"
-                                 style="max-height:120px; border-radius:10px; border:1px solid var(--gray-200);">
+                                 style="max-height:120px;border-radius:10px;border:1px solid var(--border-default,#E2E8F0);">
                         </a>
                     </div>
                 </div>
                 {% endif %}
-                <div class="form-group full">
-                    <label for="edit_pay_photo" class="form-label">تصویر رسید جدید (اختیاری — جایگزین قبلی می‌شود)</label>
-                    <input type="file" id="edit_pay_photo" name="payment_photo" class="form-control"
-                           accept="image/*" style="padding-top:0.35rem;">
+
+                <div class="ui-field">
+                    <label for="edit_pay_photo" class="ui-field-label">تصویر رسید جدید (اختیاری — جایگزین قبلی می‌شود)</label>
+                    <input type="file" id="edit_pay_photo" name="payment_photo" class="dpe-form-control"
+                           accept="image/*" style="padding-top:0.4rem;">
                 </div>
             </div>
-            <div style="display:flex; gap:0.75rem; justify-content:space-between; flex-wrap:wrap; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--gray-100);">
+
+            <div class="ui-form-actions" style="justify-content:space-between;">
                 <a href="{% url 'debt_payment_delete' cafe_code=cafe_code payment_id=payment.id %}"
-                   class="btn btn-danger"
+                   class="ui-btn ui-btn-danger-soft"
                    onclick="return confirm('این رسید پرداخت حذف شود؟ این عمل قابل بازگشت نیست.');">
                     <i class="fas fa-trash"></i> حذف رسید
                 </a>
-                <div style="display:flex; gap:0.65rem;">
-                    <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="btn btn-secondary">
-                        انصراف
-                    </a>
-                    <button type="submit" class="btn btn-primary">
+                <div style="display:flex;gap:0.55rem;">
+                    <a href="{% url 'ceo_debt_payments' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+                    <button type="submit" class="ui-btn ui-btn-primary">
                         <i class="fas fa-check"></i> ذخیره تغییرات
                     </button>
                 </div>
             </div>
         </form>
     </div>
+
 </div>
 {% endblock %}

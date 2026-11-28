@@ -4,72 +4,93 @@
 {% block title %}دسته‌بندی‌های اموال - Kuker{% endblock %}
 
 {% block content %}
-<div style="max-width:1100px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-sitemap"></i></div>
-            <div class="ph-title">
-                <h1>دسته‌بندی‌های اموال و اثاثیه</h1>
-                <div class="page-sub">تعریف ساختار درختی دسته‌بندی اموال برای کافه {{ cafe.name }}</div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-sitemap" style="color: var(--primary, #8B5CF6);"></i>
+                دسته‌بندی‌های اموال و اثاثیه
+            </h1>
+            <p class="ui-subtitle">تعریف ساختار درختی دسته‌بندی اموال برای کافه {{ cafe.name }}</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-sitemap"></i> دسته‌بندی‌ها</a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-hourglass-half"></i> کارتابل تأیید</a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-file-invoice"></i> ورود از فاکتور</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+        </nav>
+    </div>
+
+    <section class="ui-form-card" style="margin-bottom: 0;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; font-weight:800; font-size:0.9rem;">
+            <i class="fas fa-plus" style="color:var(--primary, #8B5CF6);"></i>
+            <span>افزودن دسته‌بندی جدید</span>
+        </div>
+        <form method="post" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem; align-items:end;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+            <div class="ui-field">
+                <label class="ui-field-label">نام دسته‌بندی *</label>
+                <input type="text" name="name" class="ui-input" required placeholder="مثلاً ظروف سرو، تجهیزات برقی...">
             </div>
-        </div>
-        <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
-    </div>
+            <div class="ui-field">
+                <label class="ui-field-label">دسته‌بندی والد (اختیاری)</label>
+                <select name="parent_id" class="ui-select">
+                    <option value="">بدون والد (دسته اصلی)</option>
+                    {% for p in parent_options %}
+                    <option value="{{ p.id }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">توضیحات</label>
+                <input type="text" name="description" class="ui-input" placeholder="توضیح کوتاه...">
+            </div>
+            <button type="submit" class="ui-btn ui-btn-primary" style="height:38px;">ثبت دسته‌بندی</button>
+        </form>
+    </section>
 
-    <div class="card" style="margin-bottom:1.25rem;">
-        <div class="card-header"><div class="card-title"><i class="fas fa-plus"></i> افزودن دسته‌بندی جدید</div></div>
-        <div class="card-body">
-            <form method="post" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem; align-items:end;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create">
-                <div class="filter-group">
-                    <label class="filter-label">نام دسته‌بندی *</label>
-                    <input type="text" name="name" class="form-control" required placeholder="مثلاً ظروف سرو، تجهیزات برقی...">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">دسته‌بندی والد (اختیاری)</label>
-                    <select name="parent_id" class="filter-select">
-                        <option value="">بدون والد (دسته اصلی)</option>
-                        {% for p in parent_options %}
-                        <option value="{{ p.id }}">{{ p }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">توضیحات</label>
-                    <input type="text" name="description" class="form-control" placeholder="توضیح کوتاه...">
-                </div>
-                <button type="submit" class="btn btn-primary" style="height:42px;">ثبت دسته‌بندی</button>
-            </form>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> فهرست دسته‌بندی‌ها ({{ categories|length }})</h2>
         </div>
-    </div>
-
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست دسته‌بندی‌ها ({{ categories|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>عنوان کامل</th><th>توضیحات</th><th>وضعیت</th><th>عملیات</th></tr></thead>
                 <tbody>
                     {% for c in categories %}
                     <tr>
                         <td><strong>{{ c }}</strong></td>
                         <td>{{ c.description|default:'—' }}</td>
-                        <td><span class="badge {% if c.is_active %}badge-success{% else %}badge-neutral{% endif %}">{% if c.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
+                        <td><span class="ui-pill {% if c.is_active %}is-ok{% else %}is-muted{% endif %}">{% if c.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
                         <td>
                             <form method="post" style="margin:0;">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="toggle">
                                 <input type="hidden" name="category_id" value="{{ c.id }}">
-                                <button type="submit" class="btn btn-secondary" style="height:32px; font-size:0.78rem;">{% if c.is_active %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}</button>
+                                <button type="submit" class="ui-row-action">{% if c.is_active %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}</button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" style="text-align:center; padding:1.5rem;">هنوز دسته‌بندی تعریف نشده است.</td></tr>
+                    <tr><td colspan="4"><div class="ui-empty" style="padding:1.5rem;">هنوز دسته‌بندی تعریف نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

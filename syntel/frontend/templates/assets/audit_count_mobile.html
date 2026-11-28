@@ -5,229 +5,253 @@
 
 {% block extra_css %}
 <style>
-    .am-wrap { max-width: 780px; margin: 0 auto; padding-bottom: 96px; }
-    .am-top-header {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 1rem 1.15rem; margin-bottom: 0.85rem;
-        box-shadow: var(--shadow-sm); display: flex; justify-content: space-between;
-        align-items: center; flex-wrap: wrap; gap: 0.6rem;
+    .am-wrap {
+        max-width: 780px;
+        margin: 0 auto;
+        padding-bottom: 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
     }
-    .am-title { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin: 0; }
-    .am-sub { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .am-blind-pill {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE;
-        padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    }
-    .am-alert-box {
-        border-radius: var(--radius-lg); padding: 0.85rem 1rem; margin-bottom: 0.85rem;
-        font-size: 0.84rem; font-weight: 600; display: flex; align-items: flex-start; gap: 0.6rem;
-    }
-    .am-alert-recount { background: #FFF7ED; border: 1.5px solid #FDBA74; color: #9A3412; }
-    .am-alert-readonly { background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1E40AF; }
 
     .am-progress-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 0.9rem 1.1rem; margin-bottom: 0.85rem;
-        box-shadow: var(--shadow-xs);
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
+        padding: 0.95rem 1.15rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
     }
+
     .am-progress-meta {
-        display: flex; justify-content: space-between; align-items: center;
-        font-size: 0.86rem; margin-bottom: 0.45rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.86rem;
+        margin-bottom: 0.45rem;
     }
-    .am-progress-track { height: 10px; background: #E2E8F0; border-radius: 999px; overflow: hidden; }
-    .am-progress-fill { height: 100%; background: linear-gradient(90deg, #8B5CF6, #10B981); border-radius: 999px; transition: width 0.25s ease; }
-    .am-recount-pill {
-        margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;
-        background: #FFF7ED; color: #C2410C; padding: 0.2rem 0.65rem; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
+
+    .am-progress-track {
+        height: 10px;
+        background: var(--gray-100, #F1F5F9);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .am-progress-fill {
+        height: 100%;
+        background: var(--primary, #8B5CF6);
+        border-radius: 999px;
+        transition: width 0.25s ease;
     }
 
     .am-toolbar {
-        position: sticky; top: 8px; z-index: 30;
-        background: rgba(255,255,255,0.96); backdrop-filter: blur(8px);
-        border: 1px solid var(--border-default); border-radius: var(--radius-xl);
-        padding: 0.75rem; margin-bottom: 1rem; box-shadow: var(--shadow-md);
-        display: flex; flex-direction: column; gap: 0.6rem;
+        position: sticky;
+        top: 8px;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
+        padding: 0.75rem;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
     }
-    .am-chips { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+
+    .am-chips {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+    }
+
     .am-chip {
-        border: 1.5px solid var(--border-default); background: #fff; color: var(--text-secondary);
-        border-radius: 999px; padding: 0.45rem 0.9rem; font-family: 'Vazir', sans-serif;
-        font-size: 0.8rem; font-weight: 700; cursor: pointer; min-height: 38px;
+        border: 1px solid var(--border-default, #E2E8F0);
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-secondary, #64748B);
+        border-radius: 999px;
+        padding: 0.45rem 0.95rem;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        min-height: 40px;
     }
-    .am-chip.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: #fff; }
+
+    .am-chip.active {
+        background: var(--primary, #8B5CF6);
+        border-color: var(--primary, #8B5CF6);
+        color: #FFFFFF;
+    }
+
     .am-search-input {
-        width: 100%; height: 44px; padding: 0 0.9rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-lg); font-family: 'Vazir', sans-serif; font-size: 0.9rem;
+        width: 100%;
+        height: 44px;
+        padding: 0 2.2rem 0 0.9rem;
+        border: 1.5px solid var(--border-default, #E2E8F0);
+        border-radius: 12px;
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.9rem;
+        background: var(--gray-50, #F8FAFC);
     }
-    .am-search-input:focus { outline: none; border-color: var(--accent-indigo); }
+
+    .am-search-input:focus {
+        outline: none;
+        background: #FFFFFF;
+        border-color: var(--primary, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+    }
 
     /* Item Card Styles */
     .audit-item-card {
-        background: var(--bg-card); border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-xl); padding: 1rem; margin-bottom: 0.9rem;
-        box-shadow: var(--shadow-sm); transition: border-color 0.2s ease;
+        background: var(--bg-card, #FFFFFF);
+        border: 1.5px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 0.9rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+        transition: border-color 0.2s ease;
     }
+
     .audit-item-card.is-counted { border-color: #86EFAC; }
     .audit-item-card.is-recount { border-color: #FB923C; background: #FFFBF5; }
 
     .aic-top { display: flex; gap: 0.85rem; align-items: flex-start; margin-bottom: 0.85rem; }
     .aic-thumb-btn {
-        width: 76px; height: 76px; border-radius: var(--radius-lg); overflow: hidden;
-        border: 1px solid var(--border-default); padding: 0; background: #F8FAFC;
+        width: 76px; height: 76px; border-radius: 12px; overflow: hidden;
+        border: 1px solid var(--border-default, #E2E8F0); padding: 0; background: #F8FAFC;
         position: relative; cursor: pointer; flex-shrink: 0;
     }
     .aic-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .aic-zoom-hint {
-        position: absolute; bottom: 4px; left: 4px; background: rgba(15,23,42,0.7);
+        position: absolute; bottom: 4px; left: 4px; background: rgba(15, 23, 42, 0.7);
         color: #fff; font-size: 0.65rem; width: 20px; height: 20px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
     }
     .aic-thumb-placeholder {
-        width: 76px; height: 76px; border-radius: var(--radius-lg); background: #F1F5F9;
-        color: #94A3B8; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+        width: 76px; height: 76px; border-radius: 12px; background: var(--gray-100, #F1F5F9);
+        color: var(--text-muted, #94A3B8); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
         flex-shrink: 0;
     }
     .aic-info { flex: 1; min-width: 0; }
-    .aic-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.35; }
-    .aic-sub { font-size: 0.76rem; color: var(--text-secondary); display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.15rem; }
+    .aic-title { font-size: 1rem; font-weight: 800; color: var(--text-primary, #0F172A); line-height: 1.35; }
+    .aic-sub { font-size: 0.76rem; color: var(--text-secondary, #64748B); display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.15rem; }
     .aic-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
-    .aic-badge {
-        display: inline-flex; align-items: center; gap: 0.25rem;
-        padding: 0.18rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
-    }
-    .aic-badge-tag { background: #EEF2FF; color: #4338CA; }
-    .aic-badge-unexpected { background: #FDF4FF; color: #A21CAF; }
-    .aic-badge-recount { background: #FFEDD5; color: #C2410C; }
-    .aic-badge-saved { background: #DCFCE7; color: #15803D; }
-    .aic-badge-counted { background: #ECFDF5; color: #059669; }
-    .aic-badge-pending { background: #F1F5F9; color: #64748B; }
     .aic-system-hint {
         margin-top: 0.45rem; font-size: 0.76rem; color: #475569;
-        background: #F8FAFC; padding: 0.25rem 0.6rem; border-radius: 8px; display: inline-block;
+        background: var(--gray-50, #F8FAFC); border: 1px solid var(--border-light, #F1F5F9);
+        padding: 0.25rem 0.6rem; border-radius: 8px; display: inline-block;
     }
     .aic-error-banner {
-        background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA;
-        border-radius: var(--radius-md); padding: 0.5rem 0.75rem; font-size: 0.8rem; margin-bottom: 0.75rem;
+        background: var(--ui-danger-bg); color: var(--ui-danger-dark); border: 1px solid var(--ui-danger-border);
+        border-radius: 10px; padding: 0.5rem 0.75rem; font-size: 0.8rem; margin-bottom: 0.75rem;
     }
 
     .aic-steppers { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 0.75rem; }
     @media (max-width: 480px) { .aic-steppers { grid-template-columns: 1fr; } }
     .aic-stepper-box {
-        border: 1.5px solid var(--border-default); border-radius: var(--radius-lg);
+        border: 1.5px solid var(--border-default, #E2E8F0); border-radius: 12px;
         padding: 0.6rem 0.75rem; background: #FAFAFA;
     }
     .aic-stepper-box.healthy { border-color: #BBF7D0; background: #F0FDF4; }
     .aic-stepper-box.damaged { border-color: #FED7AA; background: #FFF7ED; }
-    .aic-stepper-label { font-size: 0.78rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.4rem; text-align: center; }
+    .aic-stepper-label { font-size: 0.78rem; font-weight: 800; color: var(--text-primary, #0F172A); margin-bottom: 0.4rem; text-align: center; }
     .aic-stepper-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
     .aic-step-btn {
-        width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--border-default);
-        background: #fff; font-size: 1.05rem; cursor: pointer; display: flex; align-items: center;
-        justify-content: center; color: var(--text-primary); flex-shrink: 0;
+        width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--border-default, #E2E8F0);
+        background: #FFFFFF; font-size: 1.05rem; cursor: pointer; display: flex; align-items: center;
+        justify-content: center; color: var(--text-primary, #0F172A); flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
     }
     .aic-step-btn:active { transform: scale(0.94); }
-    .aic-step-btn.plus { background: #10B981; border-color: #10B981; color: #fff; }
-    .aic-step-btn.minus { background: #fff; color: #EF4444; border-color: #FCA5A5; }
+    .aic-step-btn.plus { background: var(--ui-ok, #047857); border-color: var(--ui-ok, #047857); color: #FFFFFF; }
+    .aic-step-btn.minus { background: #FFFFFF; color: var(--ui-danger, #DC2626); border-color: #FCA5A5; }
     .aic-qty-input {
         width: 100%; min-width: 0; height: 48px; text-align: center; font-size: 1.2rem;
-        font-weight: 800; border: 1.5px solid var(--border-default); border-radius: 10px;
-        background: #fff; font-family: 'Vazir', sans-serif;
+        font-weight: 800; border: 1.5px solid var(--border-default, #E2E8F0); border-radius: 10px;
+        background: #FFFFFF; font-family: 'Vazir', sans-serif; font-variant-numeric: tabular-nums;
     }
 
     .aic-condition-grid {
         display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 0.75rem;
     }
     .aic-cond-option {
-        border: 1.5px solid var(--border-default); border-radius: var(--radius-lg);
+        border: 1.5px solid var(--border-default, #E2E8F0); border-radius: 12px;
         padding: 0.75rem 0.65rem; display: flex; align-items: center; gap: 0.5rem;
-        font-size: 0.84rem; font-weight: 700; cursor: pointer; min-height: 48px; background: #fff;
+        font-size: 0.84rem; font-weight: 700; cursor: pointer; min-height: 48px; background: #FFFFFF;
     }
-    .aic-cond-option input { width: 18px; height: 18px; accent-color: var(--accent-indigo); }
-    .aic-cond-option.is-selected { border-color: var(--accent-indigo); background: #EEF2FF; color: #3730A3; }
-    .aic-cond-option.cond-lost.is-selected { border-color: #EF4444; background: #FEF2F2; color: #991B1B; }
-    .aic-cond-option.cond-needs_repair.is-selected { border-color: #F97316; background: #FFF7ED; color: #9A3412; }
+    .aic-cond-option input { width: 18px; height: 18px; accent-color: var(--primary, #8B5CF6); }
+    .aic-cond-option.is-selected { border-color: var(--primary, #8B5CF6); background: var(--ui-accent-tint); color: var(--primary-dark, #7C3AED); }
+    .aic-cond-option.cond-lost.is-selected { border-color: var(--ui-danger, #DC2626); background: var(--ui-danger-bg); color: var(--ui-danger-dark); }
+    .aic-cond-option.cond-needs_repair.is-selected { border-color: #F97316; background: var(--ui-warn-bg); color: var(--ui-warn); }
 
     .aic-extra-row { margin-bottom: 0.6rem; }
     .aic-note-input {
-        width: 100%; height: 42px; padding: 0 0.75rem; border: 1px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif; font-size: 0.84rem;
+        width: 100%; height: 42px; padding: 0 0.75rem; border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 10px; font-family: 'Vazir', sans-serif; font-size: 0.84rem;
     }
     .aic-footer-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .aic-upload-btn {
-        display: inline-flex; align-items: center; gap: 0.4rem; height: 40px; padding: 0 0.85rem;
-        border-radius: var(--radius-md); border: 1px dashed var(--border-strong); background: #F8FAFC;
-        font-size: 0.8rem; font-weight: 700; color: var(--text-primary); cursor: pointer;
+        display: inline-flex; align-items: center; gap: 0.4rem; min-height: 42px; padding: 0 0.85rem;
+        border-radius: 10px; border: 1px dashed var(--border-strong, #CBD5E1); background: var(--gray-50, #F8FAFC);
+        font-size: 0.8rem; font-weight: 700; color: var(--text-primary, #0F172A); cursor: pointer;
     }
     .aic-upload-btn.is-disabled { opacity: 0.5; pointer-events: none; }
     .aic-evidence-preview {
-        display: inline-flex; align-items: center; gap: 0.4rem; height: 40px; padding: 0.2rem 0.6rem;
-        border: 1px solid #BBF7D0; background: #F0FDF4; border-radius: var(--radius-md);
-        font-size: 0.78rem; font-weight: 700; color: #166534; cursor: pointer; font-family: 'Vazir', sans-serif;
+        display: inline-flex; align-items: center; gap: 0.4rem; min-height: 42px; padding: 0.2rem 0.65rem;
+        border: 1px solid var(--ui-ok-border); background: var(--ui-ok-bg); border-radius: 10px;
+        font-size: 0.78rem; font-weight: 700; color: var(--ui-ok); cursor: pointer; font-family: 'Vazir', sans-serif;
     }
-    .aic-evidence-preview img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
+    .aic-evidence-preview img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
     .aic-save-btn {
-        margin-right: auto; height: 40px; padding: 0 0.9rem; border-radius: var(--radius-md);
-        border: none; background: var(--accent-indigo); color: #fff; font-family: 'Vazir', sans-serif;
-        font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
+        margin-right: auto; min-height: 42px; padding: 0 1rem; border-radius: 10px;
+        border: none; background: var(--primary, #8B5CF6); color: #FFFFFF; font-family: 'Vazir', sans-serif;
+        font-size: 0.84rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
     }
 
     .am-bottom-bar {
         position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
-        background: rgba(255,255,255,0.97); backdrop-filter: blur(10px);
-        border-top: 1px solid var(--border-default); padding: 0.7rem 1rem;
-        box-shadow: 0 -4px 20px rgba(15,23,42,0.08);
+        background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border-default, #E2E8F0); padding: 0.7rem 1rem;
+        box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
     }
     .am-bottom-inner {
         max-width: 780px; margin: 0 auto; display: flex; gap: 0.65rem;
     }
-    .am-bottom-inner .btn { flex: 1; justify-content: center; height: 48px; font-size: 0.88rem; }
-
-    /* Simple Modals */
-    .am-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
-        display: none; align-items: center; justify-content: center; padding: 1rem;
-    }
-    .am-modal-backdrop.is-open { display: flex; }
-    .am-modal {
-        background: #fff; border-radius: var(--radius-xl); width: 100%; max-width: 480px;
-        padding: 1.25rem; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;
-    }
+    .am-bottom-inner .ui-btn { flex: 1; height: 48px; font-size: 0.88rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="am-wrap">
-    <div class="am-top-header">
-        <div>
-            <h1 class="am-title">{{ audit.title }}</h1>
-            <div class="am-sub">
+    <header class="ui-topbar" style="background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0); border-radius: 16px; padding: 1rem 1.15rem;">
+        <div class="ui-heading">
+            <h1 class="ui-title" style="font-size: 1.08rem;">{{ audit.title }}</h1>
+            <p class="ui-subtitle">
                 <span><i class="fas fa-sitemap"></i> {{ audit.department.name }}</span>
-                <span>•</span>
+                <span class="ui-subtitle-dot"></span>
                 <span>{{ audit.get_audit_type_display }}</span>
-                <span>•</span>
+                <span class="ui-subtitle-dot"></span>
                 <span>{{ audit.get_status_display }}</span>
-            </div>
+            </p>
         </div>
-        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <div class="ui-topbar-actions">
             {% if audit.blind_count %}
-            <span class="am-blind-pill"><i class="fas fa-eye-slash"></i> شمارش کور فعال</span>
+            <span class="ui-pill is-accent"><i class="fas fa-eye-slash"></i> شمارش کور فعال</span>
             {% endif %}
             {% if is_manager and audit.status != 'in_progress' %}
-            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=audit.id %}" class="btn btn-success" style="height:38px; font-size:0.8rem;">
+            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=audit.id %}" class="ui-btn ui-btn-success is-lg">
                 <i class="fas fa-check-double"></i> بررسی مدیر
             </a>
             {% endif %}
-            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary" style="height:38px; font-size:0.8rem;">
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost is-lg">
                 <i class="fas fa-arrow-right"></i> لیست
             </a>
         </div>
-    </div>
+    </header>
 
     {% if audit.status == 'recount_requested' and audit.review_notes %}
-    <div class="am-alert-box am-alert-recount">
+    <div class="ui-banner is-warn">
         <i class="fas fa-exclamation-triangle" style="margin-top:0.2rem;"></i>
         <div>
             <div><strong>درخواست بازشماری از طرف مدیر:</strong></div>
@@ -237,7 +261,7 @@
     {% endif %}
 
     {% if not can_edit %}
-    <div class="am-alert-box am-alert-readonly">
+    <div class="ui-banner is-info">
         <i class="fas fa-lock" style="margin-top:0.2rem;"></i>
         <div>این جلسه انبارگردانی در وضعیت «{{ audit.get_status_display }}» قرار دارد و قابل ویرایش نیست.</div>
     </div>
@@ -245,15 +269,17 @@
 
     <div id="auditProgressHeader" class="am-progress-card" data-uncounted="{{ progress.uncounted_items }}">
         <div class="am-progress-meta">
-            <strong>{{ progress.counted_items }} از {{ progress.total_items }} قلم شمارش شده</strong>
-            <span>{{ progress.progress_pct }}%</span>
+            <strong class="ui-num">{{ progress.counted_items }} از {{ progress.total_items }} قلم شمارش شده</strong>
+            <span class="ui-num" style="font-weight:700;">{{ progress.progress_pct }}%</span>
         </div>
         <div class="am-progress-track">
             <div class="am-progress-fill" style="width: {{ progress.progress_pct }}%;"></div>
         </div>
         {% if progress.recount_items > 0 %}
-        <div class="am-recount-pill">
-            <i class="fas fa-redo"></i> {{ progress.recount_items }} قلم نیازمند بازشماری
+        <div style="margin-top:0.5rem;">
+            <span class="ui-pill is-warn ui-num">
+                <i class="fas fa-redo"></i> {{ progress.recount_items }} قلم نیازمند بازشماری
+            </span>
         </div>
         {% endif %}
     </div>
@@ -266,19 +292,22 @@
             <button type="button" class="am-chip" data-filter="recount" onclick="setAuditFilter('recount', this)">نیازمند بازشماری</button>
             {% endif %}
         </div>
-        <input type="search" id="auditLiveSearch" class="am-search-input"
-               placeholder="جستجوی نام کالا، کد یا پلاک..."
-               oninput="applyAuditFilters()">
+        <div class="ui-search" style="max-width:none;">
+            <i class="fas fa-search"></i>
+            <input type="search" id="auditLiveSearch" class="am-search-input"
+                   placeholder="جستجوی نام کالا، کد یا پلاک..."
+                   oninput="applyAuditFilters()">
+        </div>
     </div>
 
     <div id="auditCardsContainer">
         {% for card in cards %}
             {% include 'assets/partials/audit_item_card.html' %}
         {% empty %}
-        <div class="card">
-            <div class="empty-state">
+        <div class="ui-card">
+            <div class="ui-empty">
                 <i class="fas fa-box-open"></i>
-                <p>هیچ قلمی در این جلسه انبارگردانی ثبت نشده است.</p>
+                <p style="margin:0;">هیچ قلمی در این جلسه انبارگردانی ثبت نشده است.</p>
             </div>
         </div>
         {% endfor %}
@@ -288,10 +317,10 @@
 {% if can_edit %}
 <div class="am-bottom-bar">
     <div class="am-bottom-inner">
-        <button type="button" class="btn btn-secondary" onclick="openModal('unexpectedItemModal')">
+        <button type="button" class="ui-btn ui-btn-ghost" onclick="openModal('unexpectedItemModal')">
             <i class="fas fa-plus"></i> کالای خارج از لیست
         </button>
-        <button type="button" class="btn btn-success" onclick="openSubmitConfirmModal()">
+        <button type="button" class="ui-btn ui-btn-success" onclick="openSubmitConfirmModal()">
             <i class="fas fa-paper-plane"></i> ارسال برای تأیید مدیر
         </button>
     </div>
@@ -299,72 +328,83 @@
 {% endif %}
 
 <!-- مودال بزرگنمایی تصویر -->
-<div id="imageLightboxModal" class="am-modal-backdrop" onclick="closeModal('imageLightboxModal')">
-    <div class="am-modal" style="max-width:600px; text-align:center;" onclick="event.stopPropagation();">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-            <strong id="lightboxTitle">تصویر کالا</strong>
-            <button type="button" class="btn btn-secondary" style="height:34px; padding:0 0.75rem;" onclick="closeModal('imageLightboxModal')">بستن</button>
+<div id="imageLightboxModal" class="ui-modal-backdrop" onclick="closeModal('imageLightboxModal')">
+    <div class="ui-modal is-narrow" onclick="event.stopPropagation();">
+        <div class="ui-modal-head">
+            <strong id="lightboxTitle" class="ui-modal-title">تصویر کالا</strong>
+            <button type="button" class="ui-modal-close" onclick="closeModal('imageLightboxModal')" aria-label="بستن">&times;</button>
         </div>
-        <img id="lightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+        <div class="ui-modal-body" style="text-align:center;">
+            <img id="lightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+        </div>
     </div>
 </div>
 
 <!-- مودال ثبت کالای خارج از لیست -->
 {% if can_edit %}
-<div id="unexpectedItemModal" class="am-modal-backdrop" onclick="closeModal('unexpectedItemModal')">
-    <div class="am-modal" onclick="event.stopPropagation();">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h3 style="font-size:1rem; font-weight:800; margin:0;">ثبت کالای یافت‌شده خارج از لیست</h3>
-            <button type="button" class="btn btn-secondary" style="height:34px; padding:0 0.75rem;" onclick="closeModal('unexpectedItemModal')">بستن</button>
+<div id="unexpectedItemModal" class="ui-modal-backdrop" onclick="closeModal('unexpectedItemModal')">
+    <div class="ui-modal is-narrow" onclick="event.stopPropagation();">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title">ثبت کالای یافت‌شده خارج از لیست</h3>
+            <button type="button" class="ui-modal-close" onclick="closeModal('unexpectedItemModal')" aria-label="بستن">&times;</button>
         </div>
-        <form method="post" action="{% url 'asset_audit_add_unexpected' cafe_code=cafe_code audit_id=audit.id %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="form-group">
-                <label>انتخاب کالا از کاتالوگ *</label>
-                <select name="asset_id" class="form-control" required>
-                    <option value="">انتخاب کنید...</option>
-                    {% for asset in catalog_assets %}
-                    <option value="{{ asset.id }}">{{ asset.name }} ({{ asset.code }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
-                <div class="form-group">
-                    <label>تعداد سالم *</label>
-                    <input type="number" name="counted_healthy" min="0" value="1" class="form-control" required>
+        <div class="ui-modal-body">
+            <form method="post" action="{% url 'asset_audit_add_unexpected' cafe_code=cafe_code audit_id=audit.id %}" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:0.85rem;">
+                {% csrf_token %}
+                <div class="ui-field">
+                    <label class="ui-field-label">انتخاب کالا از کاتالوگ *</label>
+                    <select name="asset_id" class="ui-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for asset in catalog_assets %}
+                        <option value="{{ asset.id }}">{{ asset.name }} ({{ asset.code }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="form-group">
-                    <label>تعداد معیوب</label>
-                    <input type="number" name="counted_damaged" min="0" value="0" class="form-control">
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label class="ui-field-label">تعداد سالم *</label>
+                        <input type="number" name="counted_healthy" min="0" value="1" class="ui-input" required style="height:44px;">
+                    </div>
+                    <div class="ui-field">
+                        <label class="ui-field-label">تعداد معیوب</label>
+                        <input type="number" name="counted_damaged" min="0" value="0" class="ui-input" style="height:44px;">
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>توضیحات</label>
-                <input type="text" name="note" class="form-control" placeholder="توضیح درباره کالای یافت‌شده...">
-            </div>
-            <div class="form-group">
-                <label>عکس مدرک (اختیاری)</label>
-                <input type="file" name="evidence_photo" accept="image/*" class="form-control" style="padding-top:0.5rem;">
-            </div>
-            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">
-                <i class="fas fa-plus"></i> افزودن به لیست انبارگردانی
-            </button>
-        </form>
+                <div class="ui-field">
+                    <label class="ui-field-label">توضیحات</label>
+                    <input type="text" name="note" class="ui-input" placeholder="توضیح درباره کالای یافت‌شده..." style="height:44px;">
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">عکس مدرک (اختیاری)</label>
+                    <input type="file" name="evidence_photo" accept="image/*" class="ui-input" style="padding-top:0.5rem; height:44px;">
+                </div>
+                <button type="submit" class="ui-btn ui-btn-primary is-lg" style="width:100%;">
+                    <i class="fas fa-plus"></i> افزودن به لیست انبارگردانی
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- مودال تأیید ارسال انبارگردانی -->
-<div id="submitConfirmModal" class="am-modal-backdrop" onclick="closeModal('submitConfirmModal')">
-    <div class="am-modal" onclick="event.stopPropagation();">
-        <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem;">ارسال انبارگردانی برای تأیید مدیر</h3>
-        <p id="submitConfirmMessage" style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:1.1rem;"></p>
-        <form method="post" action="{% url 'asset_audit_submit' cafe_code=cafe_code audit_id=audit.id %}" style="display:flex; gap:0.65rem;">
-            {% csrf_token %}
-            <button type="button" class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeModal('submitConfirmModal')">بازگشت</button>
-            <button type="submit" class="btn btn-success" style="flex:1; justify-content:center;">
-                <i class="fas fa-check"></i> تأیید و ارسال
-            </button>
-        </form>
+<div id="submitConfirmModal" class="ui-modal-backdrop" onclick="closeModal('submitConfirmModal')">
+    <div class="ui-modal is-narrow" onclick="event.stopPropagation();">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title">ارسال انبارگردانی برای تأیید مدیر</h3>
+            <button type="button" class="ui-modal-close" onclick="closeModal('submitConfirmModal')" aria-label="بستن">&times;</button>
+        </div>
+        <div class="ui-modal-body">
+            <p id="submitConfirmMessage" style="font-size:0.9rem; color:var(--text-secondary); margin:0;"></p>
+        </div>
+        <div class="ui-modal-foot">
+            <form method="post" action="{% url 'asset_audit_submit' cafe_code=cafe_code audit_id=audit.id %}" style="display:flex; gap:0.65rem; width:100%;">
+                {% csrf_token %}
+                <button type="button" class="ui-btn ui-btn-ghost is-lg" style="flex:1;" onclick="closeModal('submitConfirmModal')">بازگشت</button>
+                <button type="submit" class="ui-btn ui-btn-success is-lg" style="flex:1;">
+                    <i class="fas fa-check"></i> تأیید و ارسال
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 {% endif %}

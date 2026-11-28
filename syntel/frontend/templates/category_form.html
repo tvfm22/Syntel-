@@ -3,112 +3,118 @@
 
 {% block title %}{% if category %}ویرایش دسته‌بندی{% else %}ایجاد دسته‌بندی جدید{% endif %} - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.category-form-container { max-width: 680px; margin: 0 auto; }
-.category-form {
-    background: #fff; padding: 1.75rem; border-radius: var(--radius-xl);
-    border: 1px solid var(--gray-200); box-shadow: var(--shadow-xs);
+.ui-check-card {
+    background: rgba(139, 92, 246, 0.06);
+    border: 1px solid rgba(139, 92, 246, 0.24);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
 }
-.form-group { margin-bottom: 1.2rem; }
-.form-label { display: block; font-weight: 700; color: var(--dark); margin-bottom: 0.4rem; font-size: 0.85rem; }
-.form-input, .form-textarea {
-    width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border-medium);
-    border-radius: 10px; font-size: 0.88rem; font-family: inherit;
-    background: var(--bg-input); color: var(--dark); transition: all 0.15s; box-sizing: border-box;
+.ui-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--primary-dark, #7C3AED);
+    margin: 0;
 }
-.form-input:focus, .form-textarea:focus {
-    outline: none; border-color: var(--primary); background: #fff;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+.ui-check-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary, #8B5CF6);
+    margin: 0;
 }
-.form-textarea { resize: vertical; min-height: 90px; }
-.form-help { color: var(--gray-500); font-size: 0.78rem; margin-top: 0.35rem; }
-.form-actions {
-    display: flex; gap: 0.75rem; justify-content: flex-end;
-    margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
+.error-message {
+    color: var(--ui-danger, #DC2626);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    font-weight: 600;
 }
-.btn-submit, .btn-cancel {
-    padding: 0.65rem 1.4rem; border-radius: 10px; text-decoration: none;
-    font-weight: 700; font-size: 0.86rem; font-family: inherit; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 0.4rem;
-}
-.btn-submit { background: var(--primary); color: #fff; border: none; }
-.btn-submit:hover { background: var(--primary-dark); }
-.btn-cancel { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
-.btn-cancel:hover { background: var(--gray-200); color: var(--dark); }
-.required { color: var(--danger); }
-.error-message { color: var(--danger); font-size: 0.8rem; margin-top: 0.35rem; font-weight: 600; }
 </style>
+{% endblock %}
 
-<div class="category-form-container">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-layer-group"></i></div>
-            <div>
-                <h1 class="ph-title">{% if category %}ویرایش دسته‌بندی{% else %}ایجاد دسته‌بندی جدید{% endif %}</h1>
-                <p class="page-sub">{% if category %}اطلاعات دسته‌بندی را ویرایش کنید{% else %}دسته‌بندی جدیدی برای گروه‌بندی کالاها تعریف کنید{% endif %}</p>
-            </div>
+{% block content %}
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-layer-group" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if category %}ویرایش دسته‌بندی{% else %}ایجاد دسته‌بندی جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if category %}اطلاعات دسته‌بندی را ویرایش کنید{% else %}دسته‌بندی جدیدی برای گروه‌بندی کالاها تعریف کنید{% endif %}
+            </p>
         </div>
-        <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
-    <form method="POST" class="category-form">
+    <form method="POST" class="ui-form-card category-form">
         {% csrf_token %}
 
         {% if error %}
-        <div class="error-message" style="display:block;margin-bottom:1.15rem;padding:0.85rem 1rem;background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;color:#B91C1C;font-size:0.85rem;">
-            <i class="fas fa-triangle-exclamation"></i> {{ error }}
+        <div class="ui-banner is-danger" style="margin-bottom:1.1rem;">
+            <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
+            <span>{{ error }}</span>
         </div>
         {% endif %}
 
-        <div class="form-group">
-            <label for="parent" class="form-label">دسته‌بندی والد (اختیاری)</label>
-            <select id="parent" name="parent" class="form-input">
-                <option value="">-- بدون والد (دسته‌بندی اصلی) --</option>
-                {% for parent_cat in parent_categories %}
-                <option value="{{ parent_cat.id }}"
-                        {% if category and category.parent_id == parent_cat.id %}selected
-                        {% elif form_data and form_data.parent == parent_cat.id|stringformat:"s" %}selected{% endif %}>
-                    {{ parent_cat.name }}
-                </option>
-                {% endfor %}
-            </select>
-            <div class="form-help">در صورت انتخاب، این دسته‌بندی به عنوان زیردسته قرار می‌گیرد</div>
-        </div>
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="parent" class="ui-field-label">دسته‌بندی والد (اختیاری)</label>
+                <select id="parent" name="parent" class="ui-select">
+                    <option value="">-- بدون والد (دسته‌بندی اصلی) --</option>
+                    {% for parent_cat in parent_categories %}
+                    <option value="{{ parent_cat.id }}"
+                            {% if category and category.parent_id == parent_cat.id %}selected
+                            {% elif form_data and form_data.parent == parent_cat.id|stringformat:"s" %}selected{% endif %}>
+                        {{ parent_cat.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <span class="ui-field-hint">در صورت انتخاب، این دسته‌بندی به عنوان زیردسته قرار می‌گیرد</span>
+            </div>
 
-        <div class="form-group">
-            <label for="name" class="form-label">نام دسته‌بندی <span class="required">*</span></label>
-            <input type="text" id="name" name="name" class="form-input"
-                   value="{% if category %}{{ category.name }}{% elif form_data %}{{ form_data.name }}{% endif %}" required>
-            <div class="form-help">مثال: مواد غذایی، نوشیدنی‌ها، لبنیات، میوه و سبزیجات</div>
-        </div>
+            <div class="ui-field">
+                <label for="name" class="ui-field-label">نام دسته‌بندی <span style="color:var(--ui-danger);">*</span></label>
+                <input type="text" id="name" name="name" class="ui-input"
+                       value="{% if category %}{{ category.name }}{% elif form_data %}{{ form_data.name }}{% endif %}" required>
+                <span class="ui-field-hint">مثال: مواد غذایی، نوشیدنی‌ها، لبنیات، میوه و سبزیجات</span>
+            </div>
 
-        <div class="form-group">
-            <label for="description" class="form-label">توضیحات</label>
-            <textarea id="description" name="description" class="form-textarea"
-                      placeholder="توضیحات دسته‌بندی را وارد کنید...">{% if category %}{{ category.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
-            <div class="form-help">توضیحات اختیاری برای درک بهتر دسته‌بندی</div>
-        </div>
+            <div class="ui-field">
+                <label for="description" class="ui-field-label">توضیحات</label>
+                <textarea id="description" name="description" class="ui-textarea"
+                          placeholder="توضیحات دسته‌بندی را وارد کنید...">{% if category %}{{ category.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
+                <span class="ui-field-hint">توضیحات اختیاری برای درک بهتر دسته‌بندی</span>
+            </div>
 
-        <div class="form-group" style="background:var(--primary-light);border:1px solid #C4B5FD;border-radius:10px;padding:0.9rem 1rem;">
-            <label for="requires_recipe" class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;color:var(--primary-dark);">
-                <input type="checkbox" id="requires_recipe" name="requires_recipe"
-                       style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);"
-                       {% if category and category.requires_recipe %}checked
-                       {% elif not category and form_data.requires_recipe %}checked{% endif %}>
-                نیازمند استفاده در رسپی (مواد غذایی)
-            </label>
-            <div class="form-help" style="margin-top:6px;">
-                اگر فعال باشد، کالاهای این دسته به‌عنوان ماده اولیه در رسپی‌های منو (بهای تمام شده) مصرف می‌شوند.
+            <div class="ui-check-card">
+                <label for="requires_recipe" class="ui-check-label">
+                    <input type="checkbox" id="requires_recipe" name="requires_recipe"
+                           {% if category and category.requires_recipe %}checked
+                           {% elif not category and form_data.requires_recipe %}checked{% endif %}>
+                    <span>نیازمند استفاده در رسپی (مواد غذایی)</span>
+                </label>
+                <div class="ui-field-hint" style="margin-top:0.4rem;">
+                    اگر فعال باشد، کالاهای این دسته به‌عنوان ماده اولیه در رسپی‌های منو (بهای تمام شده) مصرف می‌شوند.
+                </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
-            <button type="submit" class="btn-submit">
-                <i class="fas fa-check"></i> {% if category %}ذخیره تغییرات{% else %}ایجاد دسته‌بندی{% endif %}
+        <div class="ui-form-actions">
+            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>{% if category %}ذخیره تغییرات{% else %}ایجاد دسته‌بندی{% endif %}</span>
             </button>
         </div>
     </form>

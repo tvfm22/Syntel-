@@ -3,76 +3,109 @@
 
 {% block title %}اموال پلاک‌دار و تجهیزات - Kuker{% endblock %}
 
+{% block extra_css %}
+<style>
+    .aul-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; align-items: end; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="max-width:1360px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-microchip"></i></div>
-            <div class="ph-title">
-                <h1>مدیریت تجهیزات پلاک‌دار (Serialized)</h1>
-                <div class="page-sub">پیگیری تک‌تک دستگاه‌ها، گارانتی، وضعیت سلامت و تعمیرات</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-microchip" style="color: var(--primary, #8B5CF6);"></i>
+                مدیریت تجهیزات پلاک‌دار (Serialized)
+            </h1>
+            <p class="ui-subtitle">پیگیری تک‌تک دستگاه‌ها، گارانتی، وضعیت سلامت و تعمیرات</p>
         </div>
-        <div style="display:flex; gap:0.55rem;">
-            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
             {% if is_manager %}
-            <a href="{% url 'asset_unit_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> ثبت پلاک جدید</a>
+            <a href="{% url 'asset_unit_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary"><i class="fas fa-plus"></i> ثبت پلاک جدید</a>
             {% endif %}
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-sitemap"></i> دسته‌بندی‌ها</a>
+            {% endif %}
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-hourglass-half"></i> کارتابل تأیید</a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-file-invoice"></i> ورود از فاکتور</a>
+            {% endif %}
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+            {% endif %}
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">جستجو</label>
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="کد پلاک، سریال یا نام تجهیز...">
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="aul-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">جستجو</label>
+                    <div class="ui-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="q" value="{{ q }}" class="ui-input" placeholder="کد پلاک، سریال یا نام تجهیز...">
+                    </div>
+                </div>
+                {% if is_manager %}
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_dept == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="ui-field">
+                    <label class="ui-field-label">وضعیت</label>
+                    <select name="status" class="ui-select">
+                        <option value="">همه</option>
+                        {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="ui-btn ui-btn-primary">فیلتر</button>
             </div>
-            {% if is_manager %}
-            <div class="filter-group">
-                <label class="filter-label">سکشن</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_dept == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="filter-group">
-                <label class="filter-label">وضعیت</label>
-                <select name="status" class="filter-select">
-                    <option value="">همه</option>
-                    {% for val, label in status_choices %}
-                    <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">فیلتر</button>
         </div>
     </form>
 
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست تجهیزات پلاک‌دار ({{ units|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> فهرست تجهیزات پلاک‌دار ({{ units|length }})</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>کد پلاک</th><th>تجهیز</th><th>سکشن</th><th>سریال</th><th>پایان گارانتی</th><th>وضعیت</th><th>جزئیات</th></tr></thead>
                 <tbody>
                     {% for u in units %}
                     <tr>
-                        <td><span class="badge badge-primary">{{ u.asset_tag }}</span></td>
+                        <td><span class="ui-pill is-accent ui-num">{{ u.asset_tag }}</span></td>
                         <td><strong>{{ u.asset.name }}</strong></td>
                         <td>{{ u.department.name|default:'—' }}</td>
-                        <td>{{ u.serial_number|default:'—' }}</td>
-                        <td>{% if u.warranty_until %}{{ u.warranty_until|jalali_date }}{% else %}—{% endif %}</td>
-                        <td><span class="badge {% if u.status == 'active' %}badge-success{% elif u.status in 'lost,disposed' %}badge-danger{% else %}badge-warning{% endif %}">{{ u.get_status_display }}</span></td>
-                        <td><a href="{% url 'asset_unit_detail' cafe_code=cafe_code pk=u.id %}" class="btn btn-secondary" style="height:32px; font-size:0.78rem;">مشاهده</a></td>
+                        <td class="ui-num">{{ u.serial_number|default:'—' }}</td>
+                        <td class="ui-num">{% if u.warranty_until %}{{ u.warranty_until|jalali_date }}{% else %}—{% endif %}</td>
+                        <td><span class="ui-pill {% if u.status == 'active' %}is-ok{% elif u.status in 'lost,disposed' %}is-danger{% else %}is-warn{% endif %}">{{ u.get_status_display }}</span></td>
+                        <td><a href="{% url 'asset_unit_detail' cafe_code=cafe_code pk=u.id %}" class="ui-row-action">مشاهده</a></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" style="text-align:center; padding:1.5rem;">پلاکی ثبت نشده است.</td></tr>
+                    <tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">پلاکی ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

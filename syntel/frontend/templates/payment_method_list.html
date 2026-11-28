@@ -3,272 +3,148 @@
 
 {% block title %}مدیریت محل‌های پرداخت{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.payment-location-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px;
-}
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-.page-title {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}
-.header-actions { display: flex; gap: 10px; }
-.btn-add {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-add:hover {
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102,126,234,0.4);
-    text-decoration: none;
-}
-.btn-back {
-    background: #6c757d;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-back:hover {
-    color: white;
-    background: #5a6268;
-    transform: translateY(-2px);
-    text-decoration: none;
-}
-.locations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 20px;
-}
-.location-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-.location-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-.location-card-header {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    color: white;
-    padding: 18px 15px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.location-card-icon { font-size: 1.8rem; opacity: 0.9; }
-.location-card-name { font-size: 1.15rem; font-weight: bold; margin: 0; }
-.location-card-code { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
-.location-card-body { padding: 15px; }
-.location-description {
-    color: #666;
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-    line-height: 1.5;
-}
-.location-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 15px;
-}
-.badge-feature {
-    background: #e8f5e9;
-    color: #2e7d32;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.badge-status-active {
-    background: #28a745;
-    color: white;
-    padding: 3px 12px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.badge-status-inactive {
-    background: #6c757d;
-    color: white;
-    padding: 3px 12px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.location-card-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    padding-top: 10px;
-    border-top: 1px solid #f0f0f0;
-}
-.btn-edit {
-    background: #ffc107;
-    color: #212529;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-.btn-edit:hover {
-    background: #e0a800;
-    color: #212529;
-    transform: translateY(-1px);
-    text-decoration: none;
-}
-.empty-state {
-    text-align: center;
-    padding: 70px 20px;
-    color: #666;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-}
-.empty-state .empty-icon {
-    font-size: 4rem;
-    color: #ccc;
-    margin-bottom: 20px;
-    display: block;
-}
-.empty-state h3 { font-size: 1.5rem; margin-bottom: 10px; color: #333; }
-.empty-state p { font-size: 1rem; margin-bottom: 25px; color: #888; }
-@media (max-width: 768px) {
-    .payment-location-container { padding: 15px; }
-    .page-header { flex-direction: column; gap: 15px; text-align: center; }
-    .header-actions { flex-wrap: wrap; justify-content: center; }
-    .locations-grid { grid-template-columns: 1fr; }
-}
+    .pml-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+        gap: 1rem;
+    }
+    .pml-card {
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .pml-card:hover {
+        border-color: var(--ui-accent-border, rgba(139, 92, 246, 0.28));
+    }
+    .pml-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: var(--ui-accent-tint);
+        color: var(--primary-dark, #7C3AED);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    .pml-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem 1.15rem;
+    }
+    .pml-desc {
+        font-size: 0.82rem;
+        color: var(--text-secondary, #64748B);
+        line-height: 1.55;
+        margin: 0;
+    }
+    .pml-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+    .pml-foot {
+        margin-top: auto;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-light, #F1F5F9);
+        display: flex;
+        justify-content: flex-end;
+    }
 </style>
+{% endblock %}
 
-<div class="payment-location-container">
-    <div class="page-header">
-        <h1 class="page-title">
-            <i class="fas fa-map-marker-alt"></i>
-            مدیریت محل‌های پرداخت
-        </h1>
-        <div class="header-actions">
-            <a href="{% url 'payment_location_create' cafe_code=cafe_code %}" class="btn-add">
-                <i class="fas fa-plus"></i> محل پرداخت جدید
-            </a>
-            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="btn-back">
+{% block content %}
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-map-marker-alt" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                مدیریت محل‌های پرداخت
+            </h1>
+            <p class="ui-subtitle">تعریف صندوق‌ها، کارتخوان‌ها و حساب‌های قابل انتخاب در پرداخت‌ها</p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'finance_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> بازگشت
             </a>
+            <a href="{% url 'payment_location_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> محل پرداخت جدید
+            </a>
         </div>
-    </div>
+    </header>
 
     {% if payment_methods %}
-    <div class="locations-grid">
+    <div class="pml-grid">
         {% for location in payment_methods %}
-        <div class="location-card">
-            <div class="location-card-header">
-                <div class="location-card-icon">
-                    {% if location.icon_class %}
-                        <i class="{{ location.icon_class }}"></i>
-                    {% else %}
-                        <i class="fas fa-map-marker-alt"></i>
-                    {% endif %}
+        <article class="ui-card pml-card">
+            <div class="ui-card-head">
+                <div style="display:flex;align-items:center;gap:0.7rem;min-width:0;">
+                    <div class="pml-icon">
+                        {% if location.icon_class %}
+                            <i class="{{ location.icon_class }}"></i>
+                        {% else %}
+                            <i class="fas fa-map-marker-alt"></i>
+                        {% endif %}
+                    </div>
+                    <div style="min-width:0;">
+                        <div style="font-weight:800;font-size:0.95rem;color:var(--text-primary);">{{ location.name }}</div>
+                        {% if location.code %}
+                        <div style="font-size:0.73rem;color:var(--text-muted);" class="ui-num">کد: {{ location.code }}</div>
+                        {% endif %}
+                    </div>
                 </div>
-                <div>
-                    <p class="location-card-name">{{ location.name }}</p>
-                    {% if location.code %}
-                    <p class="location-card-code">کد: {{ location.code }}</p>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="location-card-body">
-                {% if location.description %}
-                <p class="location-description">{{ location.description }}</p>
+                {% if location.is_active %}
+                <span class="ui-pill is-ok"><span class="ui-dot"></span> فعال</span>
                 {% else %}
-                <p class="location-description text-muted">—</p>
+                <span class="ui-pill is-muted"><span class="ui-dot"></span> غیرفعال</span>
                 {% endif %}
+            </div>
 
-                <div class="location-badges">
-                    {% if location.is_active %}
-                    <span class="badge-status-active"><i class="fas fa-check-circle"></i> فعال</span>
-                    {% else %}
-                    <span class="badge-status-inactive"><i class="fas fa-times-circle"></i> غیرفعال</span>
-                    {% endif %}
+            <div class="pml-body">
+                <p class="pml-desc">{{ location.description|default:"—" }}</p>
+
+                <div class="pml-badges">
                     {% if location.requires_reference %}
-                    <span class="badge-feature"><i class="fas fa-hashtag"></i> شماره مرجع</span>
+                    <span class="ui-chip"><i class="fas fa-hashtag"></i> شماره مرجع</span>
                     {% endif %}
                     {% if location.requires_bank_info %}
-                    <span class="badge-feature"><i class="fas fa-university"></i> اطلاعات بانکی</span>
+                    <span class="ui-chip"><i class="fas fa-university"></i> اطلاعات بانکی</span>
                     {% endif %}
                     {% if location.requires_check_info %}
-                    <span class="badge-feature"><i class="fas fa-file-alt"></i> اطلاعات چک</span>
+                    <span class="ui-chip"><i class="fas fa-file-alt"></i> اطلاعات چک</span>
                     {% endif %}
                     {% if location.requires_card_info %}
-                    <span class="badge-feature"><i class="fas fa-credit-card"></i> اطلاعات کارت</span>
+                    <span class="ui-chip"><i class="fas fa-credit-card"></i> اطلاعات کارت</span>
                     {% endif %}
                 </div>
 
-                <div class="location-card-actions">
-                    <a href="{% url 'payment_location_update' cafe_code=cafe_code method_id=location.id %}" class="btn-edit">
+                <div class="pml-foot">
+                    <a href="{% url 'payment_location_update' cafe_code=cafe_code method_id=location.id %}" class="ui-btn ui-btn-soft is-sm">
                         <i class="fas fa-edit"></i> ویرایش
                     </a>
                 </div>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
-
     {% else %}
-    <div class="empty-state">
-        <i class="fas fa-map-marker-alt empty-icon"></i>
-        <h3>هیچ محل پرداختی یافت نشد</h3>
-        <p>برای شروع، اولین محل پرداخت را اضافه کنید.</p>
-        <a href="{% url 'payment_location_create' cafe_code=cafe_code %}" class="btn-add" style="display: inline-flex;">
-            <i class="fas fa-plus"></i> افزودن محل پرداخت
-        </a>
-    </div>
+    <section class="ui-card">
+        <div class="ui-empty">
+            <i class="fas fa-map-marker-alt"></i>
+            <div style="font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">هیچ محل پرداختی یافت نشد</div>
+            <div style="margin-bottom:1.1rem;">برای شروع، اولین محل پرداخت را اضافه کنید.</div>
+            <a href="{% url 'payment_location_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> افزودن محل پرداخت
+            </a>
+        </div>
+    </section>
     {% endif %}
+
 </div>
 {% endblock %}
-

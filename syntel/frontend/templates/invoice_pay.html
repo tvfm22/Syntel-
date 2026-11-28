@@ -3,113 +3,120 @@
 
 {% block title %}پرداخت فاکتور {{ invoice.invoice_number }}{% endblock %}
 
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">پرداخت فاکتور {{ invoice.invoice_number }}</h3>
-                    <div class="card-tools">
-                        <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به جزئیات فاکتور
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Invoice Summary -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h5>خلاصه فاکتور</h5>
-                                    <p><strong>شماره فاکتور:</strong> {{ invoice.invoice_number }}</p>
-                                    <p><strong>تأمین‌کننده:</strong> {{ invoice.purchase_order.supplier_name }}</p>
-                                    <p><strong>مجموع فاکتور:</strong> {{ invoice.total_amount|floatformat:0 }} ریال</p>
-                                    <p><strong>مانده پرداخت:</strong> {{ invoice.remaining_amount|floatformat:0 }} ریال</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card bg-info">
-                                <div class="card-body text-white">
-                                    <h5>وضعیت پرداخت فعلی</h5>
-                                    <p class="mb-0">{{ invoice.get_payment_status_display }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="payment_amount">مبلغ پرداخت *</label>
-                                    <input type="text" class="form-control js-comma" id="payment_amount" inputmode="decimal"
-                                           name="payment_amount" value="{{ invoice.remaining_amount|trim_decimal:2 }}" required>
-                                    <small class="form-text text-muted">حداکثر مبلغ قابل پرداخت: {{ invoice.remaining_amount|floatformat:0 }} ریال</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="payment_date">تاریخ پرداخت *</label>
-                                    {% include 'includes/jalali_date_group.html' with jd_name='payment_date' jd_id='payment_date' jd_value=today_jalali|default:'' %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="payment_location">محل پرداخت</label>
-                                    <select class="form-control" id="payment_location" name="payment_location">
-                                        {% for method in payment_locations %}
-                                        <option value="{{ method.id }}">{{ method.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="payment_notes">یادداشت‌های پرداخت</label>
-                                    <textarea class="form-control" id="payment_notes" name="payment_notes" rows="3" 
-                                              placeholder="شماره چک، شماره انتقال، توضیحات دیگر..."></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <strong>توجه:</strong> با تأیید این پرداخت، وضعیت فاکتور به "پرداخت شده" تغییر خواهد کرد و دیگر قابل ویرایش نخواهد بود.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-success btn-lg">
-                                    <i class="fas fa-money-bill-wave"></i> تأیید پرداخت
-                                </button>
-                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="btn btn-secondary btn-lg ml-2">انصراف</a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
+<style>
+    .ui-field .form-control {
+        width: 100%;
+        height: 38px;
+        padding: 0 0.85rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 10px;
+        background: var(--bg-card, #FFFFFF);
+        color: var(--text-primary, #0F172A);
+        font-family: 'Vazir', sans-serif;
+        font-size: 0.83rem;
+    }
+    .ui-field .form-control:focus {
+        outline: none;
+        border-color: var(--primary, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ui-page is-narrow">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-money-bill-wave" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                پرداخت فاکتور <span class="ui-num">{{ invoice.invoice_number }}</span>
+            </h1>
+            <div class="ui-subtitle">
+                <span>{{ invoice.purchase_order.supplier_name }}</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-pill is-info">{{ invoice.get_payment_status_display }}</span>
+            </div>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به جزئیات فاکتور</span>
+            </a>
+        </div>
+    </header>
+
+    <section class="ui-metrics-strip cols-3" aria-label="خلاصه فاکتور">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">شماره فاکتور</span>
+            <div class="ui-metric-val ui-num" style="font-size:1.05rem;">{{ invoice.invoice_number }}</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع فاکتور</span>
+            <div class="ui-metric-val ui-num" style="font-size:1.1rem;">{{ invoice.total_amount|floatformat:0 }}<span class="ui-metric-unit">ریال</span></div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مانده پرداخت</span>
+            <div class="ui-metric-val is-green ui-num" style="font-size:1.1rem;">{{ invoice.remaining_amount|floatformat:0 }}<span class="ui-metric-unit">ریال</span></div>
+        </div>
+    </section>
+
+    <div class="ui-form-card">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="ui-form-section">
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="payment_amount">مبلغ پرداخت *</label>
+                        <input type="text" class="form-control js-comma ui-num" id="payment_amount" inputmode="decimal"
+                               name="payment_amount" value="{{ invoice.remaining_amount|trim_decimal:2 }}" required>
+                        <span class="ui-field-hint ui-num">حداکثر مبلغ قابل پرداخت: {{ invoice.remaining_amount|floatformat:0 }} ریال</span>
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="payment_date">تاریخ پرداخت *</label>
+                        {% include 'includes/jalali_date_group.html' with jd_name='payment_date' jd_id='payment_date' jd_value=today_jalali|default:'' %}
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="payment_location">محل پرداخت</label>
+                        <select class="ui-select" id="payment_location" name="payment_location">
+                            {% for method in payment_locations %}
+                            <option value="{{ method.id }}">{{ method.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-field-label" for="payment_notes">یادداشت‌های پرداخت</label>
+                        <textarea class="ui-textarea" id="payment_notes" name="payment_notes" rows="2"
+                                  style="min-height:68px;" placeholder="شماره چک، شماره انتقال، توضیحات دیگر..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ui-banner is-warn" style="margin-bottom:1rem;">
+                <i class="fas fa-exclamation-triangle" style="margin-top:0.2rem;"></i>
+                <div>
+                    <strong>توجه:</strong> با تأیید این پرداخت، وضعیت فاکتور به "پرداخت شده" تغییر خواهد کرد و دیگر قابل ویرایش نخواهد بود.
+                </div>
+            </div>
+
+            <div class="ui-form-actions">
+                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-btn ui-btn-ghost">انصراف</a>
+                <button type="submit" class="ui-btn ui-btn-success is-lg">
+                    <i class="fas fa-money-bill-wave"></i> تأیید پرداخت
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/jalali_date_group.js' %}"></script>
 {% endblock %}
-

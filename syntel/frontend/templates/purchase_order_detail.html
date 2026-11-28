@@ -3,426 +3,456 @@
 
 {% block title %}جزئیات سفارش خرید{% endblock %}
 
+{% block extra_css %}
+<style>
+    .po-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+    @media (max-width: 768px) {
+        .po-detail-grid { grid-template-columns: 1fr; }
+    }
+    .po-kv-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .po-kv-table th, .po-kv-table td {
+        padding: 0.55rem 0.75rem;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
+        text-align: right;
+    }
+    .po-kv-table tr:last-child th, .po-kv-table tr:last-child td { border-bottom: none; }
+    .po-kv-table th {
+        width: 42%;
+        color: var(--text-secondary, #64748B);
+        font-weight: 700;
+        background: var(--gray-50, #F8FAFC);
+    }
+
+    .timeline {
+        position: relative;
+        padding-right: 1.75rem;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        right: 7px;
+        top: 6px;
+        bottom: 6px;
+        width: 2px;
+        background: var(--border-default, #E2E8F0);
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 0.9rem;
+    }
+    .timeline-item:last-child { margin-bottom: 0; }
+    .timeline-marker {
+        position: absolute;
+        right: -1.75rem;
+        top: 0.9rem;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid #FFFFFF;
+        box-shadow: 0 0 0 1px var(--border-default, #E2E8F0);
+        background: var(--primary, #8B5CF6);
+    }
+    .timeline-marker.is-ok { background: var(--ui-ok, #047857); }
+    .timeline-marker.is-warn { background: #F59E0B; }
+    .timeline-marker.is-info { background: var(--ui-info, #2563EB); }
+    .timeline-marker.is-danger { background: var(--ui-danger, #DC2626); }
+    .timeline-content {
+        background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-light, #F1F5F9);
+        border-right: 3px solid var(--primary, #8B5CF6);
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+    }
+    .timeline-title { font-size: 0.86rem; font-weight: 800; color: var(--text-primary, #0F172A); margin: 0 0 0.2rem; }
+    .timeline-text { font-size: 0.8rem; color: var(--text-secondary, #64748B); margin: 0 0 0.25rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="card-title mb-0">جزئیات سفارش خرید {{ purchase_order.order_number }}</h4>
-                    <div>
-                        {% if purchase_order.status == 'draft' %}
-                            <a href="{% url 'purchase_order_update' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-edit"></i> ویرایش
-                            </a>
-                        {% endif %}
-                        {% if purchase_order.can_be_sent %}
-                            <a href="{% url 'purchase_order_send' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
-                                <i class="fas fa-paper-plane"></i> ارسال
-                            </a>
-                        {% elif purchase_order.can_be_confirmed %}
-                            <a href="{% url 'purchase_order_confirm' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-info btn-sm" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
-                                <i class="fas fa-check"></i> تأیید
-                            </a>
-                        {% elif purchase_order.status == 'confirmed' %}
-                            <a href="{% url 'purchase_order_mark_in_transit' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-primary btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
-                                <i class="fas fa-truck"></i> در حال حمل
-                            </a>
-                        {% elif purchase_order.can_be_delivered %}
-                            <a href="{% url 'purchase_order_deliver' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm">
-                                <i class="fas fa-box-open"></i> تحویل
-                            </a>
-                        {% elif purchase_order.can_be_inspected %}
-                            <a href="{% url 'purchase_order_inspect' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-search"></i> بازرسی
-                            </a>
-                        {% elif purchase_order.can_be_completed %}
-                            <a href="{% url 'purchase_order_complete' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-success btn-sm" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
-                                <i class="fas fa-check-double"></i> تکمیل
-                            </a>
-                        {% endif %}
-                        {% if purchase_order.status == 'draft' or purchase_order.status == 'sent' %}
-                            <a href="{% url 'purchase_order_cancel' cafe_code=cafe_code order_id=purchase_order.id %}" class="btn btn-danger btn-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
-                                <i class="fas fa-times"></i> لغو
-                            </a>
-                        {% endif %}
-                    </div>
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice" style="color:var(--primary, #8B5CF6);"></i>
+                <span>جزئیات سفارش خرید <span class="ui-num">{{ purchase_order.order_number }}</span></span>
+            </h1>
+            <div class="ui-subtitle">
+                <span class="ui-pill
+                    {% if purchase_order.status == 'draft' %}is-muted
+                    {% elif purchase_order.status == 'sent' or purchase_order.status == 'inspected' %}is-warn
+                    {% elif purchase_order.status == 'confirmed' %}is-info
+                    {% elif purchase_order.status == 'in_transit' %}is-accent
+                    {% elif purchase_order.status == 'delivered' or purchase_order.status == 'completed' %}is-ok
+                    {% elif purchase_order.status == 'cancelled' %}is-danger
+                    {% else %}is-muted{% endif %}">
+                    وضعیت: {{ purchase_order.get_status_display }}
+                </span>
+                {% if purchase_order.is_overdue %}
+                    <span class="ui-pill is-danger">تأخیر در تحویل</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="ui-topbar-actions">
+            {% if purchase_order.status == 'draft' %}
+                <a href="{% url 'purchase_order_update' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-soft is-sm">
+                    <i class="fas fa-edit"></i>
+                    <span>ویرایش</span>
+                </a>
+            {% endif %}
+            {% if purchase_order.can_be_sent %}
+                <a href="{% url 'purchase_order_send' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-success is-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را ارسال کنید؟')">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>ارسال</span>
+                </a>
+            {% elif purchase_order.can_be_confirmed %}
+                <a href="{% url 'purchase_order_confirm' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-primary is-sm" onclick="return confirm('آیا مطمئن هستید که تأمین‌کننده سفارش را تأیید کرده است؟')">
+                    <i class="fas fa-check"></i>
+                    <span>تأیید</span>
+                </a>
+            {% elif purchase_order.status == 'confirmed' %}
+                <a href="{% url 'purchase_order_mark_in_transit' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-primary is-sm" onclick="return confirm('آیا مطمئن هستید که سفارش در حال حمل است؟')">
+                    <i class="fas fa-truck"></i>
+                    <span>در حال حمل</span>
+                </a>
+            {% elif purchase_order.can_be_delivered %}
+                <a href="{% url 'purchase_order_deliver' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-success is-sm">
+                    <i class="fas fa-box-open"></i>
+                    <span>تحویل</span>
+                </a>
+            {% elif purchase_order.can_be_inspected %}
+                <a href="{% url 'purchase_order_inspect' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-soft is-sm">
+                    <i class="fas fa-search"></i>
+                    <span>بازرسی</span>
+                </a>
+            {% elif purchase_order.can_be_completed %}
+                <a href="{% url 'purchase_order_complete' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-success is-sm" onclick="return confirm('آیا مطمئن هستید که سفارش تکمیل شده است؟')">
+                    <i class="fas fa-check-double"></i>
+                    <span>تکمیل</span>
+                </a>
+            {% endif %}
+            {% if purchase_order.status == 'draft' or purchase_order.status == 'sent' %}
+                <a href="{% url 'purchase_order_cancel' cafe_code=cafe_code order_id=purchase_order.id %}" class="ui-btn ui-btn-danger-soft is-sm" onclick="return confirm('آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟')">
+                    <i class="fas fa-times"></i>
+                    <span>لغو</span>
+                </a>
+            {% endif %}
+            <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost is-sm">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به لیست</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Order & Supplier Info -->
+    <div class="po-detail-grid">
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-circle-info"></i> اطلاعات سفارش</h2>
+            </div>
+            <div class="ui-card-body" style="padding:0;">
+                <table class="po-kv-table">
+                    <tr>
+                        <th>شماره سفارش:</th>
+                        <td class="ui-num" style="font-weight:700;">{{ purchase_order.order_number }}</td>
+                    </tr>
+                    <tr>
+                        <th>تاریخ ایجاد:</th>
+                        <td class="ui-num">{{ purchase_order.created_at|date:"Y/m/d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>تاریخ تحویل:</th>
+                        <td class="ui-num">
+                            {% if purchase_order.delivery_date %}
+                                {{ purchase_order.delivery_date|date:"Y/m/d" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>شرایط پرداخت:</th>
+                        <td>{{ purchase_order.payment_terms|default:'—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>توضیحات:</th>
+                        <td>{{ purchase_order.notes|default:'—' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-truck-field"></i> اطلاعات تأمین‌کننده</h2>
+            </div>
+            <div class="ui-card-body" style="padding:0;">
+                <table class="po-kv-table">
+                    <tr>
+                        <th>نام تأمین‌کننده:</th>
+                        <td style="font-weight:700;">{{ purchase_order.supplier.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>اطلاعات تماس:</th>
+                        <td>{{ purchase_order.supplier.get_contact_info|default:'—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>آدرس:</th>
+                        <td>{{ purchase_order.supplier.get_full_address|default:'—' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    {% if purchase_order.actual_delivery_date or purchase_order.delivery_status != 'pending' %}
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-box-open"></i> اطلاعات تحویل</h2>
+        </div>
+        <div class="ui-card-body" style="padding:0;">
+            <div class="po-detail-grid" style="gap:0;">
+                <table class="po-kv-table">
+                    <tr>
+                        <th>تاریخ تحویل واقعی:</th>
+                        <td class="ui-num">
+                            {% if purchase_order.actual_delivery_date %}
+                                {{ purchase_order.actual_delivery_date|date:"Y/m/d" }}
+                                {% if purchase_order.get_delivery_delay_days > 0 %}
+                                    <span class="ui-pill is-danger">{{ purchase_order.get_delivery_delay_days }} روز تأخیر</span>
+                                {% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>وضعیت تحویل:</th>
+                        <td>{{ purchase_order.get_delivery_status_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>تحویل توسط:</th>
+                        <td>
+                            {% if purchase_order.received_by %}
+                                {{ purchase_order.received_by.get_full_name|default:purchase_order.received_by.username }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                <table class="po-kv-table">
+                    <tr>
+                        <th>یادداشت‌های تحویل:</th>
+                        <td>{{ purchase_order.delivery_notes|default:'—' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if purchase_order.quality_status != 'pending' %}
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-clipboard-check"></i> اطلاعات بازرسی کیفیت</h2>
+        </div>
+        <div class="ui-card-body" style="padding:0;">
+            <div class="po-detail-grid" style="gap:0;">
+                <table class="po-kv-table">
+                    <tr>
+                        <th>وضعیت کیفیت:</th>
+                        <td>
+                            <span class="ui-pill {% if purchase_order.quality_status == 'passed' %}is-ok{% elif purchase_order.quality_status == 'conditional' %}is-warn{% elif purchase_order.quality_status == 'failed' %}is-danger{% else %}is-muted{% endif %}">
+                                {{ purchase_order.get_quality_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>تاریخ بازرسی:</th>
+                        <td class="ui-num">
+                            {% if purchase_order.inspection_date %}
+                                {{ purchase_order.inspection_date|date:"Y/m/d H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>بازرس کیفیت:</th>
+                        <td>
+                            {% if purchase_order.quality_inspector %}
+                                {{ purchase_order.quality_inspector.get_full_name|default:purchase_order.quality_inspector.username }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                <table class="po-kv-table">
+                    <tr>
+                        <th>یادداشت‌های کیفیت:</th>
+                        <td>{{ purchase_order.quality_notes|default:'—' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Order Items -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> اقلام سفارش</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>نام کالا</th>
+                        <th>واحد</th>
+                        <th>مقدار</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td style="font-weight:700;">{{ item.request_item.name }}</td>
+                            <td><span class="ui-chip">{{ item.request_item.unit }}</span></td>
+                            <td class="ui-num" style="font-weight:700;">{{ item.quantity|trim_decimal }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Request Information -->
+    <div class="ui-banner is-info" style="flex-direction:column; gap:0.5rem;">
+        <div style="font-weight:800;"><i class="fas fa-link"></i> اطلاعات درخواست کالا مرتبط:</div>
+        <div class="po-detail-grid" style="width:100%; font-size:0.82rem;">
+            <div>
+                <div><strong>شماره درخواست:</strong>
+                    <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=purchase_order.request.id %}" class="ui-num" style="font-weight:700;">{{ purchase_order.request.request_number }}</a>
                 </div>
-                <div class="card-body">
-                    <!-- Status Badge -->
-                    <div class="mb-4">
-                        <span class="badge fs-6
-                            {% if purchase_order.status == 'draft' %}bg-secondary
-                            {% elif purchase_order.status == 'sent' %}bg-warning text-dark
-                            {% elif purchase_order.status == 'confirmed' %}bg-info
-                            {% elif purchase_order.status == 'in_transit' %}bg-primary
-                            {% elif purchase_order.status == 'delivered' %}bg-success
-                            {% elif purchase_order.status == 'inspected' %}bg-warning
-                            {% elif purchase_order.status == 'completed' %}bg-success
-                            {% elif purchase_order.status == 'cancelled' %}bg-danger
-                            {% endif %}">
-                            وضعیت: {{ purchase_order.get_status_display }}
-                        </span>
-                        {% if purchase_order.is_overdue %}
-                            <span class="badge bg-danger ms-2">تأخیر در تحویل</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Order Information -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h5 class="mb-3">اطلاعات سفارش</h5>
-                            <table class="table table-sm">
-                                <tr>
-                                    <th class="bg-light" width="40%">شماره سفارش:</th>
-                                    <td>{{ purchase_order.order_number }}</td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">تاریخ ایجاد:</th>
-                                    <td>{{ purchase_order.created_at|date:"Y/m/d H:i" }}</td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">تاریخ تحویل:</th>
-                                    <td>
-                                        {% if purchase_order.delivery_date %}
-                                            {{ purchase_order.delivery_date|date:"Y/m/d" }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">شرایط پرداخت:</th>
-                                    <td>{{ purchase_order.payment_terms|default:'-' }}</td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">توضیحات:</th>
-                                    <td>{{ purchase_order.notes|default:'-' }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h5 class="mb-3">اطلاعات تأمین‌کننده</h5>
-                            <table class="table table-sm">
-                                <tr>
-                                    <th class="bg-light" width="40%">نام تأمین‌کننده:</th>
-                                    <td>{{ purchase_order.supplier.name }}</td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">اطلاعات تماس:</th>
-                                    <td>{{ purchase_order.supplier.get_contact_info|default:'-' }}</td>
-                                </tr>
-                                <tr>
-                                    <th class="bg-light">آدرس:</th>
-                                    <td>{{ purchase_order.supplier.get_full_address|default:'-' }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Delivery Tracking Information -->
-                    {% if purchase_order.actual_delivery_date or purchase_order.delivery_status != 'pending' %}
-                        <h5 class="mb-3">اطلاعات تحویل</h5>
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th class="bg-light" width="50%">تاریخ تحویل واقعی:</th>
-                                        <td>
-                                            {% if purchase_order.actual_delivery_date %}
-                                                {{ purchase_order.actual_delivery_date|date:"Y/m/d" }}
-                                                {% if purchase_order.get_delivery_delay_days > 0 %}
-                                                    <span class="badge bg-danger">{{ purchase_order.get_delivery_delay_days }} روز تأخیر</span>
-                                                {% endif %}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th class="bg-light">وضعیت تحویل:</th>
-                                        <td>{{ purchase_order.get_delivery_status_display }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="bg-light">تحویل توسط:</th>
-                                        <td>
-                                            {% if purchase_order.received_by %}
-                                                {{ purchase_order.received_by.get_full_name|default:purchase_order.received_by.username }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th class="bg-light">یادداشت‌های تحویل:</th>
-                                        <td>{{ purchase_order.delivery_notes|default:'-' }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
+                <div><strong>بخش:</strong> {{ purchase_order.request.user.department_display }}</div>
+                <div><strong>کاربر:</strong> {{ purchase_order.request.user.get_full_name|default:purchase_order.request.user.username }}</div>
+            </div>
+            <div>
+                <div><strong>تاریخ ایجاد درخواست:</strong> <span class="ui-num">{{ purchase_order.request.created_at|date:"Y/m/d H:i" }}</span></div>
+                <div><strong>تاریخ تأیید:</strong>
+                    <span class="ui-num">
+                    {% if purchase_order.request.manager_confirmed_at %}
+                        {{ purchase_order.request.manager_confirmed_at|date:"Y/m/d H:i" }}
+                    {% else %}
+                        —
                     {% endif %}
-
-                    <!-- Quality Inspection Information -->
-                    {% if purchase_order.quality_status != 'pending' %}
-                        <h5 class="mb-3">اطلاعات بازرسی کیفیت</h5>
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th class="bg-light" width="50%">وضعیت کیفیت:</th>
-                                        <td>
-                                            <span class="badge
-                                                {% if purchase_order.quality_status == 'passed' %}bg-success
-                                                {% elif purchase_order.quality_status == 'conditional' %}bg-warning
-                                                {% elif purchase_order.quality_status == 'failed' %}bg-danger
-                                                {% endif %}">
-                                                {{ purchase_order.get_quality_status_display }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th class="bg-light">تاریخ بازرسی:</th>
-                                        <td>
-                                            {% if purchase_order.inspection_date %}
-                                                {{ purchase_order.inspection_date|date:"Y/m/d H:i" }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th class="bg-light">بازرس کیفیت:</th>
-                                        <td>
-                                            {% if purchase_order.quality_inspector %}
-                                                {{ purchase_order.quality_inspector.get_full_name|default:purchase_order.quality_inspector.username }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <table class="table table-sm">
-                                    <tr>
-                                        <th class="bg-light">یادداشت‌های کیفیت:</th>
-                                        <td>{{ purchase_order.quality_notes|default:'-' }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
+                    </span>
+                </div>
+                <div><strong>تأییدکننده:</strong>
+                    {% if purchase_order.request.approved_by %}
+                        {{ purchase_order.request.approved_by.get_full_name|default:purchase_order.request.approved_by.username }}
+                    {% else %}
+                        —
                     {% endif %}
-
-                    <!-- Order Items -->
-                    <h5 class="mb-3">اقلام سفارش</h5>
-                    <div class="table-responsive mb-4">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>نام کالا</th>
-                                    <th>واحد</th>
-                                    <th>مقدار</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in items %}
-                                    <tr>
-                                        <td>{{ item.request_item.name }}</td>
-                                        <td>{{ item.request_item.unit }}</td>
-                                        <td>{{ item.quantity|trim_decimal }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Request Information -->
-                    <div class="alert alert-info">
-                        <h6>اطلاعات درخواست کالا مرتبط:</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p class="mb-1"><strong>شماره درخواست:</strong>
-                                    <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=purchase_order.request.id %}">{{ purchase_order.request.request_number }}</a>
-                                </p>
-                                <p class="mb-1"><strong>بخش:</strong> {{ purchase_order.request.user.department_display }}</p>
-                                <p class="mb-1"><strong>کاربر:</strong> {{ purchase_order.request.user.get_full_name|default:purchase_order.request.user.username }}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="mb-1"><strong>تاریخ ایجاد درخواست:</strong> {{ purchase_order.request.created_at|date:"Y/m/d H:i" }}</p>
-                                <p class="mb-1"><strong>تاریخ تأیید:</strong>
-                                    {% if purchase_order.request.manager_confirmed_at %}
-                                        {{ purchase_order.request.manager_confirmed_at|date:"Y/m/d H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                                <p class="mb-0"><strong>تأییدکننده:</strong>
-                                    {% if purchase_order.request.approved_by %}
-                                        {{ purchase_order.request.approved_by.get_full_name|default:purchase_order.request.approved_by.username }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Timeline -->
-                    <h5 class="mb-3">تاریخچه سفارش</h5>
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-primary"></div>
-                            <div class="timeline-content">
-                                <h6 class="timeline-title">ایجاد سفارش</h6>
-                                <p class="timeline-text">
-                                    سفارش توسط {{ purchase_order.created_by.get_full_name|default:purchase_order.created_by.username }} ایجاد شد
-                                </p>
-                                <small class="text-muted">{{ purchase_order.created_at|date:"Y/m/d H:i" }}</small>
-                            </div>
-                        </div>
-
-                        {% if purchase_order.sent_at %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker bg-warning"></div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">ارسال به تأمین‌کننده</h6>
-                                    <p class="timeline-text">سفارش به تأمین‌کننده ارسال شد</p>
-                                    <small class="text-muted">{{ purchase_order.sent_at|date:"Y/m/d H:i" }}</small>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if purchase_order.confirmed_at %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker bg-info"></div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">تأیید توسط تأمین‌کننده</h6>
-                                    <p class="timeline-text">تأمین‌کننده سفارش را تأیید کرد</p>
-                                    <small class="text-muted">{{ purchase_order.confirmed_at|date:"Y/m/d H:i" }}</small>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if purchase_order.status == 'in_transit' %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker bg-primary"></div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">در حال حمل</h6>
-                                    <p class="timeline-text">سفارش در حال حمل به مقصد است</p>
-                                    <small class="text-muted">وضعیت فعلی</small>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if purchase_order.delivered_at %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker bg-success"></div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">تحویل سفارش</h6>
-                                    <p class="timeline-text">
-                                        سفارش تحویل داده شد - {{ purchase_order.get_delivery_status_display }}
-                                        {% if purchase_order.actual_delivery_date %}
-                                            ({{ purchase_order.actual_delivery_date|date:"Y/m/d" }})
-                                        {% endif %}
-                                    </p>
-                                    <small class="text-muted">{{ purchase_order.delivered_at|date:"Y/m/d H:i" }}</small>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if purchase_order.inspection_date %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker
-                                    {% if purchase_order.quality_status == 'passed' %}bg-success
-                                    {% elif purchase_order.quality_status == 'conditional' %}bg-warning
-                                    {% elif purchase_order.quality_status == 'failed' %}bg-danger
-                                    {% endif %}">
-                                </div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">بازرسی کیفیت</h6>
-                                    <p class="timeline-text">
-                                        نتیجه بازرسی: {{ purchase_order.get_quality_status_display }}
-                                    </p>
-                                    <small class="text-muted">{{ purchase_order.inspection_date|date:"Y/m/d H:i" }}</small>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if purchase_order.completed_at %}
-                            <div class="timeline-item">
-                                <div class="timeline-marker bg-success"></div>
-                                <div class="timeline-content">
-                                    <h6 class="timeline-title">تکمیل سفارش</h6>
-                                    <p class="timeline-text">سفارش با موفقیت تکمیل شد</p>
-                                    <small class="text-muted">{{ purchase_order.completed_at|date:"Y/m/d H:i" }}</small>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="mt-4">
-                        <a href="{% url 'purchase_orders_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Timeline -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-clock-rotate-left"></i> تاریخچه سفارش</h2>
+        </div>
+        <div class="ui-card-body">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">ایجاد سفارش</h6>
+                        <p class="timeline-text">سفارش توسط {{ purchase_order.created_by.get_full_name|default:purchase_order.created_by.username }} ایجاد شد</p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.created_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+
+                {% if purchase_order.sent_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker is-warn"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">ارسال به تأمین‌کننده</h6>
+                        <p class="timeline-text">سفارش به تأمین‌کننده ارسال شد</p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.sent_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_order.confirmed_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker is-info"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">تأیید توسط تأمین‌کننده</h6>
+                        <p class="timeline-text">تأمین‌کننده سفارش را تأیید کرد</p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.confirmed_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_order.status == 'in_transit' %}
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">در حال حمل</h6>
+                        <p class="timeline-text">سفارش در حال حمل به مقصد است</p>
+                        <small style="color:var(--text-muted);">وضعیت فعلی</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_order.delivered_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker is-ok"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">تحویل سفارش</h6>
+                        <p class="timeline-text">
+                            سفارش تحویل داده شد - {{ purchase_order.get_delivery_status_display }}
+                            {% if purchase_order.actual_delivery_date %}
+                                ({{ purchase_order.actual_delivery_date|date:"Y/m/d" }})
+                            {% endif %}
+                        </p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.delivered_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_order.inspection_date %}
+                <div class="timeline-item">
+                    <div class="timeline-marker {% if purchase_order.quality_status == 'passed' %}is-ok{% elif purchase_order.quality_status == 'conditional' %}is-warn{% elif purchase_order.quality_status == 'failed' %}is-danger{% endif %}"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">بازرسی کیفیت</h6>
+                        <p class="timeline-text">نتیجه بازرسی: {{ purchase_order.get_quality_status_display }}</p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.inspection_date|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_order.completed_at %}
+                <div class="timeline-item">
+                    <div class="timeline-marker is-ok"></div>
+                    <div class="timeline-content">
+                        <h6 class="timeline-title">تکمیل سفارش</h6>
+                        <p class="timeline-text">سفارش با موفقیت تکمیل شد</p>
+                        <small class="ui-num" style="color:var(--text-muted);">{{ purchase_order.completed_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
 </div>
-
-<style>
-.timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.timeline::before {
-    content: '';
-    position: absolute;
-    left: 15px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #e9ecef;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -22px;
-    top: 5px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-}
-
-.timeline-content {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    border-left: 3px solid #007bff;
-}
-
-.timeline-title {
-    margin-bottom: 5px;
-    color: #495057;
-}
-
-.timeline-text {
-    margin-bottom: 5px;
-    color: #6c757d;
-}
-</style>
 {% endblock %}
-

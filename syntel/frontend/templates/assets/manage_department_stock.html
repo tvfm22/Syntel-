@@ -5,101 +5,129 @@
 
 {% block extra_css %}
 <style>
-    .ds-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-default); }
+    .ds-thumb { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default, #E2E8F0); }
+    .ds-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem; align-items: end; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1360px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-store"></i></div>
-            <div class="ph-title">
-                <h1>اموال و اثاثیه بخش «{{ department.name }}»</h1>
-                <div class="page-sub">سالم: {{ total_healthy|number_format }} | معیوب: {{ total_damaged|number_format }} | کسری استاندارد: {{ shortage_count }}</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-store" style="color: var(--primary, #8B5CF6);"></i>
+                اموال و اثاثیه بخش «{{ department.name }}»
+            </h1>
+            <p class="ui-subtitle">
+                <span>سالم: <strong class="ui-num">{{ total_healthy|number_format }}</strong></span>
+                <span class="ui-subtitle-dot"></span>
+                <span>معیوب: <strong class="ui-num">{{ total_damaged|number_format }}</strong></span>
+                <span class="ui-subtitle-dot"></span>
+                <span>کسری استاندارد: <strong class="ui-num">{{ shortage_count }}</strong></span>
+            </p>
         </div>
-        <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
-            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
-            <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=department.id %}" class="btn btn-warning"><i class="fas fa-heart-crack"></i> گزارش خرابی/شکستگی</a>
-            <a href="{% url 'asset_transfer_create' cafe_code=cafe_code %}?from_department={{ department.id }}" class="btn btn-secondary"><i class="fas fa-exchange-alt"></i> ارسال به بخش دیگر</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
+            <a href="{% url 'asset_damage_report' cafe_code=cafe_code department_id=department.id %}" class="ui-btn ui-btn-danger-soft"><i class="fas fa-heart-crack"></i> گزارش خرابی/شکستگی</a>
+            <a href="{% url 'asset_transfer_create' cafe_code=cafe_code %}?from_department={{ department.id }}" class="ui-btn ui-btn-ghost"><i class="fas fa-exchange-alt"></i> ارسال به بخش دیگر</a>
             {% if shortage_count > 0 %}
             <form method="post" action="{% url 'asset_department_create_replacement_request' cafe_code=cafe_code department_id=department.id %}" style="margin:0;">
                 {% csrf_token %}
                 <input type="hidden" name="mode" value="all_shortages">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-cart-plus"></i> درخواست خرید جایگزین کسری‌ها</button>
+                <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-cart-plus"></i> درخواست خرید جایگزین کسری‌ها</button>
             </form>
             {% endif %}
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ui-pill-tab is-active"><i class="fas fa-boxes-stacked"></i> موجودی بخش</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-list"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            {% endif %}
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی‌ها</a>
+        </nav>
     </div>
 
     {% if is_manager %}
-    <div class="card" style="margin-bottom:1.25rem;">
-        <div class="card-header"><div class="card-title"><i class="fas fa-plus-circle"></i> تخصیص موجودی اولیه / افزایش موجودی تعدادی</div></div>
-        <div class="card-body">
-            <form method="post" action="{% url 'asset_stock_allocate' cafe_code=cafe_code department_id=department.id %}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.75rem; align-items:end;">
-                {% csrf_token %}
-                <div class="filter-group">
-                    <label class="filter-label">کالای تعدادی *</label>
-                    <select name="asset_id" class="filter-select" required>
-                        <option value="">انتخاب کنید...</option>
-                        {% for qa in quantity_assets %}
-                        <option value="{{ qa.id }}">{{ qa.name }} ({{ qa.code }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">نوع ورود</label>
-                    <select name="movement_type" class="filter-select">
-                        <option value="initial">موجودی اولیه</option>
-                        <option value="addition">ورود جدید</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">تعداد *</label>
-                    <input type="number" name="quantity" min="1" required class="form-control" value="1">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">حد استاندارد بخش</label>
-                    <input type="number" name="min_expected_quantity" min="0" class="form-control" placeholder="اختیاری">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">محل استقرار</label>
-                    <input type="text" name="location_note" class="form-control" placeholder="مثلاً قفسه بالای بار">
-                </div>
-                <button type="submit" class="btn btn-primary" style="height:42px;">تخصیص به بخش</button>
-            </form>
+    <section class="ui-form-card" style="margin-bottom: 0;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; font-weight:800; font-size:0.9rem;">
+            <i class="fas fa-plus-circle" style="color:var(--primary, #8B5CF6);"></i>
+            <span>تخصیص موجودی اولیه / افزایش موجودی تعدادی</span>
         </div>
-    </div>
-    {% endif %}
-
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">جستجو</label>
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="نام یا کد...">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">دسته‌بندی</label>
-                <select name="category" class="filter-select">
-                    <option value="">همه</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+        <form method="post" action="{% url 'asset_stock_allocate' cafe_code=cafe_code department_id=department.id %}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.75rem; align-items:end;">
+            {% csrf_token %}
+            <div class="ui-field">
+                <label class="ui-field-label">کالای تعدادی *</label>
+                <select name="asset_id" class="ui-select" required>
+                    <option value="">انتخاب کنید...</option>
+                    {% for qa in quantity_assets %}
+                    <option value="{{ qa.id }}">{{ qa.name }} ({{ qa.code }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="filter-group" style="display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" name="shortage_only" value="1" id="shortOnly" {% if shortage_only %}checked{% endif %}>
-                <label for="shortOnly" style="margin:0; font-weight:700;">فقط دارای کسری استاندارد</label>
+            <div class="ui-field">
+                <label class="ui-field-label">نوع ورود</label>
+                <select name="movement_type" class="ui-select">
+                    <option value="initial">موجودی اولیه</option>
+                    <option value="addition">ورود جدید</option>
+                </select>
             </div>
-            <button type="submit" class="btn btn-primary">فیلتر</button>
+            <div class="ui-field">
+                <label class="ui-field-label">تعداد *</label>
+                <input type="number" name="quantity" min="1" required class="ui-input" value="1">
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">حد استاندارد بخش</label>
+                <input type="number" name="min_expected_quantity" min="0" class="ui-input" placeholder="اختیاری">
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">محل استقرار</label>
+                <input type="text" name="location_note" class="ui-input" placeholder="مثلاً قفسه بالای بار">
+            </div>
+            <button type="submit" class="ui-btn ui-btn-primary" style="height:38px;">تخصیص به بخش</button>
+        </form>
+    </section>
+    {% endif %}
+
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="ds-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">جستجو</label>
+                    <div class="ui-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="q" value="{{ q }}" class="ui-input" placeholder="نام یا کد...">
+                    </div>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">دسته‌بندی</label>
+                    <select name="category" class="ui-select">
+                        <option value="">همه</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.45rem; height:38px;">
+                    <input type="checkbox" name="shortage_only" value="1" id="shortOnly" {% if shortage_only %}checked{% endif %}>
+                    <label for="shortOnly" style="margin:0; font-weight:700; font-size:0.82rem; cursor:pointer;">فقط دارای کسری استاندارد</label>
+                </div>
+                <button type="submit" class="ui-btn ui-btn-primary">فیلتر</button>
+            </div>
         </div>
     </form>
 
-    <div class="table-card" style="margin-bottom:1.25rem;">
-        <div class="table-header"><div class="table-title"><i class="fas fa-boxes"></i> فهرست موجودی اموال بخش ({{ stocks|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-boxes"></i> فهرست موجودی اموال بخش ({{ stocks|length }})</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>کالا</th><th>روش</th><th>سالم</th><th>معیوب</th><th>حد استاندارد</th><th>کسری</th><th>محل استقرار</th></tr></thead>
                 <tbody>
                     {% for st in stocks %}
@@ -114,40 +142,42 @@
                             </div>
                         </td>
                         <td>{{ st.asset.get_tracking_mode_display }}</td>
-                        <td><span class="badge badge-success">{{ st.quantity_healthy }}</span></td>
-                        <td><span class="badge {% if st.quantity_damaged > 0 %}badge-danger{% else %}badge-neutral{% endif %}">{{ st.quantity_damaged }}</span></td>
-                        <td>{{ st.min_expected_quantity }}</td>
-                        <td>{% if st.shortage_quantity > 0 %}<span class="badge badge-danger">{{ st.shortage_quantity }}</span>{% else %}—{% endif %}</td>
+                        <td><span class="ui-pill is-ok ui-num">{{ st.quantity_healthy }}</span></td>
+                        <td><span class="ui-pill {% if st.quantity_damaged > 0 %}is-danger{% else %}is-muted{% endif %} ui-num">{{ st.quantity_damaged }}</span></td>
+                        <td class="ui-num">{{ st.min_expected_quantity }}</td>
+                        <td>{% if st.shortage_quantity > 0 %}<span class="ui-pill is-danger ui-num">{{ st.shortage_quantity }}</span>{% else %}—{% endif %}</td>
                         <td>{{ st.location_note|default:'—' }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" style="text-align:center; padding:1.5rem;">موجودی ثبت نشده است.</td></tr>
+                    <tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">موجودی ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     {% if units %}
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-microchip"></i> تجهیزات پلاک‌دار مستقر در این بخش ({{ units|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-microchip"></i> تجهیزات پلاک‌دار مستقر در این بخش ({{ units|length }})</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>پلاک</th><th>تجهیز</th><th>سریال</th><th>وضعیت</th><th>جزئیات</th></tr></thead>
                 <tbody>
                     {% for u in units %}
                     <tr>
-                        <td><span class="badge badge-primary">{{ u.asset_tag }}</span></td>
+                        <td><span class="ui-pill is-accent ui-num">{{ u.asset_tag }}</span></td>
                         <td>{{ u.asset.name }}</td>
-                        <td>{{ u.serial_number|default:'—' }}</td>
-                        <td><span class="badge {% if u.status == 'active' %}badge-success{% else %}badge-warning{% endif %}">{{ u.get_status_display }}</span></td>
-                        <td><a href="{% url 'asset_unit_detail' cafe_code=cafe_code pk=u.id %}" class="btn btn-secondary" style="height:32px; font-size:0.78rem;">مشاهده</a></td>
+                        <td class="ui-num">{{ u.serial_number|default:'—' }}</td>
+                        <td><span class="ui-pill {% if u.status == 'active' %}is-ok{% else %}is-warn{% endif %}">{{ u.get_status_display }}</span></td>
+                        <td><a href="{% url 'asset_unit_detail' cafe_code=cafe_code pk=u.id %}" class="ui-row-action">مشاهده</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% endif %}
 </div>
 {% endblock %}

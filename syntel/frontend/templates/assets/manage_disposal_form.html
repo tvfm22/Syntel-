@@ -4,66 +4,78 @@
 {% block title %}گزارش خرابی / شکستگی اموال - Kuker{% endblock %}
 
 {% block content %}
-<div style="max-width:820px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon orange"><i class="fas fa-heart-crack"></i></div>
-            <div class="ph-title">
-                <h1>گزارش شکستگی یا خرابی در بخش «{{ department.name }}»</h1>
-                <div class="page-sub">{% if is_manager %}امکان اعمال مستقیم یا ثبت در کارتابل تأیید{% else %}گزارش شما پس از بررسی و تأیید مدیر روی موجودی اعمال می‌شود{% endif %}</div>
-            </div>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-heart-crack" style="color: var(--ui-warn, #B45309);"></i>
+                گزارش شکستگی یا خرابی در بخش «{{ department.name }}»
+            </h1>
+            <p class="ui-subtitle">{% if is_manager %}امکان اعمال مستقیم یا ثبت در کارتابل تأیید{% else %}گزارش شما پس از بررسی و تأیید مدیر روی موجودی اعمال می‌شود{% endif %}</p>
         </div>
-        <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ui-pill-tab is-active"><i class="fas fa-boxes-stacked"></i> موجودی بخش</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+        </nav>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <form method="post" enctype="multipart/form-data" style="display:grid; gap:1rem;">
-                {% csrf_token %}
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
-                    <div class="filter-group">
-                        <label class="filter-label">کالای اموال *</label>
-                        <select name="asset_id" class="filter-select" required>
-                            <option value="">انتخاب کنید...</option>
-                            {% for st in stocks %}
-                            <option value="{{ st.asset.id }}" {% if pre_asset == st.asset.id|stringformat:"s" %}selected{% endif %}>{{ st.asset.name }} (موجود سالم: {{ st.quantity_healthy }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">تعداد</label>
-                        <input type="number" name="quantity" min="1" value="1" class="form-control">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">پلاک (فقط برای اقلام پلاک‌دار)</label>
-                        <select name="asset_unit_id" class="filter-select">
-                            <option value="">بدون پلاک</option>
-                            {% for u in units %}
-                            <option value="{{ u.id }}">{{ u.asset_tag }} — {{ u.asset.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">عکس مدرک / شکستگی</label>
-                        <input type="file" name="evidence_photo" accept="image/*" class="form-control">
-                    </div>
+    <div class="ui-form-card">
+        <form method="post" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:1rem;">
+            {% csrf_token %}
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label class="ui-field-label">کالای اموال *</label>
+                    <select name="asset_id" class="ui-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for st in stocks %}
+                        <option value="{{ st.asset.id }}" {% if pre_asset == st.asset.id|stringformat:"s" %}selected{% endif %}>{{ st.asset.name }} (موجود سالم: {{ st.quantity_healthy }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                {% if is_manager %}
-                <label style="display:flex; align-items:center; gap:0.45rem; font-weight:700;">
-                    <input type="checkbox" name="auto_approve" value="1">
-                    تأیید و کسر فوری از موجودی بخش
-                </label>
-                {% endif %}
-                <div class="filter-group">
-                    <label class="filter-label">توضیحات علت شکستگی / خرابی *</label>
-                    <textarea name="reason" rows="3" class="form-control" required placeholder="شرح دقیق حادثه یا خرابی..."></textarea>
+                <div class="ui-field">
+                    <label class="ui-field-label">تعداد</label>
+                    <input type="number" name="quantity" min="1" value="1" class="ui-input">
                 </div>
-                <div style="display:flex; gap:0.65rem;">
-                    <button type="submit" class="btn btn-warning"><i class="fas fa-paper-plane"></i> ثبت گزارش</button>
-                    <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="btn btn-secondary">انصراف</a>
+                <div class="ui-field">
+                    <label class="ui-field-label">پلاک (فقط برای اقلام پلاک‌دار)</label>
+                    <select name="asset_unit_id" class="ui-select">
+                        <option value="">بدون پلاک</option>
+                        {% for u in units %}
+                        <option value="{{ u.id }}">{{ u.asset_tag }} — {{ u.asset.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </form>
-        </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">عکس مدرک / شکستگی</label>
+                    <input type="file" name="evidence_photo" accept="image/*" class="ui-input" style="padding-top:0.45rem;">
+                </div>
+            </div>
+
+            {% if is_manager %}
+            <label style="display:flex; align-items:center; gap:0.45rem; font-weight:700; font-size:0.84rem; cursor:pointer;">
+                <input type="checkbox" name="auto_approve" value="1">
+                تأیید و کسر فوری از موجودی بخش
+            </label>
+            {% endif %}
+
+            <div class="ui-field">
+                <label class="ui-field-label">توضیحات علت شکستگی / خرابی *</label>
+                <textarea name="reason" rows="3" class="ui-textarea" required placeholder="شرح دقیق حادثه یا خرابی..."></textarea>
+            </div>
+
+            <div class="ui-form-actions">
+                <a href="{% url 'asset_department_stock' cafe_code=cafe_code department_id=department.id %}" class="ui-btn ui-btn-ghost">انصراف</a>
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="fas fa-paper-plane"></i> ثبت گزارش</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

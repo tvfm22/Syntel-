@@ -5,241 +5,147 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ جزئیات حواله — هماهنگ با توکن‌های سیستم ═══ */
-    .v-detail-wrap { max-width: 1150px; margin: 0 auto; }
-    /* ── هدر یکدست صفحه ── */
-    .v-detail-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
-    }
-    .ph-title { min-width: 0; }
-    .ph-title h1 {
-        font-size: 1.05rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.5; margin: 0;
-    }
-    .ph-title .page-sub {
-        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
-        margin-top: 0.1rem; line-height: 1.7;
-    }
-    .ph-title .page-sub .mono { font-size: 0.78rem; }
-
     .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
-    .v-type-badge, .v-status-badge, .tx-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.22rem 0.65rem; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 700; white-space: nowrap;
-    }
-    .t-receipt    { background: #d1fae5; color: #065f46; }
-    .ph-icon.t-receipt { background: rgba(34,197,94,0.12); color: #059669; }
-    .t-issue      { background: #fee2e2; color: #991b1b; }
-    .ph-icon.t-issue { background: rgba(239,68,68,0.1); color: #dc2626; }
-    .t-return     { background: #dbeafe; color: #1e40af; }
-    .ph-icon.t-return { background: rgba(59,130,246,0.1); color: #2563eb; }
-    .t-sale       { background: #fef3c7; color: #92400e; }
-    .ph-icon.t-sale { background: rgba(249,115,22,0.1); color: #ea580c; }
-    .t-waste      { background: #ede9fe; color: #5b21b6; }
-    .ph-icon.t-waste { background: rgba(139,92,246,0.1); color: #7c3aed; }
-    .t-transfer   { background: #cffafe; color: #155e75; }
-    .ph-icon.t-transfer { background: rgba(6,182,212,0.1); color: #0891b2; }
-    .t-adjustment { background: #fce7f3; color: #9d174d; }
-    .ph-icon.t-adjustment { background: rgba(236,72,153,0.1); color: #db2777; }
-    .t-direct_delivery { background: #ccfbf1; color: #0f766e; }
-    .ph-icon.t-direct_delivery { background: rgba(20,184,166,0.1); color: #0d9488; }
-    .s-draft     { background: #f1f5f9; color: #475569; }
-    .s-submitted { background: #fef9c3; color: #854d0e; }
-    .s-approved  { background: #dcfce7; color: #166534; }
-    .s-finalized { background: #e0e7ff; color: #3730a3; }
-    .s-cancelled { background: #f1f5f9; color: #94a3b8; text-decoration: line-through; }
-    .s-reversed  { background: #fee2e2; color: #b91c1c; }
-    .tx-in        { background: #d1fae5; color: #065f46; }
-    .tx-out       { background: #fee2e2; color: #991b1b; }
-    .tx-adjustment{ background: #fce7f3; color: #9d174d; }
-    .tx-initial   { background: #f1f5f9; color: #475569; }
-
-    /* ── کارت‌ها ── */
-    .card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-5); margin-bottom: var(--space-4);
-    }
-    .card-title {
-        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; margin-bottom: var(--space-4);
-    }
-    .card-title i { color: var(--accent-indigo); }
-
-    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-3); }
-    .meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
-    .meta-item .k { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); }
-    .meta-item .v { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
-
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-        padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; font-weight: 700;
-        background: var(--bg-subtle, #f8fafc); color: var(--text-muted);
-        border-bottom: 1px solid var(--border-light); white-space: nowrap;
-    }
-    tbody td {
-        padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light);
-        font-size: 0.84rem; vertical-align: middle;
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    .table-scroll { overflow-x: auto; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 0.9rem; }
+    .meta-item { display: flex; flex-direction: column; gap: 0.22rem; }
+    .meta-item .k { font-size: 0.72rem; font-weight: 700; color: var(--text-muted, #94A3B8); }
+    .meta-item .v { font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #0F172A); }
 
     /* ── خط زمانی ── */
     .timeline { position: relative; padding-inline-start: 1.6rem; }
     .timeline::before {
         content: ''; position: absolute; top: 0.4rem; bottom: 0.4rem;
         inset-inline-start: 0.45rem; width: 2px;
-        background: var(--border-default, #e2e8f0);
+        background: var(--border-default, #E2E8F0);
     }
     .tl-item { position: relative; padding-bottom: 1.1rem; }
     .tl-item:last-child { padding-bottom: 0; }
     .tl-item::before {
         content: ''; position: absolute; inset-inline-start: -1.56rem; top: 0.25rem;
         width: 0.8rem; height: 0.8rem; border-radius: 999px;
-        background: var(--bg-card); border: 2.5px solid var(--accent-indigo);
+        background: var(--bg-card, #FFFFFF); border: 2.5px solid var(--primary, #8B5CF6);
     }
-    .tl-item.done::before { background: var(--accent-indigo); }
-    .tl-item.pending::before { border-color: var(--border-default, #cbd5e1); }
-    .tl-item.cancel::before { border-color: #ef4444; background: #fecaca; }
-    .tl-title { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
-    .tl-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .tl-item.done::before { background: var(--primary, #8B5CF6); }
+    .tl-item.pending::before { border-color: var(--border-strong, #CBD5E1); }
+    .tl-item.cancel::before { border-color: var(--ui-danger, #DC2626); background: var(--ui-danger-bg-hover, #FEE2E2); }
+    .tl-title { font-size: 0.85rem; font-weight: 700; color: var(--text-primary, #0F172A); }
+    .tl-meta { font-size: 0.72rem; color: var(--text-muted, #94A3B8); margin-top: 0.15rem; }
 
-    /* ── دکمه‌ها ── */
-    .btn { padding: 0.5rem 1.1rem; border: none; border-radius: var(--radius-md);
-        font-family: 'Vazir', sans-serif; font-size: 0.82rem; font-weight: 700; cursor: pointer;
-        display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none;
-        transition: all var(--transition-fast); }
-    .btn-primary { background: var(--accent-indigo); color: white; }
-    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
-    .btn-success { background: #10b981; color: white; }
-    .btn-success:hover { background: #059669; }
-    .btn-danger { background: #ef4444; color: white; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
-    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.76rem; }
-    .actions-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+    .actions-row { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="v-detail-wrap">
+<div class="ui-page">
 
     <!-- سربرگ -->
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon t-{{ voucher.voucher_type }}">
-                {% if voucher.voucher_type == 'receipt' %}<i class="fas fa-arrow-down"></i>
-                {% elif voucher.voucher_type == 'issue' %}<i class="fas fa-arrow-up"></i>
-                {% elif voucher.voucher_type == 'return' %}<i class="fas fa-rotate-left"></i>
-                {% elif voucher.voucher_type == 'sale' %}<i class="fas fa-cart-shopping"></i>
-                {% elif voucher.voucher_type == 'waste' %}<i class="fas fa-trash-can"></i>
-                {% elif voucher.voucher_type == 'transfer' %}<i class="fas fa-right-left"></i>
-                {% elif voucher.voucher_type == 'direct_delivery' %}<i class="fas fa-hand-holding"></i>
-                {% else %}<i class="fas fa-scale-balanced"></i>{% endif %}
-            </div>
-            <div class="ph-title">
-                <h1>
-                    <span class="v-type-badge t-{{ voucher.voucher_type }}">{{ voucher.get_voucher_type_display }}</span>
-                    <span class="mono">{{ voucher.voucher_number }}</span>
-                    <span class="v-status-badge s-{{ voucher.status }}">{{ voucher.get_status_display }}</span>
-                </h1>
-                <div class="page-sub">تاریخ سند: {{ voucher.date|jalali_datetime }} — ثبت: {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <span class="ui-pill {% if voucher.voucher_type == 'receipt' or voucher.voucher_type == 'direct_delivery' %}is-ok{% elif voucher.voucher_type == 'issue' %}is-danger{% elif voucher.voucher_type == 'return' or voucher.voucher_type == 'transfer' %}is-info{% elif voucher.voucher_type == 'sale' or voucher.voucher_type == 'adjustment' %}is-warn{% elif voucher.voucher_type == 'waste' %}is-accent{% else %}is-muted{% endif %}">{{ voucher.get_voucher_type_display }}</span>
+                <span class="mono">{{ voucher.voucher_number }}</span>
+                <span class="ui-pill {% if voucher.status == 'finalized' or voucher.status == 'approved' %}is-ok{% elif voucher.status == 'submitted' %}is-warn{% elif voucher.status == 'reversed' %}is-danger{% else %}is-muted{% endif %}" {% if voucher.status == 'cancelled' %}style="text-decoration:line-through;"{% endif %}>{{ voucher.get_status_display }}</span>
+            </h1>
+            <div class="ui-subtitle">
+                <span class="ui-num">تاریخ سند: {{ voucher.date|jalali_datetime }}</span>
+                <span class="ui-subtitle-dot"></span>
+                <span>ثبت: {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</span>
             </div>
         </div>
-        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
-            <i class="fas fa-list"></i> لیست حواله‌ها
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-list"></i> لیست حواله‌ها
+            </a>
+        </div>
+    </header>
 
     <!-- مشخصات سند -->
-    <div class="card">
-        <div class="card-title"><i class="fas fa-file-signature"></i> مشخصات سند</div>
-        <div class="meta-grid">
-            {% if voucher.voucher_type != 'direct_delivery' %}
-            <div class="meta-item">
-                <span class="k">انبار مبدأ</span>
-                <span class="v">
-                    {% if voucher.source_warehouse %}
-                    <i class="fas fa-warehouse" style="color:var(--accent-indigo)"></i> {{ voucher.source_warehouse.name }}
-                    {% if voucher.source_warehouse.departments.first %}
-                    <span style="font-size:0.7rem;color:var(--text-muted)">({{ voucher.source_warehouse.departments.first.name }})</span>
-                    {% endif %}
-                    {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
-                </span>
-            </div>
-            {% endif %}
-            <div class="meta-item">
-                <span class="k">{% if voucher.voucher_type == 'direct_delivery' %}انبار (محل عبور کالا){% else %}انبار مقصد{% endif %}</span>
-                <span class="v">
-                    {% if voucher.destination_warehouse %}
-                    <i class="fas fa-warehouse" style="color:var(--accent-indigo)"></i> {{ voucher.destination_warehouse.name }}
-                    {% if voucher.destination_warehouse.departments.first %}
-                    <span style="font-size:0.7rem;color:var(--text-muted)">({{ voucher.destination_warehouse.departments.first.name }})</span>
-                    {% endif %}
-                    {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
-                </span>
-            </div>
-            {% if voucher.department %}
-            <div class="meta-item">
-                <span class="k"><i class="fas fa-users" style="color:var(--accent-indigo)"></i> بخش گیرنده</span>
-                <span class="v">
-                    <i class="fas fa-hand-holding" style="color:#0d9488"></i> {{ voucher.department.name }}
-                    {% if voucher.status == 'finalized' %}
-                    <span style="font-size:0.7rem;color:#0f766e;font-weight:700">— کالا تحویل داده شد</span>
-                    {% endif %}
-                </span>
-            </div>
-            {% endif %}
-            <div class="meta-item">
-                <span class="k">تاریخ سند</span>
-                <span class="v">{{ voucher.date|jalali_datetime }}</span>
-            </div>
-            <div class="meta-item">
-                <span class="k">ایجادکننده</span>
-                <span class="v">{% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</span>
-            </div>
-            <div class="meta-item">
-                <span class="k">تأییدکننده / نهایی‌کننده</span>
-                <span class="v">{% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</span>
-            </div>
-            <div class="meta-item">
-                <span class="k">تاریخ نهایی‌سازی</span>
-                <span class="v">{% if voucher.finalized_at %}{{ voucher.finalized_at|jalali_datetime }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</span>
-            </div>
-            {% if voucher.description %}
-            <div class="meta-item" style="grid-column:1/-1">
-                <span class="k">توضیحات</span>
-                <span class="v" style="font-weight:500;line-height:1.8">{{ voucher.description }}</span>
-            </div>
-            {% endif %}
-            {% if voucher.requires_approval %}
-            <div class="meta-item">
-                <span class="k">نیازمند تأیید (آستانه)</span>
-                <span class="v" style="color:#b45309"><i class="fas fa-triangle-exclamation"></i> این حواله طبق آستانه نیازمند تأیید است</span>
-            </div>
-            {% endif %}
-            {% if voucher.source_object %}
-            <div class="meta-item">
-                <span class="k">سند منبع</span>
-                <span class="v"><i class="fas fa-link" style="color:var(--accent-indigo)"></i> {{ voucher.source_content_type.model }} — {{ voucher.source_object }}</span>
-            </div>
-            {% endif %}
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-file-signature"></i> مشخصات سند</h2>
         </div>
-    </div>
+        <div class="ui-card-body">
+            <div class="meta-grid">
+                {% if voucher.voucher_type != 'direct_delivery' %}
+                <div class="meta-item">
+                    <span class="k">انبار مبدأ</span>
+                    <span class="v">
+                        {% if voucher.source_warehouse %}
+                        <i class="fas fa-warehouse" style="color:var(--primary)"></i> {{ voucher.source_warehouse.name }}
+                        {% if voucher.source_warehouse.departments.first %}
+                        <span style="font-size:0.72rem;color:var(--text-muted)">({{ voucher.source_warehouse.departments.first.name }})</span>
+                        {% endif %}
+                        {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="meta-item">
+                    <span class="k">{% if voucher.voucher_type == 'direct_delivery' %}انبار (محل عبور کالا){% else %}انبار مقصد{% endif %}</span>
+                    <span class="v">
+                        {% if voucher.destination_warehouse %}
+                        <i class="fas fa-warehouse" style="color:var(--primary)"></i> {{ voucher.destination_warehouse.name }}
+                        {% if voucher.destination_warehouse.departments.first %}
+                        <span style="font-size:0.72rem;color:var(--text-muted)">({{ voucher.destination_warehouse.departments.first.name }})</span>
+                        {% endif %}
+                        {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                    </span>
+                </div>
+                {% if voucher.department %}
+                <div class="meta-item">
+                    <span class="k"><i class="fas fa-users" style="color:var(--primary)"></i> بخش گیرنده</span>
+                    <span class="v">
+                        <i class="fas fa-hand-holding" style="color:var(--ui-ok)"></i> {{ voucher.department.name }}
+                        {% if voucher.status == 'finalized' %}
+                        <span style="font-size:0.72rem;color:var(--ui-ok);font-weight:700">— کالا تحویل داده شد</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="meta-item">
+                    <span class="k">تاریخ سند</span>
+                    <span class="v ui-num">{{ voucher.date|jalali_datetime }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="k">ایجادکننده</span>
+                    <span class="v">{% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="k">تأییدکننده / نهایی‌کننده</span>
+                    <span class="v">{% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="k">تاریخ نهایی‌سازی</span>
+                    <span class="v ui-num">{% if voucher.finalized_at %}{{ voucher.finalized_at|jalali_datetime }}{% else %}<span style="color:var(--text-muted)">—</span>{% endif %}</span>
+                </div>
+                {% if voucher.description %}
+                <div class="meta-item" style="grid-column:1/-1">
+                    <span class="k">توضیحات</span>
+                    <span class="v" style="font-weight:500;line-height:1.8">{{ voucher.description }}</span>
+                </div>
+                {% endif %}
+                {% if voucher.requires_approval %}
+                <div class="meta-item">
+                    <span class="k">نیازمند تأیید (آستانه)</span>
+                    <span class="v" style="color:var(--ui-warn)"><i class="fas fa-triangle-exclamation"></i> این حواله طبق آستانه نیازمند تأیید است</span>
+                </div>
+                {% endif %}
+                {% if voucher.source_object %}
+                <div class="meta-item">
+                    <span class="k">سند منبع</span>
+                    <span class="v"><i class="fas fa-link" style="color:var(--primary)"></i> {{ voucher.source_content_type.model }} — {{ voucher.source_object }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
 
     <!-- اقلام -->
-    <div class="card">
-        <div class="card-title"><i class="fas fa-list-ul"></i> اقلام حواله ({{ items|length }})</div>
-        <div class="table-scroll">
-            <table>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list-ul"></i> اقلام حواله (<span class="ui-num">{{ items|length }}</span>)</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>#</th><th>محصول</th><th>موجودی انبار</th>
@@ -250,30 +156,32 @@
                 <tbody>
                     {% for it in items %}
                     <tr>
-                        <td style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
+                        <td class="ui-num" style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
                         <td style="font-weight:700">{{ it.product.name|default:'—' }}</td>
-                        <td style="font-size:0.78rem;color:var(--text-secondary)">
+                        <td class="ui-num" style="font-size:0.78rem;color:var(--text-secondary)">
                             {% if it.stock_item %}{{ it.stock_item.warehouse.name }} ({{ it.stock_item.quantity|qty_comma }}){% else %}—{% endif %}
                         </td>
                         <td>{{ it.unit.name|default:'—' }}</td>
-                        <td>{{ it.base_quantity|qty_comma }}</td>
-                        <td>{{ it.unit_price|number_format }}</td>
-                        <td style="font-weight:700">{{ it.total_price|number_format }}</td>
+                        <td class="ui-num" style="font-weight:700;">{{ it.base_quantity|qty_comma }}</td>
+                        <td class="ui-num">{{ it.unit_price|number_format }}</td>
+                        <td class="ui-money">{{ it.total_price|number_format }}</td>
                         <td style="font-size:0.78rem;color:var(--text-secondary);max-width:160px">{{ it.description|default:'—' }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1.5rem">اقلامی ثبت نشده است</td></tr>
+                    <tr><td colspan="8"><div class="ui-empty" style="padding:1.5rem;">اقلامی ثبت نشده است</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     <!-- اثر روی موجودی -->
-    <div class="card">
-        <div class="card-title"><i class="fas fa-arrows-up-down"></i> اثر روی موجودی ({{ movements|length }} حرکت)</div>
-        <div class="table-scroll">
-            <table>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-arrows-up-down"></i> اثر روی موجودی (<span class="ui-num">{{ movements|length }}</span> حرکت)</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تاریخ</th><th>کالا</th><th>انبار</th><th>نوع حرکت</th>
@@ -283,11 +191,11 @@
                 <tbody>
                     {% for m in movements %}
                     <tr>
-                        <td style="font-size:0.78rem;color:var(--text-secondary)">{{ m.created_at|jalali_datetime }}</td>
+                        <td class="ui-num" style="font-size:0.78rem;color:var(--text-secondary);white-space:nowrap;">{{ m.created_at|jalali_datetime }}</td>
                         <td style="font-weight:700">{{ m.stock_item.product.name }}</td>
                         <td style="font-size:0.8rem">{{ m.stock_item.warehouse.name }}</td>
                         <td>
-                            <span class="tx-badge tx-{{ m.transaction_type }}">
+                            <span class="ui-pill {% if m.transaction_type == 'in' %}is-ok{% elif m.transaction_type == 'out' %}is-danger{% elif m.transaction_type == 'adjustment' %}is-accent{% else %}is-muted{% endif %}">
                                 {% if m.transaction_type == 'in' %}<i class="fas fa-arrow-down"></i>
                                 {% elif m.transaction_type == 'out' %}<i class="fas fa-arrow-up"></i>
                                 {% elif m.transaction_type == 'adjustment' %}<i class="fas fa-scale-balanced"></i>
@@ -295,116 +203,124 @@
                                 {{ tx_type_labels|get_item:m.transaction_type }}
                             </span>
                         </td>
-                        <td style="font-weight:700">{{ m.quantity|qty_comma }} {{ m.unit.name|default:'' }}</td>
-                        <td>{{ m.previous_quantity|qty_comma }}</td>
+                        <td class="ui-num" style="font-weight:700">{{ m.quantity|qty_comma }} {{ m.unit.name|default:'' }}</td>
+                        <td class="ui-num">{{ m.previous_quantity|qty_comma }}</td>
                         <td style="color:var(--text-muted)">←</td>
-                        <td style="font-weight:700">{{ m.new_quantity|qty_comma }}</td>
+                        <td class="ui-num" style="font-weight:700">{{ m.new_quantity|qty_comma }}</td>
                         <td style="font-size:0.78rem;color:var(--text-secondary)">{% if m.created_by %}{{ m.created_by.get_full_name|default:m.created_by.username }}{% else %}—{% endif %}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:1.5rem">
+                    <tr><td colspan="9"><div class="ui-empty" style="padding:1.5rem;">
                         هنوز حرکتی اعمال نشده — حواله نهایی نشده است.
-                    </td></tr>
+                    </div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     <!-- خط زمانی -->
-    <div class="card">
-        <div class="card-title"><i class="fas fa-clock-rotate-left"></i> خط زمانی سند</div>
-        <div class="timeline">
-            <div class="tl-item done">
-                <div class="tl-title">ایجاد سند</div>
-                <div class="tl-meta">{{ voucher.created_at|jalali_datetime }} — {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</div>
-            </div>
-            <div class="tl-item {% if voucher.status != 'draft' %}done{% else %}pending{% endif %}">
-                <div class="tl-title">ثبت سند</div>
-                <div class="tl-meta">{% if voucher.status == 'draft' %}هنوز ثبت نشده{% else %}سند ثبت و در مسیر پردازش قرار گرفت{% endif %}</div>
-            </div>
-            {% if voucher.approved_at %}
-            <div class="tl-item done">
-                <div class="tl-title">تأیید</div>
-                <div class="tl-meta">{{ voucher.approved_at|jalali_datetime }} — {% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</div>
-            </div>
-            {% elif approval_pending %}
-            <div class="tl-item pending">
-                <div class="tl-title">در انتظار تأیید مدیر</div>
-                <div class="tl-meta">این حواله فقط پس از تأیید، نهایی می‌شود</div>
-            </div>
-            {% endif %}
-            {% if voucher.finalized_at %}
-            <div class="tl-item done">
-                <div class="tl-title">نهایی‌سازی — اثر روی موجودی</div>
-                <div class="tl-meta">{{ voucher.finalized_at|jalali_datetime }}</div>
-            </div>
-            {% endif %}
-            {% if voucher.cancelled_at %}
-            <div class="tl-item cancel">
-                <div class="tl-title">لغو سند</div>
-                <div class="tl-meta">{{ voucher.cancelled_at|jalali_datetime }}</div>
-            </div>
-            {% endif %}
-            {% if voucher.reversed_at %}
-            <div class="tl-item cancel">
-                <div class="tl-title">برگشت سند</div>
-                <div class="tl-meta">{{ voucher.reversed_at|jalali_datetime }}
-                    {% with rev=voucher.reversed_by.first %}
-                    {% if rev %}— حوالهٔ برگشتی: <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=rev.id %}" style="color:var(--accent-indigo)">{{ rev.voucher_number }}</a>{% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-            {% endif %}
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-clock-rotate-left"></i> خط زمانی سند</h2>
         </div>
-    </div>
+        <div class="ui-card-body">
+            <div class="timeline">
+                <div class="tl-item done">
+                    <div class="tl-title">ایجاد سند</div>
+                    <div class="tl-meta">{{ voucher.created_at|jalali_datetime }} — {% if voucher.created_by %}{{ voucher.created_by.get_full_name|default:voucher.created_by.username }}{% else %}—{% endif %}</div>
+                </div>
+                <div class="tl-item {% if voucher.status != 'draft' %}done{% else %}pending{% endif %}">
+                    <div class="tl-title">ثبت سند</div>
+                    <div class="tl-meta">{% if voucher.status == 'draft' %}هنوز ثبت نشده{% else %}سند ثبت و در مسیر پردازش قرار گرفت{% endif %}</div>
+                </div>
+                {% if voucher.approved_at %}
+                <div class="tl-item done">
+                    <div class="tl-title">تأیید</div>
+                    <div class="tl-meta">{{ voucher.approved_at|jalali_datetime }} — {% if voucher.approver %}{{ voucher.approver.get_full_name|default:voucher.approver.username }}{% else %}—{% endif %}</div>
+                </div>
+                {% elif approval_pending %}
+                <div class="tl-item pending">
+                    <div class="tl-title">در انتظار تأیید مدیر</div>
+                    <div class="tl-meta">این حواله فقط پس از تأیید، نهایی می‌شود</div>
+                </div>
+                {% endif %}
+                {% if voucher.finalized_at %}
+                <div class="tl-item done">
+                    <div class="tl-title">نهایی‌سازی — اثر روی موجودی</div>
+                    <div class="tl-meta">{{ voucher.finalized_at|jalali_datetime }}</div>
+                </div>
+                {% endif %}
+                {% if voucher.cancelled_at %}
+                <div class="tl-item cancel">
+                    <div class="tl-title">لغو سند</div>
+                    <div class="tl-meta">{{ voucher.cancelled_at|jalali_datetime }}</div>
+                </div>
+                {% endif %}
+                {% if voucher.reversed_at %}
+                <div class="tl-item cancel">
+                    <div class="tl-title">برگشت سند</div>
+                    <div class="tl-meta">{{ voucher.reversed_at|jalali_datetime }}
+                        {% with rev=voucher.reversed_by.first %}
+                        {% if rev %}— حوالهٔ برگشتی: <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=rev.id %}" style="color:var(--primary-dark);font-weight:700;">{{ rev.voucher_number }}</a>{% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
 
     <!-- اقدامات (فقط وقتی اقدامی در دسترس است) -->
     {% if can_edit or can_cancel or can_approve or can_reverse or voucher.reverses_id %}
-    <div class="card">
-        <div class="card-title"><i class="fas fa-bolt"></i> اقدامات</div>
-        <div class="actions-row">
-            {% if can_edit %}
-            <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-outline btn-sm">
-                <i class="fas fa-pen"></i> ویرایش پیش‌نویس
-            </a>
-            {% if items %}
-            <form method="post" action="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
-                  onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number|escapejs }} ثبت و نهایی شود؟');">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="submit">
-                <input type="hidden" name="quick_submit" value="1">
-                <button type="submit" class="btn btn-success btn-sm">
-                    <i class="fas fa-check-double"></i>
-                    {% if voucher.voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher.voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
-                </button>
-            </form>
-            {% endif %}
-            {% endif %}
-            {% if can_cancel %}
-            <form method="post" action="{% url 'voucher_cancel' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
-                  onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number|escapejs }} لغو شود؟ این اقدام قابل بازگشت نیست.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-ban"></i> لغو سند</button>
-            </form>
-            {% endif %}
-            {% if can_approve %}
-            <a href="{% url 'voucher_approve' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-success btn-sm">
-                <i class="fas fa-check"></i> تأیید و نهایی‌سازی
-            </a>
-            {% endif %}
-            {% if can_reverse %}
-            <a href="{% url 'voucher_reverse' cafe_code=cafe_code voucher_id=voucher.id %}" class="btn btn-danger btn-sm">
-                <i class="fas fa-rotate-left"></i> برگشت حواله
-            </a>
-            {% endif %}
-            {% if voucher.reverses_id %}
-            <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.reverses_id %}" class="btn btn-outline btn-sm">
-                <i class="fas fa-link"></i> حوالهٔ اصلی: {{ voucher.reverses.voucher_number }}
-            </a>
-            {% endif %}
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-bolt"></i> اقدامات</h2>
         </div>
-    </div>
+        <div class="ui-card-body">
+            <div class="actions-row">
+                {% if can_edit %}
+                <a href="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" class="ui-btn ui-btn-ghost is-sm">
+                    <i class="fas fa-pen"></i> ویرایش پیش‌نویس
+                </a>
+                {% if items %}
+                <form method="post" action="{% url 'voucher_edit' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
+                      onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number|escapejs }} ثبت و نهایی شود؟');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="submit">
+                    <input type="hidden" name="quick_submit" value="1">
+                    <button type="submit" class="ui-btn ui-btn-success is-sm">
+                        <i class="fas fa-check-double"></i>
+                        {% if voucher.voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher.voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+                {% endif %}
+                {% if can_cancel %}
+                <form method="post" action="{% url 'voucher_cancel' cafe_code=cafe_code voucher_id=voucher.id %}" style="display:inline;margin:0"
+                      onsubmit="return confirm('حوالهٔ {{ voucher.voucher_number|escapejs }} لغو شود؟ این اقدام قابل بازگشت نیست.');">
+                    {% csrf_token %}
+                    <button type="submit" class="ui-btn ui-btn-danger is-sm"><i class="fas fa-ban"></i> لغو سند</button>
+                </form>
+                {% endif %}
+                {% if can_approve %}
+                <a href="{% url 'voucher_approve' cafe_code=cafe_code voucher_id=voucher.id %}" class="ui-btn ui-btn-success is-sm">
+                    <i class="fas fa-check"></i> تأیید و نهایی‌سازی
+                </a>
+                {% endif %}
+                {% if can_reverse %}
+                <a href="{% url 'voucher_reverse' cafe_code=cafe_code voucher_id=voucher.id %}" class="ui-btn ui-btn-danger is-sm">
+                    <i class="fas fa-rotate-left"></i> برگشت حواله
+                </a>
+                {% endif %}
+                {% if voucher.reverses_id %}
+                <a href="{% url 'voucher_detail' cafe_code=cafe_code voucher_id=voucher.reverses_id %}" class="ui-btn ui-btn-ghost is-sm">
+                    <i class="fas fa-link"></i> حوالهٔ اصلی: {{ voucher.reverses.voucher_number }}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
     {% endif %}
 
 </div>

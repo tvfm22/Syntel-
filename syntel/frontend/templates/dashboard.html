@@ -1,38 +1,42 @@
 ﻿{% extends 'dashboard_layout.html' %}
 {% load static %}
 
-{% block title %}داشبورد{% endblock %}
+{% block title %}داشبورد - Kuker{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="card shadow-sm mb-4">
-        <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-                <h3 class="card-title mb-1">داشبورد</h3>
-                <p class="text-muted mb-0">
-                    کاربر: <strong>{{ user.username }}</strong>
-                    <span class="badge bg-secondary ms-2">{{ role }}</span>
-                </p>
-            </div>
-            <div>
-                <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> ثبت درخواست جدید
-                </a>
-                <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="btn btn-outline-secondary ms-2">
-                    <i class="fas fa-list"></i> مشاهده درخواست‌ها
-                </a>
-            </div>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">داشبورد</h1>
+            <p class="ui-subtitle">
+                <span>کاربر: <strong>{{ user.username }}</strong></span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-pill is-accent">{{ role }}</span>
+            </p>
         </div>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>ثبت درخواست جدید</span>
+            </a>
+            <a href="{% url 'purchase_requests_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-list"></i>
+                <span>مشاهده درخواست‌ها</span>
+            </a>
+        </div>
+    </header>
 
     {% if requests %}
-    <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">آخرین درخواست‌های ثبت‌شده</h5>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-clipboard-list"></i>
+                آخرین درخواست‌های ثبت‌شده
+            </h2>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
                     <tr>
                         <th>شناسه</th>
                         <th>تاریخ</th>
@@ -44,13 +48,14 @@
                 <tbody>
                     {% for req in requests %}
                     <tr>
-                        <td>#{{ req.id }}</td>
-                        <td>{{ req.created_at|date:"Y/m/d H:i" }}</td>
-                        <td><span class="badge bg-info">{{ req.get_status_display|default:req.status }}</span></td>
-                        <td>{{ req.items.count }}</td>
+                        <td class="ui-num" style="font-weight: 700;">#{{ req.id }}</td>
+                        <td class="ui-num">{{ req.created_at|date:"Y/m/d H:i" }}</td>
+                        <td><span class="ui-pill is-info">{{ req.get_status_display|default:req.status }}</span></td>
+                        <td class="ui-num">{{ req.items.count }}</td>
                         <td>
-                            <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="btn btn-sm btn-outline-primary">
-                                مشاهده
+                            <a href="{% url 'purchase_request_detail' cafe_code=cafe_code request_id=req.id %}" class="ui-row-action">
+                                <i class="fas fa-eye"></i>
+                                <span>مشاهده</span>
                             </a>
                         </td>
                     </tr>
@@ -58,7 +63,18 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
+    {% else %}
+    <section class="ui-card">
+        <div class="ui-empty">
+            <i class="fas fa-clipboard-list"></i>
+            <p style="margin:0 0 0.75rem;">درخواست اخیری ثبت نشده است.</p>
+            <a href="{% url 'purchase_request' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>ثبت اولین درخواست</span>
+            </a>
+        </div>
+    </section>
     {% endif %}
 </div>
 {% endblock %}

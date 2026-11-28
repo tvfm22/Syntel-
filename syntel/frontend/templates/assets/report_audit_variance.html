@@ -6,114 +6,122 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
-    .rvar-wrap { max-width: 1360px; margin: 0 auto; }
+    .rvar-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem; align-items: end; }
     .rvar-chart-wrap { height: 260px; position: relative; }
-    .rvar-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 1000;
-        display: none; align-items: center; justify-content: center; padding: 1rem;
-    }
-    .rvar-modal-backdrop.is-open { display: flex; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rvar-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon red"><i class="fas fa-balance-scale"></i></div>
-            <div class="ph-title">
-                <h1>گزارش مغایرت انبارگردانی‌ها</h1>
-                <div class="page-sub">بازه {{ start_jalali }} تا {{ end_jalali }} — مقایسه موجودی سیستم با شمارش ثبت‌شده</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-balance-scale" style="color: var(--ui-danger, #DC2626);"></i>
+                گزارش مغایرت انبارگردانی‌ها
+            </h1>
+            <p class="ui-subtitle">بازه <span class="ui-num">{{ start_jalali }}</span> تا <span class="ui-num">{{ end_jalali }}</span> — مقایسه موجودی سیستم با شمارش ثبت‌شده</p>
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='excel' %}?{{ request.GET.urlencode }}" class="ui-btn ui-btn-success">
                 <i class="fas fa-file-excel"></i> خروجی Excel
             </a>
-            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger">
+            <a href="{% url 'asset_report_variance_export' cafe_code=cafe_code fmt='pdf' %}?{{ request.GET.urlencode }}" class="ui-btn ui-btn-danger">
                 <i class="fas fa-file-pdf"></i> خروجی PDF
             </a>
-            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
             </a>
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های گزارش اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> مرکز گزارش‌ها</a>
+            <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-coins"></i> ارزش سکشن‌ها</a>
+            <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-balance-scale"></i> مغایرت</a>
+            <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-line"></i> شکستگی</a>
+            <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exclamation-triangle"></i> کسری</a>
+            <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-tools"></i> تعمیرات و گارانتی</a>
+            <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-history"></i> کاردکس</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">از تاریخ (شمسی)</label>
-                {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='var_start_date' jd_value=start_jalali %}
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">تا تاریخ (شمسی)</label>
-                {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='var_end_date' jd_value=end_jalali %}
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">جلسه انبارگردانی</label>
-                <select name="audit" class="filter-select">
-                    <option value="">همه جلسات</option>
-                    {% for a in audits %}
-                    <option value="{{ a.id }}" {% if selected_audit == a.id|stringformat:"s" %}selected{% endif %}>{{ a.title }} ({{ a.department.name }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label" style="display:flex; align-items:center; gap:0.45rem; cursor:pointer; height:44px;">
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="rvar-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">از تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='start_date' jd_id='var_start_date' jd_value=start_jalali %}
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">تا تاریخ (شمسی)</label>
+                    {% include 'includes/jalali_date_group.html' with jd_name='end_date' jd_id='var_end_date' jd_value=end_jalali %}
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">جلسه انبارگردانی</label>
+                    <select name="audit" class="ui-select">
+                        <option value="">همه جلسات</option>
+                        {% for a in audits %}
+                        <option value="{{ a.id }}" {% if selected_audit == a.id|stringformat:"s" %}selected{% endif %}>{{ a.title }} ({{ a.department.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <label style="display:flex; align-items:center; gap:0.45rem; cursor:pointer; height:38px; font-weight:700; font-size:0.82rem;">
                     <input type="checkbox" name="only_discrepancies" value="1" {% if only_discrepancies %}checked{% endif %}>
                     <span>فقط ردیف‌های دارای مغایرت</span>
                 </label>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">فیلتر</button>
-                <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary" style="flex:1;">فیلتر</button>
+                    <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-rotate-left"></i></a>
+                </div>
             </div>
         </div>
     </form>
 
-    <div class="stats-grid" style="margin-bottom:1.25rem;">
-        <div class="stat-card">
-            <div class="stat-value warning">{{ discrepancy_rows_count }}</div>
-            <div class="stat-label">تعداد ردیف‌های مغایر</div>
+    <section class="ui-metrics-strip">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تعداد ردیف‌های مغایر</span>
+            <div class="ui-metric-val is-warn ui-num">{{ discrepancy_rows_count }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value danger">{{ total_shortage_val|number_format }} ریال</div>
-            <div class="stat-label">ارزش کسری و خسارت</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">ارزش کسری و خسارت</span>
+            <div class="ui-metric-val is-danger ui-num">{{ total_shortage_val|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value success">{{ total_surplus_val|number_format }} ریال</div>
-            <div class="stat-label">ارزش اضافی یافت‌شده</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">ارزش اضافی یافت‌شده</span>
+            <div class="ui-metric-val is-green ui-num">{{ total_surplus_val|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value primary">{{ net_variance_val|number_format }} ریال</div>
-            <div class="stat-label">خالص اختلاف ریالی</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">خالص اختلاف ریالی</span>
+            <div class="ui-metric-val is-accent ui-num">{{ net_variance_val|number_format }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-    </div>
+    </section>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-chart-bar"></i> ارزش خسارت/کسری انبارگردانی به تفکیک سکشن</div>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-chart-bar"></i> ارزش خسارت/کسری انبارگردانی به تفکیک سکشن</h2>
         </div>
-        <div class="card-body">
+        <div class="ui-card-body">
             <div class="rvar-chart-wrap"><canvas id="varianceChart"></canvas></div>
         </div>
-    </div>
+    </section>
 
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-list"></i> ریز مغایرت‌ها ({{ rows|length }} ردیف)</div>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> ریز مغایرت‌ها ({{ rows|length }} ردیف)</h2>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تاریخ</th>
@@ -129,10 +137,10 @@
                 <tbody>
                     {% for r in rows %}
                     <tr>
-                        <td>{{ r.audit_date_jalali }}</td>
+                        <td class="ui-num">{{ r.audit_date_jalali }}</td>
                         <td>
                             <div style="font-weight:700;">{{ r.department_name }}</div>
-                            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=r.audit.id %}" style="font-size:0.74rem; color:var(--accent-indigo);">
+                            <a href="{% url 'asset_audit_review' cafe_code=cafe_code audit_id=r.audit.id %}" style="font-size:0.74rem; color:var(--primary-dark, #7C3AED);">
                                 {{ r.audit.title }}
                             </a>
                         </td>
@@ -140,20 +148,20 @@
                             <strong>{{ r.asset_name }}</strong>
                             {% if r.asset_tag %}<div style="font-size:0.74rem; color:var(--text-muted);">پلاک: {{ r.asset_tag }}</div>{% endif %}
                         </td>
-                        <td>{{ r.expected_text }}</td>
-                        <td><strong>{{ r.counted_text }}</strong></td>
+                        <td class="ui-num">{{ r.expected_text }}</td>
+                        <td class="ui-num"><strong>{{ r.counted_text }}</strong></td>
                         <td>
-                            <span class="badge {% if r.diff_qty < 0 %}badge-danger{% elif r.diff_qty > 0 %}badge-info{% elif r.has_diff %}badge-warning{% else %}badge-success{% endif %}">
+                            <span class="ui-pill {% if r.diff_qty < 0 %}is-danger{% elif r.diff_qty > 0 %}is-info{% elif r.has_diff %}is-warn{% else %}is-ok{% endif %} ui-num">
                                 {{ r.diff_label }}
                             </span>
                         </td>
-                        <td style="font-weight:700; color:{% if r.variance_value < 0 %}#DC2626{% elif r.variance_value > 0 %}#059669{% else %}#64748B{% endif %};">
+                        <td class="ui-num" style="font-weight:700; color:{% if r.variance_value < 0 %}var(--ui-danger){% elif r.variance_value > 0 %}var(--ui-ok){% else %}var(--text-secondary){% endif %};">
                             {{ r.variance_value|number_format }}
                         </td>
                         <td>
                             {% if r.note %}<div>{{ r.note }}</div>{% endif %}
                             {% if r.evidence_url %}
-                            <button type="button" class="btn btn-secondary" style="height:30px; padding:0 0.6rem; font-size:0.74rem;"
+                            <button type="button" class="ui-row-action"
                                     onclick="openVarLightbox('{{ r.evidence_url|escapejs }}', '{{ r.asset_name|escapejs }}')">
                                 <i class="fas fa-image"></i> عکس مدرک
                             </button>
@@ -161,18 +169,23 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" style="text-align:center; padding:2rem;">موردی در این بازه ثبت نشده است.</td></tr>
+                    <tr><td colspan="8"><div class="ui-empty" style="padding:1.5rem;">موردی در این بازه ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 
-<div id="varLightbox" class="rvar-modal-backdrop" onclick="this.classList.remove('is-open')">
-    <div style="background:#fff; padding:1rem; border-radius:16px; max-width:520px; text-align:center;" onclick="event.stopPropagation();">
-        <div id="varLightboxTitle" style="font-weight:800; margin-bottom:0.5rem;"></div>
-        <img id="varLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+<div id="varLightbox" class="ui-modal-backdrop" onclick="this.classList.remove('is-open')">
+    <div class="ui-modal is-narrow" onclick="event.stopPropagation();">
+        <div class="ui-modal-head">
+            <div id="varLightboxTitle" class="ui-modal-title"></div>
+            <button type="button" class="ui-modal-close" onclick="document.getElementById('varLightbox').classList.remove('is-open')" aria-label="بستن">&times;</button>
+        </div>
+        <div class="ui-modal-body" style="text-align:center;">
+            <img id="varLightboxImg" src="" alt="" style="max-width:100%; max-height:70vh; border-radius:12px;">
+        </div>
     </div>
 </div>
 {% endblock %}

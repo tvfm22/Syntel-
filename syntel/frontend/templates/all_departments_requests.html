@@ -5,200 +5,73 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ صفحه «درخواست کالا/انبار همه بخش‌ها» — طراحی دسکتاپ با توکن‌های قالب ═══ */
-    .all-depts-wrap { max-width: 1200px; margin: 0 auto; }
-
-    /* هدر صفحه: بلندتر از حالت عادی تا ناوبری تاریخ جا شود */
-    .page-header { height: auto; min-height: var(--header-height); flex-wrap: wrap; gap: var(--space-3); padding-block: var(--space-4); }
-
-    /* ── ناوبری تاریخ ── */
-    .date-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .date-nav { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
     .date-arrow {
-        width: 38px; height: 38px; border-radius: var(--radius-md);
-        border: 1px solid var(--border-default); background: var(--bg-card);
-        color: var(--text-secondary); font-size: 1.1rem; font-weight: 700;
-        display: flex; align-items: center; justify-content: center;
-        text-decoration: none; transition: all var(--transition-fast); cursor: pointer; line-height: 1;
+        width: 36px; height: 36px; border-radius: 10px;
+        border: 1px solid var(--border-default, #E2E8F0); background: var(--bg-card, #FFFFFF);
+        color: var(--text-secondary, #64748B); font-size: 1.05rem; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        text-decoration: none; transition: all 0.15s ease; cursor: pointer; line-height: 1;
     }
-    .date-arrow:hover { background: var(--accent-indigo); color: white; border-color: var(--accent-indigo); }
+    .date-arrow:hover { background: var(--primary, #8B5CF6); color: #FFFFFF; border-color: var(--primary, #8B5CF6); }
     .date-display {
-        cursor: pointer; padding: 0.45rem 1rem; border-radius: var(--radius-lg);
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        text-align: center; min-width: 150px; user-select: none; transition: all var(--transition-fast);
+        cursor: pointer; padding: 0.32rem 0.9rem; border-radius: 10px;
+        background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0);
+        text-align: center; min-width: 145px; user-select: none; transition: border-color 0.15s ease;
     }
-    .date-display:hover { border-color: var(--accent-indigo); }
-    .date-jalali { display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
-    .date-gregorian { display: block; font-size: 0.7rem; color: var(--text-muted); }
+    .date-display:hover { border-color: var(--primary, #8B5CF6); }
+    .date-jalali { display: block; font-size: 0.84rem; font-weight: 700; color: var(--text-primary, #0F172A); line-height: 1.3; }
+    .date-gregorian { display: block; font-size: 0.68rem; color: var(--text-muted, #94A3B8); font-variant-numeric: tabular-nums; }
 
-    /* ── جابه‌جایی نوع درخواست (خرید / انبار) ── */
-    .type-toggle {
-        display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-        background: var(--bg-card); overflow: hidden; margin-bottom: var(--space-6); box-shadow: var(--shadow-sm);
+    .send-bar-card {
+        border-right: 4px solid var(--primary, #8B5CF6);
     }
-    .type-btn {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        padding: 0.65rem 1.6rem; font-size: 0.85rem; font-weight: 700;
-        text-decoration: none; color: var(--text-secondary); transition: all var(--transition-fast);
+    .sel-count {
+        font-size: 0.78rem; color: var(--text-secondary, #64748B); font-weight: 600;
+        display: inline-flex; align-items: center; gap: 0.35rem;
     }
-    .type-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
-    .type-btn.active-purchase { background: var(--accent-indigo); color: white; }
-    .type-btn.active-warehouse { background: var(--accent-green); color: white; }
 
-    /* ── فیلتر بخش (قرص‌ها) ── */
-    .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-6); }
-    .filter-pill {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        padding: 0.45rem 1.15rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
-        text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); transition: all var(--transition-fast);
-    }
-    .filter-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .filter-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
-
-    /* ── نوار ارسال به مسئول ── */
-    .send-bar {
-        background: var(--bg-card); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);
-        border: 1px solid var(--border-light); border-right: 4px solid var(--accent-indigo);
-        padding: var(--space-5) var(--space-6); margin-bottom: var(--space-6);
-        display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap;
-    }
-    .send-bar select {
-        height: 44px; padding: 0 var(--space-4); border: 1.5px solid var(--border-default); border-radius: var(--radius-lg);
-        font-size: 0.85rem; font-family: 'Vazir', sans-serif; background: var(--bg-card); color: var(--text-primary);
-        flex: 1; min-width: 220px; cursor: pointer;
-    }
-    .send-bar select:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-    .send-btn {
-        background: var(--accent-indigo); color: white; border: none; height: 44px; padding: 0 1.6rem;
-        border-radius: var(--radius-lg); font-size: 0.85rem; font-weight: 700; cursor: pointer;
-        font-family: 'Vazir', sans-serif; display: inline-flex; align-items: center; gap: 0.5rem;
-        transition: all var(--transition-fast);
-    }
-    .send-btn:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
-    .sel-count { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }
-
-    /* ── جدول ادغام‌شده ── */
-    .merged-table-wrap {
-        background: var(--bg-card); border-radius: var(--radius-3xl); box-shadow: var(--shadow-md);
-        border: 1px solid var(--border-light); overflow-x: auto; margin-bottom: var(--space-6);
-    }
-    .merged-table { width: 100%; border-collapse: collapse; min-width: 760px; }
-    .merged-table th {
-        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
-        color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
-    }
-    .merged-table td { padding: 0.85rem 1rem; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-    .merged-table tbody tr:hover td { background: var(--bg-subtle); }
-
-    tr.row-faded td { opacity: 0.45; }
-    tr.row-faded:hover td { background: var(--bg-subtle); }
+    tr.row-faded td { opacity: 0.48; }
     tr.row-faded .chk-cell, tr.row-faded .item-chk { opacity: 1; pointer-events: auto; }
 
-    .product-name-cell { font-weight: 600; color: var(--text-primary); }
-    .qty-cell { font-weight: 700; color: var(--accent-green); white-space: nowrap; }
-
-    .section-box { margin-bottom: 0.4rem; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-light); }
-    .section-box.sent { background: rgba(34,197,94,0.07); border-color: rgba(34,197,94,0.25); }
+    .section-box {
+        margin-bottom: 0.4rem; padding: 0.5rem 0.75rem; border-radius: 10px;
+        background: var(--gray-50, #F8FAFC); border: 1px solid var(--border-light, #F1F5F9);
+    }
+    .section-box:last-child { margin-bottom: 0; }
+    .section-box.sent { background: var(--ui-ok-bg, #ECFDF5); border-color: var(--ui-ok-border, #D1FAE5); }
     .section-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .section-dept { font-weight: 600; color: var(--text-primary); font-size: 0.8rem; }
-    .section-qty { color: var(--accent-green); font-weight: 700; font-size: 0.82rem; }
-    .sent-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.65rem; border-radius: 999px;
-        font-size: 0.7rem; font-weight: 600; background: rgba(34,197,94,0.12); color: #166534; white-space: nowrap;
+    .section-dept { font-weight: 700; color: var(--text-primary, #0F172A); font-size: 0.8rem; }
+    .section-qty { color: var(--ui-ok, #047857); font-weight: 800; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+    .section-actions { display: flex; gap: 0.35rem; margin-top: 0.38rem; flex-wrap: wrap; }
+
+    .inline-edit {
+        margin-top: 0.5rem; padding: 0.55rem 0.7rem; border-radius: 10px;
+        background: var(--bg-card, #FFFFFF); border: 1px dashed var(--border-strong, #CBD5E1);
     }
-    .returned-chip { background: rgba(239,68,68,0.1); color: #991b1b; }
-    .section-actions { display: flex; gap: 0.4rem; margin-top: 0.35rem; flex-wrap: wrap; }
-    .mini-link {
-        font-size: 0.72rem; text-decoration: none; padding: 0.3rem 0.75rem; border-radius: var(--radius-sm); font-weight: 600;
-        display: inline-flex; align-items: center; gap: 0.3rem; border: none; cursor: pointer; font-family: 'Vazir', sans-serif;
-        transition: all var(--transition-fast);
-    }
-    .ml-edit { background: #fef3c7; color: #92400e; }
-    .ml-edit:hover { background: #fde68a; }
-    .ml-delete { background: #fee2e2; color: #dc2626; }
-    .ml-delete:hover { background: #fecaca; }
-    .inline-edit { margin-top: 0.5rem; padding: 0.5rem 0.65rem; border-radius: var(--radius-md); background: var(--bg-card); border: 1px dashed var(--border-default); }
     .inline-edit-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
-    .inline-edit-label { font-size: 0.75rem; color: var(--text-secondary); }
-    .inline-edit-row input[name="new_qty"] { max-width: 110px; }
+    .inline-edit-label { font-size: 0.75rem; color: var(--text-secondary, #64748B); font-weight: 600; }
+    .inline-edit-row input[name="new_qty"] { max-width: 110px; height: 32px; }
 
-    .item-chk, .chk-all { width: 17px; height: 17px; accent-color: var(--accent-indigo); cursor: pointer; }
-    .sent-badge-row { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.45rem; }
-
-    /* ── درخواست‌های فردی (جدول دسکتاپ) ── */
-    .filter-select {
-        height: 44px; padding: 0 var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); cursor: pointer;
-    }
-    .req-table-wrap { overflow-x: auto; }
-    .req-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 780px; }
-    .req-table th {
-        background: var(--bg-subtle); padding: 0.85rem 1rem; font-size: 0.8rem; font-weight: 700;
-        color: var(--text-secondary); text-align: right; border-bottom: 2px solid var(--border-default); white-space: nowrap;
-    }
-    .req-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-    .req-table tbody tr:hover td { background: var(--bg-subtle); }
-
-    .dept-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.7rem; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 600; background: rgba(139,92,246,0.1); color: #6d28d9; white-space: nowrap;
-    }
-    .req-user { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
-    .req-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
-    .status-badge { display: inline-flex; padding: 0.25rem 0.8rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
-    .status-pending_manager_approval { background: #fef3c7; color: #92400e; }
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-purchased { background: #d1fae5; color: #065f46; }
-    .status-partial { background: #dbeafe; color: #1e40af; }
-    .status-rejected { background: #fee2e2; color: #991b1b; }
-    .status-approved_from_stock { background: #d1fae5; color: #065f46; }
-    .status-approved_purchase { background: #dbeafe; color: #1e40af; }
-    .status-declined { background: #fee2e2; color: #991b1b; }
-    .status-fulfilled { background: #d1fae5; color: #065f46; }
-    .status-draft { background: #f3f4f6; color: #6b7280; }
-
+    .item-chk, .chk-all { width: 17px; height: 17px; accent-color: var(--primary, #8B5CF6); cursor: pointer; }
     .item-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .item-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.65rem; border-radius: var(--radius-sm);
-        background: var(--bg-subtle); border: 1px solid var(--border-light); font-size: 0.75rem; color: var(--text-secondary);
-    }
-    .item-chip b { color: var(--text-primary); font-weight: 700; }
-
-    .action-btn {
-        display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: var(--radius-md);
-        font-size: 0.78rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: all var(--transition-fast);
-    }
-    .action-btn.process { background: var(--accent-green); color: white; }
-    .action-btn.process:hover { background: #16A34A; box-shadow: var(--shadow-sm); }
-    .action-btn.view { background: var(--accent-blue); color: white; }
-    .action-btn.view:hover { background: #2563EB; box-shadow: var(--shadow-sm); }
-
-    .empty-state {
-        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
-        background: var(--bg-card); border-radius: var(--radius-3xl); border: 1px dashed var(--border-strong);
-        box-shadow: var(--shadow-sm);
-    }
-    .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
-
-    @media (width < 768px) {
-        .page-header { padding-block: var(--space-3); }
-        .type-toggle { display: flex; width: 100%; }
-        .type-btn { flex: 1; justify-content: center; }
-        .send-bar { border-right: none; border-top: 4px solid var(--accent-indigo); }
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="all-depts-wrap">
+<div class="ui-page">
 
-    <!-- هدر صفحه: عنوان + ناوبری تاریخ -->
-    <div class="page-header">
-        <h1 class="page-title">
-            <i class="fas fa-clipboard-list"></i>
-            {% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %}
-        </h1>
-        <div class="header-actions">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-clipboard-list" style="color:var(--primary, #8B5CF6);"></i>
+                <span>{% if request_type == 'warehouse' %}درخواست انبار همه بخش‌ها{% else %}درخواست کالا همه بخش‌ها{% endif %}</span>
+            </h1>
+            <p class="ui-subtitle">
+                <span>تجمیع اقلام درخواستی بخش‌ها و تخصیص به مسئول خرید یا انبار</span>
+            </p>
+        </div>
+        <div class="ui-topbar-actions">
             <div class="date-nav">
                 <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date={{ prev_date|date:'Y-m-d' }}" class="date-arrow" title="روز قبل">‹</a>
                 <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker ? document.getElementById('datePicker').showPicker() : document.getElementById('datePicker').click();">
@@ -209,325 +82,350 @@
                 <input type="date" id="datePicker" value="{{ date_str }}" style="display:none;"
                        onchange="if(this.value) window.location.href='?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date=' + this.value;">
                 <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}&date={{ next_date|date:'Y-m-d' }}" class="date-arrow" title="روز بعد">›</a>
-                <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}" class="btn btn-sm btn-secondary" style="height:38px;display:inline-flex;align-items:center;">امروز</a>
+                <a href="?{% if section_filter %}section={{ section_filter|urlencode }}&{% endif %}type={{ request_type }}" class="ui-btn ui-btn-ghost">امروز</a>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- جابه‌جایی نوع درخواست: خرید / انبار -->
-    <div class="type-toggle">
-        <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
-           class="type-btn {% if request_type == 'purchase' %}active-purchase{% endif %}">
-            <i class="fas fa-shopping-cart"></i> درخواست خرید
-        </a>
-        <a href="?type=warehouse{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
-           class="type-btn {% if request_type == 'warehouse' %}active-warehouse{% endif %}">
-            <i class="fas fa-boxes-stacked"></i> درخواست انبار
-        </a>
+    <div class="ui-controls-card">
+        <div class="ui-controls-row">
+            <nav class="ui-segmented" aria-label="نوع درخواست">
+                <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
+                   class="ui-seg-item {% if request_type == 'purchase' %}is-active{% endif %}">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>درخواست خرید</span>
+                </a>
+                <a href="?type=warehouse{% if date_str %}&date={{ date_str }}{% endif %}{% if section_filter %}&section={{ section_filter|urlencode }}{% endif %}"
+                   class="ui-seg-item {% if request_type == 'warehouse' %}is-active{% endif %}">
+                    <i class="fas fa-boxes-stacked"></i>
+                    <span>درخواست انبار</span>
+                </a>
+            </nav>
+        </div>
+
+        {% if request_type == 'purchase' %}
+        <div class="ui-pill-strip" aria-label="فیلتر بخش">
+            <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}"
+               class="ui-pill-tab {% if not section_filter %}is-active{% endif %}">
+                <i class="fas fa-building"></i>
+                <span>همه بخش‌ها</span>
+            </a>
+            {% for sec in row_sections %}
+            <a href="?type=purchase&section={{ sec|urlencode }}{% if date_str %}&date={{ date_str }}{% endif %}"
+               class="ui-pill-tab {% if section_filter == sec %}is-active{% endif %}">
+                {{ sec }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     {% if request_type == 'purchase' %}
 
-    <!-- ── فیلتر بخش ── -->
-    <div class="filter-bar">
-        <a href="?type=purchase{% if date_str %}&date={{ date_str }}{% endif %}" class="filter-pill {% if not section_filter %}active{% endif %}"><i class="fas fa-building"></i> همه بخش‌ها</a>
-        {% for sec in row_sections %}
-        <a href="?type=purchase&section={{ sec|urlencode }}{% if date_str %}&date={{ date_str }}{% endif %}" class="filter-pill {% if section_filter == sec %}active{% endif %}">{{ sec }}</a>
-        {% endfor %}
-    </div>
-
-    {% if rows %}
-    <!-- ── نوار ارسال به مسئول ── -->
-    <form method="post" id="sendForm">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="send">
-        <input type="hidden" name="item_ids" id="sendItemIds" value="">
-        <div class="send-bar">
-            <select name="officer_user_id" required>
-                <option value="">— مسئول خرید / انبار را انتخاب کنید —</option>
-                {% if user.role == 'manager' or user.role == 'ceo' %}
-                <option value="{{ user.id }}">🛒 خرید توسط خودم ({{ user.get_full_name|default:user.username }})</option>
-                {% endif %}
-                {% for o in officer_users %}
-                <option value="{{ o.user.id }}">{{ o.user.get_full_name|default:o.user.username }} ({{ o.label }})</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="send-btn" onclick="return collectSelected();"><i class="fas fa-paper-plane"></i> ارسال به مسئول</button>
-            <span class="sel-count" id="selCount"><i class="fas fa-check-square"></i> هیچ قلمی انتخاب نشده است</span>
-        </div>
-    </form>
-
-    <!-- ── جدول ادغام‌شده ── -->
-    <div class="merged-table-wrap">
-        <table class="merged-table">
-            <thead>
-                <tr>
-                    <th style="width:44px;"><input type="checkbox" class="chk-all" onclick="toggleAll(this)" title="انتخاب همه"></th>
-                    <th>نام کالا</th>
-                    <th>جمع کل</th>
-                    <th>سهم هر بخش (قابل انتخاب و ارسال)</th>
-                    <th>وضعیت ارسال</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                <tr class="{% if row.all_sent %}row-faded{% endif %}">
-                    <td>
-                        <!-- یک باکس انتخاب برای کل کالا (همه بخش‌ها با هم) -->
-                        <input type="checkbox" class="item-chk" value="{{ row.all_item_ids }}"
-                               data-ids="{{ row.all_item_ids }}" data-count="{{ row.total_items }}"
-                               {% if row.all_sent %}checked disabled title="قبلاً ارسال شده"{% endif %}>
-                    </td>
-                    <td class="product-name-cell">{{ row.name }}</td>
-                    <td class="qty-cell">{{ row.total_qty|qty_comma }} {{ row.unit }}</td>
-                    <td>
-                        {% for s in row.sections %}
-                        <div class="section-box {% if s.any_sent %}sent{% endif %}">
-                            <div class="section-head">
-                                <span class="section-dept">{{ s.dept }}</span>
-                                <span class="section-qty">{{ s.qty|qty_comma }} {{ row.unit }}</span>
-                                {% if s.any_sent %}<span class="sent-chip"><i class="fas fa-check"></i> ارسال شده</span>{% endif %}
-                                {% if s.any_returned %}<span class="sent-chip returned-chip"><i class="fas fa-rotate-left"></i> برگشت خورده</span>{% endif %}
-                            </div>
-                            {% if not s.all_sent %}
-                            <div class="section-actions">
-                                <button type="button" class="mini-link ml-edit" title="تغییر مقدار این بخش">
-                                    <i class="fas fa-pen"></i> ویرایش
-                                </button>
-                                <form method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
-                                    <button type="submit" name="action" value="delete_section" class="mini-link ml-delete"
-                                            onclick="return confirm('«{{ row.name|escapejs }}» در بخش {{ s.dept|escapejs }} حذف شود؟');"><i class="fas fa-trash"></i> حذف</button>
-                                </form>
-                            </div>
-                            <div class="inline-edit" hidden>
-                                <form method="post" class="inline-edit-form">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="edit_section">
-                                    <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
-                                    <div class="inline-edit-row">
-                                        <span class="inline-edit-label">مقدار جدید:</span>
-                                        <input type="number" name="new_qty" min="0.01" step="0.01" required
-                                               class="form-control form-control-sm" value="{{ s.qty|trim_decimal }}">
-                                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-check"></i> تأیید</button>
-                                        <button type="button" class="btn btn-sm btn-secondary inline-cancel"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </form>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </td>
-                    <td style="white-space:nowrap;">
-                        {% if row.all_sent %}
-                        <span class="sent-chip"><i class="fas fa-check-circle"></i> همه قلم‌ها ارسال شد</span>
-                        {% elif row.any_sent %}
-                        <span class="sent-chip">{{ row.sent_items }} از {{ row.total_items }} قلم ارسال شده</span>
-                        {% else %}
-                        <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+        {% if rows %}
+        <form method="post" id="sendForm" class="ui-controls-card send-bar-card">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="send">
+            <input type="hidden" name="item_ids" id="sendItemIds" value="">
+            <div class="ui-controls-row">
+                <div style="display:flex; align-items:center; gap:0.65rem; flex:1 1 280px; flex-wrap:wrap;">
+                    <select name="officer_user_id" required class="ui-select" style="flex:1 1 240px; max-width:420px;">
+                        <option value="">— مسئول خرید / انبار را انتخاب کنید —</option>
+                        {% if user.role == 'manager' or user.role == 'ceo' %}
+                        <option value="{{ user.id }}">🛒 خرید توسط خودم ({{ user.get_full_name|default:user.username }})</option>
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-        <p>{% if section_filter %}در این روز برای این بخش درخواستی ثبت نشده است.{% else %}در این روز درخواستی ثبت نشده است.{% endif %}</p>
-    </div>
-    {% endif %}
-
-    <!-- ── درخواست‌های فردی ── -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
-                    <option value="">همه بخش‌ها</option>
-                    {% for dep in all_departments %}
-                    <option value="{{ dep.name }}">{{ dep.name }}</option>
-                    {% endfor %}
-                </select>
-                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
-                    <option value="">همه وضعیت‌ها</option>
-                    <option value="pending">در انتظار</option>
-                    <option value="pending_manager_approval">منتظر تایید مدیر</option>
-                    <option value="purchased">خریداری شده</option>
-                    <option value="partial">تکمیل جزئی</option>
-                    <option value="rejected">رد شده</option>
-                </select>
+                        {% for o in officer_users %}
+                        <option value="{{ o.user.id }}">{{ o.user.get_full_name|default:o.user.username }} ({{ o.label }})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="ui-btn ui-btn-primary" onclick="return collectSelected();">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>ارسال به مسئول</span>
+                    </button>
+                </div>
+                <span class="sel-count" id="selCount"><i class="fas fa-check-square"></i> هیچ قلمی انتخاب نشده است</span>
             </div>
-        </div>
-        {% if requests %}
-        <div class="req-table-wrap">
-            <table class="req-table">
-                <thead>
-                    <tr>
-                        <th>بخش</th>
-                        <th>درخواست‌دهنده</th>
-                        <th>وضعیت</th>
-                        <th>اقلام</th>
-                        <th>عملیات</th>
-                    </tr>
-                </thead>
-                <tbody id="requestsList">
-                    {% for req in requests %}
-                    <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
-                        <td><span class="dept-badge"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
-                        <td>
-                            <div class="req-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
-                            <div class="req-meta">{{ req.created_at|jalali_datetime }}</div>
-                        </td>
-                        <td><span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span></td>
-                        <td>
-                            {% if req.items.all %}
-                            <div class="item-chips">
-                                {% for item in req.items.all %}
-                                <span class="item-chip">{{ item.name }} <b>{{ item.quantity|trim_decimal }} {{ item.unit }}</b></span>
+        </form>
+
+        <section class="ui-table-card">
+            <div class="ui-table-scroll">
+                <table class="ui-table" style="min-width:760px;">
+                    <thead>
+                        <tr>
+                            <th style="width:44px;"><input type="checkbox" class="chk-all" onclick="toggleAll(this)" title="انتخاب همه"></th>
+                            <th>نام کالا</th>
+                            <th>جمع کل</th>
+                            <th>سهم هر بخش (قابل انتخاب و ارسال)</th>
+                            <th>وضعیت ارسال</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr class="{% if row.all_sent %}row-faded{% endif %}">
+                            <td class="chk-cell">
+                                <input type="checkbox" class="item-chk" value="{{ row.all_item_ids }}"
+                                       data-ids="{{ row.all_item_ids }}" data-count="{{ row.total_items }}"
+                                       {% if row.all_sent %}checked disabled title="قبلاً ارسال شده"{% endif %}>
+                            </td>
+                            <td style="font-weight:700;">{{ row.name }}</td>
+                            <td class="ui-num" style="font-weight:800; color:var(--ui-ok); white-space:nowrap;">{{ row.total_qty|qty_comma }} {{ row.unit }}</td>
+                            <td>
+                                {% for s in row.sections %}
+                                <div class="section-box {% if s.any_sent %}sent{% endif %}">
+                                    <div class="section-head">
+                                        <span class="section-dept">{{ s.dept }}</span>
+                                        <span class="section-qty">{{ s.qty|qty_comma }} {{ row.unit }}</span>
+                                        {% if s.any_sent %}<span class="ui-pill is-ok"><i class="fas fa-check"></i> ارسال شده</span>{% endif %}
+                                        {% if s.any_returned %}<span class="ui-pill is-danger"><i class="fas fa-rotate-left"></i> برگشت خورده</span>{% endif %}
+                                    </div>
+                                    {% if not s.all_sent %}
+                                    <div class="section-actions">
+                                        <button type="button" class="ui-row-action ml-edit" title="تغییر مقدار این بخش" style="background:var(--ui-warn-bg); color:var(--ui-warn);">
+                                            <i class="fas fa-pen"></i> ویرایش
+                                        </button>
+                                        <form method="post" style="display:inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
+                                            <button type="submit" name="action" value="delete_section" class="ui-row-action is-danger ml-delete"
+                                                    onclick="return confirm('«{{ row.name|escapejs }}» در بخش {{ s.dept|escapejs }} حذف شود؟');">
+                                                <i class="fas fa-trash"></i> حذف
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="inline-edit" hidden>
+                                        <form method="post" class="inline-edit-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="edit_section">
+                                            <input type="hidden" name="item_ids" value="{{ s.item_ids }}">
+                                            <div class="inline-edit-row">
+                                                <span class="inline-edit-label">مقدار جدید:</span>
+                                                <input type="number" name="new_qty" min="0.01" step="0.01" required
+                                                       class="ui-input" value="{{ s.qty|trim_decimal }}">
+                                                <button type="submit" class="ui-btn ui-btn-primary is-sm"><i class="fas fa-check"></i> تأیید</button>
+                                                <button type="button" class="ui-btn ui-btn-ghost is-sm inline-cancel"><i class="fas fa-times"></i></button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
                                 {% endfor %}
-                            </div>
-                            {% else %}
-                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}"
-                               class="action-btn {% if req.status == 'pending' %}process{% else %}view{% endif %}">
-                                <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
-                                {% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="card-body">
-            <div class="empty-state">
-                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-                <p>هیچ درخواستی وجود ندارد</p>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                {% if row.all_sent %}
+                                <span class="ui-pill is-ok"><i class="fas fa-check-circle"></i> همه قلم‌ها ارسال شد</span>
+                                {% elif row.any_sent %}
+                                <span class="ui-pill is-info">{{ row.sent_items }} از {{ row.total_items }} قلم ارسال شده</span>
+                                {% else %}
+                                <span style="color:var(--text-muted); font-size:0.78rem;">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-        </div>
+        </section>
+        {% else %}
+        <section class="ui-card">
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <div>{% if section_filter %}در این روز برای این بخش درخواستی ثبت نشده است.{% else %}در این روز درخواستی ثبت نشده است.{% endif %}</div>
+            </div>
+        </section>
         {% endif %}
-    </div>
+
+        <!-- درخواست‌های فردی -->
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</h2>
+                <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
+                    <select class="ui-select is-sub filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
+                        <option value="">همه بخش‌ها</option>
+                        {% for dep in all_departments %}
+                        <option value="{{ dep.name }}">{{ dep.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="ui-select is-sub filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
+                        <option value="">همه وضعیت‌ها</option>
+                        <option value="pending">در انتظار</option>
+                        <option value="pending_manager_approval">منتظر تایید مدیر</option>
+                        <option value="purchased">خریداری شده</option>
+                        <option value="partial">تکمیل جزئی</option>
+                        <option value="rejected">رد شده</option>
+                    </select>
+                </div>
+            </div>
+            {% if requests %}
+            <div class="ui-table-scroll">
+                <table class="ui-table" style="min-width:780px;">
+                    <thead>
+                        <tr>
+                            <th>بخش</th>
+                            <th>درخواست‌دهنده</th>
+                            <th>وضعیت</th>
+                            <th>اقلام</th>
+                            <th style="text-align:left;">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsList">
+                        {% for req in requests %}
+                        <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
+                            <td><span class="ui-pill is-accent"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
+                            <td>
+                                <div style="font-weight:700;">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                                <div style="font-size:0.73rem; color:var(--text-muted);">{{ req.created_at|jalali_datetime }}</div>
+                            </td>
+                            <td>
+                                <span class="ui-pill {% if req.status == 'purchased' or req.status == 'approved_from_stock' or req.status == 'fulfilled' %}is-ok{% elif req.status == 'pending' or req.status == 'pending_manager_approval' %}is-warn{% elif req.status == 'rejected' or req.status == 'declined' %}is-danger{% elif req.status == 'partial' or req.status == 'approved_purchase' %}is-info{% else %}is-muted{% endif %}">
+                                    {{ req.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if req.items.all %}
+                                <div class="item-chips">
+                                    {% for item in req.items.all %}
+                                    <span class="ui-chip">{{ item.name }} <strong class="ui-num" style="margin-right:3px;">{{ item.quantity|trim_decimal }} {{ item.unit }}</strong></span>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <span style="color:var(--text-muted); font-size:0.78rem;">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:left;">
+                                <a href="{% url 'process_purchase_request' cafe_code=cafe_code request_id=req.id %}"
+                                   class="ui-btn is-sm {% if req.status == 'pending' %}ui-btn-success{% else %}ui-btn-soft{% endif %}">
+                                    <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
+                                    <span>{% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <div>هیچ درخواستی وجود ندارد</div>
+            </div>
+            {% endif %}
+        </section>
 
     {% else %}
-    <!-- ═══════════ نمای انبار ═══════════ -->
-
-    {% if merged_products %}
-    <div class="merged-table-wrap">
-        <table class="merged-table">
-            <thead>
-                <tr>
-                    <th style="width:52px;">#</th>
-                    <th>نام محصول</th>
-                    <th>جمع مقدار</th>
-                    <th>واحد</th>
-                    <th>بخش‌های درخواست‌دهنده</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for mp in merged_products %}
-                <tr>
-                    <td style="color:var(--text-muted);font-size:0.8rem;">{{ forloop.counter }}</td>
-                    <td class="product-name-cell">{{ mp.name }}</td>
-                    <td class="qty-cell">{{ mp.total_qty }}</td>
-                    <td>{{ mp.unit }}</td>
-                    <td>
-                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                            {% for dept in mp.departments %}
-                            <span class="dept-badge">{{ dept.name }}</span>
-                            {% endfor %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-
-    <!-- ── درخواست‌های فردی ── -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</div>
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
-                    <option value="">همه بخش‌ها</option>
-                    {% for dep in all_departments %}
-                    <option value="{{ dep.name }}">{{ dep.name }}</option>
-                    {% endfor %}
-                </select>
-                <select class="filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
-                    <option value="">همه وضعیت‌ها</option>
-                    <option value="pending">در انتظار</option>
-                    <option value="pending_manager_approval">منتظر تایید مدیر</option>
-                    <option value="purchased">خریداری شده</option>
-                    <option value="partial">تکمیل جزئی</option>
-                    <option value="rejected">رد شده</option>
-                </select>
+    <!-- نمای انبار -->
+        {% if merged_products %}
+        <section class="ui-table-card">
+            <div class="ui-table-scroll">
+                <table class="ui-table" style="min-width:680px;">
+                    <thead>
+                        <tr>
+                            <th style="width:52px;">#</th>
+                            <th>نام محصول</th>
+                            <th>جمع مقدار</th>
+                            <th>واحد</th>
+                            <th>بخش‌های درخواست‌دهنده</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mp in merged_products %}
+                        <tr>
+                            <td class="ui-num" style="color:var(--text-muted); font-size:0.8rem;">{{ forloop.counter }}</td>
+                            <td style="font-weight:700;">{{ mp.name }}</td>
+                            <td class="ui-num" style="font-weight:800; color:var(--ui-ok);">{{ mp.total_qty }}</td>
+                            <td>{{ mp.unit }}</td>
+                            <td>
+                                <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                                    {% for dept in mp.departments %}
+                                    <span class="ui-pill is-accent">{{ dept.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-        </div>
-        {% if requests %}
-        <div class="req-table-wrap">
-            <table class="req-table">
-                <thead>
-                    <tr>
-                        <th>بخش</th>
-                        <th>درخواست‌دهنده</th>
-                        <th>وضعیت</th>
-                        <th>اقلام</th>
-                        <th>عملیات</th>
-                    </tr>
-                </thead>
-                <tbody id="requestsList">
-                    {% for req in requests %}
-                    <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
-                        <td><span class="dept-badge"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
-                        <td>
-                            <div class="req-user">{{ req.user.first_name }} {{ req.user.last_name }}</div>
-                            <div class="req-meta">{{ req.created_at|jalali_datetime }}</div>
-                        </td>
-                        <td><span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span></td>
-                        <td>
-                            {% if req.items.all %}
-                            <div class="item-chips">
-                                {% for item in req.items.all %}
-                                <span class="item-chip">{{ item.name }} <b>{{ item.quantity|qty_comma }} {{ item.unit }}</b></span>
-                                {% endfor %}
-                            </div>
-                            {% else %}
-                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}"
-                               class="action-btn {% if req.status == 'pending' %}process{% else %}view{% endif %}">
-                                <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
-                                {% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="card-body">
-            <div class="empty-state">
-                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-                <p>هیچ درخواستی وجود ندارد</p>
-            </div>
-        </div>
+        </section>
         {% endif %}
-    </div>
+
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-file-lines"></i> درخواست‌ها</h2>
+                <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
+                    <select class="ui-select is-sub filter-select" onchange="filterCards()" aria-label="فیلتر بخش">
+                        <option value="">همه بخش‌ها</option>
+                        {% for dep in all_departments %}
+                        <option value="{{ dep.name }}">{{ dep.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="ui-select is-sub filter-select" onchange="filterCards()" aria-label="فیلتر وضعیت">
+                        <option value="">همه وضعیت‌ها</option>
+                        <option value="pending">در انتظار</option>
+                        <option value="pending_manager_approval">منتظر تایید مدیر</option>
+                        <option value="purchased">خریداری شده</option>
+                        <option value="partial">تکمیل جزئی</option>
+                        <option value="rejected">رد شده</option>
+                    </select>
+                </div>
+            </div>
+            {% if requests %}
+            <div class="ui-table-scroll">
+                <table class="ui-table" style="min-width:780px;">
+                    <thead>
+                        <tr>
+                            <th>بخش</th>
+                            <th>درخواست‌دهنده</th>
+                            <th>وضعیت</th>
+                            <th>اقلام</th>
+                            <th style="text-align:left;">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsList">
+                        {% for req in requests %}
+                        <tr class="request-row" data-dept="{{ req.user.department_display }}" data-status="{{ req.status }}">
+                            <td><span class="ui-pill is-accent"><i class="fas fa-users"></i> {{ req.user.department_display }}</span></td>
+                            <td>
+                                <div style="font-weight:700;">{{ req.user.first_name }} {{ req.user.last_name }}</div>
+                                <div style="font-size:0.73rem; color:var(--text-muted);">{{ req.created_at|jalali_datetime }}</div>
+                            </td>
+                            <td>
+                                <span class="ui-pill {% if req.status == 'purchased' or req.status == 'approved_from_stock' or req.status == 'fulfilled' %}is-ok{% elif req.status == 'pending' or req.status == 'pending_manager_approval' %}is-warn{% elif req.status == 'rejected' or req.status == 'declined' %}is-danger{% elif req.status == 'partial' or req.status == 'approved_purchase' %}is-info{% else %}is-muted{% endif %}">
+                                    {{ req.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if req.items.all %}
+                                <div class="item-chips">
+                                    {% for item in req.items.all %}
+                                    <span class="ui-chip">{{ item.name }} <strong class="ui-num" style="margin-right:3px;">{{ item.quantity|qty_comma }} {{ item.unit }}</strong></span>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <span style="color:var(--text-muted); font-size:0.78rem;">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align:left;">
+                                <a href="{% url 'process_warehouse_request' cafe_code=cafe_code request_id=req.id %}"
+                                   class="ui-btn is-sm {% if req.status == 'pending' %}ui-btn-success{% else %}ui-btn-soft{% endif %}">
+                                    <i class="fas {% if req.status == 'pending' %}fa-check-circle{% else %}fa-eye{% endif %}"></i>
+                                    <span>{% if req.status == 'pending' %}پردازش درخواست{% else %}مشاهده جزئیات{% endif %}</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <div>هیچ درخواستی وجود ندارد</div>
+            </div>
+            {% endif %}
+        </section>
     {% endif %}
 
-</div><!-- /all-depts-wrap -->
+</div>
 {% endblock %}
 
 {% block extra_js %}

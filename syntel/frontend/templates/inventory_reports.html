@@ -5,158 +5,111 @@
 
 {% block extra_css %}
 <style>
-    .ir-wrap { max-width: 1360px; margin: 0 auto; }
-    .ir-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
-    .ir-stats {
+    .ir-filter-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.25rem;
+        gap: 0.85rem;
+        align-items: end;
     }
-    .ir-stat {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-right: 4px solid var(--accent-indigo);
-        border-radius: var(--radius-xl);
-        padding: 1.1rem 1.25rem;
-        box-shadow: var(--shadow-xs);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
-    .ir-stat.warning { border-right-color: var(--accent-orange); }
-    .ir-stat.success { border-right-color: var(--accent-green); }
-    .ir-stat.info    { border-right-color: var(--accent-blue); }
-
-    .ir-stat-val { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-    .ir-stat-lbl { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.15rem; }
-    .ir-stat-icon {
-        width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
-        background: #EEF2FF; color: #4F46E5; font-size: 1.1rem; flex-shrink: 0;
-    }
-    .ir-stat.warning .ir-stat-icon { background: #FFF7ED; color: #EA580C; }
-    .ir-stat.success .ir-stat-icon { background: #ECFDF5; color: #059669; }
-    .ir-stat.info .ir-stat-icon    { background: #EFF6FF; color: #2563EB; }
-
-    .ir-filter-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 1rem 1.25rem;
-        box-shadow: var(--shadow-xs); margin-bottom: 1.25rem;
-        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.85rem; align-items: end;
-    }
-    .ir-field { display: flex; flex-direction: column; gap: 0.35rem; }
-    .ir-field label { font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); }
-    .ir-select {
-        height: 40px; padding: 0 0.85rem; border: 1px solid var(--border-default);
-        border-radius: 10px; background: var(--bg-input); font-family: 'Vazir', sans-serif;
-        font-size: 0.84rem; color: var(--text-primary);
-    }
-    .ir-select:focus { outline: none; border-color: var(--accent-indigo); background: #fff; }
 
     @media (max-width: 992px) {
-        .ir-stats, .ir-filter-card { grid-template-columns: repeat(2, 1fr); }
+        .ir-filter-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
+
     @media (max-width: 576px) {
-        .ir-stats, .ir-filter-card { grid-template-columns: 1fr; }
+        .ir-filter-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ir-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-warehouse"></i></div>
-            <div class="ph-title">
-                <h1>گزارش‌های موجودی انبار</h1>
-                <div class="page-sub">تحلیل موجودی فعلی، نرخ گردش کالا و ارزش ریالی انبار</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-warehouse" style="color: var(--primary, #8B5CF6);"></i>
+                گزارش‌های موجودی انبار
+            </h1>
+            <p class="ui-subtitle">تحلیل موجودی فعلی، نرخ گردش کالا و ارزش ریالی انبار</p>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-chart-pie"></i> گزارش مصرف بخش‌ها
+        <div class="ui-topbar-actions">
+            <a href="{% url 'consumption_report' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-chart-pie"></i>
+                <span>گزارش مصرف بخش‌ها</span>
             </a>
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-                <i class="fas fa-boxes-stacked"></i> لیست موجودی انبار
+            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-boxes-stacked"></i>
+                <span>لیست موجودی انبار</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <div class="ir-stats">
-        <div class="ir-stat">
-            <div>
-                <div class="ir-stat-lbl">کل محصولات</div>
-                <div class="ir-stat-val">{{ total_products }}</div>
-            </div>
-            <div class="ir-stat-icon"><i class="fas fa-box"></i></div>
+    <section class="ui-metrics-strip" aria-label="خلاصه آمار موجودی">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل محصولات</span>
+            <div class="ui-metric-val is-accent ui-num">{{ total_products }}</div>
         </div>
-        <div class="ir-stat warning">
-            <div>
-                <div class="ir-stat-lbl">اقلام کم‌موجودی</div>
-                <div class="ir-stat-val">{{ low_stock_count }}</div>
-            </div>
-            <div class="ir-stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">اقلام کم‌موجودی</span>
+            <div class="ui-metric-val is-warn ui-num">{{ low_stock_count }}</div>
         </div>
-        <div class="ir-stat success">
-            <div>
-                <div class="ir-stat-lbl">میانگین نرخ گردش</div>
-                <div class="ir-stat-val">{{ avg_turnover|floatformat:1 }}</div>
-            </div>
-            <div class="ir-stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">میانگین نرخ گردش</span>
+            <div class="ui-metric-val is-green ui-num">{{ avg_turnover|floatformat:1 }}</div>
         </div>
-        <div class="ir-stat info">
-            <div>
-                <div class="ir-stat-lbl">ارزش کل موجودی (ریال)</div>
-                <div class="ir-stat-val">{{ total_inventory_value|floatformat:0|intcomma }}</div>
-            </div>
-            <div class="ir-stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">ارزش کل موجودی</span>
+            <div class="ui-metric-val ui-num">{{ total_inventory_value|floatformat:0|intcomma }}<span class="ui-metric-unit">ریال</span></div>
         </div>
-    </div>
+    </section>
 
-    <div class="ir-filter-card">
-        <div class="ir-field">
-            <label for="categorySelect">دسته‌بندی</label>
-            <select id="categorySelect" class="ir-select">
-                <option value="">همه دسته‌بندی‌ها</option>
-                {% for category in categories %}
-                <option value="{{ category }}">{{ category }}</option>
-                {% endfor %}
-            </select>
+    <section class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="ir-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="categorySelect">دسته‌بندی</label>
+                    <select id="categorySelect" class="ui-select">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="statusSelect">وضعیت موجودی</label>
+                    <select id="statusSelect" class="ui-select">
+                        <option value="">همه وضعیت‌ها</option>
+                        <option value="low">کمبود موجودی</option>
+                        <option value="normal">عادی</option>
+                        <option value="high">مازاد</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="sortSelect">مرتب‌سازی بر اساس</label>
+                    <select id="sortSelect" class="ui-select">
+                        <option value="name">نام محصول</option>
+                        <option value="stock_level">سطح موجودی</option>
+                        <option value="turnover">نرخ گردش</option>
+                        <option value="usage">میزان مصرف</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <button type="button" class="ui-btn ui-btn-primary" id="apply_filters" style="width: 100%; height: 38px;">
+                        <i class="fas fa-filter"></i>
+                        <span>اعمال فیلترها</span>
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="ir-field">
-            <label for="statusSelect">وضعیت موجودی</label>
-            <select id="statusSelect" class="ir-select">
-                <option value="">همه وضعیت‌ها</option>
-                <option value="low">کمبود موجودی</option>
-                <option value="normal">عادی</option>
-                <option value="high">مازاد</option>
-            </select>
-        </div>
-        <div class="ir-field">
-            <label for="sortSelect">مرتب‌سازی بر اساس</label>
-            <select id="sortSelect" class="ir-select">
-                <option value="name">نام محصول</option>
-                <option value="stock_level">سطح موجودی</option>
-                <option value="turnover">نرخ گردش</option>
-                <option value="usage">میزان مصرف</option>
-            </select>
-        </div>
-        <div class="ir-field">
-            <button type="button" class="btn btn-primary" id="apply_filters" style="height: 40px; width: 100%; justify-content: center;">
-                <i class="fas fa-filter"></i> اعمال فیلترها
-            </button>
-        </div>
-    </div>
+    </section>
 
-    <div class="table-card">
-        <div style="overflow-x:auto;">
-            <table class="data-table" id="inventory_table">
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="ui-table data-table" id="inventory_table">
                 <thead>
                     <tr>
                         <th>نام محصول</th>
@@ -172,29 +125,29 @@
                 <tbody>
                     {% for item in inventory_data %}
                     <tr>
-                        <td style="font-weight:700;color:var(--text-primary);">{{ item.product_name }}</td>
+                        <td style="font-weight: 700;">{{ item.product_name }}</td>
                         <td>{{ item.category }}</td>
-                        <td style="font-weight:700;">{{ item.current_stock }}</td>
-                        <td>{{ item.min_stock }}</td>
+                        <td class="ui-num" style="font-weight: 700;">{{ item.current_stock }}</td>
+                        <td class="ui-num">{{ item.min_stock }}</td>
                         <td>
                             {% if item.stock_status == 'low' %}
-                                <span class="badge badge-danger">کم‌موجودی</span>
+                                <span class="ui-pill is-danger">کم‌موجودی</span>
                             {% elif item.stock_status == 'high' %}
-                                <span class="badge badge-success">زیاد</span>
+                                <span class="ui-pill is-ok">زیاد</span>
                             {% else %}
-                                <span class="badge badge-neutral">عادی</span>
+                                <span class="ui-pill is-muted">عادی</span>
                             {% endif %}
                         </td>
-                        <td>{{ item.turnover_rate|floatformat:2 }}</td>
-                        <td>{{ item.monthly_usage|floatformat:1 }}</td>
-                        <td style="font-weight:700;color:var(--text-primary);">{{ item.inventory_value|floatformat:0|intcomma }} ریال</td>
+                        <td class="ui-num">{{ item.turnover_rate|floatformat:2 }}</td>
+                        <td class="ui-num">{{ item.monthly_usage|floatformat:1 }}</td>
+                        <td class="ui-money">{{ item.inventory_value|floatformat:0|intcomma }} ریال</td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="8">
-                            <div class="empty-state">
+                            <div class="ui-empty">
                                 <i class="fas fa-box-open"></i>
-                                <p>داده‌ای برای نمایش یافت نشد</p>
+                                <p style="margin:0;">داده‌ای برای نمایش یافت نشد</p>
                             </div>
                         </td>
                     </tr>
@@ -202,7 +155,7 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 
 <script>

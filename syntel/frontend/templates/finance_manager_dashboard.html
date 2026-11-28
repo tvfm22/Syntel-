@@ -5,147 +5,157 @@
 
 {% block extra_css %}
 <style>
-    /* ─── Page-specific styles (shared components come from dashboard_layout) ─── */
-
-    .stat-sublabel { font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; }
-
-    /* Dashboard Grid */
-    .dashboard-grid {
+    .fmd-metrics-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .fmd-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 2rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.15rem;
     }
-
-    .chart-container { position: relative; height: 350px; }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center; padding: 3rem 2rem; color: #9ca3af;
+    .fmd-chart-wrap {
+        position: relative;
+        height: 320px;
     }
-    .empty-state i { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
-    .empty-state p { font-size: 1.1rem; margin-bottom: 0.5rem; }
-    .empty-state small { font-size: 0.875rem; }
-
-    /* Loading */
-    .loading { text-align: center; padding: 3rem 2rem; color: #9ca3af; }
-    .loading i { font-size: 2rem; margin-bottom: 1rem; }
-
-    /* List Items */
-    .list-container { max-height: 400px; overflow-y: auto; }
-    .list-item {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 1rem; border-bottom: 1px solid var(--gray-200);
-        transition: all 0.2s;
+    .fmd-list {
+        max-height: 340px;
+        overflow-y: auto;
     }
-    .list-item:hover { background: var(--gray-50); }
-    .list-item:last-child { border-bottom: none; }
-    .list-item-content { flex: 1; }
-    .list-item-title { font-weight: 600; color: var(--dark); margin-bottom: 0.25rem; }
-    .list-item-subtitle { font-size: 0.875rem; color: var(--gray-500); }
-
-    @media (max-width: 768px) {
-        .main-content { padding: 1rem; }
-        .dashboard-grid { grid-template-columns: 1fr; gap: 1.5rem; }
-        .chart-container { height: 250px; }
+    .fmd-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1.2rem;
+        border-bottom: 1px solid var(--border-light, #F1F5F9);
+        transition: background 0.14s ease;
+    }
+    .fmd-list-item:hover { background: var(--ui-hover-row, #FAF9FF); }
+    .fmd-list-item:last-child { border-bottom: none; }
+    .fmd-item-title {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--text-primary, #0F172A);
+        margin-bottom: 0.15rem;
+    }
+    .fmd-item-sub {
+        font-size: 0.75rem;
+        color: var(--text-muted, #94A3B8);
+    }
+    .fmd-loading {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--text-muted, #94A3B8);
+        font-size: 1.25rem;
+    }
+    @media (max-width: 1024px) {
+        .fmd-metrics-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .fmd-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .fmd-metrics-5 { grid-template-columns: 1fr; }
+        .fmd-chart-wrap { height: 250px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-chart-bar"></i>
-        داشبورد مدیر مالی
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
-        </div>
-        <a href="{% url 'logout' %}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>خروج</span>
-        </a>
-    </div>
-</div>
+<div class="ui-page">
 
-<!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon-circle primary"><i class="fas fa-file-invoice"></i></div>
-        <div class="stat-value primary" id="total-invoices">-</div>
-        <div class="stat-label">کل فاکتورها</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle success"><i class="fas fa-money-bill-wave"></i></div>
-        <div class="stat-value success" id="total-payments">-</div>
-        <div class="stat-label">کل پرداخت‌ها</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle warning"><i class="fas fa-clock"></i></div>
-        <div class="stat-value warning" id="pending-invoices">-</div>
-        <div class="stat-label">فاکتورهای در انتظار</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle danger"><i class="fas fa-exclamation-triangle"></i></div>
-        <div class="stat-value danger" id="unpaid-invoices">-</div>
-        <div class="stat-label">فاکتورهای پرداخت نشده</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle primary"><i class="fas fa-truck"></i></div>
-        <div class="stat-value primary" id="total-suppliers">-</div>
-        <div class="stat-label">کل تامین‌کنندگان</div>
-    </div>
-</div>
-
-<!-- Dashboard Grid -->
-<div class="dashboard-grid">
-    <!-- Financial Overview Chart -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <i class="fas fa-chart-pie"></i>
-                نمای کلی مالی
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-bar" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                داشبورد مدیر مالی
+            </h1>
+            <div class="ui-subtitle">
+                <span>پایش لحظه‌ای فاکتورها، پرداخت‌ها و تأمین‌کنندگان</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-num" id="persianDate"></span>
             </div>
         </div>
-        <div class="card-body">
-            <div class="chart-container">
-                <canvas id="financialChart"></canvas>
-            </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-file-invoice"></i>
+                <span>لیست فاکتورها</span>
+            </a>
+            <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-credit-card"></i>
+                <span>لیست پرداخت‌ها</span>
+            </a>
+            <a href="{% url 'logout' %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>خروج</span>
+            </a>
         </div>
+    </header>
+
+    <!-- نوار آمار یکپارچه -->
+    <section class="ui-metrics-strip fmd-metrics-5" aria-label="خلاصه آمار مالی">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل فاکتورها</span>
+            <div class="ui-metric-val is-accent" id="total-invoices">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل پرداخت‌ها</span>
+            <div class="ui-metric-val is-green" id="total-payments">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">فاکتورهای در انتظار</span>
+            <div class="ui-metric-val is-warn" id="pending-invoices">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">فاکتورهای پرداخت نشده</span>
+            <div class="ui-metric-val is-danger" id="unpaid-invoices">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل تأمین‌کنندگان</span>
+            <div class="ui-metric-val" id="total-suppliers">-</div>
+        </div>
+    </section>
+
+    <!-- نمودار و پرداخت‌های اخیر -->
+    <div class="fmd-grid">
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    نمای کلی مالی
+                </h2>
+            </div>
+            <div class="ui-card-body">
+                <div class="fmd-chart-wrap">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">
+                    <i class="fas fa-history"></i>
+                    پرداخت‌های اخیر
+                </h2>
+            </div>
+            <div class="fmd-list" id="recentPaymentsList">
+                <div class="fmd-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+        </section>
     </div>
 
-    <!-- Recent Payments -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <i class="fas fa-history"></i>
-                پرداخت‌های اخیر
-            </div>
+    <!-- فاکتورهای در انتظار پرداخت -->
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-file-invoice-dollar"></i>
+                فاکتورهای در انتظار پرداخت
+            </h2>
         </div>
-        <div class="card-body">
-            <div class="list-container" id="recentPaymentsList">
-                <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
+        <div class="fmd-list" id="pendingInvoicesList">
+            <div class="fmd-loading"><i class="fas fa-spinner fa-spin"></i></div>
         </div>
-    </div>
-</div>
+    </section>
 
-<!-- Pending Invoices -->
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">
-            <i class="fas fa-file-invoice-dollar"></i>
-            فاکتورهای در انتظار پرداخت
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="list-container" id="pendingInvoicesList">
-            <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -210,7 +220,7 @@
             labels: ['فاکتورها', 'پرداخت‌ها', 'در انتظار', 'پرداخت نشده'],
             datasets: [{
                 data: [data.total_invoices, data.total_payments, data.pending_invoices, data.unpaid_invoices],
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444'],
+                backgroundColor: ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444'],
                 borderWidth: 2, borderColor: '#fff'
             }]
         };
@@ -232,7 +242,7 @@
                                     return data.labels.map((label, i) => {
                                         const value = data.datasets[0].data[i];
                                         const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        const percentage = total ? ((value / total) * 100).toFixed(1) : '0.0';
                                         return {
                                             text: `${label}: ${toFarsiNumber(formatNumber(Math.round(value)))} (${toFarsiNumber(percentage)}%)`,
                                             fillStyle: data.datasets[0].backgroundColor[i],
@@ -261,7 +271,7 @@
 
     function loadRecentPayments() {
         const container = document.getElementById('recentPaymentsList');
-        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        container.innerHTML = '<div class="fmd-loading"><i class="fas fa-spinner fa-spin"></i></div>';
 
         fetch(`/{{ cafe_code }}/api/finance/recent-payments/`, {
             headers: { 'X-CSRFToken': csrftoken }
@@ -270,7 +280,7 @@
         .then(data => renderRecentPayments(data.payments))
         .catch(error => {
             console.error('Error loading recent payments:', error);
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>';
+            container.innerHTML = '<div class="ui-empty"><i class="fas fa-exclamation-triangle"></i><div>خطا در بارگذاری داده‌ها</div></div>';
         });
     }
 
@@ -286,23 +296,23 @@
     function renderRecentPayments(payments) {
         const container = document.getElementById('recentPaymentsList');
         if (!payments || payments.length === 0) {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-history"></i><p>پرداختی یافت نشد</p><small>در حال حاضر پرداختی ثبت نشده است</small></div>';
+            container.innerHTML = '<div class="ui-empty"><i class="fas fa-history"></i><div style="font-weight:700;color:var(--text-primary);margin-bottom:0.2rem;">پرداختی یافت نشد</div><small>در حال حاضر پرداختی ثبت نشده است</small></div>';
             return;
         }
         container.innerHTML = payments.map((payment, index) => `
-            <div class="list-item">
-                <div class="list-item-content">
-                    <div class="list-item-title">${index + 1}. فاکتور ${escapeHtml(payment.invoice_number)}</div>
-                    <div class="list-item-subtitle">${escapeHtml(payment.payment_type)} - ${escapeHtml(payment.payment_date)}</div>
+            <div class="fmd-list-item">
+                <div>
+                    <div class="fmd-item-title">${index + 1}. فاکتور ${escapeHtml(payment.invoice_number)}</div>
+                    <div class="fmd-item-sub">${escapeHtml(payment.payment_type)} — ${escapeHtml(payment.payment_date)}</div>
                 </div>
-                <div><div class="badge badge-success"><i class="fas fa-money-bill-wave"></i> ${toFarsiNumber(formatNumber(Math.round(payment.amount)))} ریال</div></div>
+                <span class="ui-pill is-ok ui-num"><i class="fas fa-money-bill-wave"></i> ${toFarsiNumber(formatNumber(Math.round(payment.amount)))} ریال</span>
             </div>
         `).join('');
     }
 
     function loadPendingInvoices() {
         const container = document.getElementById('pendingInvoicesList');
-        container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        container.innerHTML = '<div class="fmd-loading"><i class="fas fa-spinner fa-spin"></i></div>';
 
         fetch(`/{{ cafe_code }}/api/finance/pending-invoices/`, {
             headers: { 'X-CSRFToken': csrftoken }
@@ -311,23 +321,23 @@
         .then(data => renderPendingInvoices(data.invoices))
         .catch(error => {
             console.error('Error loading pending invoices:', error);
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>خطا در بارگذاری داده‌ها</p></div>';
+            container.innerHTML = '<div class="ui-empty"><i class="fas fa-exclamation-triangle"></i><div>خطا در بارگذاری داده‌ها</div></div>';
         });
     }
 
     function renderPendingInvoices(invoices) {
         const container = document.getElementById('pendingInvoicesList');
         if (!invoices || invoices.length === 0) {
-            container.innerHTML = '<div class="empty-state"><i class="fas fa-file-invoice-dollar"></i><p>فاکتور در انتظار یافت نشد</p><small>تمام فاکتورها پرداخت شده‌اند</small></div>';
+            container.innerHTML = '<div class="ui-empty"><i class="fas fa-file-invoice-dollar"></i><div style="font-weight:700;color:var(--text-primary);margin-bottom:0.2rem;">فاکتور در انتظار یافت نشد</div><small>تمام فاکتورها پرداخت شده‌اند</small></div>';
             return;
         }
         container.innerHTML = invoices.map((invoice, index) => `
-            <div class="list-item">
-                <div class="list-item-content">
-                    <div class="list-item-title">${index + 1}. ${escapeHtml(invoice.invoice_number)}</div>
-                    <div class="list-item-subtitle">${escapeHtml(invoice.supplier_name)} - ${escapeHtml(invoice.invoice_date)}</div>
+            <div class="fmd-list-item">
+                <div>
+                    <div class="fmd-item-title">${index + 1}. ${escapeHtml(invoice.invoice_number)}</div>
+                    <div class="fmd-item-sub">${escapeHtml(invoice.supplier_name)} — ${escapeHtml(invoice.invoice_date)}</div>
                 </div>
-                <div><div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> ${toFarsiNumber(formatNumber(Math.round(invoice.total_amount)))} ریال</div></div>
+                <span class="ui-pill is-danger ui-num"><i class="fas fa-exclamation-triangle"></i> ${toFarsiNumber(formatNumber(Math.round(invoice.total_amount)))} ریال</span>
             </div>
         `).join('');
     }

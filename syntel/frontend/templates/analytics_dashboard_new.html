@@ -5,11 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد تحلیلی سیستم خرید</title>
-    
+
     <link href="{% static 'fonts/vazir-font.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ui_system.css' %}?v=20261127a">
     <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
-    
+
     <style>
         * {
             margin: 0;
@@ -18,28 +19,27 @@
         }
 
         :root {
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --info-color: #3b82f6;
-            --dark-color: #1f2937;
-            --light-color: #f9fafb;
-            --border-color: #e5e7eb;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
-            --radius-xl: 1rem;
+            --primary: #8B5CF6;
+            --primary-dark: #7C3AED;
+            --bg-page: #F4F6FB;
+            --bg-card: #FFFFFF;
+            --border-default: #E2E8F0;
+            --border-light: #F1F5F9;
+            --border-strong: #CBD5E1;
+            --text-primary: #0F172A;
+            --text-secondary: #64748B;
+            --text-muted: #94A3B8;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+            --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06);
         }
 
         body {
             font-family: 'Vazir', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f5f5f5;
+            background: var(--bg-page);
             min-height: 100vh;
-            color: var(--dark-color);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
@@ -51,17 +51,18 @@
         /* Sidebar */
         .sidebar {
             width: 280px;
-            background: white;
-            border-left: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-left: 1px solid var(--border-default);
             display: flex;
             flex-direction: column;
             height: 100vh;
             position: fixed;
             top: 0;
             right: -280px;
-            transition: right 0.3s ease;
+            transition: right 0.25s ease;
             z-index: 1000;
-            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: -4px 0 24px rgba(15, 23, 42, 0.08);
+            overflow-y: auto;
         }
 
         .sidebar.open {
@@ -70,11 +71,8 @@
 
         .sidebar-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
             z-index: 999;
             display: none;
         }
@@ -83,297 +81,119 @@
             display: block;
         }
 
-        .hamburger-btn {
-            background: white;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1rem;
-        }
-
-        .hamburger-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .hamburger-btn i {
-            font-size: 1.2rem;
-        }
-
         .sidebar-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--light-color);
+            padding: 1.25rem 1.35rem;
+            border-bottom: 1px solid var(--border-light);
+            background: var(--gray-50);
         }
 
         .sidebar-title {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--dark-color);
+            font-weight: 800;
+            font-size: 0.98rem;
+            color: var(--text-primary);
         }
 
         .menu-list {
             list-style: none;
-            padding: 1.5rem;
+            padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.3rem;
             flex: 1;
-        }
-
-        .menu-item {
-            margin: 0;
         }
 
         .menu-link {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            color: var(--dark-color);
+            gap: 0.7rem;
+            padding: 0.72rem 0.9rem;
+            color: var(--text-secondary);
             text-decoration: none;
-            border-radius: var(--radius-md);
-            transition: all 0.2s ease;
-            font-weight: 500;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+            font-size: 0.84rem;
+            font-weight: 600;
         }
 
         .menu-link:hover {
-            background: var(--light-color);
-            color: var(--primary-color);
-            transform: translateX(5px);
+            background: var(--gray-50);
+            color: var(--text-primary);
         }
 
         .menu-link.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            box-shadow: var(--shadow-md);
+            background: rgba(139, 92, 246, 0.08);
+            border-color: rgba(139, 92, 246, 0.28);
+            color: var(--primary-dark);
+            font-weight: 700;
         }
 
         .menu-link i {
-            width: 20px;
-            font-size: 1rem;
+            width: 18px;
+            font-size: 0.92rem;
+            text-align: center;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
-            padding: 2rem;
-            overflow-x: auto;
+            padding: 1.5rem 2rem;
             width: 100%;
-        }
-
-        .page-header {
-            background: white;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .date-display {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.95rem;
-            color: var(--dark-color);
-            font-weight: 500;
-            direction: rtl;
-            font-family: Vazir, sans-serif;
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-sm);
-            transition: all 0.2s ease;
-        }
-
-        .date-display:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--primary-color);
-        }
-
-        .date-display i {
-            color: var(--primary-color);
-            font-size: 1.2rem;
-            background: rgba(99, 102, 241, 0.1);
-            padding: 0.25rem;
-            border-radius: 50%;
-        }
-
-        /* Stats Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.2s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .stat-card.primary {
-            border-right: 4px solid var(--primary-color);
-        }
-
-        .stat-card.success {
-            border-right: 4px solid var(--success-color);
-        }
-
-        .stat-card.warning {
-            border-right: 4px solid var(--warning-color);
-        }
-
-        .stat-card.info {
-            border-right: 4px solid var(--info-color);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-card.primary .stat-value {
-            color: var(--primary-color);
-        }
-
-        .stat-card.success .stat-value {
-            color: var(--success-color);
-        }
-
-        .stat-card.warning .stat-value {
-            color: var(--warning-color);
-        }
-
-        .stat-card.info .stat-value {
-            color: var(--info-color);
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: #6b7280;
-        }
-
-        /* Analytics Cards */
-        .analytics-section {
-            background: white;
-            border-radius: var(--radius-xl);
-            padding: 2rem;
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 2rem;
-        }
-
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--dark-color);
         }
 
         .analytics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
         }
 
         .analytics-card {
-            background: white;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 14px;
+            padding: 1.25rem;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
             text-decoration: none;
-            color: var(--dark-color);
-            display: block;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.45rem;
         }
 
         .analytics-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
             box-shadow: var(--shadow-md);
-            border-color: var(--primary-color);
-            text-decoration: none;
+            border-color: var(--primary);
         }
 
-        .analytics-card i {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: var(--primary-color);
+        .analytics-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(139, 92, 246, 0.08);
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            margin-bottom: 0.25rem;
         }
 
         .analytics-card strong {
-            display: block;
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 800;
         }
 
         .analytics-card small {
-            color: #6b7280;
-            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-
             .main-content {
                 padding: 1rem;
             }
-
-            .page-header {
-                position: relative;
-            }
-            .page-header .date-display {
-                padding: 0.2rem 0.55rem;
-                border-radius: 999px;
-                font-size: 0.72rem;
-                font-weight: 700;
-                gap: 0.28rem;
-                box-shadow: none;
-            }
-            .page-header .date-display i {
-                font-size: 0.68rem;
-                padding: 0;
-                background: none;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
             .analytics-grid {
                 grid-template-columns: 1fr;
             }
@@ -382,10 +202,8 @@
 </head>
 <body>
     <div class="layout">
-        <!-- Sidebar Overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-        
-        <!-- Sidebar -->
+
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">منو مدیریت - {{ current_cafe.name }}</div>
@@ -466,24 +284,6 @@
                     </a>
                 </li>
                 <li class="menu-item">
-                    <a href="{% url 'analytics_line_chart' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span>روند هزینه‌ها</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'analytics_price_monitor' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-tags"></i>
-                        <span>نظارت بر قیمت</span>
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="menu-link">
-                        <i class="fas fa-layer-group"></i>
-                        <span>تحلیل خرید بر اساس دسته‌بندی</span>
-                    </a>
-                </li>
-                <li class="menu-item">
                     <a href="{% url 'logout' %}" class="menu-link">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>خروج</span>
@@ -492,85 +292,90 @@
             </ul>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">
-                    <i class="fas fa-chart-line"></i>
-                    داشبورد تحلیلی سیستم خرید
-                </h1>
-                <div style="display: flex; align-items: center; gap: 1.5rem;">
-                    <div class="date-display">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span id="persianDate"></span>
+            <div class="ui-page is-wide">
+                <header class="ui-topbar">
+                    <div class="ui-heading">
+                        <h1 class="ui-title">
+                            <i class="fas fa-chart-line" style="color: var(--primary);"></i>
+                            داشبورد تحلیلی سیستم خرید
+                        </h1>
+                        <p class="ui-subtitle">نمای جامع درخواست‌ها، تحلیل‌های خرید، مالی و موجودی</p>
                     </div>
-                    <button class="hamburger-btn" onclick="toggleSidebar()">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
-            </div>
+                    <div class="ui-topbar-actions">
+                        <span class="ui-chip date-display">
+                            <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
+                            <span id="persianDate"></span>
+                        </span>
+                        <button type="button" class="ui-btn ui-btn-ghost hamburger-btn" onclick="toggleSidebar()" aria-label="منو">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                    </div>
+                </header>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card primary">
-                    <div class="stat-value">{{ total_requests|default:0 }}</div>
-                    <div class="stat-label">کل درخواست‌های خرید</div>
-                </div>
-                <div class="stat-card success">
-                    <div class="stat-value">{{ approved_requests|default:0 }}</div>
-                    <div class="stat-label">درخواست‌های تأیید شده</div>
-                </div>
-                <div class="stat-card warning">
-                    <div class="stat-value">{{ pending_approvals|default:0 }}</div>
-                    <div class="stat-label">در انتظار تأیید</div>
-                </div>
-                <div class="stat-card info">
-                    <div class="stat-value">{{ total_suppliers|default:0 }}</div>
-                    <div class="stat-label">تأمین‌کنندگان فعال</div>
-                </div>
-            </div>
+                <section class="ui-metrics-strip">
+                    <div class="ui-metric-cell">
+                        <span class="ui-metric-label">کل درخواست‌های خرید</span>
+                        <div class="ui-metric-val is-accent ui-num">{{ total_requests|default:0 }}</div>
+                    </div>
+                    <div class="ui-metric-cell">
+                        <span class="ui-metric-label">درخواست‌های تأیید شده</span>
+                        <div class="ui-metric-val is-green ui-num">{{ approved_requests|default:0 }}</div>
+                    </div>
+                    <div class="ui-metric-cell">
+                        <span class="ui-metric-label">در انتظار تأیید</span>
+                        <div class="ui-metric-val is-warn ui-num">{{ pending_approvals|default:0 }}</div>
+                    </div>
+                    <div class="ui-metric-cell">
+                        <span class="ui-metric-label">تأمین‌کنندگان فعال</span>
+                        <div class="ui-metric-val ui-num">{{ total_suppliers|default:0 }}</div>
+                    </div>
+                </section>
 
-            <!-- Analytics Section -->
-            <div class="analytics-section">
-                <h2 class="section-title">گزارش‌های تحلیلی</h2>
-                <div class="analytics-grid">
-                    <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-shopping-cart"></i>
-                        <strong>تحلیل خریدها</strong>
-                        <small>روند درخواست‌ها و تحلیل محصولات</small>
-                    </a>
-                    <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-dollar-sign"></i>
-                        <strong>تحلیل مالی</strong>
-                        <small>هزینه‌ها و پرداخت‌ها</small>
-                    </a>
-                    <a href="{% url 'supplier_analytics' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-truck"></i>
-                        <strong>تحلیل تأمین‌کنندگان</strong>
-                        <small>عملکرد و امتیازدهی</small>
-                    </a>
-                    <a href="{% url 'inventory_analytics' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-boxes"></i>
-                        <strong>تحلیل موجودی</strong>
-                        <small>موجودی و مصرف محصولات</small>
-                    </a>
-                    <a href="{% url 'executive_summary' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-chart-pie"></i>
-                        <strong>خلاصه مدیریتی</strong>
-                        <small>شاخص‌های کلیدی عملکرد</small>
-                    </a>
-                    <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="analytics-card">
-                        <i class="fas fa-layer-group"></i>
-                        <strong>تحلیل خرید بر اساس دسته‌بندی</strong>
-                        <small>فیلتر دسته‌بندی و فروشنده</small>
-                    </a>
-                </div>
+                <section class="ui-card">
+                    <div class="ui-card-head">
+                        <h2 class="ui-card-title"><i class="fas fa-compass"></i> گزارش‌های تحلیلی</h2>
+                    </div>
+                    <div class="ui-card-body">
+                        <div class="analytics-grid">
+                            <a href="{% url 'purchase_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-shopping-cart"></i></div>
+                                <strong>تحلیل خریدها</strong>
+                                <small>روند درخواست‌ها و تحلیل محصولات</small>
+                            </a>
+                            <a href="{% url 'financial_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-dollar-sign"></i></div>
+                                <strong>تحلیل مالی</strong>
+                                <small>هزینه‌ها و پرداخت‌ها</small>
+                            </a>
+                            <a href="{% url 'supplier_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-truck"></i></div>
+                                <strong>تحلیل تأمین‌کنندگان</strong>
+                                <small>عملکرد و امتیازدهی</small>
+                            </a>
+                            <a href="{% url 'inventory_analytics' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-boxes"></i></div>
+                                <strong>تحلیل موجودی</strong>
+                                <small>موجودی و مصرف محصولات</small>
+                            </a>
+                            <a href="{% url 'executive_summary' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-chart-pie"></i></div>
+                                <strong>خلاصه مدیریتی</strong>
+                                <small>شاخص‌های کلیدی عملکرد</small>
+                            </a>
+                            <a href="{% url 'purchase_category_analysis' cafe_code=cafe_code %}" class="analytics-card">
+                                <div class="analytics-card-icon"><i class="fas fa-layer-group"></i></div>
+                                <strong>تحلیل خرید بر اساس دسته‌بندی</strong>
+                                <small>فیلتر دسته‌بندی و فروشنده</small>
+                            </a>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
 
     <script>
-        // Toggle Sidebar
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -578,7 +383,6 @@
             overlay.classList.toggle('show');
         }
 
-        // نمایش تاریخ شمسی
         function displayPersianDate() {
             const today = new Date();
             const isMobile = window.innerWidth < 1024;
@@ -586,19 +390,15 @@
                 ? { month: 'long', day: 'numeric' }
                 : { year: 'numeric', month: 'long', day: 'numeric' };
             const dateStr = today.toLocaleDateString('fa-IR-u-nu-latn', opts);
-            
             const dateElement = document.getElementById('persianDate');
             if (dateElement) {
                 dateElement.textContent = dateStr;
             }
         }
 
-        // فراخوانی تابع نمایش تاریخ
         if (document.getElementById('persianDate')) {
             displayPersianDate();
         }
     </script>
 </body>
 </html>
-
-

@@ -4,85 +4,106 @@
 {% block title %}جزئیات پلاک {{ unit.asset_tag }} - Kuker{% endblock %}
 
 {% block content %}
-<div style="max-width:1100px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-microchip"></i></div>
-            <div class="ph-title">
-                <h1>{{ unit.asset.name }} — پلاک {{ unit.asset_tag }}</h1>
-                <div class="page-sub">سکشن فعلی: {{ unit.department.name|default:'—' }} | وضعیت: {{ unit.get_status_display }}</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-microchip" style="color: var(--primary, #8B5CF6);"></i>
+                {{ unit.asset.name }} — پلاک {{ unit.asset_tag }}
+            </h1>
+            <p class="ui-subtitle">
+                <span>سکشن فعلی: <strong>{{ unit.department.name|default:'—' }}</strong></span>
+                <span class="ui-subtitle-dot"></span>
+                <span>وضعیت: <span class="ui-pill is-accent">{{ unit.get_status_display }}</span></span>
+            </p>
         </div>
-        <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+        </nav>
     </div>
 
-    <div class="card" style="margin-bottom:1.25rem;">
-        <div class="card-body" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.85rem;">
-            <div><strong>کد پلاک:</strong> {{ unit.asset_tag }}</div>
-            <div><strong>شماره سریال:</strong> {{ unit.serial_number|default:'—' }}</div>
-            <div><strong>تاریخ خرید:</strong> {{ purchase_date_jalali }}</div>
-            <div><strong>پایان گارانتی:</strong> {{ warranty_until_jalali }}</div>
-            <div><strong>قیمت خرید:</strong> {{ unit.purchase_price|number_format }} ریال</div>
-            <div><strong>فاکتور مرتبط:</strong> {{ unit.invoice.invoice_number|default:'—' }}</div>
+    <section class="ui-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-circle-info"></i> مشخصات تجهیز</h2>
+        </div>
+        <div class="ui-card-body" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.85rem;">
+            <div><strong>کد پلاک:</strong> <span class="ui-num">{{ unit.asset_tag }}</span></div>
+            <div><strong>شماره سریال:</strong> <span class="ui-num">{{ unit.serial_number|default:'—' }}</span></div>
+            <div><strong>تاریخ خرید:</strong> <span class="ui-num">{{ purchase_date_jalali }}</span></div>
+            <div><strong>پایان گارانتی:</strong> <span class="ui-num">{{ warranty_until_jalali }}</span></div>
+            <div><strong>قیمت خرید:</strong> <span class="ui-money">{{ unit.purchase_price|number_format }} ریال</span></div>
+            <div><strong>فاکتور مرتبط:</strong> <span class="ui-num">{{ unit.invoice.invoice_number|default:'—' }}</span></div>
             <div><strong>مسئول تحویل:</strong> {{ unit.custodian.username|default:'—' }}</div>
-            <div><strong>وضعیت فعلی:</strong> <span class="badge badge-primary">{{ unit.get_status_display }}</span></div>
+            <div><strong>وضعیت فعلی:</strong> <span class="ui-pill is-accent">{{ unit.get_status_display }}</span></div>
         </div>
         {% if unit.photo or unit.asset.image %}
-        <div style="padding:0 1.25rem 1.25rem;">
-            <img src="{% if unit.photo %}{{ unit.photo.url }}{% else %}{{ unit.asset.image.url }}{% endif %}" alt="" style="max-height:180px; border-radius:12px; border:1px solid var(--border-default);">
+        <div style="padding:0 1.2rem 1.2rem;">
+            <img src="{% if unit.photo %}{{ unit.photo.url }}{% else %}{{ unit.asset.image.url }}{% endif %}" alt="" style="max-height:180px; border-radius:12px; border:1px solid var(--border-default, #E2E8F0);">
         </div>
         {% endif %}
-    </div>
+    </section>
 
     {% if is_manager %}
-    <div class="card" style="margin-bottom:1.25rem;">
-        <div class="card-header"><div class="card-title"><i class="fas fa-tools"></i> ثبت تغییر وضعیت / تعمیر / اسقاط</div></div>
-        <div class="card-body">
-            <form method="post" action="{% url 'asset_unit_repair_action' cafe_code=cafe_code pk=unit.id %}" enctype="multipart/form-data" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; align-items:end;">
-                {% csrf_token %}
-                <div class="filter-group">
-                    <label class="filter-label">وضعیت جدید</label>
-                    <select name="new_status" class="filter-select">
-                        {% for val, label in status_choices %}
-                        <option value="{{ val }}" {% if unit.status == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">توضیحات / علت</label>
-                    <input type="text" name="reason" class="form-control" placeholder="مثلاً ارسال به نمایندگی تعمیر...">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">تصویر مستندات (اختیاری)</label>
-                    <input type="file" name="evidence_photo" accept="image/*" class="form-control">
-                </div>
-                <button type="submit" class="btn btn-primary" style="height:42px;">ثبت تغییر وضعیت</button>
-            </form>
+    <section class="ui-form-card" style="margin-bottom:0;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; font-weight:800; font-size:0.9rem;">
+            <i class="fas fa-tools" style="color:var(--primary, #8B5CF6);"></i>
+            <span>ثبت تغییر وضعیت / تعمیر / اسقاط</span>
         </div>
-    </div>
+        <form method="post" action="{% url 'asset_unit_repair_action' cafe_code=cafe_code pk=unit.id %}" enctype="multipart/form-data" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; align-items:end;">
+            {% csrf_token %}
+            <div class="ui-field">
+                <label class="ui-field-label">وضعیت جدید</label>
+                <select name="new_status" class="ui-select">
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if unit.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">توضیحات / علت</label>
+                <input type="text" name="reason" class="ui-input" placeholder="مثلاً ارسال به نمایندگی تعمیر...">
+            </div>
+            <div class="ui-field">
+                <label class="ui-field-label">تصویر مستندات (اختیاری)</label>
+                <input type="file" name="evidence_photo" accept="image/*" class="ui-input" style="padding-top:0.45rem;">
+            </div>
+            <button type="submit" class="ui-btn ui-btn-primary" style="height:38px;">ثبت تغییر وضعیت</button>
+        </form>
+    </section>
     {% endif %}
 
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-history"></i> تاریخچه گردش و تعمیرات این پلاک</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-history"></i> تاریخچه گردش و تعمیرات این پلاک</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>تاریخ</th><th>نوع گردش</th><th>از / به</th><th>ثبت‌کننده</th><th>توضیحات</th><th>مستند</th></tr></thead>
                 <tbody>
                     {% for mv in movements %}
                     <tr>
-                        <td>{{ mv.created_at|jalali_datetime }}</td>
-                        <td>{{ mv.get_movement_type_display }}</td>
+                        <td class="ui-num">{{ mv.created_at|jalali_datetime }}</td>
+                        <td><span class="ui-pill is-muted">{{ mv.get_movement_type_display }}</span></td>
                         <td>{{ mv.from_department.name|default:'—' }} ← {{ mv.to_department.name|default:'—' }}</td>
                         <td>{{ mv.created_by.username|default:'—' }}</td>
                         <td>{{ mv.reason|default:'—' }}</td>
-                        <td>{% if mv.evidence_photo %}<a href="{{ mv.evidence_photo.url }}" target="_blank">مشاهده عکس</a>{% else %}—{% endif %}</td>
+                        <td>{% if mv.evidence_photo %}<a href="{{ mv.evidence_photo.url }}" target="_blank" class="ui-row-action">مشاهده عکس</a>{% else %}—{% endif %}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" style="text-align:center; padding:1.5rem;">تاریخی ثبت نشده است.</td></tr>
+                    <tr><td colspan="6"><div class="ui-empty" style="padding:1.5rem;">تاریخی ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

@@ -3,140 +3,92 @@
 
 {% block title %}لیست پرداخت‌ها{% endblock %}
 
-{% block extra_css %}
-<style>
-    body { background: #f5f5f5; font-family: 'Vazir', sans-serif; }
-
-    .p-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
-
-    /* header */
-    .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem; }
-    .p-header h1 { font-size: 1.3rem; font-weight: 700; color: #111; margin: 0; }
-    .p-header p  { font-size: .85rem; color: #888; margin: .2rem 0 0; }
-    .p-actions   { display: flex; gap: .5rem; flex-wrap: wrap; }
-
-    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border-radius: 7px; font-size: .875rem; font-weight: 500; text-decoration: none; border: none; cursor: pointer; transition: .15s; }
-    .btn-primary { background: #4f46e5; color: #fff; }
-    .btn-primary:hover { background: #4338ca; color: #fff; }
-    .btn-ghost   { background: #fff; color: #444; border: 1px solid #e0e0e0; }
-    .btn-ghost:hover { background: #f3f3f3; color: #222; }
-
-    /* summary */
-    .p-summary { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .p-sum-item { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: .9rem 1.25rem; flex: 1; min-width: 160px; }
-    .p-sum-item .lbl { font-size: .78rem; color: #888; margin: 0 0 .25rem; }
-    .p-sum-item .val { font-size: 1.1rem; font-weight: 700; color: #111; margin: 0; }
-
-    /* filter */
-    .p-filter { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem; }
-    .p-filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
-    .p-filter label { font-size: .78rem; color: #666; display: block; margin-bottom: .3rem; }
-    .p-filter input, .p-filter select {
-        width: 100%; padding: .45rem .75rem; border: 1px solid #e0e0e0; border-radius: 7px;
-        font-size: .875rem; font-family: inherit; background: #fafafa; transition: .15s;
-    }
-    .p-filter input:focus, .p-filter select:focus { outline: none; border-color: #4f46e5; background: #fff; }
-    .p-filter-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .75rem; }
-
-    /* table */
-    .p-table-wrap { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; overflow: hidden; }
-    .p-table-head { padding: .9rem 1.25rem; border-bottom: 1px solid #efefef; font-weight: 600; font-size: .9rem; color: #333; }
-    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
-    thead th { background: #fafafa; padding: .75rem 1rem; text-align: right; font-weight: 600; color: #555; border-bottom: 1px solid #efefef; white-space: nowrap; }
-    tbody td { padding: .75rem 1rem; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: #fafafa; }
-
-    a.inv-link { color: #4f46e5; text-decoration: none; font-weight: 500; }
-    a.inv-link:hover { text-decoration: underline; }
-
-    .badge { display: inline-block; padding: .2rem .65rem; border-radius: 20px; font-size: .75rem; font-weight: 500; }
-    .badge-green  { background: #dcfce7; color: #166534; }
-    .badge-yellow { background: #fef9c3; color: #854d0e; }
-    .badge-red    { background: #fee2e2; color: #991b1b; }
-    .badge-gray   { background: #f3f4f6; color: #4b5563; }
-    .badge-blue   { background: #e0e7ff; color: #3730a3; }
-
-    .act-btns { display: flex; gap: .35rem; justify-content: flex-start; }
-    .act-btn  { width: 30px; height: 30px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; text-decoration: none; transition: .15s; background: transparent; }
-    .act-btn:hover { transform: scale(1.15); opacity: .75; }
-    .act-view { }
-    .act-edit { }
-    .act-del  { }
-
-    .empty { text-align: center; padding: 3rem 1rem; color: #aaa; }
-    .empty .ico { font-size: 2.5rem; margin-bottom: .5rem; }
-    .empty p { font-size: .9rem; margin: 0; }
-
-    @media (max-width: 640px) {
-        .p-filter-row { grid-template-columns: 1fr; }
-        table { font-size: .78rem; }
-        thead th, tbody td { padding: .5rem .6rem; }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="p-wrap">
+<div class="ui-page">
 
-    <!-- Header -->
-    <div class="p-header">
-        <div>
-            <h1>💳 مدیریت پرداخت‌ها</h1>
-            <p>مشاهده و مدیریت تمامی پرداخت‌های ثبت‌شده</p>
-        </div>
-        <div class="p-actions">
-            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="btn btn-primary">➕ پرداخت جدید</a>
-            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="btn btn-ghost">⚙️ محل‌های پرداخت</a>
-        </div>
-    </div>
-
-    <!-- Summary -->
-    <div class="p-summary">
-        <div class="p-sum-item">
-            <p class="lbl">تعداد پرداخت‌ها</p>
-            <p class="val">{{ payments|length }}</p>
-        </div>
-        <div class="p-sum-item">
-            <p class="lbl">مجموع مبلغ</p>
-            <p class="val">{{ total_amount|number_format }} ریال</p>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="p-filter">
-        <form method="get">
-            <div class="p-filter-row">
-                <div>
-                    <label>از تاریخ</label>
-                    <input type="date" name="date_from" value="{{ date_from }}">
-                </div>
-                <div>
-                    <label>تا تاریخ</label>
-                    <input type="date" name="date_to" value="{{ date_to }}">
-                </div>
-                <div>
-                    <label>محل پرداخت</label>
-                    <select name="location">
-                        <option value="">همه</option>
-                        {% for loc in payment_locations %}
-                        <option value="{{ loc.id }}" {% if selected_location == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-credit-card" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                مدیریت پرداخت‌ها
+            </h1>
+            <div class="ui-subtitle">
+                <span>مشاهده و مدیریت تمامی پرداخت‌های ثبت‌شده</span>
+                {% if date_from or date_to or selected_location %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
             </div>
-            <div class="p-filter-actions">
-                <button type="submit" class="btn btn-primary">🔍 اعمال</button>
-                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="btn btn-ghost">✕ پاک کردن</a>
-            </div>
-        </form>
-    </div>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-cog"></i>
+                <span>محل‌های پرداخت</span>
+            </a>
+            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>پرداخت جدید</span>
+            </a>
+        </div>
+    </header>
 
-    <!-- Table -->
-    <div class="p-table-wrap">
-        <div class="p-table-head">📋 لیست پرداخت‌ها</div>
-        <div style="overflow-x:auto;">
-            <table>
+    <!-- نوار آمار -->
+    <section class="ui-metrics-strip cols-2" aria-label="خلاصه پرداخت‌ها">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تعداد پرداخت‌ها</span>
+            <div class="ui-metric-val ui-num">{{ payments|length }}<span class="ui-metric-unit">مورد</span></div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع مبلغ</span>
+            <div class="ui-metric-val is-green ui-num">{{ total_amount|number_format }}<span class="ui-metric-unit">ریال</span></div>
+        </div>
+    </section>
+
+    <!-- فیلترها -->
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.65rem;flex:1;">
+                <label style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);display:inline-flex;align-items:center;gap:0.35rem;">
+                    <span>از تاریخ:</span>
+                    <input type="date" name="date_from" value="{{ date_from }}" class="ui-input" style="width:auto;height:36px;font-size:0.8rem;">
+                </label>
+
+                <label style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);display:inline-flex;align-items:center;gap:0.35rem;">
+                    <span>تا تاریخ:</span>
+                    <input type="date" name="date_to" value="{{ date_to }}" class="ui-input" style="width:auto;height:36px;font-size:0.8rem;">
+                </label>
+
+                <select name="location" class="ui-select" onchange="this.form.submit()" aria-label="محل پرداخت">
+                    <option value="">همه محل‌های پرداخت</option>
+                    {% for loc in payment_locations %}
+                    <option value="{{ loc.id }}" {% if selected_location == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.45rem;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-filter"></i>
+                    <span>اعمال</span>
+                </button>
+                {% if date_from or date_to or selected_location %}
+                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-danger-soft is-sm">
+                    <i class="fas fa-times"></i>
+                    <span>پاک‌کردن</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- جدول پرداخت‌ها -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> لیست پرداخت‌ها</h2>
+            <span class="ui-chip ui-num">{{ payments|length }} پرداخت</span>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>فاکتور</th>
@@ -144,7 +96,7 @@
                         <th>مبلغ</th>
                         <th>محل پرداخت</th>
                         <th>تاریخ</th>
-                        <th style="text-align:right;">عملیات</th>
+                        <th style="text-align:left;">عملیات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -152,10 +104,16 @@
                     <tr>
                         <td>
                             {% if payment.invoice %}
-                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=payment.invoice.id %}" class="inv-link">{{ payment.invoice.invoice_number }}</a>
+                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=payment.invoice.id %}"
+                                   style="font-weight:700;color:var(--primary-dark,#7C3AED);text-decoration:none;" class="ui-num">
+                                    {{ payment.invoice.invoice_number }}
+                                </a>
                             {% elif payment.invoices.exists %}
                                 {% for inv in payment.invoices.all %}
-                                    <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=inv.id %}" class="inv-link" style="display:block;">{{ inv.invoice_number }}</a>
+                                    <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=inv.id %}"
+                                       style="display:block;font-weight:700;color:var(--primary-dark,#7C3AED);text-decoration:none;" class="ui-num">
+                                        {{ inv.invoice_number }}
+                                    </a>
                                 {% endfor %}
                             {% else %}-{% endif %}
                         </td>
@@ -168,26 +126,33 @@
                                 {% endfor %}
                             {% else %}-{% endif %}
                         </td>
-                        <td style="font-weight:600;">{{ payment.amount|number_format }} ریال</td>
+                        <td>
+                            <span class="ui-money">{{ payment.amount|number_format }}</span>
+                            <span style="font-size:0.72rem;color:var(--text-muted);">ریال</span>
+                        </td>
                         <td>
                             {% if payment.payment_location %}
-                                <span class="badge badge-blue">{{ payment.payment_location.name }}</span>
+                                <span class="ui-pill is-info">{{ payment.payment_location.name }}</span>
                             {% else %}-{% endif %}
                         </td>
-                        <td style="color:#555;">{{ payment.payment_date|date:"Y/m/d" }}</td>
-                        <td style="text-align:right;">
-                            <div class="act-btns">
-                                <a href="{% url 'payment_update' cafe_code=cafe_code payment_id=payment.id %}" class="act-btn act-edit" title="ویرایش">✏️</a>
-                                <a href="{% url 'payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="act-btn act-del" title="حذف">🗑️</a>
+                        <td class="ui-num" style="color:var(--text-secondary);">{{ payment.payment_date|date:"Y/m/d" }}</td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;align-items:center;gap:0.2rem;">
+                                <a href="{% url 'payment_update' cafe_code=cafe_code payment_id=payment.id %}" class="ui-row-action" title="ویرایش">
+                                    <i class="fas fa-pen"></i>
+                                </a>
+                                <a href="{% url 'payment_delete' cafe_code=cafe_code payment_id=payment.id %}" class="ui-row-action is-danger" title="حذف">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6">
-                            <div class="empty">
-                                <div class="ico">📭</div>
-                                <p>پرداختی یافت نشد</p>
+                            <div class="ui-empty">
+                                <i class="fas fa-inbox"></i>
+                                پرداختی یافت نشد
                             </div>
                         </td>
                     </tr>
@@ -195,8 +160,7 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
 </div>
 {% endblock %}
-

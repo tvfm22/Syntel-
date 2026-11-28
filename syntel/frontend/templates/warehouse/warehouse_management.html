@@ -6,307 +6,177 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ مدیریت انبارها — مینیمال، هماهنگ با داشبورد مسئول انبار ═══ */
-    .whm-wrap { max-width: 1100px; margin: 0 auto; }
-    .whm-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-
-    /* ── کارت‌های آماری ── */
-    .whm-stats {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: var(--space-3); margin-bottom: var(--space-5);
-    }
-    .whm-stat-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5);
-        display: flex; align-items: center; gap: var(--space-3);
-        transition: all var(--transition-fast);
-    }
-    .whm-stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .whm-stat-icon {
-        width: 38px; height: 38px; border-radius: var(--radius-md); flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
-    }
-    .whm-stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .whm-stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
-    .whm-stat-icon.indigo  { background: rgba(139,92,246,0.12); color: #6d28d9; }
-    .whm-stat-icon.ok      { background: #d1fae5; color: #065f46; }
-    .whm-stat-icon.inactive { background: #fee2e2; color: #b91c1c; }
-
-    /* ── نوار فیلتر/جستجو ── */
-    .whm-filter-bar {
-        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: 0.55rem 0.9rem; margin-bottom: var(--space-4);
-    }
-    .whm-filter-bar .whm-bar-label {
-        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.15rem;
-        white-space: nowrap;
-    }
-    .whm-search-input {
-        height: 32px; padding: 0 0.75rem; min-width: 190px; flex: 1;
-        border: 1.5px solid var(--border-default); border-radius: 999px;
-        font-family: 'Vazir', sans-serif; font-size: 0.78rem; font-weight: 600;
-        background: var(--bg-card); color: var(--text-primary); transition: all var(--transition-fast);
-    }
-    .whm-search-input:focus { outline: none; border-color: var(--accent-indigo); }
-
-    /* ── گرید کارت‌های انبار ── */
+    /* ═══ مدیریت انبارها — هم‌تراز با سیستم طراحی .ui-* ═══ */
     .whm-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-        gap: var(--space-4);
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 1rem;
     }
     .whm-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-2xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-4) var(--space-5);
-        transition: all var(--transition-fast);
-        border-inline-start: 4px solid var(--accent-indigo);
-        display: flex; flex-direction: column;
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15,23,42,0.04));
+        padding: 1.05rem 1.2rem;
+        transition: box-shadow 0.16s ease, border-color 0.16s ease;
+        border-inline-start: 3px solid var(--primary, #8B5CF6);
+        display: flex;
+        flex-direction: column;
     }
     .whm-card.inactive { border-inline-start-color: #EF4444; opacity: 0.85; }
-    .whm-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .whm-card.open { border-inline-start-color: var(--accent-green); }
+    .whm-card:hover { box-shadow: 0 6px 18px rgba(15,23,42,0.06); border-color: var(--border-strong, #CBD5E1); }
+    .whm-card.open { border-inline-start-color: var(--ui-ok, #047857); }
 
     /* سر کارت — کلیک برای باز شدن */
     .whm-card-head {
         display: flex; align-items: center; justify-content: space-between;
-        gap: var(--space-2); cursor: pointer; user-select: none;
-        padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-light);
+        gap: 0.5rem; cursor: pointer; user-select: none;
+        padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
     .whm-card-head-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
     .whm-card-icon {
-        width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--radius-md);
-        background: rgba(139,92,246,0.12); color: #6d28d9;
-        display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px;
+        background: var(--ui-accent-tint, rgba(139,92,246,0.08));
+        border: 1px solid var(--ui-accent-border, rgba(139,92,246,0.28));
+        color: var(--primary-dark, #7C3AED);
+        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
     }
-    .whm-card-name { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
-    .whm-card-code { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-top: 1px; }
-    .whm-card-head-right { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
-    .whm-chevron { font-size: 0.8rem; color: var(--text-muted); transition: transform 0.3s ease; }
+    .whm-card-name { font-size: 0.94rem; font-weight: 800; color: var(--text-primary, #0F172A); }
+    .whm-card-code { font-size: 0.72rem; font-weight: 600; color: var(--text-muted, #94A3B8); margin-top: 2px; }
+    .whm-card-head-right { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+    .whm-chevron { font-size: 0.78rem; color: var(--text-muted, #94A3B8); transition: transform 0.25s ease; margin-inline-start: 0.2rem; }
     .whm-card.open .whm-chevron { transform: rotate(180deg); }
-
-    /* چیپ‌ها */
-    .whm-chip {
-        display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem;
-        border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;
-    }
-    .whm-chip.ok    { background: #d1fae5; color: #065f46; }
-    .whm-chip.off   { background: #fee2e2; color: #b91c1c; }
-    .whm-chip.supply { background: rgba(139,92,246,0.1); color: #6d28d9; }
-    .whm-chip.neg   { background: #fef3c7; color: #92400e; }
-    .whm-chip.warehouse { background: #dbeafe; color: #1e40af; }
-    .whm-chip.category  { background: #e0e7ff; color: #3730a3; }
 
     /* متا */
     .whm-card-meta {
-        display: flex; flex-wrap: wrap; gap: 0.5rem var(--space-4);
-        padding: var(--space-3) 0 var(--space-2); font-size: 0.78rem; color: var(--text-secondary);
+        display: flex; flex-wrap: wrap; gap: 0.5rem 0.95rem;
+        padding: 0.75rem 0 0.55rem; font-size: 0.78rem; color: var(--text-secondary, #64748B);
     }
     .whm-meta-item { display: inline-flex; align-items: center; gap: 0.35rem; }
-    .whm-meta-item i { color: var(--accent-indigo); width: 14px; font-size: 0.8rem; }
-    .whm-meta-item b { color: var(--text-primary); font-weight: 700; }
+    .whm-meta-item i { color: var(--primary, #8B5CF6); width: 14px; font-size: 0.78rem; }
+    .whm-meta-item b { color: var(--text-primary, #0F172A); font-weight: 700; }
 
-    /* اکشن‌ها — لینک‌مانند */
+    /* اکشن‌ها */
     .whm-card-actions {
-        display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center;
-        margin-bottom: var(--space-3);
+        display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;
+        margin-bottom: 0.75rem;
     }
-    .whm-link-action {
-        border: none; background: none; cursor: pointer; font-family: 'Vazir', sans-serif;
-        font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm);
-        transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 0.3rem;
-    }
-    .whm-link-blue { color: #1d4ed8; }
-    .whm-link-blue:hover { background: #eff6ff; }
-    .whm-link-amber { color: #b45309; }
-    .whm-link-amber:hover { background: #fffbeb; }
-    .whm-link-green { color: #047857; }
-    .whm-link-green:hover { background: #ecfdf5; }
 
-    /* آکاردئون صفحات انبار — ردیف‌های لینکی */
+    /* آکاردئون صفحات انبار */
     .whm-dropdown {
         max-height: 0; overflow: hidden;
-        transition: max-height 0.35s ease, padding 0.2s;
+        transition: max-height 0.32s ease;
     }
-    .whm-card.open .whm-dropdown { max-height: 640px; }
+    .whm-card.open .whm-dropdown { max-height: 680px; }
     .whm-dropdown-inner {
-        padding: var(--space-3) 0 0; display: flex; flex-direction: column; gap: 0.35rem;
-        border-top: 1px dashed var(--border-default);
+        padding: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.35rem;
+        border-top: 1px dashed var(--border-default, #E2E8F0);
     }
     .whm-dd-title {
-        font-size: 0.7rem; font-weight: 800; color: var(--text-muted);
-        padding: 0.5rem 0 0.2rem; display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.7rem; font-weight: 800; color: var(--text-muted, #94A3B8);
+        padding: 0.45rem 0 0.2rem; display: flex; align-items: center; gap: 0.4rem;
     }
-    .whm-dd-title i { color: var(--accent-indigo); }
+    .whm-dd-title i { color: var(--primary, #8B5CF6); }
     .whm-dd-link {
         display: flex; align-items: center; gap: 0.6rem;
-        padding: 0.5rem 0.75rem; border-radius: var(--radius-md);
-        text-decoration: none; color: var(--text-secondary);
-        font-size: 0.8rem; font-weight: 600; border: 1px solid var(--border-light);
-        transition: all var(--transition-fast); background: var(--bg-card);
+        padding: 0.5rem 0.75rem; border-radius: 10px;
+        text-decoration: none; color: var(--text-secondary, #64748B);
+        font-size: 0.8rem; font-weight: 600; border: 1px solid var(--border-light, #F1F5F9);
+        transition: all 0.15s ease; background: var(--gray-50, #F8FAFC);
     }
-    .whm-dd-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); background: var(--bg-subtle); }
-    .whm-dd-link i { width: 16px; font-size: 0.85rem; text-align: center; }
+    .whm-dd-link:hover {
+        border-color: var(--ui-accent-border, rgba(139,92,246,0.28));
+        color: var(--primary-dark, #7C3AED);
+        background: var(--ui-hover-row, #FAF9FF);
+    }
+    .whm-dd-link i { width: 16px; font-size: 0.84rem; text-align: center; }
 
-    /* حالت خالی */
-    .whm-empty {
-        text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);
-        background: var(--bg-card); border-radius: var(--radius-3xl);
-        border: 1px dashed var(--border-strong); box-shadow: var(--shadow-sm);
-        grid-column: 1 / -1;
+    /* چک‌باکس داخل مودال */
+    .whm-form-check { display: flex; align-items: flex-start; gap: 0.55rem; cursor: pointer; }
+    .whm-form-check input[type="checkbox"] { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--primary, #8B5CF6); flex-shrink: 0; }
+    .whm-note-box {
+        border-radius: 12px; padding: 0.75rem 0.9rem;
+        border: 1px solid var(--ui-ok-border, #D1FAE5);
+        background: var(--ui-ok-bg, #ECFDF5);
     }
-    .whm-empty .whm-empty-icon { font-size: 2.4rem; margin-bottom: 0.8rem; opacity: 0.5; }
-    .whm-empty h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.3rem; }
-    .whm-empty p { font-size: 0.82rem; margin-bottom: 1.25rem; }
-
-    /* ── مودال ایجاد/ویرایش ── */
-    .whm-modal-overlay {
-        display: none; position: fixed; inset: 0;
-        background: rgba(15,23,42,0.55); z-index: 1100;
-        align-items: center; justify-content: center; padding: 1rem;
+    .whm-note-box.is-warn {
+        background: var(--ui-warn-bg, #FFFBEB);
+        border-color: var(--ui-warn-border, #FDE68A);
     }
-    .whm-modal-overlay.open { display: flex; }
-    .whm-modal-box {
-        background: var(--bg-card); border-radius: var(--radius-3xl);
-        width: 100%; max-width: 540px; box-shadow: var(--shadow-xl);
-        animation: whmSlideUp 0.25s ease; max-height: 92vh; overflow-y: auto;
-        border: 1px solid var(--border-light);
-    }
-    @keyframes whmSlideUp {
-        from { transform: translateY(36px); opacity: 0; }
-        to   { transform: translateY(0);   opacity: 1; }
-    }
-    .whm-modal-header {
-        padding: var(--space-4) var(--space-6);
-        border-bottom: 1px solid var(--border-light);
-        display: flex; align-items: center; justify-content: space-between;
-    }
-    .whm-modal-header h3 { font-size: 1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
-    .whm-modal-header h3 i { color: var(--accent-indigo); }
-    .whm-modal-close {
-        background: none; border: none; font-size: 1.1rem; cursor: pointer;
-        color: var(--text-muted); padding: 0.25rem;
-    }
-    .whm-modal-close:hover { color: #DC2626; }
-    .whm-modal-body { padding: var(--space-5) var(--space-6); }
-    .whm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-    .whm-form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-    .whm-form-group.full { grid-column: 1 / -1; }
-    .whm-form-label { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
-    .whm-form-label .req { color: #DC2626; }
-    .whm-form-control {
-        padding: 0.55rem 0.875rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-sm); font-family: 'Vazir', sans-serif;
-        font-size: 0.84rem; background: var(--bg-card); color: var(--text-primary);
-        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    }
-    .whm-form-control:focus {
-        outline: none; border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
-    }
-    textarea.whm-form-control { resize: vertical; min-height: 76px; }
-    .whm-form-check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
-    .whm-form-check input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent-indigo); }
-    .whm-supply-note {
-        background: #f0fdf4; border: 1px solid #bbf7d0;
-        border-radius: var(--radius-md); padding: 0.75rem 0.9rem;
-    }
-    .whm-supply-note .hint { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
-    .whm-modal-footer {
-        padding: var(--space-4) var(--space-6);
-        border-top: 1px solid var(--border-light);
-        display: flex; gap: 0.75rem; justify-content: flex-end;
-    }
+    .whm-note-box .hint { font-size: 0.72rem; color: var(--text-secondary, #64748B); margin-top: 2px; line-height: 1.55; }
 
     /* Toast */
     .whm-toast-wrap {
-        position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 1200;
+        position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 2200;
         display: flex; flex-direction: column; gap: 0.5rem;
     }
     .whm-toast {
-        background: var(--bg-card); border-radius: var(--radius-md);
-        box-shadow: var(--shadow-lg); padding: 0.8rem 1.1rem;
+        background: var(--bg-card, #FFFFFF); border-radius: 12px;
+        box-shadow: 0 12px 30px rgba(15,23,42,0.12); padding: 0.8rem 1.1rem;
         display: flex; align-items: center; gap: 0.7rem;
-        font-size: 0.85rem; font-weight: 600; animation: whmToastIn 0.3s ease;
-        min-width: 250px; border: 1px solid var(--border-light);
-        border-inline-start: 4px solid var(--accent-green); color: var(--text-primary);
+        font-size: 0.84rem; font-weight: 600; animation: whmToastIn 0.25s ease;
+        min-width: 250px; border: 1px solid var(--border-default, #E2E8F0);
+        border-inline-start: 4px solid var(--ui-ok, #047857); color: var(--text-primary, #0F172A);
     }
-    .whm-toast.error { border-inline-start-color: #EF4444; }
-    .whm-toast i.ok { color: var(--accent-green); }
-    .whm-toast i.err { color: #EF4444; }
+    .whm-toast.error { border-inline-start-color: var(--ui-danger, #DC2626); }
+    .whm-toast i.ok { color: var(--ui-ok, #047857); }
+    .whm-toast i.err { color: var(--ui-danger, #DC2626); }
     @keyframes whmToastIn {
-        from { transform: translateX(-30px); opacity: 0; }
+        from { transform: translateX(-24px); opacity: 0; }
         to   { transform: translateX(0);     opacity: 1; }
     }
 
     @media (max-width: 768px) {
         .whm-grid { grid-template-columns: 1fr; }
-        .whm-form-grid { grid-template-columns: 1fr; }
-        .whm-search-input { min-width: 100%; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="whm-wrap">
+<div class="ui-page">
 
-    <!-- هدر صفحه -->
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-warehouse"></i></div>
-            <h1 class="page-title">مدیریت انبارها</h1>
+    <!-- هدر مینیمال -->
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">مدیریت انبارها</h1>
+            <div class="ui-subtitle">
+                <span>تعریف، ویرایش وضعیت، تنظیم مجوز موجودی منفی و دسترسی سریع به حواله‌ها و انبارگردانی</span>
+            </div>
         </div>
-        <div class="header-actions">
+        <div class="ui-topbar-actions">
             {% if user.role in 'manager,admin,ceo' %}
-            <button class="btn btn-success" onclick="whmOpenCreate()">
+            <button type="button" class="ui-btn ui-btn-success" onclick="whmOpenCreate()">
                 <i class="fas fa-plus"></i> تعریف انبار جدید
             </button>
             {% endif %}
         </div>
-    </div>
+    </header>
 
-    <!-- کارت‌های آماری -->
-    <div class="whm-stats">
-        <div class="whm-stat-card">
-            <span class="whm-stat-icon indigo"><i class="fas fa-warehouse"></i></span>
-            <div>
-                <div class="whm-stat-value">{{ warehouses|length }}</div>
-                <div class="whm-stat-label">کل انبارها</div>
-            </div>
+    <!-- نوار آمار یکپارچه -->
+    <section class="ui-metrics-strip cols-3" aria-label="خلاصه آمار انبارها">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل انبارها</span>
+            <div class="ui-metric-val is-accent">{{ warehouses|length }}<span class="ui-metric-unit">انبار</span></div>
         </div>
-        <div class="whm-stat-card">
-            <span class="whm-stat-icon ok"><i class="fas fa-circle-check"></i></span>
-            <div>
-                <div class="whm-stat-value" id="whmStatActive">0</div>
-                <div class="whm-stat-label">انبار فعال</div>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">انبار فعال</span>
+            <div class="ui-metric-val is-green"><span id="whmStatActive">0</span><span class="ui-metric-unit">انبار</span></div>
         </div>
-        <div class="whm-stat-card">
-            <span class="whm-stat-icon inactive"><i class="fas fa-circle-xmark"></i></span>
-            <div>
-                <div class="whm-stat-value" id="whmStatInactive">0</div>
-                <div class="whm-stat-label">انبار غیرفعال</div>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">انبار غیرفعال</span>
+            <div class="ui-metric-val is-danger"><span id="whmStatInactive">0</span><span class="ui-metric-unit">انبار</span></div>
         </div>
-    </div>
+    </section>
 
     <!-- نوار جستجو -->
-    <div class="whm-filter-bar">
-        <span class="whm-bar-label"><i class="fas fa-search"></i> جستجو:</span>
-        <input type="text" id="whmSearch" class="whm-search-input"
-               placeholder="نام یا کد انبار..." oninput="whmFilter(this.value)">
+    <div class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div class="ui-search" style="max-width:none; flex:1;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="whmSearch" class="ui-input"
+                       placeholder="جستجو بر اساس نام یا کد انبار..." oninput="whmFilter(this.value)">
+            </div>
+        </div>
     </div>
 
     <!-- گرید انبارها -->
@@ -327,20 +197,20 @@
                         <div class="whm-card-icon"><i class="fas fa-warehouse"></i></div>
                         <div>
                             <div class="whm-card-name">{{ warehouse.name }}</div>
-                            <div class="whm-card-code">کد: {{ warehouse.code }}</div>
+                            <div class="whm-card-code">کد: <span class="ui-num">{{ warehouse.code }}</span></div>
                         </div>
                     </div>
                     <div class="whm-card-head-right">
                         {% if warehouse.is_active %}
-                        <span class="whm-chip ok">فعال</span>
+                        <span class="ui-pill is-ok"><span class="ui-dot"></span> فعال</span>
                         {% else %}
-                        <span class="whm-chip off">غیرفعال</span>
+                        <span class="ui-pill is-danger"><span class="ui-dot"></span> غیرفعال</span>
                         {% endif %}
                         {% if warehouse.is_supply_enabled %}
-                        <span class="whm-chip supply"><i class="fas fa-truck-fast"></i> تامین</span>
+                        <span class="ui-pill is-accent"><i class="fas fa-truck-fast"></i> تامین</span>
                         {% endif %}
                         {% if warehouse.allow_negative_stock %}
-                        <span class="whm-chip neg" title="خروج بدون موجودی اولیه مجاز است"><i class="fas fa-minus-circle"></i> موجودی منفی مجاز</span>
+                        <span class="ui-pill is-warn" title="خروج بدون موجودی اولیه مجاز است"><i class="fas fa-minus-circle"></i> موجودی منفی مجاز</span>
                         {% endif %}
                         <i class="fas fa-chevron-down whm-chevron"></i>
                     </div>
@@ -348,7 +218,7 @@
 
                 <!-- متا -->
                 <div class="whm-card-meta">
-                    <span class="whm-chip warehouse"><i class="fas fa-boxes"></i>
+                    <span class="ui-pill is-info"><i class="fas fa-boxes"></i>
                         {% if item_counts %}{{ item_counts|get_item:warehouse.id|default:0 }}{% else %}0{% endif %} قلم کالا
                     </span>
                     {% if warehouse.location %}
@@ -368,11 +238,11 @@
                 <!-- اکشن‌ها -->
                 {% if user.role in 'manager,admin,ceo' %}
                 <div class="whm-card-actions">
-                    <button class="whm-link-action whm-link-blue"
+                    <button type="button" class="ui-row-action"
                             onclick="whmOpenEdit({{ warehouse.id }}, '{{ warehouse.name|escapejs }}', '{{ warehouse.code|escapejs }}', '{{ warehouse.description|escapejs }}', '{{ warehouse.location|escapejs }}', '{{ warehouse.manager_name|escapejs }}', '{{ warehouse.manager_phone|escapejs }}', {{ warehouse.is_active|yesno:'true,false' }}, {{ warehouse.is_supply_enabled|yesno:'true,false' }}, {{ warehouse.allow_negative_stock|yesno:'true,false' }})">
                         <i class="fas fa-pen"></i> ویرایش
                     </button>
-                    <button class="whm-link-action {% if warehouse.is_active %}whm-link-amber{% else %}whm-link-green{% endif %}"
+                    <button type="button" class="ui-row-action {% if warehouse.is_active %}is-danger{% endif %}"
                             onclick="whmToggleStatus({{ warehouse.id }}, this)">
                         {% if warehouse.is_active %}
                         <i class="fas fa-pause-circle"></i> غیرفعال‌سازی
@@ -388,33 +258,33 @@
                     <div class="whm-dropdown-inner">
                         <div class="whm-dd-title"><i class="fas fa-file-invoice"></i> ثبت حواله</div>
                         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="whm-dd-link">
-                            <i class="fas fa-arrow-down" style="color:#059669"></i> ثبت حواله ورود
+                            <i class="fas fa-arrow-down" style="color:#047857"></i> ثبت حواله ورود
                         </a>
                         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='issue' %}" class="whm-dd-link">
-                            <i class="fas fa-arrow-up" style="color:#dc2626"></i> ثبت حواله خروج
+                            <i class="fas fa-arrow-up" style="color:#DC2626"></i> ثبت حواله خروج
                         </a>
                         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='transfer' %}" class="whm-dd-link">
-                            <i class="fas fa-right-left" style="color:#0891b2"></i> ثبت حواله انتقال
+                            <i class="fas fa-right-left" style="color:#2563EB"></i> ثبت حواله انتقال
                         </a>
                         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='adjustment' %}" class="whm-dd-link">
-                            <i class="fas fa-scale-balanced" style="color:#db2777"></i> ثبت حواله تعدیل
+                            <i class="fas fa-scale-balanced" style="color:#7C3AED"></i> ثبت حواله تعدیل
                         </a>
                         <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='direct_delivery' %}" class="whm-dd-link">
-                            <i class="fas fa-hand-holding" style="color:#0d9488"></i> ثبت حواله تحویل مستقیم به بخش
+                            <i class="fas fa-hand-holding" style="color:#047857"></i> ثبت حواله تحویل مستقیم به بخش
                         </a>
                         <a href="{% url 'voucher_list' cafe_code=cafe_code %}?source_warehouse={{ warehouse.id }}" class="whm-dd-link">
-                            <i class="fas fa-list-ul" style="color:#6d28d9"></i> لیست حواله‌های این انبار
+                            <i class="fas fa-list-ul" style="color:#7C3AED"></i> لیست حواله‌های این انبار
                         </a>
 
                         <div class="whm-dd-title"><i class="fas fa-boxes"></i> موجودی و گزارشات</div>
                         <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="whm-dd-link">
-                            <i class="fas fa-tags" style="color:#d97706"></i> موجودی بر اساس دسته‌بندی
+                            <i class="fas fa-tags" style="color:#B45309"></i> موجودی بر اساس دسته‌بندی
                         </a>
                         <a href="{% url 'stock_list' cafe_code=cafe_code %}?warehouse={{ warehouse.id }}" class="whm-dd-link">
-                            <i class="fas fa-warehouse" style="color:#2563eb"></i> لیست موجودی این انبار
+                            <i class="fas fa-warehouse" style="color:#2563EB"></i> لیست موجودی این انبار
                         </a>
                         <a href="{% url 'warehouse_inventory_check' cafe_code=cafe_code warehouse_id=warehouse.id %}" class="whm-dd-link">
-                            <i class="fas fa-clipboard-check" style="color:#059669"></i> انبارگردانی
+                            <i class="fas fa-clipboard-check" style="color:#047857"></i> انبارگردانی
                         </a>
                     </div>
                 </div>
@@ -424,15 +294,17 @@
 
         {% else %}
             <!-- حالت خالی -->
-            <div class="whm-empty">
-                <div class="whm-empty-icon"><i class="fas fa-warehouse"></i></div>
-                <h3>هنوز انباری تعریف نشده</h3>
-                <p>برای شروع، اولین انبار خود را تعریف کنید</p>
-                {% if user.role in 'manager,admin,ceo' %}
-                <button class="btn btn-primary" onclick="whmOpenCreate()">
-                    <i class="fas fa-plus"></i> تعریف انبار
-                </button>
-                {% endif %}
+            <div class="ui-card" style="grid-column: 1 / -1;">
+                <div class="ui-empty">
+                    <i class="fas fa-warehouse"></i>
+                    <div style="font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:0.3rem;">هنوز انباری تعریف نشده</div>
+                    <p style="margin:0 0 1.1rem;">برای شروع، اولین انبار خود را تعریف کنید</p>
+                    {% if user.role in 'manager,admin,ceo' %}
+                    <button type="button" class="ui-btn ui-btn-primary" onclick="whmOpenCreate()">
+                        <i class="fas fa-plus"></i> تعریف انبار
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         {% endif %}
 
@@ -440,64 +312,64 @@
 </div>
 
 <!-- ========== مودال ایجاد/ویرایش ========== -->
-<div class="whm-modal-overlay" id="whmModal">
-    <div class="whm-modal-box">
-        <div class="whm-modal-header">
-            <h3 id="whmModalTitle"><i class="fas fa-warehouse"></i> تعریف انبار جدید</h3>
-            <button class="whm-modal-close" onclick="whmCloseModal()">
+<div class="ui-modal-backdrop" id="whmModal">
+    <div class="ui-modal is-narrow">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title" id="whmModalTitle"><i class="fas fa-warehouse" style="color:var(--primary)"></i> تعریف انبار جدید</h3>
+            <button type="button" class="ui-modal-close" onclick="whmCloseModal()" aria-label="بستن">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="whm-modal-body">
+        <div class="ui-modal-body">
             <input type="hidden" id="whmEditId" value="">
-            <div class="whm-form-grid">
-                <div class="whm-form-group">
-                    <label class="whm-form-label">نام انبار <span class="req">*</span></label>
-                    <input type="text" id="whmFieldName" class="whm-form-control" placeholder="مثال: انبار مرکزی">
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="whmFieldName">نام انبار <span style="color:var(--ui-danger)">*</span></label>
+                    <input type="text" id="whmFieldName" class="ui-input" placeholder="مثال: انبار مرکزی">
                 </div>
-                <div class="whm-form-group">
-                    <label class="whm-form-label">کد انبار <span class="req">*</span></label>
-                    <input type="text" id="whmFieldCode" class="whm-form-control" placeholder="مثال: WH001" maxlength="20">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="whmFieldCode">کد انبار <span style="color:var(--ui-danger)">*</span></label>
+                    <input type="text" id="whmFieldCode" class="ui-input" placeholder="مثال: WH001" maxlength="20">
                 </div>
-                <div class="whm-form-group">
-                    <label class="whm-form-label">مسئول انبار</label>
-                    <input type="text" id="whmFieldManager" class="whm-form-control" placeholder="نام مسئول انبار">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="whmFieldManager">مسئول انبار</label>
+                    <input type="text" id="whmFieldManager" class="ui-input" placeholder="نام مسئول انبار">
                 </div>
-                <div class="whm-form-group">
-                    <label class="whm-form-label">تلفن مسئول</label>
-                    <input type="text" id="whmFieldPhone" class="whm-form-control" placeholder="شماره تماس">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="whmFieldPhone">تلفن مسئول</label>
+                    <input type="text" id="whmFieldPhone" class="ui-input" placeholder="شماره تماس">
                 </div>
-                <div class="whm-form-group full">
-                    <label class="whm-form-label">محل انبار</label>
-                    <input type="text" id="whmFieldLocation" class="whm-form-control" placeholder="آدرس یا محل قرارگیری انبار">
+                <div class="ui-field" style="grid-column: 1 / -1;">
+                    <label class="ui-field-label" for="whmFieldLocation">محل انبار</label>
+                    <input type="text" id="whmFieldLocation" class="ui-input" placeholder="آدرس یا محل قرارگیری انبار">
                 </div>
-                <div class="whm-form-group full">
-                    <label class="whm-form-label">توضیحات</label>
-                    <textarea id="whmFieldDesc" class="whm-form-control" placeholder="توضیحات اضافی..."></textarea>
+                <div class="ui-field" style="grid-column: 1 / -1;">
+                    <label class="ui-field-label" for="whmFieldDesc">توضیحات</label>
+                    <textarea id="whmFieldDesc" class="ui-textarea" placeholder="توضیحات اضافی..."></textarea>
                 </div>
-                <div class="whm-form-group full" id="whmActiveGroup" style="display:none">
+                <div class="ui-field" id="whmActiveGroup" style="display:none; grid-column: 1 / -1;">
                     <label class="whm-form-check">
                         <input type="checkbox" id="whmFieldActive" checked>
-                        <span class="whm-form-label" style="margin:0">انبار فعال باشد</span>
+                        <span class="ui-field-label">انبار فعال باشد</span>
                     </label>
                 </div>
-                <div class="whm-form-group full">
-                    <div class="whm-supply-note">
+                <div class="ui-field" style="grid-column: 1 / -1;">
+                    <div class="whm-note-box">
                         <label class="whm-form-check">
                             <input type="checkbox" id="whmFieldSupply" checked>
                             <div>
-                                <span class="whm-form-label" style="margin:0">قابل تامین از این انبار</span>
+                                <span class="ui-field-label">قابل تامین از این انبار</span>
                                 <div class="hint">هنگام ثبت درخواست کالا، مسئول خرید می‌تواند «تامین از این انبار» را انتخاب کند</div>
                             </div>
                         </label>
                     </div>
                 </div>
-                <div class="whm-form-group full">
-                    <div class="whm-supply-note" style="background:#fffbeb;border-color:#fde68a;">
+                <div class="ui-field" style="grid-column: 1 / -1;">
+                    <div class="whm-note-box is-warn">
                         <label class="whm-form-check">
                             <input type="checkbox" id="whmFieldAllowNegative">
                             <div>
-                                <span class="whm-form-label" style="margin:0">مجاز بودن موجودی منفی (بدون نیاز به موجودی اولیه)</span>
+                                <span class="ui-field-label">مجاز بودن موجودی منفی (بدون نیاز به موجودی اولیه)</span>
                                 <div class="hint">در صورت فعال بودن، می‌توان بدون وارد کردن موجودی اولیه، حواله خروج و تحویل ثبت کرد تا مصرف مشخص شود و بعداً با انبارگردانی موجودی واقعی ثبت گردد.</div>
                             </div>
                         </label>
@@ -505,9 +377,9 @@
                 </div>
             </div>
         </div>
-        <div class="whm-modal-footer">
-            <button class="btn btn-secondary" onclick="whmCloseModal()" style="height:36px">انصراف</button>
-            <button class="btn btn-primary" onclick="whmSave()" id="whmSaveBtn" style="height:36px">
+        <div class="ui-modal-foot">
+            <button type="button" class="ui-btn ui-btn-ghost" onclick="whmCloseModal()">انصراف</button>
+            <button type="button" class="ui-btn ui-btn-primary" onclick="whmSave()" id="whmSaveBtn">
                 <i class="fas fa-save"></i> ذخیره
             </button>
         </div>

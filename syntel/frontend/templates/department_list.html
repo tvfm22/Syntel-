@@ -1,114 +1,107 @@
 {% extends 'base.html' %}
-{% load static %}
-{% load custom_filters %}
+{% load static custom_filters %}
 
 {% block title %}مدیریت بخش‌ها - Kuker{% endblock %}
 
 {% block content %}
-<style>
-.dept-name {
-    font-weight: 700; color: var(--dark);
-    display: inline-flex; align-items: center; gap: 0.5rem;
-}
-.dept-name i { color: var(--primary); }
-.user-count {
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    background: var(--primary-light); color: var(--primary-dark);
-    padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
-}
-.help-note {
-    background: var(--primary-light); border: 1px solid #C4B5FD;
-    color: var(--primary-dark); padding: 0.85rem 1.15rem; border-radius: var(--radius-lg);
-    margin-bottom: 1.25rem; font-size: 0.85rem; line-height: 1.8;
-}
-</style>
-
-<div class="page-header">
-    <div class="ph-main">
-        <div class="ph-icon"><i class="fas fa-building"></i></div>
-        <div>
-            <h1 class="ph-title">مدیریت بخش‌ها</h1>
-            <p class="page-sub">واحدهای سازمانی برای تخصیص کاربران درخواست‌دهنده و گزارش مصرف</p>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-building" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                مدیریت بخش‌ها
+            </h1>
+            <p class="ui-subtitle">واحدهای سازمانی برای تخصیص کاربران درخواست‌دهنده و گزارش مصرف</p>
         </div>
-    </div>
-    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
-        <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> مدیریت کاربران
-        </a>
-        <a href="{% url 'department_create' cafe_code=cafe_code %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> بخش جدید
-        </a>
-    </div>
-</div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'user_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>مدیریت کاربران</span>
+            </a>
+            <a href="{% url 'department_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>بخش جدید</span>
+            </a>
+        </div>
+    </header>
 
-<div class="help-note">
-    <i class="fas fa-info-circle"></i>
-    بخش‌ها به کاربران درخواست‌دهنده (نقش «درخواست‌دهنده») تعلق می‌گیرند و در درخواست کالا و گزارش مصرف استفاده می‌شوند.
-    هر بخش منحصراً متعلق به همین کافه است و در کافه‌های دیگر دیده نمی‌شود.
-</div>
+    <div class="ui-banner is-info">
+        <i class="fas fa-info-circle" style="margin-top:3px;"></i>
+        <span>
+            بخش‌ها به کاربران درخواست‌دهنده (نقش «درخواست‌دهنده») تعلق می‌گیرند و در درخواست کالا و گزارش مصرف استفاده می‌شوند.
+            هر بخش منحصراً متعلق به همین کافه است و در کافه‌های دیگر دیده نمی‌شود.
+        </span>
+    </div>
 
-{% if departments %}
-<div class="card" style="padding:0;overflow:hidden;">
-    <div class="card-header" style="padding:1rem 1.25rem;margin-bottom:0;">
-        <span class="card-title"><i class="fas fa-building" style="color:var(--primary);margin-left:0.4rem;"></i> لیست بخش‌های تعریف‌شده</span>
-        <span class="badge badge-info">{{ departments|length }} بخش</span>
-    </div>
-    <div class="table-container" style="border:none;border-radius:0;">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>نام بخش</th>
-                    <th>وضعیت</th>
-                    <th>تعداد کاربران</th>
-                    <th>تاریخ ایجاد</th>
-                    <th style="text-align:left;">عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for dep in departments %}
-                <tr>
-                    <td>
-                        <div class="dept-name">
-                            <i class="fas fa-tag"></i> {{ dep.name }}
-                        </div>
-                    </td>
-                    <td>
-                        {% if dep.is_active %}
-                        <span class="badge badge-success">فعال</span>
-                        {% else %}
-                        <span class="badge badge-danger">غیرفعال</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <span class="user-count">
-                            <i class="fas fa-users"></i> {{ dep.user_count }}
-                        </span>
-                    </td>
-                    <td>{{ dep.created_at|jalali_date }}</td>
-                    <td style="text-align:left;">
-                        <div style="display:inline-flex;gap:0.4rem;">
-                            <a href="{% url 'department_update' cafe_code=cafe_code department_id=dep.id %}" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-pen"></i> ویرایش
-                            </a>
-                            <a href="{% url 'department_delete' cafe_code=cafe_code department_id=dep.id %}" class="btn btn-sm btn-danger">
-                                <i class="fas fa-trash"></i> حذف
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {% if departments %}
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-building"></i>
+                <span>لیست بخش‌های تعریف‌شده</span>
+            </h2>
+            <span class="ui-pill is-info ui-num">{{ departments|length|number_format }} بخش</span>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>نام بخش</th>
+                        <th>وضعیت</th>
+                        <th>تعداد کاربران</th>
+                        <th>تاریخ ایجاد</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dep in departments %}
+                    <tr>
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:0.45rem;font-weight:700;">
+                                <i class="fas fa-tag" style="color:var(--primary,#8B5CF6);font-size:0.8rem;"></i>
+                                {{ dep.name }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if dep.is_active %}
+                            <span class="ui-pill is-ok"><span class="ui-dot"></span>فعال</span>
+                            {% else %}
+                            <span class="ui-pill is-danger"><span class="ui-dot"></span>غیرفعال</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="ui-pill is-accent ui-num">
+                                <i class="fas fa-users" style="font-size:0.68rem;"></i> {{ dep.user_count }}
+                            </span>
+                        </td>
+                        <td class="ui-num" style="color:var(--text-secondary);font-size:0.8rem;">{{ dep.created_at|jalali_date }}</td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;gap:0.3rem;">
+                                <a href="{% url 'department_update' cafe_code=cafe_code department_id=dep.id %}" class="ui-row-action">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </a>
+                                <a href="{% url 'department_delete' cafe_code=cafe_code department_id=dep.id %}" class="ui-row-action is-danger">
+                                    <i class="fas fa-trash-can"></i> حذف
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% else %}
+    <section class="ui-table-card">
+        <div class="ui-empty">
+            <i class="fas fa-building"></i>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">هیچ بخشی تعریف نشده است</div>
+            <p style="margin:0 0 1rem;">اولین بخش را برای کاربران درخواست‌دهنده تعریف کنید.</p>
+            <a href="{% url 'department_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i> تعریف بخش
+            </a>
+        </div>
+    </section>
+    {% endif %}
 </div>
-{% else %}
-<div class="card" style="text-align:center;padding:3rem 1.5rem;">
-    <div style="font-size:2.4rem;color:var(--gray-300);margin-bottom:0.75rem;"><i class="fas fa-building"></i></div>
-    <h3 style="font-size:1.05rem;font-weight:800;color:var(--dark);margin-bottom:0.35rem;">هیچ بخشی تعریف نشده است</h3>
-    <p style="color:var(--gray-500);font-size:0.86rem;margin-bottom:1.25rem;">اولین بخش را برای کاربران درخواست‌دهنده تعریف کنید.</p>
-    <a href="{% url 'department_create' cafe_code=cafe_code %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> تعریف بخش
-    </a>
-</div>
-{% endif %}
 {% endblock %}

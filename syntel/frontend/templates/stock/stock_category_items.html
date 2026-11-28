@@ -5,230 +5,176 @@
 
 {% block extra_css %}
 <style>
-    .sci-wrap { max-width: 1360px; margin: 0 auto; }
-    .sci-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-
-    /* FILTERS */
-    .filter-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 0.9rem 1.25rem;
-        box-shadow: var(--shadow-xs); margin-bottom: 1.25rem;
-    }
-    .filter-form { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
-    .filter-group { display: flex; flex-direction: column; gap: 0.35rem; min-width: 200px; flex: 1; }
-    .filter-label { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); }
-    .filter-input {
-        height: 38px; padding: 0 0.85rem; border: 1px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
-        font-size: 0.84rem; background: var(--bg-input); color: var(--text-primary);
-    }
-    .filter-input:focus {
-        outline: none; border-color: var(--accent-indigo); background: #FFFFFF;
-        box-shadow: 0 0 0 3px rgba(139,92,246,0.10);
-    }
-
     .check-label {
         display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
-        height: 38px; padding: 0 1rem; background: var(--bg-card);
-        border: 1px solid var(--border-default); border-radius: var(--radius-md);
-        font-weight: 600; color: var(--text-primary); font-size: 0.8rem; white-space: nowrap;
+        height: 36px; padding: 0 0.85rem; background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0); border-radius: 10px;
+        font-weight: 600; color: var(--text-primary, #0F172A); font-size: 0.79rem; white-space: nowrap;
+        transition: all 0.15s ease;
     }
-    .check-label:hover { border-color: var(--accent-orange); color: #92400E; }
-    .check-label input { width: 15px; height: 15px; accent-color: var(--accent-orange); }
+    .check-label:hover { border-color: var(--ui-warn-border, #FDE68A); background: var(--ui-warn-bg, #FFFBEB); color: var(--ui-warn, #B45309); }
+    .check-label input { width: 15px; height: 15px; accent-color: var(--ui-warn, #B45309); }
 
-    /* Warehouse pills */
-    .wh-pills { display: flex; gap: 0.45rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .wh-pill {
-        padding: 0.4rem 1rem; border-radius: 999px; font-weight: 700; text-decoration: none;
-        font-size: 0.78rem; border: 1px solid var(--border-default); background: var(--bg-card);
-        color: var(--text-secondary); transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.35rem;
-    }
-    .wh-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .wh-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: #fff; }
-
-    /* STOCK GRID */
     .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 
-    /* STOCK CARD */
     .stock-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
-        box-shadow: var(--shadow-xs); border-inline-start: 4px solid var(--accent-green);
-        transition: all 0.2s; display: flex; flex-direction: column;
+        border-inline-start: 3px solid var(--ui-ok, #047857);
+        display: flex; flex-direction: column;
     }
-    .stock-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .stock-card.low { border-inline-start-color: #EF4444; }
+    .stock-card.low { border-inline-start-color: var(--ui-danger, #DC2626); }
     .stock-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
-    .stock-name { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); }
-    .stock-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.3rem; }
-    .tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.12rem 0.55rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
-    .tag-cat { background: rgba(139,92,246,0.08); color: #6D28D9; }
-    .tag-wh { background: #ECFDF5; color: #065F46; }
-    .tag-low { background: #FEF2F2; color: #B91C1C; }
+    .stock-name { font-size: 0.94rem; font-weight: 800; color: var(--text-primary, #0F172A); }
+    .stock-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.35rem; }
     .qty-badge {
-        text-align: center; flex-shrink: 0; background: var(--bg-subtle);
-        border: 1px solid var(--border-light); border-radius: 12px; padding: 0.4rem 0.8rem; min-width: 80px;
+        text-align: center; flex-shrink: 0; background: var(--gray-50, #F8FAFC);
+        border: 1px solid var(--border-default, #E2E8F0); border-radius: 12px; padding: 0.4rem 0.8rem; min-width: 82px;
     }
-    .qty-val { font-size: 1.2rem; font-weight: 800; color: #059669; font-variant-numeric: tabular-nums; }
-    .stock-card.low .qty-val { color: #DC2626; }
-    .qty-unit { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; }
-    .stock-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem; }
-    .meta-item { font-size: 0.72rem; color: var(--text-muted); }
-    .meta-item strong { color: var(--text-primary); display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.1rem; }
+    .qty-val { font-size: 1.18rem; font-weight: 800; color: var(--ui-ok, #047857); font-variant-numeric: tabular-nums; }
+    .stock-card.low .qty-val { color: var(--ui-danger, #DC2626); }
+    .qty-unit { font-size: 0.68rem; color: var(--text-muted, #94A3B8); font-weight: 600; }
+    .stock-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; border-top: 1px solid var(--border-light, #F1F5F9); padding-top: 0.75rem; }
+    .meta-item { font-size: 0.73rem; color: var(--text-muted, #94A3B8); }
+    .meta-item strong { color: var(--text-primary, #0F172A); display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.1rem; }
     .stock-actions { margin-top: 0.85rem; display: flex; gap: 0.5rem; }
-
-    /* PAGINATION */
-    .pagination { display: flex; justify-content: center; gap: 0.4rem; margin-top: 2rem; flex-wrap: wrap; }
-    .page-link {
-        padding: 0.4rem 0.85rem; border: 1px solid var(--border-default); border-radius: 999px;
-        text-decoration: none; color: var(--text-primary); font-size: 0.8rem; font-weight: 700;
-        background: var(--bg-card); transition: all 0.2s;
-    }
-    .page-link:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .page-link.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
 
     @media(max-width:768px) {
         .stock-grid { grid-template-columns: 1fr; }
-        .filter-form { flex-direction: column; align-items: stretch; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="sci-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-{% if category %}tags{% else %}question-circle{% endif %}"></i></div>
-            <div class="ph-title">
-                <h1>{% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}</h1>
-                <div class="page-sub">
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">{% if category %}{{ category.name }}{% else %}بدون دسته‌بندی{% endif %}</h1>
+            <div class="ui-subtitle">
+                <span>
                     {% if category and category.description %}{{ category.description }}{% else %}
                     موجودی کالاهای {% if category %}دسته {{ category.name }}{% else %}فاقد دسته‌بندی{% endif %}
                     {% endif %}
-                </div>
+                </span>
             </div>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="btn btn-secondary">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> دسته‌بندی‌ها
             </a>
             {% if category %}
-            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="btn btn-secondary">
+            <a href="{% url 'category_update' cafe_code=cafe_code category_id=category.id %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-edit"></i> ویرایش دسته
             </a>
             {% endif %}
-            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-success">
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="ui-btn ui-btn-success">
                 <i class="fas fa-plus"></i> ثبت حواله ورود
             </a>
         </div>
-    </div>
+    </header>
 
-    {% if warehouses %}
-    <div class="wh-pills">
-        <a href="?{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on{% endif %}"
-           class="wh-pill {% if not selected_warehouse %}active{% endif %}">
-            <i class="fas fa-layer-group"></i> همه انبارها
-        </a>
-        {% for wh in warehouses %}
-        <a href="?warehouse={{ wh.id }}{% if search_q %}&search={{ search_q }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
-           class="wh-pill {% if selected_warehouse.id == wh.id %}active{% endif %}">
-            <i class="fas fa-warehouse"></i> {{ wh.name }}
-        </a>
-        {% endfor %}
-    </div>
-    {% endif %}
+    <form method="get" class="ui-controls-card">
+        {% if warehouses %}
+        <div class="ui-pill-strip" style="border-top:none;">
+            <a href="?{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on{% endif %}"
+               class="ui-pill-tab {% if not selected_warehouse %}is-active{% endif %}">
+                <i class="fas fa-layer-group"></i> همه انبارها
+            </a>
+            {% for wh in warehouses %}
+            <a href="?warehouse={{ wh.id }}{% if search_q %}&search={{ search_q }}{% endif %}{% if show_low_stock %}&low_stock=on{% endif %}"
+               class="ui-pill-tab {% if selected_warehouse.id == wh.id %}is-active{% endif %}">
+                <i class="fas fa-warehouse"></i> {{ wh.name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-    <div class="filter-card">
-        <form method="get" class="filter-form">
+        <div class="ui-controls-row" style="{% if warehouses %}border-top:1px solid var(--border-light);{% endif %}">
             {% if selected_warehouse %}
             <input type="hidden" name="warehouse" value="{{ selected_warehouse.id }}">
             {% endif %}
-            <div class="filter-group">
-                <label class="filter-label">جستجو در محصولات این دسته</label>
-                <input type="text" name="search" value="{{ search_q|default:'' }}" placeholder="نام محصول..." class="filter-input">
+            <div class="ui-search" style="flex:1 1 240px;">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" class="ui-input" value="{{ search_q|default:'' }}" placeholder="جستجو در محصولات این دسته...">
             </div>
             <label class="check-label">
                 <input type="checkbox" name="low_stock" {% if show_low_stock %}checked{% endif %}>
-                <i class="fas fa-triangle-exclamation" style="color: var(--accent-orange);"></i> فقط کم‌موجود
+                <i class="fas fa-triangle-exclamation" style="color:var(--ui-warn);"></i> فقط کم‌موجود
             </label>
-            <button type="submit" class="btn btn-primary" style="height: 38px;">
+            <button type="submit" class="ui-btn ui-btn-primary">
                 <i class="fas fa-magnifying-glass"></i> جستجو
             </button>
             {% if search_q or show_low_stock %}
-            <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}{% endif %}" class="btn btn-danger" style="height: 38px;">
+            <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}{% endif %}" class="ui-btn ui-btn-danger-soft">
                 <i class="fas fa-xmark"></i> پاک کردن
             </a>
             {% endif %}
-        </form>
-    </div>
+        </div>
+    </form>
 
     {% if page_obj %}
-    <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.85rem;font-weight:700;">
-        <i class="fas fa-boxes-stacked"></i> نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} قلم
+    <div style="font-size:0.78rem;color:var(--text-secondary);font-weight:700;" class="ui-num">
+        <i class="fas fa-boxes-stacked" style="color:var(--primary)"></i> نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} قلم
     </div>
 
     <div class="stock-grid">
         {% for item in page_obj %}
-        <div class="stock-card {% if item.is_low_stock %}low{% endif %}">
-            <div class="stock-card-top">
-                <div style="min-width:0">
-                    <div class="stock-name">{{ item.product.name }}</div>
-                    <div class="stock-tags">
-                        {% if item.product.category %}
-                        <span class="tag tag-cat">{{ item.product.category.name }}</span>
-                        {% endif %}
-                        {% if item.warehouse %}
-                        <span class="tag tag-wh"><i class="fas fa-warehouse"></i> {{ item.warehouse.name }}</span>
-                        {% endif %}
-                        {% if item.is_low_stock %}
-                        <span class="tag tag-low"><i class="fas fa-triangle-exclamation"></i> کم‌موجود</span>
-                        {% endif %}
+        <div class="ui-card stock-card {% if item.is_low_stock %}low{% endif %}">
+            <div class="ui-card-body">
+                <div class="stock-card-top">
+                    <div style="min-width:0">
+                        <div class="stock-name">{{ item.product.name }}</div>
+                        <div class="stock-tags">
+                            {% if item.product.category %}
+                            <span class="ui-pill is-accent">{{ item.product.category.name }}</span>
+                            {% endif %}
+                            {% if item.warehouse %}
+                            <span class="ui-pill is-ok"><i class="fas fa-warehouse"></i> {{ item.warehouse.name }}</span>
+                            {% endif %}
+                            {% if item.is_low_stock %}
+                            <span class="ui-pill is-danger"><i class="fas fa-triangle-exclamation"></i> کم‌موجود</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="qty-badge">
+                        <div class="qty-val">{{ item.quantity|qty_comma }}</div>
+                        <div class="qty-unit">{{ item.unit.name|default:"واحد" }}</div>
                     </div>
                 </div>
-                <div class="qty-badge">
-                    <div class="qty-val">{{ item.quantity|qty_comma }}</div>
-                    <div class="qty-unit">{{ item.unit.name|default:"واحد" }}</div>
+                <div class="stock-meta">
+                    <div class="meta-item ui-num">
+                        <strong>حداقل موجودی</strong>
+                        {{ item.min_quantity|qty_comma }} {{ item.unit.name|default:"" }}
+                    </div>
+                    <div class="meta-item ui-num">
+                        <strong>آخرین بروزرسانی</strong>
+                        {{ item.last_updated|date:"Y/m/d H:i" }}
+                    </div>
                 </div>
-            </div>
-            <div class="stock-meta">
-                <div class="meta-item">
-                    <strong>حداقل موجودی</strong>
-                    {{ item.min_quantity|qty_comma }} {{ item.unit.name|default:"" }}
+                <div class="stock-actions">
+                    <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="ui-btn ui-btn-ghost is-sm">
+                        <i class="fas fa-clock-rotate-left"></i> تاریخچه تراکنش‌ها
+                    </a>
                 </div>
-                <div class="meta-item">
-                    <strong>آخرین بروزرسانی</strong>
-                    {{ item.last_updated|date:"Y/m/d H:i" }}
-                </div>
-            </div>
-            <div class="stock-actions">
-                <a href="{% url 'stock_transactions' cafe_code=cafe_code stock_id=item.id %}" class="btn btn-secondary" style="font-size:0.75rem;height:32px;padding:0 0.85rem;">
-                    <i class="fas fa-clock-rotate-left"></i> تاریخچه تراکنش‌ها
-                </a>
             </div>
         </div>
         {% endfor %}
     </div>
 
     {% if page_obj.has_other_pages %}
-    <div class="pagination">
+    <div class="ui-pagination">
         {% if page_obj.has_previous %}
-        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
+        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.previous_page_number }}">
             <i class="fas fa-chevron-right"></i> قبلی
         </a>
         {% endif %}
         {% for num in page_obj.paginator.page_range %}
         {% if page_obj.number == num %}
-        <span class="page-link active">{{ num }}</span>
+        <span class="is-active">{{ num }}</span>
         {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
-        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ num }}" class="page-link">{{ num }}</a>
+        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ num }}">{{ num }}</a>
         {% endif %}
         {% endfor %}
         {% if page_obj.has_next %}
-        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
+        <a href="?{% if selected_warehouse %}warehouse={{ selected_warehouse.id }}&{% endif %}{% if search_q %}search={{ search_q }}&{% endif %}{% if show_low_stock %}low_stock=on&{% endif %}page={{ page_obj.next_page_number }}">
             بعدی <i class="fas fa-chevron-left"></i>
         </a>
         {% endif %}
@@ -236,12 +182,12 @@
     {% endif %}
 
     {% else %}
-    <div class="table-card">
-        <div class="empty-state">
+    <div class="ui-card">
+        <div class="ui-empty">
             <i class="fas fa-box-open"></i>
-            <h3>هیچ موجودی یافت نشد</h3>
-            <p>{% if search_q or show_low_stock %}فیلتر را تغییر دهید{% else %}هیچ کالایی در این دسته‌بندی موجود نیست{% endif %}</p>
-            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin-top:12px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:0.35rem;">هیچ موجودی یافت نشد</div>
+            <p style="margin:0 0 1rem;">{% if search_q or show_low_stock %}فیلتر را تغییر دهید{% else %}هیچ کالایی در این دسته‌بندی موجود نیست{% endif %}</p>
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i> ثبت حواله ورود
             </a>
         </div>

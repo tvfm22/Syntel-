@@ -1,161 +1,186 @@
 {% extends 'dashboard_layout.html' %}
 {% load static %}
 
-{% block title %}نظارت بر قیمت - تحلیل{% endblock %}
+{% block title %}نظارت بر قیمت - تحلیل - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    .stats-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem; margin-bottom: 1.5rem;
+    .apm-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 0.8rem;
+        align-items: end;
     }
-    .price-card { font-size: 0.9rem; }
-    .price-value { font-size: 1.5rem; font-weight: 700; }
+
     .price-change {
-        display: inline-flex; align-items: center; gap: 0.25rem;
-        padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 1px solid transparent;
     }
-    .price-change.up { background: rgba(239,68,68,0.1); color: var(--danger); }
-    .price-change.down { background: rgba(16,185,129,0.1); color: var(--success); }
-    .price-change.stable { background: var(--gray-50); color: var(--gray-500); }
 
-    .table-card { background: white; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); overflow: hidden; margin-bottom: 1.5rem; }
-    .table-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
-    .table-title { font-size: 1.15rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.5rem; }
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table thead { background: var(--gray-50); }
-    .data-table th { padding: 1rem 1.25rem; text-align: right; font-size: 0.85rem; font-weight: 700; color: var(--dark); border-bottom: 2px solid var(--gray-200); }
-    .data-table td { padding: 0.75rem 1.25rem; font-size: 0.85rem; color: var(--gray-500); border-bottom: 1px solid var(--gray-200); }
-    .data-table tbody tr { transition: all 0.2s; }
-    .data-table tbody tr:hover { background: var(--gray-50); }
+    .price-change.up {
+        background: var(--ui-danger-bg);
+        color: var(--ui-danger-dark);
+        border-color: var(--ui-danger-border);
+    }
 
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-overlay.show { display: flex; }
-    .modal-content { background: white; border-radius: var(--radius-xl); width: 90%; max-width: 800px; box-shadow: var(--shadow-xl); overflow: hidden; }
-    .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
-    .modal-title { font-size: 1.25rem; font-weight: 700; color: var(--dark); }
-    .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--gray-400); cursor: pointer; }
-    .modal-close:hover { color: var(--dark); }
-    .modal-body { padding: 2rem; }
-    .chart-wrapper { height: 400px; }
+    .price-change.down {
+        background: var(--ui-ok-bg);
+        color: var(--ui-ok);
+        border-color: var(--ui-ok-border);
+    }
+
+    .price-change.stable {
+        background: var(--gray-100, #F1F5F9);
+        color: var(--text-secondary, #64748B);
+        border-color: var(--border-default, #E2E8F0);
+    }
+
+    .ui-modal-backdrop.show {
+        display: flex;
+    }
+
+    .chart-wrapper {
+        height: 380px;
+        position: relative;
+    }
 
     @media (max-width: 768px) {
-        .data-table td, .data-table th { padding: 0.5rem; font-size: 0.75rem; }
-        .chart-wrapper { height: 300px; }
+        .chart-wrapper {
+            height: 290px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-tags"></i>
-        نظارت بر قیمت
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
+<div class="ui-page is-wide">
+    <!-- Header -->
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-tags" style="color: var(--primary, #8B5CF6);"></i>
+                نظارت بر قیمت
+            </h1>
+            <p class="ui-subtitle">پایش و مقایسه تغییرات قیمت محصولات خریداری‌شده</p>
         </div>
-        <a href="{% url 'logout' %}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>خروج</span>
-        </a>
-    </div>
-</div>
+        <div class="ui-topbar-actions">
+            <span class="ui-chip">
+                <i class="fas fa-calendar-alt" style="color: var(--primary, #8B5CF6);"></i>
+                <span id="persianDate"></span>
+            </span>
+            <a href="{% url 'logout' %}" class="ui-btn ui-btn-danger-soft">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>خروج</span>
+            </a>
+        </div>
+    </header>
 
-<!-- Filters -->
-<div class="filters-container">
-    <div class="filters-grid" id="filterGrid">
-        <div class="filter-group">
-            <label class="filter-label">دسته‌بندی</label>
-            <select class="filter-select" id="categoryFilter">
-                <option value="">همه دسته‌بندی‌ها</option>
-            </select>
+    <!-- Filters -->
+    <section class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="apm-filter-grid" id="filterGrid">
+                <div class="ui-field">
+                    <label class="ui-field-label" for="categoryFilter">دسته‌بندی</label>
+                    <select class="ui-select" id="categoryFilter">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="supplierFilter">فروشگاه / تامین‌کننده</label>
+                    <select class="ui-select" id="supplierFilter">
+                        <option value="">همه تأمین‌کنندگان</option>
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="productSearch">محصول</label>
+                    <div class="ui-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="ui-input" id="productSearch" placeholder="جستجوی محصول...">
+                    </div>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label" for="periodFilter">دوره</label>
+                    <select class="ui-select" id="periodFilter">
+                        <option value="1">۱ ماه گذشته</option>
+                        <option value="3" selected>۳ ماه گذشته</option>
+                        <option value="6">۶ ماه گذشته</option>
+                        <option value="12">۱ سال گذشته</option>
+                    </select>
+                </div>
+            </div>
         </div>
-        <div class="filter-group">
-            <label class="filter-label">فروشگاه/تامین‌کننده</label>
-            <select class="filter-select" id="supplierFilter">
-                <option value="">همه تأمین‌کنندگان</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">محصول</label>
-            <input type="text" class="filter-input" id="productSearch" placeholder="جستجوی محصول...">
-        </div>
-        <div class="filter-group">
-            <label class="filter-label">دوره</label>
-            <select class="filter-select" id="periodFilter">
-                <option value="1">۱ ماه گذشته</option>
-                <option value="3" selected>۳ ماه گذشته</option>
-                <option value="6">۶ ماه گذشته</option>
-                <option value="12">۱ سال گذشته</option>
-            </select>
-        </div>
-    </div>
-</div>
+    </section>
 
-<!-- Stats Overview -->
-<div class="stats-grid" id="statsOverview">
-    <div class="stat-card">
-        <div class="stat-icon-circle primary"><i class="fas fa-box"></i></div>
-        <div class="stat-value primary" id="totalProducts">-</div>
-        <div class="stat-label">کل محصولات</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle success"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-value success" id="stablePrices">-</div>
-        <div class="stat-label">قیمت‌های پایدار</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle danger"><i class="fas fa-arrow-up"></i></div>
-        <div class="stat-value danger" id="increasedPrices">-</div>
-        <div class="stat-label">افزایش قیمت</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon-circle warning"><i class="fas fa-arrow-down"></i></div>
-        <div class="stat-value warning" id="decreasedPrices">-</div>
-        <div class="stat-label">کاهش قیمت</div>
-    </div>
-</div>
+    <!-- Stats Overview -->
+    <section class="ui-metrics-strip" id="statsOverview">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کل محصولات</span>
+            <div class="ui-metric-val is-accent ui-num" id="totalProducts">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">قیمت‌های پایدار</span>
+            <div class="ui-metric-val is-green ui-num" id="stablePrices">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">افزایش قیمت</span>
+            <div class="ui-metric-val is-danger ui-num" id="increasedPrices">-</div>
+        </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کاهش قیمت</span>
+            <div class="ui-metric-val is-warn ui-num" id="decreasedPrices">-</div>
+        </div>
+    </section>
 
-<!-- Products Table -->
-<div class="table-card">
-    <div class="table-header">
-        <div class="table-title"><i class="fas fa-table"></i> لیست محصولات</div>
-        <span class="current-date" style="font-size:0.8rem;" id="updateInfo">در حال بارگذاری...</span>
-    </div>
-    <div style="overflow-x:auto;">
-        <table class="data-table" id="productsTable">
-            <thead>
-                <tr>
-                    <th>نام محصول</th>
-                    <th>دسته‌بندی</th>
-                    <th>تامین‌کننده</th>
-                    <th>قیمت قبلی</th>
-                    <th>قیمت جدید</th>
-                    <th>تغییر</th>
-                    <th>آخرین به‌روزرسانی</th>
-                </tr>
-            </thead>
-            <tbody id="productsTableBody">
-                <tr><td colspan="7" style="text-align:center;padding:2rem;">در حال بارگذاری...</td></tr>
-            </tbody>
-        </table>
-    </div>
+    <!-- Products Table -->
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-table"></i>
+                لیست محصولات
+            </h2>
+            <span class="ui-chip" id="updateInfo">در حال بارگذاری...</span>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table data-table" id="productsTable">
+                <thead>
+                    <tr>
+                        <th>نام محصول</th>
+                        <th>دسته‌بندی</th>
+                        <th>تامین‌کننده</th>
+                        <th>قیمت قبلی</th>
+                        <th>قیمت جدید</th>
+                        <th>تغییر</th>
+                        <th>آخرین به‌روزرسانی</th>
+                    </tr>
+                </thead>
+                <tbody id="productsTableBody">
+                    <tr><td colspan="7" style="text-align:center;padding:2rem;">در حال بارگذاری...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <!-- Price History Modal -->
-<div class="modal-overlay" id="priceModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title" id="modalProductName">تاریخچه قیمت</h3>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+<div class="ui-modal-backdrop" id="priceModal" onclick="closeModal()">
+    <div class="ui-modal is-medium" onclick="event.stopPropagation()">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title" id="modalProductName">تاریخچه قیمت</h3>
+            <button type="button" class="ui-modal-close" onclick="closeModal()" aria-label="بستن">&times;</button>
         </div>
-        <div class="modal-body">
-            <div class="chart-wrapper">
-                <canvas id="priceChart"></canvas>
+        <div class="ui-modal-body">
+            <div class="ui-card">
+                <div class="ui-card-body">
+                    <div class="chart-wrapper">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -261,7 +286,7 @@
             })
             .catch(function(e) {
                 console.error('Error loading products:', e);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--danger);">خطا در بارگذاری داده‌ها</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--ui-danger);">خطا در بارگذاری داده‌ها</td></tr>';
             });
     }
 
@@ -277,7 +302,7 @@
     function renderTable(products) {
         var tbody = document.getElementById('productsTableBody');
         if (!products || products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-500);">هیچ محصولی یافت نشد</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">هیچ محصولی یافت نشد</div></td></tr>';
             return;
         }
         tbody.replaceChildren();
@@ -291,13 +316,13 @@
                 openPriceModal(Number(p.id) || 0, p.name || '');
             });
             tr.innerHTML =
-                '<td style="font-weight:600;color:var(--dark);">' + escapeHtml(p.name || '-') + '</td>' +
+                '<td style="font-weight:700;">' + escapeHtml(p.name || '-') + '</td>' +
                 '<td>' + escapeHtml(p.category || '-') + '</td>' +
                 '<td>' + escapeHtml(p.supplier || '-') + '</td>' +
-                '<td>' + toFarsiNumber(formatNumber(Math.round(p.old_price || 0))) + '</td>' +
-                '<td>' + toFarsiNumber(formatNumber(Math.round(p.new_price || 0))) + '</td>' +
-                '<td><span class="price-change ' + changeClass + '"><i class="fas ' + changeIcon + '"></i> ' + toFarsiNumber(Math.abs(change).toFixed(1)) + '%</span></td>' +
-                '<td>' + escapeHtml(p.updated_at || '-') + '</td>';
+                '<td class="ui-num">' + toFarsiNumber(formatNumber(Math.round(p.old_price || 0))) + '</td>' +
+                '<td class="ui-money">' + toFarsiNumber(formatNumber(Math.round(p.new_price || 0))) + '</td>' +
+                '<td><span class="price-change ' + changeClass + ' ui-num"><i class="fas ' + changeIcon + '"></i> ' + toFarsiNumber(Math.abs(change).toFixed(1)) + '%</span></td>' +
+                '<td class="ui-num">' + escapeHtml(p.updated_at || '-') + '</td>';
             tbody.appendChild(tr);
         });
     }
@@ -343,8 +368,8 @@
                 datasets: [{
                     label: 'قیمت',
                     data: values,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99,102,241,0.1)',
+                    borderColor: '#8B5CF6',
+                    backgroundColor: 'rgba(139,92,246,0.1)',
                     fill: true, tension: 0.4
                 }]
             },

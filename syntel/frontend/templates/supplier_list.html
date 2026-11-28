@@ -1,300 +1,154 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}مدیریت تأمین‌کنندگان - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.supplier-list-container {
-    max-width: 1320px;
-    margin: 0 auto;
-}
-
-.filters-section {
-    background: var(--bg-card);
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-xs);
-    margin-bottom: 20px;
-}
-
-.search-form {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.search-input {
-    flex: 1;
-    min-width: 220px;
-    padding: 9px 14px;
-    border: 1px solid var(--border-medium);
-    border-radius: 10px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    background: var(--bg-input);
-    color: var(--text-primary);
-}
-
-.search-input:focus,
-.status-filter:focus,
-.type-filter:focus {
-    outline: none;
-    border-color: var(--accent-indigo);
-    background: #FFFFFF;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.status-filter, .type-filter {
-    padding: 9px 14px;
-    border: 1px solid var(--border-medium);
-    border-radius: 10px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    min-width: 150px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-}
-
 .suppliers-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 16px;
+    gap: 1rem;
 }
-
-.supplier-card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-xs);
-    overflow: hidden;
+.sup-card-inner {
     display: flex;
     flex-direction: column;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
 }
-
-.supplier-card:hover {
-    border-color: #C7D2FE;
-    box-shadow: var(--shadow-md);
-}
-
-.supplier-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid #F1F5F9;
+.sup-head {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border-light, #F1F5F9);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: 0.75rem;
 }
-
-.supplier-title-group {
+.sup-title-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0.75rem;
     min-width: 0;
 }
-
-.supplier-avatar {
+.sup-avatar {
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: #EEF2FF;
-    color: #4F46E5;
+    background: rgba(139, 92, 246, 0.08);
+    color: var(--primary-dark, #7C3AED);
+    border: 1px solid rgba(139, 92, 246, 0.22);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
-
-.supplier-name {
-    font-size: 1.02rem;
+.sup-name {
+    font-size: 0.96rem;
     font-weight: 800;
-    color: var(--text-primary);
-    margin: 0 0 2px 0;
+    color: var(--text-primary, #0F172A);
+    margin: 0 0 0.15rem 0;
 }
-
-.supplier-type {
-    font-size: 0.78rem;
-    color: var(--text-muted);
+.sup-type {
+    font-size: 0.76rem;
+    color: var(--text-muted, #94A3B8);
     margin: 0;
-    font-weight: 500;
+    font-weight: 600;
 }
-
-.status-badge {
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.status-active {
-    background: #ECFDF5;
-    color: #059669;
-    border: 1px solid #A7F3D0;
-}
-
-.status-inactive {
-    background: #FEF2F2;
-    color: #DC2626;
-    border: 1px solid #FECACA;
-}
-
-.supplier-body {
-    padding: 16px 18px;
+.sup-body {
+    padding: 1rem 1.2rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0.8rem;
 }
-
-.supplier-info {
+.sup-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px 14px;
-    margin-bottom: 14px;
+    gap: 0.6rem 0.9rem;
 }
-
-.info-item {
+.sup-info-item {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
-
-.info-item.full-width {
-    grid-column: 1 / -1;
-}
-
-.info-label {
-    font-size: 0.74rem;
-    color: var(--text-muted);
-    margin-bottom: 2px;
-}
-
-.info-value {
-    font-size: 0.85rem;
+.sup-info-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #94A3B8);
     font-weight: 600;
-    color: var(--text-primary);
+    margin-bottom: 0.1rem;
+}
+.sup-info-value {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary, #0F172A);
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
-
-.supplier-contact {
-    margin-bottom: 14px;
-    padding: 10px 12px;
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
+.sup-contact-box {
+    padding: 0.6rem 0.8rem;
+    background: var(--gray-50, #F8FAFC);
+    border: 1px solid var(--border-light, #F1F5F9);
     border-radius: 10px;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: 0.5rem 1rem;
+    font-size: 0.78rem;
 }
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.82rem;
-}
-
-.contact-label {
-    color: var(--text-muted);
-}
-
-.contact-value {
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.supplier-actions {
+.sup-actions {
     margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid #F1F5F9;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light, #F1F5F9);
     display: flex;
-    gap: 6px;
+    gap: 0.35rem;
     justify-content: flex-end;
     flex-wrap: wrap;
 }
-
-.btn-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 11px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: 0.78rem;
-    font-weight: 600;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-}
-
-.btn-view {
-    background: #EEF2FF;
-    color: #4F46E5;
-    border-color: #E0E7FF;
-}
-.btn-view:hover { background: #E0E7FF; }
-
-.btn-edit {
-    background: #F8FAFC;
-    color: #334155;
-    border-color: #E2E8F0;
-}
-.btn-edit:hover { background: #F1F5F9; border-color: #CBD5E1; }
-
-.btn-activate {
-    background: #ECFDF5;
-    color: #059669;
-    border-color: #A7F3D0;
-}
-.btn-activate:hover { background: #D1FAE5; }
-
-.btn-deactivate {
-    background: #FFFBEB;
-    color: #B45309;
-    border-color: #FDE68A;
-}
-.btn-deactivate:hover { background: #FEF3C7; }
-
-.btn-delete {
-    background: #FEF2F2;
-    color: #DC2626;
-    border-color: #FECACA;
-}
-.btn-delete:hover { background: #FEE2E2; }
-
-@media (max-width: 768px) {
-    .search-form {
-        flex-direction: column;
-        align-items: stretch;
-    }
+@media (max-width: 640px) {
     .suppliers-grid {
         grid-template-columns: 1fr;
     }
 }
 </style>
+{% endblock %}
 
-<div class="supplier-list-container">
-    <div class="page-header">
-        <h1 class="page-title">
-            <i class="fas fa-store"></i>
-            مدیریت تأمین‌کنندگان
-        </h1>
-        <div class="header-actions">
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> تأمین‌کننده جدید
+{% block content %}
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-store" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                مدیریت تأمین‌کنندگان
+            </h1>
+            <p class="ui-subtitle">
+                <span>فهرست تأمین‌کنندگان، اطلاعات تماس و حساب‌های بانکی</span>
+                {% if current_filters.search or current_filters.status or current_filters.type %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'supplier_evaluation_all_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-star"></i>
+                <span>ارزیابی‌ها</span>
+            </a>
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>تأمین‌کننده جدید</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <div class="filters-section">
-        <form method="GET" class="search-form">
-            <input type="text" name="search" value="{{ current_filters.search }}" placeholder="جستجو در نام، تلفن، شهر یا کد تأمین‌کننده..." class="search-input">
-            <select name="status" class="status-filter">
+    <form method="GET" class="ui-controls-card">
+        <div class="ui-controls-row">
+            <div class="ui-search">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="{{ current_filters.search }}"
+                       placeholder="جستجو در نام، تلفن، شهر یا کد تأمین‌کننده..." aria-label="جستجو">
+            </div>
+
+            <select name="status" class="ui-select" aria-label="فیلتر وضعیت">
                 <option value="">همه وضعیت‌ها</option>
                 {% for status_value, status_label in status_choices %}
                 <option value="{{ status_value }}" {% if status_value == current_filters.status %}selected{% endif %}>
@@ -302,7 +156,8 @@
                 </option>
                 {% endfor %}
             </select>
-            <select name="type" class="type-filter">
+
+            <select name="type" class="ui-select" aria-label="فیلتر نوع">
                 <option value="">همه انواع</option>
                 {% for type_value, type_label in type_choices %}
                 <option value="{{ type_value }}" {% if type_value == current_filters.type %}selected{% endif %}>
@@ -310,106 +165,112 @@
                 </option>
                 {% endfor %}
             </select>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i> جستجو
-            </button>
-        </form>
-    </div>
+
+            <div style="display:flex;align-items:center;gap:0.45rem;flex-wrap:wrap;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-search"></i>
+                    <span>جستجو</span>
+                </button>
+                {% if current_filters.search or current_filters.status or current_filters.type %}
+                <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-danger-soft">
+                    <i class="fas fa-xmark"></i>
+                    <span>پاک‌کردن</span>
+                </a>
+                {% endif %}
+                <span class="ui-chip ui-num">{{ suppliers|length|number_format }} تأمین‌کننده</span>
+            </div>
+        </div>
+    </form>
 
     {% if suppliers %}
     <div class="suppliers-grid">
         {% for supplier in suppliers %}
-        <div class="supplier-card">
-            <div class="supplier-header">
-                <div class="supplier-title-group">
-                    <div class="supplier-avatar"><i class="fas fa-store"></i></div>
-                    <div>
-                        <h3 class="supplier-name">{{ supplier.name }}</h3>
-                        <p class="supplier-type">{{ supplier.get_supplier_type_display }}</p>
+        <article class="ui-card sup-card-inner">
+            <div class="sup-head">
+                <div class="sup-title-group">
+                    <div class="sup-avatar"><i class="fas fa-store"></i></div>
+                    <div style="min-width:0;">
+                        <h3 class="sup-name">{{ supplier.name }}</h3>
+                        <p class="sup-type">{{ supplier.get_supplier_type_display }}</p>
                     </div>
                 </div>
-                <span class="status-badge status-{{ supplier.status }}">
+                <span class="ui-pill {% if supplier.status == 'active' %}is-ok{% elif supplier.status == 'inactive' %}is-muted{% else %}is-danger{% endif %}">
+                    <span class="ui-dot"></span>
                     {{ supplier.get_status_display }}
                 </span>
             </div>
-            <div class="supplier-body">
-                <div class="supplier-info">
-                    <div class="info-item">
-                        <span class="info-label">کد تأمین‌کننده</span>
-                        <span class="info-value">{{ supplier.supplier_code|default:"-" }}</span>
+            <div class="sup-body">
+                <div class="sup-info-grid">
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">کد تأمین‌کننده</span>
+                        <span class="sup-info-value ui-num">{{ supplier.supplier_code|default:"—" }}</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">شهر</span>
-                        <span class="info-value">{{ supplier.city|default:"-" }}</span>
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">شهر</span>
+                        <span class="sup-info-value">{{ supplier.city|default:"—" }}</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">تلفن</span>
-                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.phone|default:"-" }}</span>
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">تلفن</span>
+                        <span class="sup-info-value ui-num" dir="ltr" style="text-align:right;">{{ supplier.phone|default:"—" }}</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">نام بانک</span>
-                        <span class="info-value">{{ supplier.bank_name|default:"-" }}</span>
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">نام بانک</span>
+                        <span class="sup-info-value">{{ supplier.bank_name|default:"—" }}</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">شماره کارت</span>
-                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.card_number|default:"-" }}</span>
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">شماره کارت</span>
+                        <span class="sup-info-value ui-num" dir="ltr" style="text-align:right;">{{ supplier.card_number|default:"—" }}</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">شماره شبا</span>
-                        <span class="info-value" dir="ltr" style="text-align: right;">{{ supplier.sheba_number|default:"-" }}</span>
+                    <div class="sup-info-item">
+                        <span class="sup-info-label">شماره شبا</span>
+                        <span class="sup-info-value ui-num" dir="ltr" style="text-align:right;">{{ supplier.sheba_number|default:"—" }}</span>
                     </div>
                 </div>
 
                 {% if supplier.contact_person %}
-                <div class="supplier-contact">
-                    <div class="contact-item">
-                        <span class="contact-label"><i class="fas fa-user"></i> شخص تماس:</span>
-                        <span class="contact-value">{{ supplier.contact_person }}</span>
-                    </div>
+                <div class="sup-contact-box">
+                    <span><i class="fas fa-user" style="color:var(--text-muted);margin-left:4px;"></i> <span style="color:var(--text-muted);">شخص تماس:</span> <strong>{{ supplier.contact_person }}</strong></span>
                     {% if supplier.mobile %}
-                    <div class="contact-item">
-                        <span class="contact-label"><i class="fas fa-mobile-alt"></i> موبایل:</span>
-                        <span class="contact-value" dir="ltr">{{ supplier.mobile }}</span>
-                    </div>
+                    <span><i class="fas fa-mobile-alt" style="color:var(--text-muted);margin-left:4px;"></i> <strong dir="ltr" class="ui-num">{{ supplier.mobile }}</strong></span>
                     {% endif %}
                 </div>
                 {% endif %}
 
-                <div class="supplier-actions">
-                    <a href="{% url 'supplier_detail' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-view">
+                <div class="sup-actions">
+                    <a href="{% url 'supplier_detail' cafe_code=cafe_code supplier_id=supplier.id %}" class="ui-row-action">
                         <i class="fas fa-eye"></i> مشاهده
                     </a>
-                    <a href="{% url 'supplier_update' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-edit">
-                        <i class="fas fa-edit"></i> ویرایش
+                    <a href="{% url 'supplier_update' cafe_code=cafe_code supplier_id=supplier.id %}" class="ui-row-action">
+                        <i class="fas fa-pen"></i> ویرایش
                     </a>
                     {% if supplier.status == 'active' %}
-                    <a href="{% url 'supplier_deactivate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-deactivate">
+                    <a href="{% url 'supplier_deactivate' cafe_code=cafe_code supplier_id=supplier.id %}" class="ui-row-action" style="color:var(--ui-warn);">
                         <i class="fas fa-ban"></i> غیرفعال
                     </a>
                     {% else %}
-                    <a href="{% url 'supplier_activate' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-activate">
+                    <a href="{% url 'supplier_activate' cafe_code=cafe_code supplier_id=supplier.id %}" class="ui-row-action" style="color:var(--ui-ok);">
                         <i class="fas fa-check"></i> فعال
                     </a>
                     {% endif %}
-                    <a href="{% url 'supplier_delete' cafe_code=cafe_code supplier_id=supplier.id %}" class="btn-action btn-delete">
-                        <i class="fas fa-trash"></i> حذف
+                    <a href="{% url 'supplier_delete' cafe_code=cafe_code supplier_id=supplier.id %}" class="ui-row-action is-danger">
+                        <i class="fas fa-trash-can"></i> حذف
                     </a>
                 </div>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
     {% else %}
-    <div class="table-card">
-        <div class="empty-state">
+    <section class="ui-table-card">
+        <div class="ui-empty">
             <i class="fas fa-store-slash"></i>
-            <h3>تأمین‌کننده‌ای یافت نشد</h3>
-            <p>هیچ تأمین‌کننده‌ای با معیارهای جستجوی شما یافت نشد.</p>
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="btn btn-primary" style="margin-top: 12px;">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">تأمین‌کننده‌ای یافت نشد</div>
+            <p style="margin:0 0 1rem;">هیچ تأمین‌کننده‌ای با معیارهای جستجوی شما یافت نشد.</p>
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i> اولین تأمین‌کننده را اضافه کنید
             </a>
         </div>
-    </div>
+    </section>
     {% endif %}
 </div>
 {% endblock %}

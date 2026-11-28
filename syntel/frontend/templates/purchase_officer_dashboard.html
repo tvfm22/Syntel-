@@ -5,170 +5,84 @@
 
 {% block extra_css %}
 <style>
-    /* ═══ استایل صفحه لیست خرید — هماهنگ با دیزاین‌سیستم کوکر ═══ */
-    .po-wrap { max-width: 1080px; margin: 0 auto; }
-
-    .po-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
-    .ph-icon {
-        width: 42px; height: 42px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .page-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
-
-    .po-stats { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; }
-    .po-stat-card {
-        background: var(--bg-card); border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg); padding: 0.85rem 1.25rem;
-        box-shadow: var(--shadow-sm); flex: 1; min-width: 160px;
-        display: flex; align-items: center; gap: 0.85rem;
-    }
-    .po-stat-icon {
-        width: 40px; height: 40px; border-radius: var(--radius-md);
-        display: flex; align-items: center; justify-content: center; font-size: 1rem;
-        background: rgba(99,102,241,0.1); color: var(--accent-indigo);
-    }
-    .po-stat-icon.green { background: #ECFDF5; color: #059669; }
-    .po-stat-num { font-size: 1.35rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
-    .po-stat-lbl { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
-
-    .po-hint {
-        font-size: 0.8rem; color: var(--text-secondary); background: #EFF6FF;
-        border: 1px solid #BFDBFE; border-radius: var(--radius-lg);
-        padding: 0.65rem 1rem; margin-bottom: var(--space-4); line-height: 1.8;
-        display: flex; align-items: center; gap: 0.5rem;
-    }
-    .po-hint i { color: #2563EB; font-size: 1rem; flex-shrink: 0; }
-
     .row-card {
-        background: var(--bg-card); border-radius: var(--radius-xl); padding: 1.15rem 1.35rem;
-        box-shadow: var(--shadow-sm); margin-bottom: var(--space-3);
-        border: 1px solid var(--border-default); border-inline-start: 4px solid var(--accent-indigo);
+        border-inline-start: 4px solid var(--primary, #8B5CF6);
+        padding: 1.1rem 1.25rem;
+        display: flex; flex-direction: column; gap: 0.75rem;
     }
     .row-head {
         display: flex; justify-content: space-between; align-items: center;
-        flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.65rem;
-        padding-bottom: 0.65rem; border-bottom: 1px solid var(--border-light);
+        flex-wrap: wrap; gap: 0.65rem;
+        padding-bottom: 0.65rem; border-bottom: 1px solid var(--border-light, #F1F5F9);
     }
-    .row-name { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
-    .row-qty  {
-        font-size: 0.88rem; font-weight: 800; color: #047857;
-        background: #ECFDF5; border: 1px solid #A7F3D0;
-        padding: 0.2rem 0.75rem; border-radius: 999px; white-space: nowrap;
-    }
-
-    .dept-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-    .dept-pill {
-        padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.73rem; font-weight: 700;
-        background: rgba(99,102,241,0.08); color: var(--primary-dark);
-    }
-
+    .row-name { font-size: 0.98rem; font-weight: 800; color: var(--text-primary, #0F172A); }
+    .dept-pills { display: flex; gap: 0.35rem; flex-wrap: wrap; }
     .item-line {
         display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        border-radius: var(--radius-md); padding: 0.65rem 0.9rem; margin-bottom: 0.5rem; flex-wrap: wrap;
+        background: var(--gray-50, #F8FAFC); border: 1px solid var(--border-light, #F1F5F9);
+        border-radius: 10px; padding: 0.65rem 0.9rem; flex-wrap: wrap;
     }
-    .item-line:last-child { margin-bottom: 0; }
-    .item-line-info { font-size: 0.84rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-    .item-line-qty  { font-weight: 800; color: var(--text-primary); }
+    .item-line-info { font-size: 0.84rem; color: var(--text-secondary, #64748B); display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+    .item-line-qty  { font-weight: 800; color: var(--text-primary, #0F172A); font-variant-numeric: tabular-nums; }
     .item-actions   { display: flex; gap: 0.45rem; flex-wrap: wrap; }
-    .po-btn {
-        border: none; border-radius: var(--radius-sm); height: 34px; padding: 0 0.9rem; font-size: 0.78rem;
-        font-weight: 700; cursor: pointer; font-family: 'Vazir', sans-serif;
-        transition: all var(--transition-fast); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;
-    }
-    .po-btn-green { background: #10B981; color: white; }
-    .po-btn-green:hover { background: #059669; }
-    .po-btn-red { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
-    .po-btn-red:hover { background: #FEE2E2; }
     .row-bulk-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
 
-    .desc-list { margin-top: 0.65rem; }
+    .desc-list { display: flex; flex-direction: column; gap: 0.35rem; }
     .desc-item {
-        font-size: 0.76rem; color: var(--text-secondary); background: #FFFBEB; border-inline-start: 3px solid #F59E0B;
-        border-radius: var(--radius-xs); padding: 0.45rem 0.75rem; margin-bottom: 0.35rem;
+        font-size: 0.78rem; color: var(--text-secondary, #64748B);
+        background: var(--ui-warn-bg, #FFFBEB); border-inline-start: 3px solid #F59E0B;
+        border-radius: 8px; padding: 0.45rem 0.75rem;
     }
-    .desc-item b { color: #92400E; }
-
-    .empty-state {
-        text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);
-        background: var(--bg-card); border-radius: var(--radius-xl); border: 1px dashed var(--border-strong);
-    }
-    .po-stat-icon.amber { background: #FEF3C7; color: #D97706; }
-    .ph-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .ph-tab {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        padding: 0.45rem 0.9rem; border-radius: var(--radius-md);
-        font-size: 0.8rem; font-weight: 700; text-decoration: none;
-        border: 1px solid var(--border-default); background: var(--bg-subtle);
-        color: var(--text-secondary); transition: all var(--transition-fast);
-    }
-    .ph-tab:hover { background: rgba(99,102,241,0.08); color: var(--accent-indigo); border-color: rgba(99,102,241,0.3); }
-    .ph-tab.active { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
-    .empty-state .empty-icon { font-size: 2.4rem; margin-bottom: 0.75rem; color: var(--accent-indigo); opacity: 0.45; }
-    .empty-state h3 { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.35rem; }
+    .desc-item b { color: var(--ui-warn, #B45309); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="po-wrap">
+<div class="ui-page">
 
-    <!-- Header -->
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-shopping-basket"></i></div>
-            <div>
-                <h1 class="page-title">{% if is_warehouse_self_buy %}خریدهای من{% elif is_self_buy %}لیست خرید من{% else %}لیست خرید من{% endif %}</h1>
-                <div class="page-sub">{{ user.first_name }} {{ user.last_name }}</div>
-            </div>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-shopping-basket" style="color:var(--primary, #8B5CF6);"></i>
+                <span>{% if is_warehouse_self_buy %}خریدهای من{% elif is_self_buy %}لیست خرید من{% else %}لیست خرید من{% endif %}</span>
+            </h1>
+            <p class="ui-subtitle">{{ user.first_name }} {{ user.last_name }}</p>
         </div>
-        <div class="ph-actions">
-            {% if not is_warehouse_self_buy %}
-            <a href="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" class="ph-tab active">
-                <i class="fas fa-shopping-basket"></i>
-                لیست خرید من
-            </a>
-            {% endif %}
-            <a href="{% url history_url_name|default:'purchase_officer_history' cafe_code=cafe_code %}" class="ph-tab">
-                <i class="fas fa-history"></i>
-                {% if is_warehouse_self_buy %}سوابق خریدهای من{% else %}سوابق لیست خرید{% endif %}
-            </a>
+        <div class="ui-topbar-actions">
+            <nav class="ui-segmented" aria-label="بخش‌های لیست خرید">
+                {% if not is_warehouse_self_buy %}
+                <a href="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" class="ui-seg-item is-active">
+                    <i class="fas fa-shopping-basket"></i>
+                    <span>لیست خرید من</span>
+                </a>
+                {% endif %}
+                <a href="{% url history_url_name|default:'purchase_officer_history' cafe_code=cafe_code %}" class="ui-seg-item">
+                    <i class="fas fa-history"></i>
+                    <span>{% if is_warehouse_self_buy %}سوابق خریدهای من{% else %}سوابق لیست خرید{% endif %}</span>
+                </a>
+            </nav>
         </div>
-    </div>
+    </header>
 
-    <div class="po-stats">
-        <div class="po-stat-card">
-            <div class="po-stat-icon"><i class="fas fa-box-open"></i></div>
-            <div>
-                <div class="po-stat-num">{{ rows|length }}</div>
-                <div class="po-stat-lbl">کالای در انتظار</div>
-            </div>
+    <section class="ui-metrics-strip {% if awaiting_ceo_count %}cols-3{% else %}cols-2{% endif %}" aria-label="آمار خرید">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">کالای در انتظار</span>
+            <div class="ui-metric-val is-accent">{{ rows|length }}<span class="ui-metric-unit">کالا</span></div>
         </div>
-        <div class="po-stat-card">
-            <div class="po-stat-icon green"><i class="fas fa-list-check"></i></div>
-            <div>
-                <div class="po-stat-num">{{ total_items }}</div>
-                <div class="po-stat-lbl">قلم درخواستی</div>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">قلم درخواستی</span>
+            <div class="ui-metric-val is-green">{{ total_items }}<span class="ui-metric-unit">قلم</span></div>
         </div>
         {% if awaiting_ceo_count %}
-        <div class="po-stat-card">
-            <div class="po-stat-icon amber"><i class="fas fa-user-shield"></i></div>
-            <div>
-                <div class="po-stat-num">{{ awaiting_ceo_count }}</div>
-                <div class="po-stat-lbl">قلم در انتظار تایید مدیرعامل</div>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">قلم در انتظار تایید مدیرعامل</span>
+            <div class="ui-metric-val is-warn">{{ awaiting_ceo_count }}<span class="ui-metric-unit">قلم</span></div>
         </div>
         {% endif %}
-    </div>
+    </section>
 
-    <div class="po-hint">
-        <i class="fas fa-circle-info"></i>
+    <div class="ui-banner is-info">
+        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
         <span>
         {% if is_warehouse_self_buy %}
         اقلامی که با «خرید توسط خودم» برای خودتان انتخاب کرده‌اید نمایش داده می‌شود.
@@ -188,27 +102,29 @@
 
     {% if rows %}
         {% for row in rows %}
-        <div class="row-card">
+        <article class="ui-card row-card">
             <div class="row-head">
                 <div class="row-name">{{ row.name }}</div>
-                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                    <div class="row-qty">جمع کل: {{ row.total_qty|qty_comma }} {{ row.unit }}</div>
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <span class="ui-pill is-ok ui-num">جمع کل: {{ row.total_qty|qty_comma }} {{ row.unit }}</span>
                     {% if row.assignments|length > 1 %}
                     <div class="row-bulk-actions">
                         <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="item_ids" value="{{ row.assignment_ids_csv }}">
-                            <button type="submit" name="action" value="purchased" class="po-btn po-btn-green"
+                            <button type="submit" name="action" value="purchased" class="ui-btn ui-btn-success is-sm"
                                     onclick="return confirm('کل جمع «{{ row.name|escapejs }}» ({{ row.total_qty|qty_comma|escapejs }} {{ row.unit|escapejs }}) خریداری شد؟');">
-                                <i class="fas fa-check-double"></i> خریداری شد (همه)
+                                <i class="fas fa-check-double"></i>
+                                <span>خریداری شد (همه)</span>
                             </button>
                         </form>
                         <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="item_ids" value="{{ row.assignment_ids_csv }}">
-                            <button type="submit" name="action" value="not_purchased" class="po-btn po-btn-red"
+                            <button type="submit" name="action" value="not_purchased" class="ui-btn ui-btn-danger-soft is-sm"
                                     onclick="return confirm('کل «{{ row.name|escapejs }}» به عنوان خریداری‌نشده ثبت شود؟');">
-                                <i class="fas fa-xmark"></i> خریداری نشده (همه)
+                                <i class="fas fa-xmark"></i>
+                                <span>خریداری نشده (همه)</span>
                             </button>
                         </form>
                     </div>
@@ -218,54 +134,64 @@
 
             <div class="dept-pills">
                 {% for s in row.sections %}
-                <span class="dept-pill"><i class="fas fa-building"></i> {{ s.name }}: {{ s.qty|qty_comma }} {{ row.unit }}</span>
+                <span class="ui-pill is-accent ui-num"><i class="fas fa-building"></i> {{ s.name }}: {{ s.qty|qty_comma }} {{ row.unit }}</span>
                 {% endfor %}
             </div>
 
-            {% for a in row.assignments %}
-            <div class="item-line">
-                <div class="item-line-info">
-                    <b>{{ row.name }}</b> — <span class="item-line-qty">{{ a.item.quantity|qty_comma }} {{ row.unit }}</span>
-                    <span>
-                        {% with src_item=a.item.source_item|default:a.item %}
-                        (بخش: <b>{{ src_item.request.user.department.name|default:src_item.request.user.get_role_display }}</b>)
-                        {% endwith %}
-                        {% if a.item.description %} • <i class="fas fa-comment-dots"></i> {{ a.item.description }}{% endif %}
-                    </span>
-                    <span style="color:var(--text-muted);font-size:0.75rem;">{{ a.item.request.created_at|jalali_date }}</span>
+            <div style="display:flex; flex-direction:column; gap:0.45rem;">
+                {% for a in row.assignments %}
+                <div class="item-line">
+                    <div class="item-line-info">
+                        <b style="color:var(--text-primary);">{{ row.name }}</b> — <span class="item-line-qty">{{ a.item.quantity|qty_comma }} {{ row.unit }}</span>
+                        <span>
+                            {% with src_item=a.item.source_item|default:a.item %}
+                            (بخش: <b>{{ src_item.request.user.department.name|default:src_item.request.user.get_role_display }}</b>)
+                            {% endwith %}
+                            {% if a.item.description %} • <i class="fas fa-comment-dots"></i> {{ a.item.description }}{% endif %}
+                        </span>
+                        <span class="ui-num" style="color:var(--text-muted); font-size:0.75rem;">{{ a.item.request.created_at|jalali_date }}</span>
+                    </div>
+                    <div class="item-actions">
+                        <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ a.id }}">
+                            <button type="submit" name="action" value="purchased" class="ui-btn ui-btn-success is-sm"
+                                    onclick="return confirm('«{{ row.name|escapejs }}» خریداری شد؟');">
+                                <i class="fas fa-check"></i>
+                                <span>خریداری شد</span>
+                            </button>
+                        </form>
+                        <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ a.id }}">
+                            <button type="submit" name="action" value="not_purchased" class="ui-btn ui-btn-danger-soft is-sm"
+                                    onclick="return confirm('«{{ row.name|escapejs }}» به عنوان خریداری‌نشده ثبت شود؟');">
+                                <i class="fas fa-xmark"></i>
+                                <span>خریداری نشده</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="item-actions">
-                    <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="item_id" value="{{ a.id }}">
-                        <button type="submit" name="action" value="purchased" class="po-btn po-btn-green"
-                                onclick="return confirm('«{{ row.name|escapejs }}» خریداری شد؟');"><i class="fas fa-check"></i> خریداری شد</button>
-                    </form>
-                    <form method="post" action="{% url post_url_name|default:'purchase_officer_dashboard' cafe_code=cafe_code %}" style="display:inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="item_id" value="{{ a.id }}">
-                        <button type="submit" name="action" value="not_purchased" class="po-btn po-btn-red"
-                                onclick="return confirm('«{{ row.name|escapejs }}» به عنوان خریداری‌نشده ثبت شود؟');"><i class="fas fa-xmark"></i> خریداری نشده</button>
-                    </form>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
 
             {% if row.descriptions %}
             <div class="desc-list">
                 {% for d in row.descriptions %}
-                <div class="desc-item"><i class="fas fa-Sticky-note"></i> <b>{{ d.dept }}:</b> {{ d.text }}</div>
+                <div class="desc-item"><i class="fas fa-sticky-note"></i> <b>{{ d.dept }}:</b> {{ d.text }}</div>
                 {% endfor %}
             </div>
             {% endif %}
-        </div>
+        </article>
         {% endfor %}
     {% else %}
-        <div class="empty-state">
-            <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-            <h3>لیست خرید شما خالی است</h3>
-            <p>{% if is_self_buy %}هنوز قلمی با «خرید توسط خودم» برای خودتان نگه نداشته‌اید.{% else %}هنوز قلمی توسط مدیرعامل برای شما ارسال نشده است.{% endif %}</p>
-        </div>
+        <section class="ui-card">
+            <div class="ui-empty">
+                <i class="fas fa-inbox"></i>
+                <div style="font-size:1rem; font-weight:800; color:var(--text-primary); margin-bottom:0.35rem;">لیست خرید شما خالی است</div>
+                <div>{% if is_self_buy %}هنوز قلمی با «خرید توسط خودم» برای خودتان نگه نداشته‌اید.{% else %}هنوز قلمی توسط مدیرعامل برای شما ارسال نشده است.{% endif %}</div>
+            </div>
+        </section>
     {% endif %}
 
 </div>

@@ -3,296 +3,280 @@
 
 {% block title %}{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %} - Kuker{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-.user-form-container { max-width: 720px; margin: 0 auto; }
-.user-form {
-    background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-xl);
-    padding: 1.75rem; box-shadow: var(--shadow-xs);
+.ui-check-card {
+    background: var(--gray-50, #F8FAFC);
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
 }
-.form-group { margin-bottom: 1.25rem; }
-.form-label { display: block; font-weight: 700; color: var(--dark); margin-bottom: 0.45rem; font-size: 0.85rem; }
-.form-input, .form-select {
-    width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border-medium);
-    border-radius: 10px; font-size: 0.88rem; font-family: inherit;
-    background: var(--bg-input); color: var(--dark); transition: all 0.15s; box-sizing: border-box;
+.ui-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--text-primary, #0F172A);
+    margin: 0;
 }
-.form-input:focus, .form-select:focus {
-    outline: none; border-color: var(--primary); background: #fff;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+.ui-check-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary, #8B5CF6);
+    cursor: pointer;
+    margin: 0;
 }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.checkbox-group {
-    display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem;
-    background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px;
-}
-.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); cursor: pointer; }
-.checkbox-group label { margin: 0; font-weight: 600; font-size: 0.88rem; color: var(--dark); cursor: pointer; }
-.form-help { color: var(--gray-500); font-size: 0.78rem; margin-top: 0.35rem; line-height: 1.7; }
-.form-actions {
-    display: flex; gap: 0.75rem; justify-content: flex-end;
-    margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--gray-100);
-}
-.btn-submit, .btn-cancel {
-    padding: 0.65rem 1.4rem; border-radius: 10px; text-decoration: none;
-    font-weight: 700; font-size: 0.86rem; font-family: inherit;
-    transition: all 0.15s; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
-}
-.btn-submit { background: var(--primary); color: #fff; border: none; }
-.btn-submit:hover { background: var(--primary-dark); }
-.btn-cancel { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
-.btn-cancel:hover { background: var(--gray-200); color: var(--dark); }
-.required { color: var(--danger); }
-.error-message { color: var(--danger); font-size: 0.8rem; margin-top: 0.35rem; font-weight: 600; }
-.cafe-warning {
-    background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px;
-    padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #92400E; margin-top: 0.5rem; display: none;
-}
-.cafe-info {
-    background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;
-    padding: 0.65rem 0.9rem; font-size: 0.8rem; color: #1E40AF; margin-top: 0.5rem; display: none;
-}
-.modal-overlay {
-    display: none; position: fixed; inset: 0; z-index: 2000;
-    background: rgba(15, 23, 42, 0.45); align-items: center; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal-box {
-    background: #fff; border-radius: var(--radius-xl); padding: 1.5rem;
-    width: min(440px, 94vw); box-shadow: var(--shadow-lg);
-}
-.modal-box h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 1rem; color: var(--dark); }
-.modal-field { margin-bottom: 0.9rem; }
-@media (max-width: 768px) {
-    .user-form { padding: 1.25rem; }
-    .form-row { grid-template-columns: 1fr; gap: 0; }
-    .form-actions { flex-direction: column-reverse; }
-    .btn-submit, .btn-cancel { width: 100%; justify-content: center; }
+.error-message {
+    color: var(--ui-danger, #DC2626);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+    font-weight: 600;
 }
 </style>
+{% endblock %}
 
-<div class="user-form-container">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas {% if edit_user %}fa-user-pen{% else %}fa-user-plus{% endif %}"></i></div>
-            <div>
-                <h1 class="ph-title">{% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}</h1>
-                <p class="page-sub">{% if edit_user %}اطلاعات حساب، نقش و دسترسی شعبه کاربر را ویرایش کنید{% else %}مشخصات کاربر جدید، نقش سازمانی و شعبه را تعیین کنید{% endif %}</p>
-            </div>
+{% block content %}
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas {% if edit_user %}fa-user-pen{% else %}fa-user-plus{% endif %}" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                {% if edit_user %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}
+            </h1>
+            <p class="ui-subtitle">
+                {% if edit_user %}اطلاعات حساب، نقش و دسترسی شعبه کاربر را ویرایش کنید{% else %}مشخصات کاربر جدید، نقش سازمانی و شعبه را تعیین کنید{% endif %}
+            </p>
         </div>
-        <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'user_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت</span>
+            </a>
+        </div>
+    </header>
 
     {% if error %}
-    <div style="background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;padding:0.85rem 1.1rem;border-radius:12px;margin-bottom:1rem;font-size:0.86rem;font-weight:600;">
-        <i class="fas fa-circle-exclamation"></i> {{ error }}
+    <div class="ui-banner is-danger">
+        <i class="fas fa-circle-exclamation" style="margin-top:2px;"></i>
+        <span>{{ error }}</span>
     </div>
     {% endif %}
 
-    <form method="POST" class="user-form">
+    <form method="POST" class="ui-form-card user-form">
         {% csrf_token %}
 
-        <div class="form-group">
-            <label for="username" class="form-label">
-                نام کاربری <span class="required">*</span>
-            </label>
-            <input type="text" id="username" name="username" class="form-input"
-                   autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username"
-                   value="{% if edit_user %}{{ edit_user.username }}{% elif form_data %}{{ form_data.username }}{% endif %}"
-                   {% if not edit_user %}required{% endif %}>
-            <div class="form-help">
-                {% if edit_user %}برای تغییر نام کاربری، مقدار جدید را وارد کنید{% else %}نام کاربری باید منحصر به فرد باشد{% endif %}
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="username" class="ui-field-label">
+                    نام کاربری <span style="color:var(--ui-danger);">*</span>
+                </label>
+                <input type="text" id="username" name="username" class="ui-input"
+                       autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username"
+                       value="{% if edit_user %}{{ edit_user.username }}{% elif form_data %}{{ form_data.username }}{% endif %}"
+                       {% if not edit_user %}required{% endif %}>
+                <span class="ui-field-hint">
+                    {% if edit_user %}برای تغییر نام کاربری، مقدار جدید را وارد کنید{% else %}نام کاربری باید منحصر به فرد باشد{% endif %}
+                </span>
+            </div>
+
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="first_name" class="ui-field-label">نام</label>
+                    <input type="text" id="first_name" name="first_name" class="ui-input"
+                           value="{% if edit_user %}{{ edit_user.first_name }}{% elif form_data %}{{ form_data.first_name }}{% endif %}">
+                </div>
+
+                <div class="ui-field">
+                    <label for="last_name" class="ui-field-label">نام خانوادگی</label>
+                    <input type="text" id="last_name" name="last_name" class="ui-input"
+                           value="{% if edit_user %}{{ edit_user.last_name }}{% elif form_data %}{{ form_data.last_name }}{% endif %}">
+                </div>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="first_name" class="form-label">نام</label>
-                <input type="text" id="first_name" name="first_name" class="form-input"
-                       value="{% if edit_user %}{{ edit_user.first_name }}{% elif form_data %}{{ form_data.first_name }}{% endif %}">
-            </div>
-
-            <div class="form-group">
-                <label for="last_name" class="form-label">نام خانوادگی</label>
-                <input type="text" id="last_name" name="last_name" class="form-input"
-                       value="{% if edit_user %}{{ edit_user.last_name }}{% elif form_data %}{{ form_data.last_name }}{% endif %}">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="role" class="form-label">
-                نقش <span class="required">*</span>
-            </label>
-            <select id="role" name="role" class="form-select" required onchange="onRoleChange(this.value)">
-                <option value="">انتخاب نقش</option>
-                {% for role_value, role_name in roles %}
-                <option value="{{ role_value }}"
-                        {% if edit_user and edit_user.role == role_value %}selected
-                        {% elif form_data and form_data.role == role_value %}selected{% endif %}>
-                    {{ role_name }}
-                </option>
-                {% endfor %}
-            </select>
-            <div class="form-help">
-                🛒 <strong>مسئول خرید</strong> = نقش «خرید» (فقط لیست خرید ارسالی مدیرعامل)<br>
-                📦 <strong>مسئول انبار</strong> = نقش «انبار» (درخواست کالاهای موجود در انبار)<br>
-                🧑‍💼 <strong>مسئول خرید و انبار</strong> = نقش «خرید» + «نقش ثانویه: انبار» در پایین همین فرم
-            </div>
-        </div>
-
-        <!-- نقش ثانویه (انبار + خرید) -->
-        <div class="form-group" id="secondaryRoleGroup" style="display:none;">
-            <label for="secondary_role" class="form-label">نقش ثانویه</label>
-            <select id="secondary_role" name="secondary_role" class="form-select">
-                <option value="">-- بدون نقش ثانویه --</option>
-                {% for role_value, role_name in roles %}
-                <option value="{{ role_value }}"
-                    {% if edit_user and edit_user.secondary_role == role_value %}selected
-                    {% elif form_data and form_data.secondary_role == role_value %}selected{% endif %}>
-                    {{ role_name }}
-                </option>
-                {% endfor %}
-            </select>
-            <div class="form-help">
-                با انتخاب نقش ثانویه، این کاربر می‌تواند هم به عنوان مسئول خرید و هم مسئول انبار فعالیت کند.
-            </div>
-        </div>
-
-        <!-- انتخاب بخش (فقط برای نقش درخواست‌دهنده) -->
-        <div class="form-group" id="departmentGroup" style="display:none;">
-            <label for="department_id" class="form-label">
-                بخش <span class="required">*</span>
-            </label>
-            <div style="display:flex; gap:8px;">
-                <select id="department_id" name="department_id" class="form-select" style="flex:1;">
-                    <option value="">انتخاب بخش</option>
-                    {% for dep in departments %}
-                    <option value="{{ dep.id }}"
-                            {% if edit_user and edit_user.department and edit_user.department.id == dep.id %}selected
-                            {% elif form_data and form_data.department_id == dep.id|stringformat:"s" %}selected{% endif %}>
-                        {{ dep.name }}
+        <div class="ui-form-section">
+            <div class="ui-field">
+                <label for="role" class="ui-field-label">
+                    نقش <span style="color:var(--ui-danger);">*</span>
+                </label>
+                <select id="role" name="role" class="ui-select" required onchange="onRoleChange(this.value)">
+                    <option value="">انتخاب نقش</option>
+                    {% for role_value, role_name in roles %}
+                    <option value="{{ role_value }}"
+                            {% if edit_user and edit_user.role == role_value %}selected
+                            {% elif form_data and form_data.role == role_value %}selected{% endif %}>
+                        {{ role_name }}
                     </option>
                     {% endfor %}
                 </select>
-                <button type="button" class="btn-submit" style="padding:0.5rem 1rem;white-space:nowrap;font-size:0.82rem;" onclick="openAddDepartmentModal()">+ جدید</button>
+                <span class="ui-field-hint">
+                    <strong>مسئول خرید</strong> = نقش «خرید» (فقط لیست خرید ارسالی مدیرعامل) ·
+                    <strong>مسئول انبار</strong> = نقش «انبار» (درخواست کالاهای موجود در انبار) ·
+                    <strong>مسئول خرید و انبار</strong> = نقش «خرید» + «نقش ثانویه: انبار»
+                </span>
             </div>
-            <div class="form-help">بخش یا واحدی که کاربر در آن فعالیت می‌کند.</div>
+
+            <div class="ui-field" id="secondaryRoleGroup" style="display:none;">
+                <label for="secondary_role" class="ui-field-label">نقش ثانویه</label>
+                <select id="secondary_role" name="secondary_role" class="ui-select">
+                    <option value="">-- بدون نقش ثانویه --</option>
+                    {% for role_value, role_name in roles %}
+                    <option value="{{ role_value }}"
+                        {% if edit_user and edit_user.secondary_role == role_value %}selected
+                        {% elif form_data and form_data.secondary_role == role_value %}selected{% endif %}>
+                        {{ role_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <span class="ui-field-hint">
+                    با انتخاب نقش ثانویه، این کاربر می‌تواند هم به عنوان مسئول خرید و هم مسئول انبار فعالیت کند.
+                </span>
+            </div>
+
+            <div class="ui-field" id="departmentGroup" style="display:none;">
+                <label for="department_id" class="ui-field-label">
+                    بخش <span style="color:var(--ui-danger);">*</span>
+                </label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <select id="department_id" name="department_id" class="ui-select" style="flex:1;">
+                        <option value="">انتخاب بخش</option>
+                        {% for dep in departments %}
+                        <option value="{{ dep.id }}"
+                                {% if edit_user and edit_user.department and edit_user.department.id == dep.id %}selected
+                                {% elif form_data and form_data.department_id == dep.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dep.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="ui-btn ui-btn-soft" onclick="openAddDepartmentModal()">+ جدید</button>
+                </div>
+                <span class="ui-field-hint">بخش یا واحدی که کاربر در آن فعالیت می‌کند.</span>
+            </div>
+
+            <div class="ui-field" id="cafeGroup">
+                <label for="cafe_id" class="ui-field-label">
+                    کافه / شعبه <span style="color:var(--ui-danger);">*</span>
+                </label>
+                <select id="cafe_id" name="cafe_id" class="ui-select" required>
+                    {% if edit_user and edit_user.cafe is None %}
+                    <option value="all" selected>همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+                    {% else %}
+                    <option value="all">همه کافه‌ها (دسترسی به هر دو شعبه)</option>
+                    {% endif %}
+                    {% for cafe in cafes %}
+                    <option value="{{ cafe.id }}"
+                        {% if edit_user and edit_user.cafe and edit_user.cafe.id == cafe.id %}selected
+                        {% elif not edit_user and current_cafe and current_cafe.id == cafe.id %}selected
+                        {% endif %}>
+                        {{ cafe.name }} ({{ cafe.code }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <span class="ui-field-hint" id="cafeHelpText">
+                    اگر «همه کافه‌ها» انتخاب شود، کاربر هنگام ورود صفحه انتخاب شعبه را می‌بیند. این گزینه فقط برای نقش‌های مدیریتی مناسب است.
+                </span>
+                <div class="ui-banner is-warn" id="cafeWarning" style="display:none;margin-top:0.35rem;">
+                    «همه کافه‌ها» فقط برای نقش‌های مدیریتی (مدیر، مدیرعامل، ادمین، مدیر مالی، حسابداری) کار می‌کند. با نقش انتخاب‌شده، کاربر هنگام ورود با خطا مواجه می‌شود.
+                </div>
+                <div class="ui-banner is-info" id="cafeInfo" style="display:none;margin-top:0.35rem;">
+                    این نقش می‌تواند به همه کافه‌ها دسترسی داشته باشد. هنگام ورود صفحه انتخاب شعبه نمایش داده می‌شود.
+                </div>
+                {% if edit_user %}
+                <span class="ui-field-hint">
+                    کافه فعلی:
+                    {% if edit_user.cafe %}
+                    <strong style="color:var(--ui-ok);">{{ edit_user.cafe.name }}</strong>
+                    {% else %}
+                    <strong style="color:var(--primary-dark);">همه کافه‌ها</strong>
+                    {% endif %}
+                </span>
+                {% endif %}
+            </div>
         </div>
 
-        <!-- انتخاب کافه -->
-        <div class="form-group" id="cafeGroup">
-            <label for="cafe_id" class="form-label">
-                کافه / شعبه <span class="required">*</span>
-            </label>
-            <select id="cafe_id" name="cafe_id" class="form-select" required>
-                {% if edit_user and edit_user.cafe is None %}
-                <option value="all" selected>🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
-                {% else %}
-                <option value="all">🌐 همه کافه‌ها (دسترسی به هر دو شعبه)</option>
-                {% endif %}
-                {% for cafe in cafes %}
-                <option value="{{ cafe.id }}"
-                    {% if edit_user and edit_user.cafe and edit_user.cafe.id == cafe.id %}selected
-                    {% elif not edit_user and current_cafe and current_cafe.id == cafe.id %}selected
-                    {% endif %}>
-                    🏠 {{ cafe.name }} ({{ cafe.code }})
-                </option>
-                {% endfor %}
-            </select>
-            <div class="form-help" id="cafeHelpText">
-                اگر «همه کافه‌ها» انتخاب شود، کاربر هنگام ورود صفحه انتخاب شعبه را می‌بیند.
-                این گزینه فقط برای نقش‌های مدیریتی مناسب است.
+        <div class="ui-form-section">
+            {% if not edit_user %}
+            <div class="ui-form-grid cols-2">
+                <div class="ui-field">
+                    <label for="password" class="ui-field-label">
+                        رمز عبور <span style="color:var(--ui-danger);">*</span>
+                    </label>
+                    <input type="password" id="password" name="password" class="ui-input" required>
+                </div>
+
+                <div class="ui-field">
+                    <label for="confirm_password" class="ui-field-label">
+                        تأیید رمز عبور <span style="color:var(--ui-danger);">*</span>
+                    </label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="ui-input" required>
+                </div>
             </div>
-            <div class="cafe-warning" id="cafeWarning">
-                ⚠️ «همه کافه‌ها» فقط برای نقش‌های مدیریتی (مدیر، مدیرعامل، ادمین، مدیر مالی، حسابداری) کار می‌کند.
-                با نقش انتخاب‌شده، کاربر هنگام ورود با خطا مواجه می‌شود.
+
+            <div>
+                <input type="hidden" name="is_active_present" value="1">
+                <div class="ui-check-card">
+                    <label for="is_active" class="ui-check-label">
+                        <input type="checkbox" id="is_active" name="is_active" {% if not form_data or form_data.is_active %}checked{% endif %}>
+                        <span>کاربر فعال است</span>
+                    </label>
+                    <div class="ui-field-hint" style="margin-top:0.35rem;">اگر این گزینه را غیرفعال کنید، کاربر نمی‌تواند وارد سیستم شود</div>
+                </div>
             </div>
-            <div class="cafe-info" id="cafeInfo">
-                ✅ این نقش می‌تواند به همه کافه‌ها دسترسی داشته باشد. هنگام ورود صفحه انتخاب شعبه نمایش داده می‌شود.
+            {% else %}
+            <div class="ui-check-card">
+                <label for="is_active" class="ui-check-label">
+                    <input type="checkbox" id="is_active" name="is_active" {% if edit_user.is_active %}checked{% endif %}>
+                    <span>کاربر فعال است</span>
+                </label>
+                <div class="ui-field-hint" style="margin-top:0.35rem;">اگر این گزینه را غیرفعال کنید، کاربر نمی‌تواند وارد سیستم شود</div>
             </div>
-            {% if edit_user %}
-            <div style="margin-top:6px; font-size:0.82rem; color:var(--gray-500);">
-                کافه فعلی:
-                {% if edit_user.cafe %}
-                <strong style="color:#059669">{{ edit_user.cafe.name }}</strong>
-                {% else %}
-                <strong style="color:var(--primary)">همه کافه‌ها</strong>
-                {% endif %}
+
+            <div style="border:1px dashed var(--border-strong,#CBD5E1);border-radius:12px;padding:1rem;background:var(--gray-50,#F8FAFC);">
+                <div style="font-weight:700;color:var(--text-primary);margin-bottom:0.75rem;font-size:0.84rem;">
+                    <i class="fas fa-key" style="color:var(--primary);margin-left:0.35rem;"></i>
+                    تغییر رمز عبور <span style="font-weight:500;color:var(--text-muted);">(اختیاری – خالی بگذارید تا تغییر نکند)</span>
+                </div>
+                <div class="ui-form-grid cols-2">
+                    <div class="ui-field">
+                        <label for="new_password" class="ui-field-label">رمز عبور جدید</label>
+                        <input type="password" id="new_password" name="new_password" class="ui-input" placeholder="رمز عبور جدید">
+                    </div>
+                    <div class="ui-field">
+                        <label for="confirm_new_password" class="ui-field-label">تأیید رمز عبور جدید</label>
+                        <input type="password" id="confirm_new_password" name="confirm_new_password" class="ui-input" placeholder="تکرار رمز عبور">
+                    </div>
+                </div>
             </div>
             {% endif %}
         </div>
 
-        {% if not edit_user %}
-        <div class="form-row">
-            <div class="form-group">
-                <label for="password" class="form-label">
-                    رمز عبور <span class="required">*</span>
-                </label>
-                <input type="password" id="password" name="password" class="form-input" required>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password" class="form-label">
-                    تأیید رمز عبور <span class="required">*</span>
-                </label>
-                <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
-            </div>
-        </div>
-        <div class="form-group">
-            <input type="hidden" name="is_active_present" value="1">
-            <div class="checkbox-group">
-                <input type="checkbox" id="is_active" name="is_active" {% if not form_data or form_data.is_active %}checked{% endif %}>
-                <label for="is_active">کاربر فعال است</label>
-            </div>
-            <div class="form-help">اگر این گزینه را غیرفعال کنید، کاربر نمی‌تواند وارد سیستم شود</div>
-        </div>
-        {% else %}
-        <div class="form-group">
-            <div class="checkbox-group">
-                <input type="checkbox" id="is_active" name="is_active" {% if edit_user.is_active %}checked{% endif %}>
-                <label for="is_active">کاربر فعال است</label>
-            </div>
-            <div class="form-help">اگر این گزینه را غیرفعال کنید، کاربر نمی‌تواند وارد سیستم شود</div>
-        </div>
-
-        <!-- بخش تغییر رمز عبور -->
-        <div style="border: 1px dashed var(--border-medium); border-radius: 12px; padding: 1.15rem; margin-bottom: 0.5rem; background: var(--gray-50);">
-            <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.75rem; font-size: 0.88rem;">🔑 تغییر رمز عبور <span style="font-weight:normal; color:var(--gray-500);">(اختیاری – خالی بگذارید تا تغییر نکند)</span></div>
-            <div class="form-row">
-                <div class="form-group" style="margin-bottom:0">
-                    <label for="new_password" class="form-label">رمز عبور جدید</label>
-                    <input type="password" id="new_password" name="new_password" class="form-input" placeholder="رمز عبور جدید">
+        <div class="ui-modal-backdrop" id="addDepartmentModal">
+            <div class="ui-modal is-narrow">
+                <div class="ui-modal-head">
+                    <h3 class="ui-modal-title"><i class="fas fa-plus" style="color:var(--primary);margin-left:0.35rem;"></i> افزودن بخش جدید</h3>
+                    <button type="button" class="ui-modal-close" onclick="closeAddDepartmentModal()" aria-label="بستن">&times;</button>
                 </div>
-                <div class="form-group" style="margin-bottom:0">
-                    <label for="confirm_new_password" class="form-label">تأیید رمز عبور جدید</label>
-                    <input type="password" id="confirm_new_password" name="confirm_new_password" class="form-input" placeholder="تکرار رمز عبور">
+                <div class="ui-modal-body">
+                    <div class="ui-field">
+                        <label class="ui-field-label">نام بخش <span style="color:var(--ui-danger);">*</span></label>
+                        <input type="text" id="newDepartmentName" class="ui-input" placeholder="نام بخش را وارد کنید...">
+                        <div class="ui-field-error" id="newDepartmentErr"></div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Add new department modal -->
-        <div class="modal-overlay" id="addDepartmentModal">
-            <div class="modal-box">
-                <h3>➕ افزودن بخش جدید</h3>
-                <div class="modal-field">
-                    <label class="form-label">نام بخش *</label>
-                    <input type="text" id="newDepartmentName" class="form-input" placeholder="نام بخش را وارد کنید...">
-                    <div class="modal-err" id="newDepartmentErr" style="color:var(--danger);font-size:0.8rem;margin-top:6px;"></div>
-                </div>
-                <div class="modal-actions" style="display:flex;gap:10px;margin-top:1.25rem;">
-                    <button type="button" class="btn-submit" onclick="submitNewDepartment()" style="flex:1;justify-content:center;">ذخیره</button>
-                    <button type="button" class="btn-cancel" onclick="closeAddDepartmentModal()">انصراف</button>
+                <div class="ui-modal-foot">
+                    <button type="button" class="ui-btn ui-btn-ghost" onclick="closeAddDepartmentModal()">انصراف</button>
+                    <button type="button" class="ui-btn ui-btn-primary modal-save-btn" onclick="submitNewDepartment()">ذخیره</button>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions">
-            <a href="{% url 'user_list' cafe_code=cafe_code %}" class="btn-cancel">انصراف</a>
-            <button type="submit" class="btn-submit">
-                <i class="fas fa-check"></i> {% if edit_user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
+        <div class="ui-form-actions">
+            <a href="{% url 'user_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
+                <i class="fas fa-check"></i>
+                <span>{% if edit_user %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}</span>
             </button>
         </div>
     </form>
@@ -306,7 +290,7 @@ function onRoleChange(roleVal) {
     const srGroup = document.getElementById('secondaryRoleGroup');
     if (srGroup) {
         const allowSecondary = (roleVal === 'purchasing' || roleVal === 'warehouse');
-        srGroup.style.display = allowSecondary ? 'block' : 'none';
+        srGroup.style.display = allowSecondary ? 'flex' : 'none';
         if (!allowSecondary) {
             const srSelect = document.getElementById('secondary_role');
             if (srSelect) srSelect.value = '';
@@ -314,7 +298,7 @@ function onRoleChange(roleVal) {
     }
     const depGroup = document.getElementById('departmentGroup');
     if (depGroup) {
-        depGroup.style.display = (roleVal === 'requester') ? 'block' : 'none';
+        depGroup.style.display = (roleVal === 'requester') ? 'flex' : 'none';
         if (roleVal !== 'requester') {
             document.getElementById('department_id').value = '';
         }
@@ -339,7 +323,7 @@ function submitNewDepartment() {
     const name = document.getElementById('newDepartmentName').value.trim();
     const errEl = document.getElementById('newDepartmentErr');
     if (!name) { errEl.textContent = 'نام بخش الزامی است'; return; }
-    const btn = document.querySelector('#addDepartmentModal .btn-submit');
+    const btn = document.querySelector('#addDepartmentModal .modal-save-btn');
     btn.disabled = true; btn.textContent = 'در حال ذخیره...';
     fetch(QUICK_ADD_DEP_URL, {
         method: 'POST',
@@ -376,9 +360,9 @@ function checkCafeWarning(roleVal, cafeVal) {
     if (cafeVal === 'all') {
         if (CAFE_SELECTION_ROLES.includes(roleVal)) {
             warning.style.display = 'none';
-            info.style.display = 'block';
+            info.style.display = 'flex';
         } else {
-            warning.style.display = 'block';
+            warning.style.display = 'flex';
             info.style.display = 'none';
         }
     } else {

@@ -1,47 +1,58 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}مدیریت درخواست‌کنندگان - Kuker{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="ph-main">
-        <div class="ph-icon"><i class="fas fa-user-tag"></i></div>
-        <div>
-            <h1 class="ph-title">مدیریت درخواست‌کنندگان</h1>
-            <p class="page-sub">تعریف و مدیریت واحدهای درخواست‌دهنده کالا</p>
+<div class="ui-page">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-user-tag" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                مدیریت درخواست‌کنندگان
+            </h1>
+            <p class="ui-subtitle">تعریف و مدیریت واحدهای درخواست‌دهنده کالا</p>
         </div>
-    </div>
-    <a href="{% url 'requester_create' cafe_code=cafe_code %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> درخواست‌کننده جدید
-    </a>
-</div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'requester_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>درخواست‌کننده جدید</span>
+            </a>
+        </div>
+    </header>
 
-<div class="card" style="padding:0;overflow:hidden;">
-    <div class="table-container" style="border:none;border-radius:0;">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>نام درخواست‌کننده</th>
-                    <th style="width:140px;text-align:left;">عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for requester in requesters %}
-                <tr>
-                    <td style="font-weight:700;color:var(--dark);">{{ requester.get_name_display }}</td>
-                    <td style="text-align:left;">
-                        <a href="{% url 'requester_delete' cafe_code=cafe_code requester_id=requester.id %}" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash"></i> حذف
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="2" style="text-align:center;padding:2.5rem;color:var(--gray-500);">هیچ درخواست‌کننده‌ای ثبت نشده است.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>نام درخواست‌کننده</th>
+                        <th style="width:140px;text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for requester in requesters %}
+                    <tr>
+                        <td style="font-weight:700;">{{ requester.get_name_display }}</td>
+                        <td style="text-align:left;">
+                            <a href="{% url 'requester_delete' cafe_code=cafe_code requester_id=requester.id %}" class="ui-row-action is-danger">
+                                <i class="fas fa-trash-can"></i> حذف
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">
+                            <div class="ui-empty">
+                                <i class="fas fa-user-tag"></i>
+                                <div>هیچ درخواست‌کننده‌ای ثبت نشده است.</div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 {% endblock %}

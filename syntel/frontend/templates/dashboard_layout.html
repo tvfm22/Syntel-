@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
 
-    <link rel="stylesheet" href="{% static 'css/dashboard_layout.css' %}?v=20261127f">
+    <link rel="stylesheet" href="{% static 'css/dashboard_layout.css' %}?v=20261128c">
+    <link rel="stylesheet" href="{% static 'css/ui_system.css' %}?v=20261127a">
     {% comment %}
         بلوک extra_css عمداً بیرون از عنصر style بالا است؛ قالب‌های صفحه خودشان
         عنصر style را می‌آورند. اگر این بلوک داخل آن بماند، دو عنصر style تودرتو
@@ -57,8 +58,8 @@
             <!-- Brand -->
             <a href="{% if cafe_code %}{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=cafe_code %}{% elif user.role == 'manager' %}{% url 'management_dashboard' cafe_code=cafe_code %}{% elif user.role == 'admin' or user.role == 'accounting' or user.role == 'finance_manager' %}{% url 'finance_dashboard' cafe_code=cafe_code %}{% elif user.role in 'kitchen,bar,counter,cashier,facilities,requester' %}{% url 'mobile_dashboard' cafe_code=cafe_code %}{% elif user.role == 'purchasing' %}{% url 'purchase_officer_dashboard' cafe_code=cafe_code %}{% elif user.role == 'warehouse' %}{% url 'warehouse_officer_dashboard' cafe_code=cafe_code %}{% else %}{% url 'dashboard' cafe_code=cafe_code %}{% endif %}{% else %}{% url 'select_cafe' %}{% endif %}" class="sidebar-brand" style="text-decoration:none;">
                 <!-- لوگوی کوکر + نوشته Kuker — عیناً همان لوگوی صفحه ورود -->
-                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; direction: ltr; margin-bottom: 8px;">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient-sidebar)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <div class="sidebar-brand-inner">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient-sidebar)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <defs>
                             <linearGradient id="k-gradient-sidebar" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stop-color="#ec4899"></stop>
@@ -69,35 +70,58 @@
                         <path d="M6 4l11 8"></path>
                         <path d="M17 12l-11 8"></path>
                     </svg>
-                    <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>
+                    <span class="sidebar-brand-wordmark">Kuker</span>
                 </div>
             </a>
 
-            <!-- سوییچر یکپارچه کافه / شعبه فعال — زیر لوگو -->
+            <!-- کارت یکپارچه کاربر، نقش، کافه فعال و تغییر کافه — هماهنگ با ui_system.css -->
             <!-- سوپرادمین‌ها: لینک مستقیم به کافه «دیگر» (بدون صفحه انتخاب) — فقط اگر فقط یک کافه فعال باشد به select_cafe برمی‌گردد -->
-            <!-- برای کاربران درخواست‌دهنده و مسئول انبار این بخش نمایش داده نمی‌شود -->
-            {% if user.role not in 'kitchen,bar,counter,cashier,facilities,requester,warehouse' %}
-            <div class="sidebar-switch-cafe">
-                {% if can_switch_cafe and other_cafe %}
-                <a href="{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=other_cafe.code %}{% else %}{% url 'management_dashboard' cafe_code=other_cafe.code %}{% endif %}"
-                   class="switch-cafe-link"
-                   title="تغییر کافه به {{ other_cafe.name }}">
-                {% else %}
-                <a href="{% url 'select_cafe' %}"
-                   class="switch-cafe-link"
-                   title="تغییر کافه">
-                {% endif %}
-                    <span class="switch-cafe-main">
-                        <span class="switch-cafe-icon" aria-hidden="true"><i class="fas fa-store"></i></span>
-                        <span class="switch-cafe-text">
-                            <span class="switch-cafe-name">{{ current_cafe.name|default:"انتخاب کافه" }}</span>
-                            <span class="switch-cafe-sub">تغییر کافه</span>
+            <!-- برای کاربران درخواست‌دهنده و مسئول انبار دکمه تغییر کافه نمایش داده نمی‌شود -->
+            <div class="sidebar-context">
+                <div class="sidebar-account-card">
+                    <div class="sidebar-account-head">
+                        <div class="sidebar-user">
+                            <div class="user-avatar" aria-hidden="true">{{ user.get_full_name|default:user.username|slice:":1" }}</div>
+                            <div class="user-meta">
+                                <div class="user-name" title="{{ user.get_full_name|default:user.username }}">{{ user.get_full_name|default:user.username }}</div>
+                                <div class="user-handle" title="@{{ user.username }}">@{{ user.username }}</div>
+                            </div>
+                        </div>
+                        <span class="sidebar-role-pill user-role"
+                              title="{% if user.role == 'requester' %}{{ user.department.name|default:user.get_role_display }}{% else %}{{ user.get_role_display }}{% endif %}">
+                            {% if user.role == 'requester' %}{{ user.department.name|default:user.get_role_display }}{% else %}{{ user.get_role_display }}{% endif %}
                         </span>
-                    </span>
-                    <i class="fas fa-exchange-alt switch-cafe-arrow" aria-hidden="true"></i>
-                </a>
+                    </div>
+
+                    <div class="sidebar-cafe-row">
+                        <span class="sidebar-cafe-current" title="{{ current_cafe.name|default:'انتخاب کافه' }}">
+                            <i class="fas fa-store" aria-hidden="true"></i>
+                            <span class="sidebar-cafe-name">{{ current_cafe.name|default:"انتخاب کافه" }}</span>
+                        </span>
+
+                        {% if user.role not in 'kitchen,bar,counter,cashier,facilities,requester,warehouse' %}
+                        <div class="sidebar-switch-cafe">
+                            {% if can_switch_cafe and other_cafe %}
+                            <a href="{% if user.role == 'ceo' %}{% url 'all_departments_requests' cafe_code=other_cafe.code %}{% else %}{% url 'management_dashboard' cafe_code=other_cafe.code %}{% endif %}"
+                               class="switch-cafe-link"
+                               title="تغییر کافه به {{ other_cafe.name }}"
+                               aria-label="تغییر کافه به {{ other_cafe.name }}">
+                            {% else %}
+                            <a href="{% url 'select_cafe' %}"
+                               class="switch-cafe-link"
+                               title="تغییر کافه"
+                               aria-label="تغییر کافه">
+                            {% endif %}
+                                <i class="fas fa-exchange-alt" aria-hidden="true"></i>
+                                <span>تغییر کافه</span>
+                            </a>
+                        </div>
+                        {% else %}
+                        <span class="sidebar-cafe-tag">شعبه فعال</span>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            {% endif %}
 
             <!-- Navigation Items -->
             <nav class="sidebar-nav">
@@ -379,19 +403,13 @@
 
             </nav>
 
-            <!-- Sidebar Footer — Unified Account & Logout Row -->
+            <!-- Sidebar Footer — Clean Logout Action (Desktop Only; Mobile uses .mobile-nav-logout inside nav) -->
             <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <div class="user-avatar" aria-hidden="true">{{ user.get_full_name|default:user.username|slice:":1" }}</div>
-                    <div class="user-meta">
-                        <div class="user-name" title="{{ user.get_full_name|default:user.username }}">{{ user.get_full_name|default:user.username }}</div>
-                        <div class="user-role">{% if user.role == 'requester' %}{{ user.department.name|default:user.get_role_display }}{% else %}{{ user.get_role_display }}{% endif %}</div>
-                    </div>
-                </div>
-                <form method="post" action="{% url 'logout' %}" style="margin:0; flex-shrink:0;">
+                <form method="post" action="{% url 'logout' %}" style="margin:0; width:100%;">
                     {% csrf_token %}
                     <button type="submit" class="logout-btn" title="خروج از سیستم" aria-label="خروج از سیستم">
-                        <i class="fas fa-sign-out-alt"></i>
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                        <span>خروج از سیستم</span>
                     </button>
                 </form>
             </div>

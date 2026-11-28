@@ -1,273 +1,178 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
-{% block title %}مدیریت کاربران{% endblock %}
+{% block title %}مدیریت کاربران - Kuker{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ===== مدیریت کاربران — هماهنگ با دیزاین سیستم داشبورد ===== */
-    .users-page {
-        max-width: 1200px;
-        margin: 0 auto;
+.users-page .page-header {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem 0.1rem 0.1rem;
+    margin: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+}
+.users-page .page-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary, #0F172A);
+    letter-spacing: -0.015em;
+    margin: 0;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.users-page .page-title i {
+    color: var(--primary, #8B5CF6);
+    font-size: 1.1rem;
+}
+.users-page .user-tabs {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 11px;
+    background: var(--gray-100, #F1F5F9);
+    flex-wrap: wrap;
+    border: none;
+}
+.users-page .user-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.36rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #64748B);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.users-page .user-tab:hover {
+    color: var(--text-primary, #0F172A);
+}
+.users-page .user-tab.active {
+    background: var(--bg-card, #FFFFFF);
+    color: var(--primary-dark, #7C3AED);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+.users-page .search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 2.15rem 0 0.85rem;
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 10px;
+    background: var(--gray-50, #F8FAFC);
+    font-family: 'Vazir', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text-primary, #0F172A);
+}
+.users-page .search-input:focus {
+    outline: none;
+    background: var(--bg-card, #FFFFFF);
+    border-color: var(--primary, #8B5CF6);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.u-avatar {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: rgba(139, 92, 246, 0.10);
+    border: 1px solid rgba(139, 92, 246, 0.24);
+    color: var(--primary-dark, #7C3AED);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.88rem;
+}
+.user-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary, #0F172A);
+    line-height: 1.35;
+}
+.user-handle {
+    font-size: 0.74rem;
+    color: var(--text-muted, #94A3B8);
+    direction: ltr;
+    text-align: right;
+}
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.62rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.role-requester      { background: var(--gray-100, #F1F5F9); color: #475569; border-color: #E2E8F0; }
+.role-purchasing     { background: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
+.role-warehouse      { background: #ECFDF5; color: #047857; border-color: #D1FAE5; }
+.role-admin          { background: rgba(139, 92, 246, 0.10); color: #7C3AED; border-color: rgba(139, 92, 246, 0.28); }
+.role-manager        { background: #EFF6FF; color: #2563EB; border-color: #BFDBFE; }
+.role-accounting     { background: #ECFEFF; color: #0E7490; border-color: #A5F3FC; }
+.role-finance_manager{ background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
+.role-ceo            { background: rgba(139, 92, 246, 0.12); color: #6D28D9; border-color: rgba(139, 92, 246, 0.30); }
+.user-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+@media (max-width: 960px) {
+    .users-filter-form {
+        width: 100%;
     }
-
-    /* ---------- هدر صفحه ---------- */
-    .u-header-title {
-        display: flex; align-items: center; gap: 1rem; min-width: 0;
-    }
-    .u-brand {
-        display: flex; align-items: center; justify-content: center;
-        gap: 0.5rem; direction: ltr; flex-shrink: 0;
-    }
-
-    /* ---------- تولبار: تب‌ها + جستجو ---------- */
-    .u-toolbar-row {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: var(--space-3);
-    }
-
-    .u-spacer { flex: 1; }
-
-    /* تب‌های سگمنتی */
-    .user-tabs {
-        display: inline-flex;
-        padding: 4px;
-        gap: 2px;
-        background: var(--bg-subtle);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-    }
-
-    .user-tab {
-        padding: 0.42rem 1rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.82rem;
-        font-weight: 500;
-        color: var(--text-secondary);
-        transition: all var(--transition-fast);
-        white-space: nowrap;
-    }
-
-    .user-tab:hover { color: var(--text-primary); background: rgba(139, 92, 246, 0.06); }
-
-    .user-tab.active {
-        background: var(--bg-card);
-        color: var(--accent-indigo);
-        font-weight: 700;
-        box-shadow: var(--shadow-sm);
-    }
-
-    /* جستجو */
-    .search-box { position: relative; flex: 1; min-width: 220px; max-width: 320px; }
-    .search-box i {
-        position: absolute; right: 0.9rem; top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
-    }
-
-    .search-input {
-        width: 100%; height: 40px;
-        padding: 0 2.4rem 0 0.9rem;
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        background: var(--bg-card);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; color: var(--text-primary);
-        transition: all var(--transition-fast);
-    }
-
-    .search-input:focus {
-        outline: none;
-        border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    }
-
-    .u-select {
-        height: 40px; padding: 0 0.75rem;
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        background: var(--bg-card); color: var(--text-primary);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem;
-        cursor: pointer; transition: all var(--transition-fast);
-    }
-
-    .u-select:focus {
-        outline: none;
-        border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    }
-
-    /* دکمه outline برای اکشن ثانویه */
-    .btn-outline {
-        background: var(--bg-card); color: var(--text-primary);
-        border: 1px solid var(--border-default);
-    }
-    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-
-    /* ---------- جدول ---------- */
-    .table-scroll { overflow-x: auto; }
-
-    .u-table th, .u-table td { white-space: nowrap; }
-
-    .table-meta {
-        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
-        background: var(--bg-subtle); border: 1px solid var(--border-light);
-        padding: 0.25rem 0.75rem; border-radius: 999px;
-    }
-
-    /* سلول کاربر */
-    .user-cell { display: flex; align-items: center; gap: 0.75rem; }
-
-    .u-avatar {
-        width: 38px; height: 38px; flex-shrink: 0;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(139,92,246,0.14), rgba(236,72,153,0.14));
-        color: var(--primary-dark);
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 0.95rem;
-    }
-
-    .user-name { font-size: 0.92rem; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
-    .user-handle { font-size: 0.76rem; color: var(--text-muted); direction: ltr; text-align: right; }
-
-    /* نشان کاربر مشترک بین کافه‌ها */
-    .shared-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        background: rgba(139, 92, 246, 0.08); color: var(--primary-dark);
-        padding: 0.15rem 0.55rem; border-radius: var(--radius-xs);
-        font-size: 0.72rem; font-weight: 600;
-    }
-
-    /* نشان نقش دوم */
-    .role-extra {
-        display: inline-flex; align-items: center; gap: 0.25rem;
-        background: rgba(16, 185, 129, 0.08); color: #047857;
-        padding: 0.18rem 0.55rem; border-radius: var(--radius-xs);
-        font-size: 0.72rem; font-weight: 600; margin-top: 0.3rem;
-    }
-
-    /* نشان نقش اصلی — پالت ملایم هماهنگ با badge-* سیستم */
-    .role-badge {
-        display: inline-block;
-        padding: 0.3rem 0.7rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.75rem; font-weight: 700;
-    }
-
-    .role-requester      { background: var(--bg-subtle);         color: var(--gray-500); }
-    .role-purchasing     { background: rgba(249, 115, 22, 0.09); color: #EA580C; }
-    .role-warehouse      { background: rgba(34, 197, 94, 0.09);  color: #15803D; }
-    .role-admin          { background: rgba(217, 70, 239, 0.09); color: #A21CAF; }
-    .role-manager        { background: rgba(59, 130, 246, 0.09); color: #2563EB; }
-    .role-accounting     { background: rgba(6, 182, 212, 0.10);  color: #0E7490; }
-    .role-finance_manager{ background: rgba(16, 185, 129, 0.09); color: #047857; }
-    .role-ceo            { background: rgba(168, 85, 247, 0.10); color: #7E22CE; }
-
-    /* بخش */
-    .dept-chip {
-        display: inline-block;
-        background: var(--bg-subtle); color: var(--text-secondary);
-        border: 1px solid var(--border-light);
-        padding: 0.2rem 0.65rem; border-radius: var(--radius-xs);
-        font-size: 0.78rem; font-weight: 500;
-    }
-    .muted-dash { color: var(--text-muted); font-size: 0.8rem; }
-
-    /* وضعیت با نقطه رنگی */
-    .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .status-active { color: #15803D; }
-    .status-active .status-dot { background: var(--accent-green); box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
-    .status-inactive { color: var(--gray-400); }
-    .status-inactive .status-dot { background: var(--border-strong); }
-
-    /* اکشن‌ها — چیپ‌های محدود، فقط هاور رنگی */
-    .user-actions { display: inline-flex; gap: 0.4rem; }
-
-    .act-chip {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        height: 32px; padding: 0 0.7rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-default);
-        background: var(--bg-card);
-        color: var(--text-secondary);
-        font-size: 0.78rem; font-weight: 500;
-        transition: all var(--transition-fast);
-    }
-
-    .act-chip i { font-size: 0.78rem; }
-    button.act-chip { cursor: pointer; font-family: 'Vazir', sans-serif; }
-    .act-edit:hover { color: var(--primary-dark);       border-color: rgba(139,92,246,0.4);  background: rgba(139,92,246,0.07); }
-    .act-key:hover  { color: #2563EB;                   border-color: rgba(59,130,246,0.4);  background: rgba(59,130,246,0.07); }
-    .act-del:hover  { color: #DC2626;                   border-color: rgba(239,68,68,0.4);   background: rgba(239,68,68,0.07); }
-    .act-login:hover{ color: #059669;                   border-color: rgba(16,185,129,0.4);  background: rgba(16,185,129,0.07); }
-
-    /* ---------- ریسپانسیو ---------- */
-    @media (max-width: 1023px) {
-        /* برند در نوار بالای موبایل/سایدبار هست؛ لوگوی داخل هدر تکراری است */
-        .u-brand { display: none; }
-        .u-header-title { justify-content: center; }
-        .users-page .page-header {
-            gap: 0.6rem; padding-top: 0.9rem; padding-bottom: 0.9rem;
-        }
-        .users-page .page-title { justify-content: center; font-size: 1.05rem; }
-        .users-page .header-actions { width: 100%; }
-        .users-page .header-actions .btn {
-            flex: 1; justify-content: center; padding: 0 0.5rem;
-        }
-    }
-
-    @media (max-width: 992px) {
-        .search-box { max-width: none; flex-basis: 100%; order: 10; }
-        .u-spacer { display: none; }
-    }
-
-    @media (max-width: 480px) {
-        .user-tab { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
-        .user-actions { gap: 0.3rem; }
-        .act-chip { padding: 0 0.55rem; }
-    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="users-page">
-
-    <!-- هدر صفحه -->
-    <div class="page-header">
-        <div class="u-header-title">
-            <!-- لوگوی کوکر + نوشته Kuker — عیناً همان لوگوی صفحه ورود -->
-            <div class="u-brand">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#k-gradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <defs>
-                        <linearGradient id="k-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#ec4899" />
-                            <stop offset="100%" stop-color="#8b5cf6" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M17 4v16"></path>
-                    <path d="M6 4l11 8"></path>
-                    <path d="M17 12l-11 8"></path>
-                </svg>
-                <span style="background: linear-gradient(135deg, #8b5cf6, #1e3a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; display: inline-block; font-size: 28px; font-weight: 700;">Kuker</span>
-            </div>
+<div class="ui-page users-page">
+    <header class="page-header">
+        <div class="ui-heading">
             <h1 class="page-title"><i class="fas fa-users-cog"></i> مدیریت کاربران</h1>
+            <p class="ui-subtitle">
+                <span>مدیریت حساب‌های کاربری، نقش‌های سازمانی و تخصیص بخش‌ها</span>
+                {% if officer_filter or search_query or selected_role %}
+                <span class="ui-subtitle-dot"></span>
+                <span style="color:var(--primary-dark);font-weight:700;">فیلتر فعال</span>
+                {% endif %}
+            </p>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="btn btn-outline"
+        <div class="ui-topbar-actions">
+            <a href="{% url 'department_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"
                title="تعریف، ویرایش یا حذف بخش‌های کاربران درخواست‌دهنده">
-                <i class="fas fa-building"></i> بخش‌ها
+                <i class="fas fa-building"></i>
+                <span>بخش‌ها</span>
             </a>
-            <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                <i class="fas fa-user-plus"></i> کاربر جدید
+            <a href="{% url 'user_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-user-plus"></i>
+                <span>کاربر جدید</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- تولبار: تب + جستجو -->
-    <div class="filters-container">
-        <div class="u-toolbar-row">
+    <div class="ui-controls-card">
+        <div class="ui-controls-row">
             <nav class="user-tabs" aria-label="نوع نمایش کاربران">
                 <a href="{% url 'user_list' cafe_code=cafe_code %}" class="user-tab{% if not officer_filter %} active{% endif %}">
                     <i class="fas fa-users"></i> همه کاربران
@@ -278,15 +183,15 @@
                     <i class="fas fa-user-cog"></i> مسئولان خرید و انبار
                 </a>
             </nav>
-            <span class="u-spacer"></span>
-            <form method="GET" class="u-toolbar-row" style="gap: 0.6rem;">
+
+            <form method="GET" class="users-filter-form" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.55rem;flex:1;justify-content:flex-end;">
                 {% if officer_filter %}<input type="hidden" name="officer" value="1">{% endif %}
-                <div class="search-box">
+                <div class="ui-search" style="max-width:280px;">
                     <i class="fas fa-search"></i>
                     <input type="text" name="search" value="{{ search_query }}"
                            placeholder="جستجو در کاربران..." class="search-input" aria-label="جستجو">
                 </div>
-                <select name="role" class="u-select" aria-label="فیلتر نقش">
+                <select name="role" class="ui-select" aria-label="فیلتر نقش">
                     <option value="">همه نقش‌ها</option>
                     {% for role_value, role_name in role_choices %}
                     <option value="{{ role_value }}" {% if role_value == selected_role %}selected{% endif %}>
@@ -294,22 +199,31 @@
                     </option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-primary" style="height: 40px;">
-                    <i class="fas fa-search"></i> جستجو
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-search"></i>
+                    <span>جستجو</span>
                 </button>
+                {% if search_query or selected_role %}
+                <a href="{% url 'user_list' cafe_code=cafe_code %}{% if officer_filter %}?officer=1{% endif %}" class="ui-btn ui-btn-danger-soft">
+                    <i class="fas fa-xmark"></i>
+                    <span>پاک‌کردن</span>
+                </a>
+                {% endif %}
             </form>
         </div>
     </div>
 
     {% if users %}
-    <!-- جدول کاربران -->
-    <div class="table-card">
-        <div class="table-header">
-            <div class="table-title"><i class="fas fa-user-friends"></i> لیست کاربران سیستم</div>
-            <span class="table-meta">{{ users|length }} کاربر</span>
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
+                <i class="fas fa-user-friends"></i>
+                <span>لیست کاربران سیستم</span>
+            </h2>
+            <span class="ui-pill is-muted ui-num">{{ users|length|number_format }} کاربر</span>
         </div>
-        <div class="table-scroll">
-            <table class="data-table u-table">
+        <div class="ui-table-scroll">
+            <table class="data-table ui-table">
                 <thead>
                     <tr>
                         <th>کاربر</th>
@@ -333,7 +247,7 @@
                                     <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
                                     <div class="user-handle">@{{ user.username }}</div>
                                     {% if user.cafe is None %}
-                                    <span class="shared-badge" style="margin-top:0.3rem;">
+                                    <span class="ui-pill is-accent" style="margin-top:0.25rem;font-size:0.68rem;">
                                         <i class="fas fa-globe"></i> مشترک بین کافه‌ها
                                     </span>
                                     {% endif %}
@@ -343,52 +257,55 @@
                         <td>
                             <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
                             {% if user.secondary_role %}
-                            <br>
-                            <span class="role-extra"><i class="fas fa-plus" style="font-size:0.62rem;"></i> {{ user.get_secondary_role_display }}</span>
+                            <div style="margin-top:0.25rem;">
+                                <span class="ui-pill is-ok" style="font-size:0.68rem;">
+                                    <i class="fas fa-plus" style="font-size:0.6rem;"></i> {{ user.get_secondary_role_display }}
+                                </span>
+                            </div>
                             {% endif %}
                         </td>
                         <td>
                             {% if user.department %}
-                            <span class="dept-chip">{{ user.department.name }}</span>
+                            <span class="ui-chip">{{ user.department.name }}</span>
                             {% else %}
-                            <span class="muted-dash">—</span>
+                            <span style="color:var(--text-muted);">—</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if user.cafe %}
-                            <span style="color: var(--text-primary); font-size: 0.85rem;">{{ user.cafe.name }}</span>
+                            <span style="font-size:0.83rem;font-weight:600;">{{ user.cafe.name }}</span>
                             {% else %}
-                            <span class="shared-badge"><i class="fas fa-globe"></i> همه کافه‌ها</span>
+                            <span class="ui-pill is-accent"><i class="fas fa-globe"></i> همه کافه‌ها</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="status-pill status-{% if user.is_active %}active{% else %}inactive{% endif %}">
-                                <span class="status-dot"></span>
+                            <span class="ui-pill {% if user.is_active %}is-ok{% else %}is-muted{% endif %}">
+                                <span class="ui-dot"></span>
                                 {% if user.is_active %}فعال{% else %}غیرفعال{% endif %}
                             </span>
                         </td>
-                        <td>{{ user.date_joined|date:"Y/m/d" }}</td>
+                        <td class="ui-num" style="color:var(--text-secondary);font-size:0.8rem;">{{ user.date_joined|date:"Y/m/d" }}</td>
                         <td style="text-align:left;">
                             <div class="user-actions">
                                 {% if user != request.user %}
                                 <form method="post" action="{% url 'user_impersonate' cafe_code=cafe_code user_id=user.id %}"
                                       style="display:inline;" title="ورود با این کاربر">
                                     {% csrf_token %}
-                                    <button type="submit" class="act-chip act-login">
+                                    <button type="submit" class="ui-row-action" style="color:var(--ui-ok);">
                                         <i class="fas fa-right-to-bracket"></i> ورود
                                     </button>
                                 </form>
                                 {% endif %}
-                                <a href="{% url 'user_update' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-edit"
+                                <a href="{% url 'user_update' cafe_code=cafe_code user_id=user.id %}" class="ui-row-action"
                                    title="ویرایش کاربر">
                                     <i class="fas fa-pen"></i> ویرایش
                                 </a>
-                                <a href="{% url 'user_reset_password' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-key"
+                                <a href="{% url 'user_reset_password' cafe_code=cafe_code user_id=user.id %}" class="ui-row-action"
                                    title="تنظیم مجدد رمز عبور">
                                     <i class="fas fa-key"></i> رمز
                                 </a>
                                 {% if user != request.user %}
-                                <a href="{% url 'user_delete' cafe_code=cafe_code user_id=user.id %}" class="act-chip act-del"
+                                <a href="{% url 'user_delete' cafe_code=cafe_code user_id=user.id %}" class="ui-row-action is-danger"
                                    title="حذف کاربر">
                                     <i class="fas fa-trash-can"></i> حذف
                                 </a>
@@ -400,20 +317,18 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% else %}
-    <div class="table-card">
-        <div class="card-body">
-            <div class="empty-state">
-                <i class="fas fa-user-slash"></i>
-                <h3 style="font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:0.4rem;">هیچ کاربری یافت نشد</h3>
-                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.25rem;">هیچ کاربری با معیارهای جستجوی شما یافت نشد.</p>
-                <a href="{% url 'user_create' cafe_code=cafe_code %}" class="btn btn-primary">
-                    <i class="fas fa-user-plus"></i> افزودن اولین کاربر
-                </a>
-            </div>
+    <section class="ui-table-card">
+        <div class="ui-empty">
+            <i class="fas fa-user-slash"></i>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">هیچ کاربری یافت نشد</div>
+            <p style="margin:0 0 1rem;">هیچ کاربری با معیارهای جستجوی شما یافت نشد.</p>
+            <a href="{% url 'user_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-user-plus"></i> افزودن اولین کاربر
+            </a>
         </div>
-    </div>
+    </section>
     {% endif %}
 </div>
 {% endblock %}

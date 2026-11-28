@@ -5,68 +5,113 @@
 
 {% block extra_css %}
 <style>
-    .ac-wrap { max-width: 780px; margin: 0 auto; }
-    .ac-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-md);
-        padding: 1.5rem;
-    }
     .ac-type-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 0.75rem; margin-top: 0.4rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.25rem;
     }
+
     .ac-type-option {
-        position: relative; border: 2px solid var(--border-default); border-radius: var(--radius-lg);
-        padding: 0.85rem 1rem; cursor: pointer; transition: all 0.15s ease;
-        display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 0.88rem;
+        position: relative;
+        border: 1.5px solid var(--border-default, #E2E8F0);
+        border-radius: 12px;
+        padding: 0.78rem 0.95rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+        background: var(--bg-card, #FFFFFF);
     }
+
     .ac-type-option:has(input:checked) {
-        border-color: var(--accent-indigo); background: rgba(139,92,246,0.08); color: var(--primary-dark);
+        border-color: var(--primary, #8B5CF6);
+        background: var(--ui-accent-tint);
+        color: var(--primary-dark, #7C3AED);
     }
+
     .ac-blind-box {
-        display: flex; align-items: flex-start; gap: 0.75rem;
-        background: #F5F3FF; border: 1.5px solid #DDD6FE; border-radius: var(--radius-lg);
-        padding: 1rem; cursor: pointer;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        background: var(--ui-accent-tint);
+        border: 1px solid var(--ui-accent-border);
+        border-radius: 12px;
+        padding: 0.95rem 1rem;
+        cursor: pointer;
     }
-    .ac-blind-box input { width: 20px; height: 20px; margin-top: 0.15rem; accent-color: #7C3AED; }
+
+    .ac-blind-box input {
+        width: 18px;
+        height: 18px;
+        margin-top: 0.2rem;
+        accent-color: #7C3AED;
+    }
+
     .ac-spot-box {
-        border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-        padding: 1rem; background: var(--bg-subtle); margin-bottom: 1.25rem;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 12px;
+        padding: 1rem;
+        background: var(--gray-50, #F8FAFC);
     }
+
     .ac-spot-list {
-        max-height: 260px; overflow-y: auto; display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.5rem;
+        max-height: 260px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 0.5rem;
         margin-top: 0.75rem;
     }
+
     .ac-spot-item {
-        background: #fff; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-        padding: 0.5rem 0.65rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem;
+        background: #FFFFFF;
+        border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 8px;
+        padding: 0.5rem 0.65rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.82rem;
         cursor: pointer;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ac-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-plus-circle"></i></div>
-            <div class="ph-title">
-                <h1>ایجاد جلسه انبارگردانی جدید</h1>
-                <div class="page-sub">اسنپ‌شات موجودی اموال بخش انتخابی در لحظه ایجاد ثبت می‌شود</div>
-            </div>
+<div class="ui-page is-narrow">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-plus-circle" style="color: var(--primary, #8B5CF6);"></i>
+                ایجاد جلسه انبارگردانی جدید
+            </h1>
+            <p class="ui-subtitle">اسنپ‌شات موجودی اموال بخش انتخابی در لحظه ایجاد ثبت می‌شود</p>
         </div>
-        <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> بازگشت
-        </a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> بازگشت
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+        </nav>
     </div>
 
-    <form method="post" class="ac-card">
+    <form method="post" class="ui-form-card" style="display:flex; flex-direction:column; gap:1rem;">
         {% csrf_token %}
 
-        <div class="form-group">
-            <label for="department_id">سکشن / بخش هدف *</label>
-            <select name="department_id" id="department_id" class="form-control" required>
+        <div class="ui-field">
+            <label class="ui-field-label" for="department_id">سکشن / بخش هدف *</label>
+            <select name="department_id" id="department_id" class="ui-select" required>
                 <option value="">انتخاب سکشن...</option>
                 {% for dept in departments %}
                 <option value="{{ dept.id }}">{{ dept.name }}</option>
@@ -74,14 +119,13 @@
             </select>
         </div>
 
-        <div class="form-group">
-            <label for="title">عنوان انبارگردانی *</label>
-            <input type="text" name="title" id="title" class="form-control" required
-                   placeholder="مثلاً: انبارگردانی پایان ماه بار">
+        <div class="ui-field">
+            <label class="ui-field-label" for="title">عنوان انبارگردانی *</label>
+            <input type="text" name="title" id="title" class="ui-input" required placeholder="مثلاً: انبارگردانی پایان ماه بار">
         </div>
 
-        <div class="form-group">
-            <label>نوع انبارگردانی</label>
+        <div class="ui-field">
+            <label class="ui-field-label">نوع انبارگردانی</label>
             <div class="ac-type-grid">
                 {% for val, label in audit_type_choices %}
                 <label class="ac-type-option">
@@ -96,9 +140,11 @@
 
         <div class="ac-spot-box" id="spotAssetsBox" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                <strong style="font-size:0.88rem;">انتخاب اختیاری اقلام برای شمارش موردی</strong>
-                <input type="text" id="spotSearchInput" class="filter-input" style="height:36px; width:220px;"
-                       placeholder="جستجوی کالا..." oninput="filterSpotAssets(this.value)">
+                <strong style="font-size:0.86rem;">انتخاب اختیاری اقلام برای شمارش موردی</strong>
+                <div class="ui-search" style="max-width:220px;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="spotSearchInput" class="ui-input" placeholder="جستجوی کالا..." oninput="filterSpotAssets(this.value)">
+                </div>
             </div>
             <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:0.25rem;">
                 در صورت انتخاب نکردن هیچ کالا، کل اقلام موجود در سکشن در لیست شمارش قرار می‌گیرند.
@@ -113,29 +159,26 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="ac-blind-box">
-                <input type="checkbox" name="blind_count" value="1">
-                <div>
-                    <div style="font-weight:800; color:#4C1D95; font-size:0.92rem;">
-                        <i class="fas fa-eye-slash"></i> فعال‌سازی شمارش کور (Blind Count)
-                    </div>
-                    <div style="font-size:0.78rem; color:#5B21B6; margin-top:0.2rem;">
-                        موجودی سیستم (تعداد سالم و معیوب) برای کاربر شمارش‌کننده کاملاً مخفی می‌شود تا شمارش دقیق و واقعی انجام شود.
-                    </div>
+        <label class="ac-blind-box">
+            <input type="checkbox" name="blind_count" value="1">
+            <div>
+                <div style="font-weight:800; color:var(--primary-dark, #7C3AED); font-size:0.9rem;">
+                    <i class="fas fa-eye-slash"></i> فعال‌سازی شمارش کور (Blind Count)
                 </div>
-            </label>
+                <div style="font-size:0.78rem; color:var(--text-secondary, #64748B); margin-top:0.2rem;">
+                    موجودی سیستم (تعداد سالم و معیوب) برای کاربر شمارش‌کننده کاملاً مخفی می‌شود تا شمارش دقیق و واقعی انجام شود.
+                </div>
+            </div>
+        </label>
+
+        <div class="ui-field">
+            <label class="ui-field-label" for="notes">یادداشت جلسه (اختیاری)</label>
+            <textarea name="notes" id="notes" class="ui-textarea" rows="2" placeholder="توضیحات یا نکات لازم برای تیم شمارش..."></textarea>
         </div>
 
-        <div class="form-group">
-            <label for="notes">یادداشت جلسه (اختیاری)</label>
-            <textarea name="notes" id="notes" class="form-control" style="height:auto; padding:0.75rem;" rows="2"
-                      placeholder="توضیحات یا نکات لازم برای تیم شمارش..."></textarea>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-            <button type="submit" class="btn btn-primary">
+        <div class="ui-form-actions">
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-primary">
                 <i class="fas fa-play"></i> ایجاد و شروع شمارش
             </button>
         </div>

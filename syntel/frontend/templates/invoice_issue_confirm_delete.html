@@ -3,75 +3,28 @@
 {% block title %}تأیید حذف ایراد فاکتور{% endblock %}
 
 {% block content %}
-<div class="delete-confirm-container">
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">تأیید حذف</h3>
+<div class="ui-page is-narrow">
+    <div class="ui-confirm-card">
+        <div style="text-align:center;margin-bottom:1.1rem;">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--ui-danger-bg);color:var(--ui-danger);display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:0.6rem;">
+                <i class="fas fa-trash"></i>
+            </div>
+            <h1 class="ui-title" style="justify-content:center;margin-bottom:0.35rem;">تأیید حذف</h1>
+            <p class="ui-subtitle" style="justify-content:center;">آیا مطمئن هستید که می‌خواهید ایراد "{{ issue.name }}" را حذف کنید؟</p>
         </div>
-        <div class="card-body">
-            <p>آیا مطمئن هستید که می‌خواهید ایراد "{{ issue.name }}" را حذف کنید؟</p>
-            <p class="text-danger">این عملیات قابل بازگشت نیست.</p>
-            <form method="post">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger">حذف</button>
-                <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="btn btn-secondary">انصراف</a>
-            </form>
+
+        <div class="ui-banner is-danger" style="margin-bottom:1.25rem;justify-content:center;">
+            <i class="fas fa-exclamation-triangle" style="margin-top:0.15rem;"></i>
+            <span>این عملیات قابل بازگشت نیست.</span>
         </div>
+
+        <form method="post" style="display:flex;gap:0.65rem;justify-content:center;">
+            {% csrf_token %}
+            <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">انصراف</a>
+            <button type="submit" class="ui-btn ui-btn-danger">
+                <i class="fas fa-trash"></i> حذف
+            </button>
+        </form>
     </div>
 </div>
-
-<style>
-.delete-confirm-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.card {
-    border: none;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.card-header {
-    background: #dc3545;
-    color: white;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-}
-
-.card-title {
-    margin: 0;
-    font-size: 1.25rem;
-}
-
-.card-body {
-    padding: 30px;
-}
-
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    margin-right: 10px;
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.text-danger {
-    color: #dc3545;
-    font-weight: bold;
-}
-</style>
 {% endblock %}
-

@@ -5,61 +5,83 @@
 
 {% block extra_css %}
 <style>
-    .acl-thumb { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default); }
-    .acl-placeholder { width: 48px; height: 48px; border-radius: 10px; background: #F1F5F9; display:flex; align-items:center; justify-content:center; color:#94A3B8; }
+    .acl-thumb { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-default, #E2E8F0); }
+    .acl-placeholder { width: 46px; height: 46px; border-radius: 10px; background: var(--gray-100, #F1F5F9); display:flex; align-items:center; justify-content:center; color:var(--text-muted, #94A3B8); }
+    .acl-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; align-items: end; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1360px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-boxes-stacked"></i></div>
-            <div class="ph-title">
-                <h1>کاتالوگ اموال و اثاثیه</h1>
-                <div class="page-sub">تعریف اقلام تعدادی و پلاک‌دار همراه با تصویر و ارزش تخمینی</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-boxes-stacked" style="color: var(--primary, #8B5CF6);"></i>
+                کاتالوگ اموال و اثاثیه
+            </h1>
+            <p class="ui-subtitle">تعریف اقلام تعدادی و پلاک‌دار همراه با تصویر و ارزش تخمینی</p>
         </div>
-        <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
-            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> داشبورد اموال</a>
-            <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> افزودن کالای جدید</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_catalog_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary"><i class="fas fa-plus"></i> افزودن کالای جدید</a>
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-sitemap"></i> دسته‌بندی‌ها</a>
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-hourglass-half"></i> کارتابل تأیید</a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-file-invoice"></i> ورود از فاکتور</a>
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">جستجو</label>
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="نام، کد یا برند...">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">دسته‌بندی</label>
-                <select name="category" class="filter-select">
-                    <option value="">همه دسته‌بندی‌ها</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">روش ردیابی</label>
-                <select name="tracking_mode" class="filter-select">
-                    <option value="">همه</option>
-                    <option value="quantity" {% if selected_mode == 'quantity' %}selected{% endif %}>تعدادی</option>
-                    <option value="serialized" {% if selected_mode == 'serialized' %}selected{% endif %}>پلاک‌دار</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1;">فیلتر</button>
-                <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i></a>
+    <form method="get" class="ui-controls-card">
+        <div class="ui-controls-row" style="display: block;">
+            <div class="acl-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">جستجو</label>
+                    <div class="ui-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="q" value="{{ q }}" class="ui-input" placeholder="نام، کد یا برند...">
+                    </div>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">دسته‌بندی</label>
+                    <select name="category" class="ui-select">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">روش ردیابی</label>
+                    <select name="tracking_mode" class="ui-select">
+                        <option value="">همه</option>
+                        <option value="quantity" {% if selected_mode == 'quantity' %}selected{% endif %}>تعدادی</option>
+                        <option value="serialized" {% if selected_mode == 'serialized' %}selected{% endif %}>پلاک‌دار</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="submit" class="ui-btn ui-btn-primary" style="flex:1;">فیلتر</button>
+                    <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-rotate-left"></i></a>
+                </div>
             </div>
         </div>
     </form>
 
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> کالاهای کاتالوگ ({{ assets|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> کالاهای کاتالوگ ({{ assets|length }})</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead>
                     <tr>
                         <th>تصویر</th>
@@ -86,23 +108,23 @@
                         </td>
                         <td>
                             <strong>{{ a.name }}</strong>
-                            <div style="font-size:0.75rem; color:var(--text-muted);">{{ a.code }}{% if a.brand_model %} • {{ a.brand_model }}{% endif %}</div>
+                            <div style="font-size:0.74rem; color:var(--text-muted);">{{ a.code }}{% if a.brand_model %} • {{ a.brand_model }}{% endif %}</div>
                         </td>
                         <td>{{ a.category|default:'—' }}</td>
-                        <td><span class="badge {% if a.tracking_mode == 'serialized' %}badge-primary{% else %}badge-neutral{% endif %}">{{ a.get_tracking_mode_display }}</span></td>
-                        <td>{{ a.estimated_unit_value|number_format }} ریال</td>
-                        <td>سالم: <strong>{{ a.total_healthy }}</strong> | معیوب: <strong>{{ a.total_damaged }}</strong></td>
-                        <td><span class="badge {% if a.is_active %}badge-success{% else %}badge-danger{% endif %}">{% if a.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
+                        <td><span class="ui-pill {% if a.tracking_mode == 'serialized' %}is-accent{% else %}is-muted{% endif %}">{{ a.get_tracking_mode_display }}</span></td>
+                        <td class="ui-money">{{ a.estimated_unit_value|number_format }} ریال</td>
+                        <td class="ui-num">سالم: <strong>{{ a.total_healthy }}</strong> | معیوب: <strong>{{ a.total_damaged }}</strong></td>
+                        <td><span class="ui-pill {% if a.is_active %}is-ok{% else %}is-danger{% endif %}">{% if a.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
                         <td>
-                            <a href="{% url 'asset_catalog_edit' cafe_code=cafe_code pk=a.id %}" class="btn btn-secondary" style="height:34px; font-size:0.78rem;"><i class="fas fa-edit"></i> ویرایش</a>
+                            <a href="{% url 'asset_catalog_edit' cafe_code=cafe_code pk=a.id %}" class="ui-row-action"><i class="fas fa-edit"></i> ویرایش</a>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" style="text-align:center; padding:2rem;">کالایی در کاتالوگ ثبت نشده است.</td></tr>
+                    <tr><td colspan="8"><div class="ui-empty">کالایی در کاتالوگ ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

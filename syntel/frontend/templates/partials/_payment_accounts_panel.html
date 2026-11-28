@@ -1,47 +1,53 @@
 {% load custom_filters %}
 <style>
     /* پنل حساب‌های پرداخت — استایل مستقل (در مودال دسکتاپ و شیت موبایل استفاده می‌شود) */
-    .acc-add-form { margin-bottom: 0.75rem; }
-    .acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .acc-add-form { margin-bottom: 0.9rem; }
+    .acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
     .acc-field label {
-        display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-primary);
+        display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-primary, #0F172A);
         margin-bottom: 0.25rem;
     }
     .acc-field input {
-        width: 100%; min-height: 42px; padding: 0.5rem 0.75rem; box-sizing: border-box;
-        border: 2px solid var(--border-default); border-radius: var(--radius-md);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; background: white; color: var(--text-primary);
+        width: 100%; min-height: 40px; padding: 0.45rem 0.75rem; box-sizing: border-box;
+        border: 1px solid var(--border-default, #E2E8F0); border-radius: 10px;
+        font-family: 'Vazir', sans-serif; font-size: 0.84rem;
+        background: var(--bg-card, #FFFFFF); color: var(--text-primary, #0F172A);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .acc-field input:focus {
-        outline: none; border-color: var(--accent-indigo);
-        box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+        outline: none; border-color: var(--primary, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
     .acc-btn {
-        width: 100%; min-height: 44px; border: none; border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        width: 100%; min-height: 42px; border: 1px solid var(--primary, #8B5CF6); border-radius: 10px;
+        background: var(--primary, #8B5CF6); color: #FFFFFF;
+        font-family: 'Vazir', sans-serif; font-size: 0.84rem; font-weight: 700; cursor: pointer;
         display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-        margin-top: 0.6rem;
+        margin-top: 0.7rem; transition: background 0.15s ease, transform 0.1s ease;
     }
+    .acc-btn:hover { background: var(--primary-dark, #7C3AED); }
     .acc-btn:active { transform: scale(0.98); }
-    .acc-list { margin-top: 0.9rem; }
+    .acc-list { margin-top: 1rem; }
     .acc-list-title {
-        font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;
+        font-size: 0.8rem; font-weight: 700; color: var(--text-primary, #0F172A); margin-bottom: 0.5rem;
         display: flex; align-items: center; gap: 0.4rem;
     }
-    .acc-list-title i { color: var(--accent-purple); }
+    .acc-list-title i { color: var(--primary, #8B5CF6); }
     .acc-item {
         display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
-        padding: 0.55rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);
-        margin-bottom: 0.45rem; background: var(--bg-card);
+        padding: 0.6rem 0.8rem; border: 1px solid var(--border-default, #E2E8F0); border-radius: 10px;
+        margin-bottom: 0.45rem; background: var(--gray-50, #F8FAFC);
     }
-    .acc-item-main b { color: var(--text-primary); font-size: 0.85rem; }
-    .acc-item-main .acc-detail { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .acc-item-main b { color: var(--text-primary, #0F172A); font-size: 0.84rem; }
+    .acc-item-main .acc-detail { font-size: 0.72rem; color: var(--text-muted, #94A3B8); margin-top: 0.15rem; font-variant-numeric: tabular-nums; }
     .acc-del {
-        border: none; background: none; color: var(--danger); cursor: pointer;
-        font-size: 0.9rem; padding: 0.3rem; -webkit-tap-highlight-color: transparent;
+        border: none; background: transparent; color: var(--ui-danger, #DC2626); cursor: pointer;
+        font-size: 0.85rem; width: 32px; height: 32px; border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center;
+        -webkit-tap-highlight-color: transparent; transition: background 0.15s ease;
     }
-    .acc-empty { font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 0.75rem; }
+    .acc-del:hover { background: var(--ui-danger-bg, #FEF2F2); }
+    .acc-empty { font-size: 0.76rem; color: var(--text-muted, #94A3B8); text-align: center; padding: 0.85rem; }
     @media (max-width: 480px) { .acc-grid { grid-template-columns: 1fr; } }
 </style>
 
@@ -50,7 +56,7 @@
     {% csrf_token %}
     <div class="acc-grid">
         <div class="acc-field">
-            <label>نام بانک <span style="color:var(--danger);">*</span></label>
+            <label>نام بانک <span style="color:var(--ui-danger,#DC2626);">*</span></label>
             <input type="text" name="bank_name" required placeholder="مثلاً: بانک ملت">
         </div>
         <div class="acc-field">

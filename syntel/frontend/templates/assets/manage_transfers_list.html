@@ -4,57 +4,79 @@
 {% block title %}انتقال اموال بین سکشن‌ها - Kuker{% endblock %}
 
 {% block content %}
-<div style="max-width:1300px; margin:0 auto;">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-exchange-alt"></i></div>
-            <div class="ph-title">
-                <h1>انتقال اموال بین سکشن‌ها (تأیید دوطرفه)</h1>
-                <div class="page-sub">جابجایی اقلام با تأیید تحویل توسط بخش مقصد برای جلوگیری از مغایرت</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-exchange-alt" style="color: var(--primary, #8B5CF6);"></i>
+                انتقال اموال بین سکشن‌ها (تأیید دوطرفه)
+            </h1>
+            <p class="ui-subtitle">جابجایی اقلام با تأیید تحویل توسط بخش مقصد برای جلوگیری از مغایرت</p>
         </div>
-        <div style="display:flex; gap:0.55rem;">
-            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> بازگشت</a>
-            <a href="{% url 'asset_transfer_create' cafe_code=cafe_code %}" class="btn btn-primary"><i class="fas fa-plus"></i> ثبت انتقال جدید</a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost"><i class="fas fa-arrow-right"></i> بازگشت</a>
+            <a href="{% url 'asset_transfer_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary"><i class="fas fa-plus"></i> ثبت انتقال جدید</a>
         </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> نمای کلی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_catalog_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-boxes-stacked"></i> کاتالوگ اموال</a>
+            <a href="{% url 'asset_category_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-sitemap"></i> دسته‌بندی‌ها</a>
+            {% endif %}
+            <a href="{% url 'asset_unit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-microchip"></i> پلاک‌دارها</a>
+            <a href="{% url 'asset_transfer_list' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-exchange-alt"></i> انتقال‌ها</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_pending_movements' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-hourglass-half"></i> کارتابل تأیید</a>
+            <a href="{% url 'asset_import_from_invoice' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-file-invoice"></i> ورود از فاکتور</a>
+            {% endif %}
+            <a href="{% url 'asset_audit_list' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-clipboard-check"></i> انبارگردانی</a>
+            {% if is_manager %}
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> گزارش‌ها</a>
+            {% endif %}
+        </nav>
     </div>
 
-    <div class="table-card">
-        <div class="table-header"><div class="table-title"><i class="fas fa-list"></i> فهرست انتقال‌ها ({{ transfers|length }})</div></div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="fas fa-list"></i> فهرست انتقال‌ها ({{ transfers|length }})</h2>
+        </div>
+        <div class="ui-table-scroll">
+            <table class="ui-table">
                 <thead><tr><th>تاریخ</th><th>کالا / پلاک</th><th>از بخش</th><th>به بخش</th><th>تعداد</th><th>وضعیت</th><th>اقدام</th></tr></thead>
                 <tbody>
                     {% for tr in transfers %}
                     <tr>
-                        <td>{{ tr.created_at|jalali_datetime }}</td>
-                        <td><strong>{{ tr.asset.name }}</strong>{% if tr.asset_unit %} ({{ tr.asset_unit.asset_tag }}){% endif %}</td>
+                        <td class="ui-num">{{ tr.created_at|jalali_datetime }}</td>
+                        <td><strong>{{ tr.asset.name }}</strong>{% if tr.asset_unit %} <span class="ui-num">({{ tr.asset_unit.asset_tag }})</span>{% endif %}</td>
                         <td>{{ tr.from_department.name|default:'—' }}</td>
                         <td>{{ tr.to_department.name|default:'—' }}</td>
-                        <td>{{ tr.quantity }}</td>
-                        <td><span class="badge {% if tr.status == 'approved' %}badge-success{% elif tr.status == 'rejected' %}badge-danger{% else %}badge-warning{% endif %}">{{ tr.get_status_display }}</span></td>
+                        <td class="ui-num">{{ tr.quantity }}</td>
+                        <td><span class="ui-pill {% if tr.status == 'approved' %}is-ok{% elif tr.status == 'rejected' %}is-danger{% else %}is-warn{% endif %}">{{ tr.get_status_display }}</span></td>
                         <td style="display:flex; gap:0.4rem;">
                             {% if tr.can_confirm %}
                             <form method="post" action="{% url 'asset_transfer_confirm' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-success" style="height:34px; font-size:0.78rem;">تأیید تحویل</button>
+                                <button type="submit" class="ui-btn ui-btn-success is-sm">تأیید تحویل</button>
                             </form>
                             {% endif %}
                             {% if tr.can_reject %}
                             <form method="post" action="{% url 'asset_transfer_reject' cafe_code=cafe_code pk=tr.id %}" style="margin:0;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-danger" style="height:34px; font-size:0.78rem;">رد</button>
+                                <button type="submit" class="ui-btn ui-btn-danger-soft is-sm">رد</button>
                             </form>
                             {% endif %}
                             {% if not tr.can_confirm and not tr.can_reject %}—{% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" style="text-align:center; padding:1.5rem;">انتقالی ثبت نشده است.</td></tr>
+                    <tr><td colspan="7"><div class="ui-empty" style="padding:1.5rem;">انتقالی ثبت نشده است.</div></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

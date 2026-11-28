@@ -6,63 +6,62 @@
 {% block extra_css %}
 <style>
     /* ─── Quick Action Ribbon ─── */
-    .quick-ribbon {
+    .fd-quick-grid {
         display: grid;
         grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 24px;
+        gap: 0.75rem;
     }
-    .qa-btn {
+    .fd-qa-btn {
         display: flex;
         align-items: center;
-        gap: 12px;
-        background: #FFFFFF;
-        border: 1px solid var(--border-light);
+        gap: 0.75rem;
+        background: var(--bg-card, #FFFFFF);
+        border: 1px solid var(--border-default, #E2E8F0);
         border-radius: 14px;
-        padding: 12px 14px;
+        padding: 0.8rem 0.95rem;
         text-decoration: none;
-        color: var(--text-primary);
-        box-shadow: var(--shadow-xs);
-        transition: all 0.2s ease;
+        color: var(--text-primary, #0F172A);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
         min-width: 0;
     }
-    .qa-btn:hover {
-        border-color: #C7D2FE;
-        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.10);
-        transform: translateY(-2px);
+    .fd-qa-btn:hover {
+        border-color: var(--ui-accent-border, rgba(139, 92, 246, 0.28));
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        transform: translateY(-1px);
     }
-    .qa-icon {
+    .fd-qa-icon {
         width: 38px;
         height: 38px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 0.95rem;
         flex-shrink: 0;
     }
-    .qa-icon.indigo { background: #EEF2FF; color: #4F46E5; }
-    .qa-icon.green  { background: #ECFDF5; color: #059669; }
-    .qa-icon.purple { background: #F5F3FF; color: #7C3AED; }
-    .qa-icon.blue   { background: #EFF6FF; color: #2563EB; }
-    .qa-icon.orange { background: #FFF7ED; color: #EA580C; }
+    .fd-qa-icon.is-accent { background: var(--ui-accent-tint); color: var(--primary-dark, #7C3AED); }
+    .fd-qa-icon.is-ok     { background: var(--ui-ok-bg); color: var(--ui-ok); }
+    .fd-qa-icon.is-info   { background: var(--ui-info-bg); color: var(--ui-info); }
+    .fd-qa-icon.is-warn   { background: var(--ui-warn-bg); color: var(--ui-warn); }
 
-    .qa-text {
+    .fd-qa-text {
         display: flex;
         flex-direction: column;
         min-width: 0;
+        gap: 0.1rem;
     }
-    .qa-label {
-        font-size: 0.85rem;
+    .fd-qa-label {
+        font-size: 0.82rem;
         font-weight: 700;
-        color: var(--text-primary);
+        color: var(--text-primary, #0F172A);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .qa-sub {
+    .fd-qa-sub {
         font-size: 0.72rem;
-        color: var(--text-muted);
+        color: var(--text-muted, #94A3B8);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -72,358 +71,322 @@
     .fd-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 28px;
+        gap: 1rem;
     }
-
-    .fd-card {
-        background: #FFFFFF;
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: var(--shadow-xs);
-        border: 1px solid var(--border-light);
+    .fd-module-card {
         display: flex;
         flex-direction: column;
         min-width: 0;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .fd-card:hover {
-        box-shadow: var(--shadow-md);
-        border-color: #D8D8E6;
-    }
-
-    .fd-card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 14px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #F1F5F9;
-        flex-shrink: 0;
+    .fd-module-card:hover {
+        border-color: var(--border-strong, #CBD5E1);
     }
     .fd-icon-box {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        font-size: 16px;
+        font-size: 0.85rem;
     }
-    .fd-icon-box.indigo { background: #EEF2FF; color: #4F46E5; }
-    .fd-icon-box.green  { background: #ECFDF5; color: #059669; }
-    .fd-icon-box.orange { background: #FFF7ED; color: #EA580C; }
-    .fd-icon-box.blue   { background: #EFF6FF; color: #2563EB; }
-    .fd-icon-box.pink   { background: #FDF2F8; color: #DB2777; }
-    .fd-icon-box.purple { background: #F5F3FF; color: #7C3AED; }
-    .fd-icon-box.teal   { background: #F0FDFA; color: #0D9488; }
-
-    .fd-card-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-    }
+    .fd-icon-box.is-accent { background: var(--ui-accent-tint); color: var(--primary-dark, #7C3AED); }
+    .fd-icon-box.is-ok     { background: var(--ui-ok-bg); color: var(--ui-ok); }
+    .fd-icon-box.is-info   { background: var(--ui-info-bg); color: var(--ui-info); }
+    .fd-icon-box.is-warn   { background: var(--ui-warn-bg); color: var(--ui-warn); }
+    .fd-icon-box.is-muted  { background: var(--gray-100, #F1F5F9); color: var(--text-secondary, #64748B); }
 
     .fd-menu {
         flex: 1;
         display: flex;
         flex-direction: column;
-        justify-content: flex-start;
-        gap: 6px;
+        gap: 0.42rem;
+        padding: 0.9rem 1.05rem 1.05rem;
     }
     .fd-item {
         display: flex;
         align-items: center;
-        gap: 10px;
-        height: 38px;
-        padding: 0 12px;
-        background: #F8FAFC;
+        gap: 0.6rem;
+        min-height: 38px;
+        padding: 0.4rem 0.78rem;
+        background: var(--gray-50, #F8FAFC);
         border: 1px solid transparent;
         border-radius: 10px;
         text-decoration: none;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
+        color: var(--text-secondary, #64748B);
+        font-size: 0.81rem;
         font-weight: 600;
-        transition: all 0.15s ease;
-        flex-shrink: 0;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
     .fd-item:hover {
-        background: #EEF2FF;
-        border-color: #E0E7FF;
-        color: #4338CA;
+        background: var(--ui-hover-row, #FAF9FF);
+        border-color: var(--ui-accent-border);
+        color: var(--primary-dark, #7C3AED);
     }
     .fd-item i {
-        font-size: 14px;
-        color: #94A3B8;
-        width: 18px;
+        font-size: 0.8rem;
+        color: var(--text-muted, #94A3B8);
+        width: 16px;
         text-align: center;
         flex-shrink: 0;
         transition: color 0.15s ease;
     }
-    .fd-item:hover i { color: #4F46E5; }
+    .fd-item:hover i { color: var(--primary, #8B5CF6); }
 
-    /* ─── Primary Operational Item inside Card ─── */
-    .fd-item.accent-green {
-        background: #ECFDF5;
-        border-color: #A7F3D0;
-        color: #065F46;
+    .fd-item.is-primary-op {
+        background: var(--ui-ok-bg);
+        border-color: var(--ui-ok-border);
+        color: var(--ui-ok);
         font-weight: 700;
     }
-    .fd-item.accent-green i { color: #059669; }
-    .fd-item.accent-green:hover {
+    .fd-item.is-primary-op i { color: var(--ui-ok); }
+    .fd-item.is-primary-op:hover {
         background: #D1FAE5;
-        border-color: #6EE7B7;
-        color: #064E3B;
+        border-color: #A7F3D0;
+        color: var(--ui-ok-dark, #065F46);
     }
 
-    /* ─── Responsive ─── */
-    @media (max-width: 1400px) {
+    @media (max-width: 1280px) {
         .fd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .quick-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .fd-quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-    @media (max-width: 1000px) {
+    @media (max-width: 960px) {
         .fd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .quick-ribbon { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .fd-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    @media (max-width: 768px) {
-        .fd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-        .quick-ribbon { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .fd-card { padding: 14px; }
-        .fd-card-title { font-size: 0.92rem; }
-        .fd-icon-box { width: 34px; height: 34px; font-size: 14px; }
-        .fd-item { height: 35px; font-size: 0.8rem; padding: 0 10px; gap: 8px; }
-    }
-    @media (max-width: 480px) {
+    @media (max-width: 540px) {
         .fd-grid { grid-template-columns: minmax(0, 1fr); }
-        .quick-ribbon { grid-template-columns: minmax(0, 1fr); }
+        .fd-quick-grid { grid-template-columns: minmax(0, 1fr); }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- ===== Header ===== -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-chart-pie"></i>
-        داشبورد مدیریت و مالی
-    </h1>
-    <div class="header-actions">
-        <div class="current-date">
-            <i class="fas fa-calendar-alt"></i>
-            <span id="persianDate"></span>
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-chart-pie" style="color:var(--primary,#8B5CF6);font-size:1.15rem;"></i>
+                داشبورد مدیریت و مالی
+            </h1>
+            <div class="ui-subtitle">
+                <span>دسترسی سریع به عملیات مالی، فاکتورها، پرداخت‌ها، انبار و گزارش‌ها</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-num" id="persianDate"></span>
+            </div>
         </div>
-        <a href="{% url 'logout' %}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>خروج</span>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>ثبت فاکتور نقدی</span>
+            </a>
+            <a href="{% url 'logout' %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>خروج</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- نوار دسترسی سریع عملیاتی -->
+    <section class="fd-quick-grid" aria-label="دسترسی سریع">
+        <a href="{% url 'request_management_dashboard' cafe_code=cafe_code %}" class="fd-qa-btn">
+            <div class="fd-qa-icon is-accent"><i class="fas fa-clipboard-check"></i></div>
+            <div class="fd-qa-text">
+                <span class="fd-qa-label">مدیریت درخواست‌ها</span>
+                <span class="fd-qa-sub">بررسی و پیگیری روزانه</span>
+            </div>
         </a>
-    </div>
-</div>
+        <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="fd-qa-btn">
+            <div class="fd-qa-icon is-ok"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div class="fd-qa-text">
+                <span class="fd-qa-label">ثبت فاکتور نقدی</span>
+                <span class="fd-qa-sub">ورود سریع فاکتور خرید</span>
+            </div>
+        </a>
+        <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="fd-qa-btn">
+            <div class="fd-qa-icon is-accent"><i class="fas fa-credit-card"></i></div>
+            <div class="fd-qa-text">
+                <span class="fd-qa-label">ثبت پرداخت جدید</span>
+                <span class="fd-qa-sub">تسویه با تأمین‌کنندگان</span>
+            </div>
+        </a>
+        <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="fd-qa-btn">
+            <div class="fd-qa-icon is-info"><i class="fas fa-boxes-stacked"></i></div>
+            <div class="fd-qa-text">
+                <span class="fd-qa-label">موجودی انبار</span>
+                <span class="fd-qa-sub">مشاهده و کنترل موجودی</span>
+            </div>
+        </a>
+        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="fd-qa-btn">
+            <div class="fd-qa-icon is-warn"><i class="fas fa-exchange-alt"></i></div>
+            <div class="fd-qa-text">
+                <span class="fd-qa-label">ثبت حواله انبار</span>
+                <span class="fd-qa-sub">ورود، خروج و انتقال کالا</span>
+            </div>
+        </a>
+    </section>
 
-<!-- ===== Quick Operational Ribbon ===== -->
-<div class="quick-ribbon">
-    <a href="{% url 'request_management_dashboard' cafe_code=cafe_code %}" class="qa-btn">
-        <div class="qa-icon indigo"><i class="fas fa-clipboard-check"></i></div>
-        <div class="qa-text">
-            <span class="qa-label">مدیریت درخواست‌ها</span>
-            <span class="qa-sub">بررسی و پیگیری روزانه</span>
-        </div>
-    </a>
-    <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="qa-btn">
-        <div class="qa-icon green"><i class="fas fa-file-invoice-dollar"></i></div>
-        <div class="qa-text">
-            <span class="qa-label">ثبت فاکتور نقدی</span>
-            <span class="qa-sub">ورود سریع فاکتور خرید</span>
-        </div>
-    </a>
-    <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="qa-btn">
-        <div class="qa-icon purple"><i class="fas fa-credit-card"></i></div>
-        <div class="qa-text">
-            <span class="qa-label">ثبت پرداخت جدید</span>
-            <span class="qa-sub">تسویه با تأمین‌کنندگان</span>
-        </div>
-    </a>
-    <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="qa-btn">
-        <div class="qa-icon blue"><i class="fas fa-boxes-stacked"></i></div>
-        <div class="qa-text">
-            <span class="qa-label">موجودی انبار</span>
-            <span class="qa-sub">مشاهده و کنترل موجودی</span>
-        </div>
-    </a>
-    <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="qa-btn">
-        <div class="qa-icon orange"><i class="fas fa-exchange-alt"></i></div>
-        <div class="qa-text">
-            <span class="qa-label">ثبت حواله انبار</span>
-            <span class="qa-sub">ورود، خروج و انتقال کالا</span>
-        </div>
-    </a>
-</div>
+    <!-- کارت‌های ماژول -->
+    <section class="fd-grid" aria-label="بخش‌های سیستم">
 
-<!-- ===== Dashboard Grid ===== -->
-<div class="fd-grid">
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">درخواست‌ها</h2>
+                <div class="fd-icon-box is-accent"><i class="fas fa-clipboard-list"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'request_management_dashboard' cafe_code=cafe_code %}" class="fd-item is-primary-op">
+                    <i class="fas fa-clipboard-check"></i> مدیریت درخواست‌ها
+                </a>
+                <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="fd-item">
+                    <i class="fas fa-shopping-cart"></i> درخواست‌های خرید
+                </a>
+                <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-warehouse"></i> درخواست‌های انبار
+                </a>
+                <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-calendar-alt"></i> لیست خرید به تفکیک تاریخ
+                </a>
+                <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-chart-bar"></i> گزارشات خرید
+                </a>
+            </div>
+        </div>
 
-    {% comment %}=== Card: درخواست‌ها (Requests) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">درخواست‌ها</h2>
-            <div class="fd-icon-box indigo"><i class="fas fa-clipboard-list"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">فاکتورها</h2>
+                <div class="fd-icon-box is-ok"><i class="fas fa-file-invoice"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="fd-item is-primary-op">
+                    <i class="fas fa-plus-circle"></i> ثبت فاکتور نقدی
+                </a>
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="fd-item">
+                    <i class="fas fa-file-invoice"></i> لیست فاکتورهای نقدی
+                </a>
+                {% if user.role == 'manager' %}
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="fd-item">
+                    <i class="fas fa-check-circle"></i> فاکتورهای نیازمند تأیید
+                </a>
+                <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="fd-item">
+                    <i class="fas fa-exclamation-circle"></i> فاکتورهای پرداخت نشده
+                </a>
+                {% endif %}
+                <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-list-alt"></i> لیست تمامی فاکتورها
+                </a>
+                {% if user.role == 'manager' %}
+                <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-edit"></i> فاکتورهای ویرایش شده مدیر مالی
+                </a>
+                {% endif %}
+                <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-exclamation-triangle"></i> مدیریت ایرادات فاکتور
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'request_management_dashboard' cafe_code=cafe_code %}" class="fd-item accent-green">
-                <i class="fas fa-clipboard-check"></i> مدیریت درخواست‌ها
-            </a>
-            <a href="{% url 'purchasing_requests_list' cafe_code=cafe_code %}?request_type=purchase" class="fd-item">
-                <i class="fas fa-shopping-cart"></i> درخواست‌های خرید
-            </a>
-            <a href="{% url 'purchasing_warehouse_requests_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-warehouse"></i> درخواست‌های انبار
-            </a>
-            <a href="{% url 'purchase_lists_by_date' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-calendar-alt"></i> لیست خرید به تفکیک تاریخ
-            </a>
-            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-chart-bar"></i> گزارشات خرید
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: فاکتورها (Invoices) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">فاکتورها</h2>
-            <div class="fd-icon-box green"><i class="fas fa-file-invoice"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">انبار و موجودی</h2>
+                <div class="fd-icon-box is-info"><i class="fas fa-warehouse"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-warehouse"></i> لیست کامل موجودی انبار
+                </a>
+                <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-tags"></i> موجودی انبار - دسته‌بندی
+                </a>
+                <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-file-invoice"></i> لیست حواله‌های انبار
+                </a>
+                <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-building"></i> مدیریت انبارها
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'invoice_register' cafe_code=cafe_code %}" class="fd-item accent-green">
-                <i class="fas fa-plus-circle"></i> ثبت فاکتور نقدی
-            </a>
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store" class="fd-item">
-                <i class="fas fa-file-invoice"></i> لیست فاکتورهای نقدی
-            </a>
-            {% if user.role == 'manager' %}
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&status=sent" class="fd-item">
-                <i class="fas fa-check-circle"></i> فاکتورهای نیازمند تأیید
-            </a>
-            <a href="{% url 'invoices_list' cafe_code=cafe_code %}?type=store&payment_status=unpaid" class="fd-item">
-                <i class="fas fa-exclamation-circle"></i> فاکتورهای پرداخت نشده
-            </a>
-            {% endif %}
-            <a href="{% url 'all_invoices_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-list-alt"></i> لیست تمامی فاکتورها
-            </a>
-            {% if user.role == 'manager' %}
-            <a href="{% url 'finance_manager_edited_invoices' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-edit"></i> فاکتورهای ویرایش شده مدیر مالی
-            </a>
-            {% endif %}
-            <a href="{% url 'invoice_issue_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-exclamation-triangle"></i> مدیریت ایرادات فاکتور
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: انبار (Inventory) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">انبار و موجودی</h2>
-            <div class="fd-icon-box blue"><i class="fas fa-warehouse"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">پرداخت‌ها و مالی</h2>
+                <div class="fd-icon-box is-accent"><i class="fas fa-credit-card"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-plus-circle"></i> ثبت پرداخت جدید
+                </a>
+                <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-credit-card"></i> لیست پرداخت‌ها
+                </a>
+                <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-chart-pie"></i> گزارشات پرداخت
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'stock_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-warehouse"></i> لیست کامل موجودی انبار
-            </a>
-            <a href="{% url 'stock_by_category' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-tags"></i> موجودی انبار - دسته‌بندی
-            </a>
-            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-file-invoice"></i> لیست حواله‌های انبار
-            </a>
-            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-building"></i> مدیریت انبارها
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: پرداخت‌ها (Payments) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">پرداخت‌ها و مالی</h2>
-            <div class="fd-icon-box purple"><i class="fas fa-credit-card"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">تأمین‌کنندگان</h2>
+                <div class="fd-icon-box is-warn"><i class="fas fa-store"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-store"></i> مدیریت تأمین‌کنندگان
+                </a>
+                <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-list"></i> لیست تأمین‌کنندگان
+                </a>
+                <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-plus"></i> افزودن/ویرایش تأمین‌کننده
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'payment_create' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-plus-circle"></i> ثبت پرداخت جدید
-            </a>
-            <a href="{% url 'payment_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-credit-card"></i> لیست پرداخت‌ها
-            </a>
-            <a href="{% url 'payment_analytics' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-chart-pie"></i> گزارشات پرداخت
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: تامین‌کنندگان (Suppliers) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">تأمین‌کنندگان</h2>
-            <div class="fd-icon-box orange"><i class="fas fa-store"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">تحلیل و گزارشات</h2>
+                <div class="fd-icon-box is-info"><i class="fas fa-chart-line"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-chart-line"></i> نمودار روند قیمت‌ها
+                </a>
+                <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-calendar-check"></i> گزارشات ماهانه
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'supplier_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-store"></i> مدیریت تأمین‌کنندگان
-            </a>
-            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-list"></i> لیست تأمین‌کنندگان
-            </a>
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-plus"></i> افزودن/ویرایش تأمین‌کننده
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: گزارشات (Reports) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">تحلیل و گزارشات</h2>
-            <div class="fd-icon-box pink"><i class="fas fa-chart-line"></i></div>
+        <div class="ui-card fd-module-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title">اطلاعات پایه</h2>
+                <div class="fd-icon-box is-muted"><i class="fas fa-cog"></i></div>
+            </div>
+            <div class="fd-menu">
+                <a href="{% url 'product_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-box"></i> لیست محصولات
+                </a>
+                <a href="{% url 'category_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-tags"></i> دسته‌بندی‌ها
+                </a>
+                <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-balance-scale"></i> واحدهای اندازه‌گیری
+                </a>
+                <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-map-marker-alt"></i> محل پرداخت
+                </a>
+                <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="fd-item">
+                    <i class="fas fa-users"></i> مدیریت درخواست‌کنندگان
+                </a>
+            </div>
         </div>
-        <div class="fd-menu">
-            <a href="{% url 'analytics_dashboard' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-chart-line"></i> نمودار روند قیمت‌ها
-            </a>
-            <a href="{% url 'reports_dashboard' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-calendar-check"></i> گزارشات ماهانه
-            </a>
-        </div>
-    </div>
 
-    {% comment %}=== Card: اطلاعات پایه (Base Info) ==={% endcomment %}
-    <div class="fd-card">
-        <div class="fd-card-header">
-            <h2 class="fd-card-title">اطلاعات پایه</h2>
-            <div class="fd-icon-box teal"><i class="fas fa-cog"></i></div>
-        </div>
-        <div class="fd-menu">
-            <a href="{% url 'product_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-box"></i> لیست محصولات
-            </a>
-            <a href="{% url 'category_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-tags"></i> دسته‌بندی‌ها
-            </a>
-            <a href="{% url 'unit_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-balance-scale"></i> واحدهای اندازه‌گیری
-            </a>
-            <a href="{% url 'payment_location_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-map-marker-alt"></i> محل پرداخت
-            </a>
-            <a href="{% url 'requester_list' cafe_code=cafe_code %}" class="fd-item">
-                <i class="fas fa-users"></i> مدیریت درخواست‌کنندگان
-            </a>
-        </div>
-    </div>
-
+    </section>
 </div>
 {% endblock %}
 

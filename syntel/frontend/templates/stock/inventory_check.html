@@ -5,213 +5,112 @@
 
 {% block extra_css %}
 <style>
-    .ic-wrap { max-width: 1400px; margin: 0 auto; }
-    .ic-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-        border-radius: var(--radius-xl);
-    }
+    .ic-table tr.changed td { background: var(--ui-ok-bg, #ECFDF5); }
 
-    /* Summary Cards */
-    .summary-bar {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-    }
-    .sum-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-right: 4px solid var(--accent-indigo);
-        border-radius: var(--radius-xl);
-        padding: 1rem 1.25rem;
-        box-shadow: var(--shadow-xs);
-    }
-    .sum-card.green  { border-right-color: var(--accent-green); }
-    .sum-card.red    { border-right-color: #EF4444; }
-    .sum-card.orange { border-right-color: var(--accent-orange); }
-    .sum-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-    .sum-card.green .sum-value  { color: #059669; }
-    .sum-card.red .sum-value    { color: #DC2626; }
-    .sum-card.orange .sum-value { color: #EA580C; }
-    .sum-label { font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.2rem; font-weight: 600; }
+    .th-group        { background: var(--ui-info-bg, #EFF6FF) !important; color: var(--ui-info-dark, #1E40AF) !important; }
+    .th-group-green  { background: var(--ui-ok-bg, #ECFDF5) !important; color: var(--ui-ok, #047857) !important; }
+    .th-group-red    { background: var(--ui-danger-bg, #FEF2F2) !important; color: var(--ui-danger-dark, #B91C1C) !important; }
 
-    /* Submit bar */
-    .submit-bar {
-        background: var(--bg-card);
-        border: 1.5px solid #A7F3D0;
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-        padding: 0.9rem 1.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.25rem;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-    .submit-bar-info { font-size: 0.85rem; color: var(--text-secondary); }
-    .submit-bar-info strong { color: #059669; font-size: 1.1rem; }
-
-    /* Table */
-    .ic-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        margin-bottom: 1.5rem;
-    }
-    .ic-card-header {
-        padding: 0.9rem 1.25rem;
-        border-bottom: 1px solid var(--border-light);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: var(--bg-subtle);
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .ic-card-title { font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary); }
-    .ic-card-title i { color: var(--accent-indigo); }
-
-    .ic-table { width: 100%; border-collapse: collapse; }
-    .ic-table th {
-        padding: 0.65rem 0.85rem; text-align: right; font-size: 0.74rem; font-weight: 700;
-        color: var(--text-secondary); background: var(--bg-subtle); border-bottom: 1px solid var(--border-default); white-space: nowrap;
-    }
-    .ic-table td {
-        padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; font-size: 0.84rem;
-    }
-    .ic-table tr:last-child td { border-bottom: none; }
-    .ic-table tr:hover td { background: #F8FAFC; }
-    .ic-table tr.changed td { background: #ECFDF5; }
-
-    .th-group        { background: #EFF6FF !important; color: #1D4ED8 !important; }
-    .th-group-green  { background: #ECFDF5 !important; color: #047857 !important; }
-    .th-group-red    { background: #FEF2F2 !important; color: #B91C1C !important; }
-
-    .badge-purple { background: rgba(139,92,246,0.1); color: #6D28D9; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-    .badge-gray   { background: #F1F5F9; color: #64748B; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-    .badge-green  { background: #ECFDF5; color: #059669; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-
-    .num-cell    { text-align: center; font-weight: 700; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
-    .num-in      { color: #059669; }
-    .num-out     { color: #DC2626; }
-    .num-initial { color: var(--accent-indigo); }
-    .num-system  { color: #6D28D9; }
+    .num-cell    { text-align: center; font-weight: 700; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+    .num-in      { color: var(--ui-ok, #047857); }
+    .num-out     { color: var(--ui-danger, #DC2626); }
+    .num-initial { color: var(--primary-dark, #7C3AED); }
+    .num-system  { color: var(--primary-dark, #7C3AED); }
 
     .qty-input {
-        padding: 0.4rem 0.65rem; border: 1.5px solid var(--border-default); border-radius: 8px;
-        font-family: 'Vazir', sans-serif; font-size: 0.86rem; font-weight: 700; width: 105px;
-        text-align: center; background: #fff; font-variant-numeric: tabular-nums;
+        height: 36px; padding: 0 0.65rem; border: 1px solid var(--border-default, #E2E8F0); border-radius: 9px;
+        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 700; width: 108px;
+        text-align: center; background: var(--bg-card, #FFFFFF); font-variant-numeric: tabular-nums;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
-    .qty-input:focus { outline: none; border-color: var(--accent-indigo); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-    .qty-input.filled { border-color: #059669; background: #ECFDF5; }
-    .qty-input.diff-positive { border-color: #059669; }
-    .qty-input.diff-negative { border-color: #DC2626; }
+    .qty-input:focus { outline: none; border-color: var(--primary, #8B5CF6); box-shadow: 0 0 0 3px rgba(139,92,246,0.14); }
+    .qty-input.filled { border-color: var(--ui-ok, #047857); background: var(--ui-ok-bg, #ECFDF5); }
+    .qty-input.diff-positive { border-color: var(--ui-ok, #047857); }
+    .qty-input.diff-negative { border-color: var(--ui-danger, #DC2626); }
 
-    .diff-badge { font-size: 0.74rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap; }
-    .diff-pos  { background: #D1FAE5; color: #065F46; }
-    .diff-neg  { background: #FEE2E2; color: #991B1B; }
-    .diff-zero { background: #F1F5F9; color: #64748B; }
+    .diff-badge { font-size: 0.73rem; font-weight: 700; padding: 0.16rem 0.58rem; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .diff-pos  { background: var(--ui-ok-bg, #ECFDF5); color: var(--ui-ok, #047857); border: 1px solid var(--ui-ok-border, #D1FAE5); }
+    .diff-neg  { background: var(--ui-danger-bg, #FEF2F2); color: var(--ui-danger-dark, #B91C1C); border: 1px solid var(--ui-danger-border, #FECACA); }
+    .diff-zero { background: var(--gray-100, #F1F5F9); color: var(--text-secondary, #64748B); }
 
-    .history-btn {
-        background: #EEF2FF; border: 1px solid #E0E7FF; cursor: pointer; color: #4F46E5;
-        font-size: 0.76rem; padding: 0.28rem 0.65rem; border-radius: 8px; font-family: 'Vazir', sans-serif;
-        display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 700;
-    }
-    .history-btn:hover { background: #E0E7FF; }
-
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
-    .modal-overlay.open { display: flex; }
-    .modal-box { background: #fff; border-radius: var(--radius-xl); width: 100%; max-width: 800px; box-shadow: var(--shadow-xl); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
-    .modal-header { padding: 1rem 1.35rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
-    .modal-header h3 { font-size: 1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
-    .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
-    .modal-body { padding: 1.25rem 1.35rem; overflow-y: auto; flex: 1; }
-    .history-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .history-table th { padding: 0.6rem 0.75rem; text-align: right; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); background: var(--bg-subtle); border-bottom: 1px solid var(--border-default); }
-    .history-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
-    .in-tag  { color: #059669; font-weight: 700; }
-    .out-tag { color: #DC2626; font-weight: 700; }
-    .adj-tag { color: #BE185D; font-weight: 700; }
-    .modal-meta { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .meta-chip { background: var(--bg-subtle); padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border-light); }
-    .v-mini-link { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: var(--bg-subtle); color: var(--text-secondary); border: 1px solid var(--border-light); font-size: 0.72rem; font-weight: 700; text-decoration: none; }
-    .spinner { display: none; text-align: center; padding: 2rem; color: var(--text-muted); }
+    .in-tag  { color: var(--ui-ok, #047857); font-weight: 700; }
+    .out-tag { color: var(--ui-danger, #DC2626); font-weight: 700; }
+    .adj-tag { color: var(--primary-dark, #7C3AED); font-weight: 700; }
+    .modal-meta { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .meta-chip { background: var(--gray-100, #F1F5F9); padding: 0.32rem 0.78rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border-default, #E2E8F0); }
+    .v-mini-link { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.16rem 0.6rem; border-radius: 999px; background: var(--gray-100, #F1F5F9); color: var(--text-secondary, #64748B); border: 1px solid var(--border-default, #E2E8F0); font-size: 0.72rem; font-weight: 700; text-decoration: none; }
+    .spinner { display: none; text-align: center; padding: 2rem; color: var(--text-muted, #94A3B8); }
     .spinner.show { display: block; }
-    .toast-container { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
-    .toast { background: #fff; border-radius: 10px; box-shadow: var(--shadow-xl); padding: 0.8rem 1.15rem; display: flex; align-items: center; gap: 0.65rem; font-size: 0.85rem; font-weight: 600; border-inline-start: 4px solid #10B981; }
-    .toast.error { border-inline-start-color: #EF4444; }
+    .toast-container { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 2200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast { background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0); border-radius: 12px; box-shadow: 0 12px 30px rgba(15,23,42,0.12); padding: 0.8rem 1.15rem; display: flex; align-items: center; gap: 0.65rem; font-size: 0.84rem; font-weight: 600; border-inline-start: 4px solid var(--ui-ok, #047857); }
+    .toast.error { border-inline-start-color: var(--ui-danger, #DC2626); }
 </style>
 {% endblock %}
 
 {% block content %}
 {% csrf_token %}
-<div class="ic-wrap">
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon orange"><i class="fas fa-clipboard-check"></i></div>
-            <div class="ph-title">
-                <h1>انبارگردانی — {{ warehouse.name }}</h1>
-                <div class="page-sub">کد انبار: <strong>{{ warehouse.code }}</strong> • موجودی فیزیکی هر کالا را وارد کرده و در پایان ثبت انبارگردانی را بزنید</div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">انبارگردانی — {{ warehouse.name }}</h1>
+            <div class="ui-subtitle">
+                <span>کد انبار: <strong class="ui-num">{{ warehouse.code }}</strong></span>
+                <span class="ui-subtitle-dot"></span>
+                <span>موجودی فیزیکی هر کالا را وارد کرده و در پایان ثبت انبارگردانی را بزنید</span>
             </div>
         </div>
-        <div class="header-actions">
-            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="btn btn-secondary">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'warehouse_management' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i> مدیریت انبارها
             </a>
         </div>
-    </div>
+    </header>
 
     {% if items_data %}
-    <div class="summary-bar">
-        <div class="sum-card">
-            <div class="sum-value">{{ items_data|length }}</div>
-            <div class="sum-label">تعداد کل اقلام</div>
+    <section class="ui-metrics-strip" aria-label="خلاصه انبارگردانی">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تعداد کل اقلام</span>
+            <div class="ui-metric-val is-accent">{{ items_data|length }}<span class="ui-metric-unit">قلم</span></div>
         </div>
-        <div class="sum-card green">
-            <div class="sum-value" id="statFilled">0</div>
-            <div class="sum-label">موجودی وارد‌شده</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">موجودی وارد‌شده</span>
+            <div class="ui-metric-val is-green"><span id="statFilled">0</span><span class="ui-metric-unit">قلم</span></div>
         </div>
-        <div class="sum-card red" id="lowStockCard">
-            <div class="sum-value">{% for d in items_data %}{% if d.system_qty <= d.stock_item.min_quantity and d.stock_item.min_quantity > 0 %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% endfor %}</div>
-            <div class="sum-label">زیر نقطه سفارش</div>
+        <div class="ui-metric-cell" id="lowStockCard">
+            <span class="ui-metric-label">زیر نقطه سفارش</span>
+            <div class="ui-metric-val is-danger">{% for d in items_data %}{% if d.system_qty <= d.stock_item.min_quantity and d.stock_item.min_quantity > 0 %}{% if forloop.first %}1{% else %}{{ forloop.counter }}{% endif %}{% endif %}{% endfor %}</div>
         </div>
-        <div class="sum-card orange">
-            <div class="sum-value" id="statChanged">0</div>
-            <div class="sum-label">دارای مغایرت موجودی</div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">دارای مغایرت موجودی</span>
+            <div class="ui-metric-val is-warn"><span id="statChanged">0</span><span class="ui-metric-unit">قلم</span></div>
         </div>
-    </div>
+    </section>
 
-    <div class="submit-bar">
-        <div class="submit-bar-info">
-            <strong id="filledCount">0</strong> کالا از {{ items_data|length }} کالا شمارش شده است —
-            پس از تکمیل شمارش فیزیکی دکمه ثبت را بزنید
+    <div class="ui-banner is-ok" style="align-items:center;justify-content:space-between;flex-wrap:wrap;">
+        <div style="font-size:0.84rem;">
+            <strong id="filledCount" class="ui-num" style="font-size:1.05rem;">0</strong> کالا از <span class="ui-num">{{ items_data|length }}</span> کالا شمارش شده است — پس از تکمیل شمارش فیزیکی دکمه ثبت را بزنید
         </div>
-        <button class="btn btn-success" onclick="submitInventory()" id="submitBtn">
+        <button type="button" class="ui-btn ui-btn-success" onclick="submitInventory()" id="submitBtn">
             <i class="fas fa-save"></i> ثبت نهایی انبارگردانی
         </button>
     </div>
 
-    <div class="ic-card">
-        <div class="ic-card-header">
-            <div class="ic-card-title">
+    <section class="ui-table-card">
+        <div class="ui-card-head">
+            <h2 class="ui-card-title">
                 <i class="fas fa-table"></i> لیست کالاهای انبار
-            </div>
-            <div style="display:flex;gap:0.5rem">
-                <button class="btn btn-secondary" style="height:34px;font-size:0.78rem" onclick="fillAllWithSystem()">
+            </h2>
+            <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+                <button type="button" class="ui-btn ui-btn-ghost is-sm" onclick="fillAllWithSystem()">
                     <i class="fas fa-copy"></i> کپی موجودی سیستم
                 </button>
-                <button class="btn btn-secondary" style="height:34px;font-size:0.78rem" onclick="clearAllInputs()">
+                <button type="button" class="ui-btn ui-btn-ghost is-sm" onclick="clearAllInputs()">
                     <i class="fas fa-eraser"></i> پاک کردن همه
                 </button>
             </div>
         </div>
-        <div style="overflow-x:auto">
-            <table class="ic-table">
+        <div class="ui-table-scroll">
+            <table class="ui-table ic-table">
                 <thead>
                     <tr>
                         <th rowspan="2">#</th>
@@ -222,7 +121,7 @@
                         <th colspan="2" class="th-group-red" style="text-align:center;">حواله خروج</th>
                         <th class="th-group" style="text-align:center;">موجودی اولیه</th>
                         <th class="th-group" style="text-align:center;">موجودی سیستم</th>
-                        <th rowspan="2" style="text-align:center;min-width:140px">موجودی فیزیکی <span style="color:#EF4444">*</span></th>
+                        <th rowspan="2" style="text-align:center;min-width:140px">موجودی فیزیکی <span style="color:var(--ui-danger)">*</span></th>
                         <th rowspan="2" style="text-align:center">مغایرت</th>
                         <th rowspan="2" style="text-align:center">سوابق</th>
                     </tr>
@@ -238,17 +137,17 @@
                 <tbody>
                     {% for d in items_data %}
                     <tr id="tr-{{ d.stock_item.id }}" data-system="{{ d.system_qty }}">
-                        <td style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
+                        <td class="ui-num" style="color:var(--text-muted);font-size:0.78rem">{{ forloop.counter }}</td>
                         <td><span style="font-weight:700;color:var(--text-primary)">{{ d.stock_item.product.name }}</span></td>
                         <td>
                             {% if d.stock_item.product.category %}
-                            <span class="badge-purple">{{ d.stock_item.product.category.name }}</span>
-                            {% else %}<span class="badge-gray">—</span>{% endif %}
+                            <span class="ui-pill is-accent">{{ d.stock_item.product.category.name }}</span>
+                            {% else %}<span class="ui-pill is-muted">—</span>{% endif %}
                         </td>
                         <td>
                             {% if d.stock_item.unit %}
-                            <span class="badge-green">{{ d.stock_item.unit.name }}</span>
-                            {% else %}<span class="badge-gray">—</span>{% endif %}
+                            <span class="ui-pill is-ok">{{ d.stock_item.unit.name }}</span>
+                            {% else %}<span class="ui-pill is-muted">—</span>{% endif %}
                         </td>
                         <td class="num-cell num-in">{{ d.in_count|qty_comma }}</td>
                         <td class="num-cell num-in">{{ d.in_total|qty_comma }}</td>
@@ -271,7 +170,7 @@
                             <span class="diff-badge diff-zero">—</span>
                         </td>
                         <td style="text-align:center">
-                            <button class="history-btn"
+                            <button type="button" class="ui-row-action"
                                     onclick="openHistory({{ d.stock_item.id }}, '{{ d.stock_item.product.name|escapejs }}')"
                                     title="مشاهده سوابق">
                                 <i class="fas fa-history"></i> سوابق
@@ -282,14 +181,14 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
     {% else %}
-    <div class="table-card">
-        <div class="empty-state">
+    <div class="ui-card">
+        <div class="ui-empty">
             <i class="fas fa-clipboard-check"></i>
-            <h3>هیچ کالایی در این انبار تعریف نشده</h3>
-            <p>ابتدا با ثبت یک حواله ورود، کالا را به این انبار وارد کنید</p>
-            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="btn btn-primary" style="margin-top:12px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:0.35rem;">هیچ کالایی در این انبار تعریف نشده</div>
+            <p style="margin:0 0 1rem;">ابتدا با ثبت یک حواله ورود، کالا را به این انبار وارد کنید</p>
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type='receipt' %}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i> ثبت حواله ورود
             </a>
         </div>
@@ -297,16 +196,16 @@
     {% endif %}
 </div>
 
-<div class="modal-overlay" id="historyModal">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3 id="historyTitle"><i class="fas fa-history" style="color:var(--accent-indigo)"></i> سوابق کالا</h3>
-            <button class="modal-close" onclick="closeHistory()"><i class="fas fa-times"></i></button>
+<div class="ui-modal-backdrop" id="historyModal">
+    <div class="ui-modal is-medium">
+        <div class="ui-modal-head">
+            <h3 class="ui-modal-title" id="historyTitle"><i class="fas fa-history" style="color:var(--primary)"></i> سوابق کالا</h3>
+            <button type="button" class="ui-modal-close" onclick="closeHistory()" aria-label="بستن"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body">
+        <div class="ui-modal-body">
             <div class="modal-meta" id="historyMeta"></div>
             <div class="spinner" id="historySpinner"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
-            <div id="movTableWrap"></div>
+            <div class="ui-table-scroll" id="movTableWrap"></div>
         </div>
     </div>
 </div>
@@ -491,7 +390,7 @@ function buildMovementsTable(movements) {
     }).join('');
 
     return `
-    <table class="history-table">
+    <table class="ui-table history-table">
         <thead><tr>
             <th>تاریخ</th>
             <th>نوع حرکت</th>
@@ -508,6 +407,20 @@ function buildMovementsTable(movements) {
 function closeHistory() { document.getElementById('historyModal').classList.remove('open'); }
 document.getElementById('historyModal').addEventListener('click', function(e) {
     if (e.target === this) closeHistory();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeHistory();
+});
+document.querySelectorAll('.qty-input').forEach((inp, idx, all) => {
+    inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (all[idx + 1]) { all[idx + 1].focus(); all[idx + 1].select(); }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (all[idx - 1]) { all[idx - 1].focus(); all[idx - 1].select(); }
+        }
+    });
 });
 
 function showToast(msg, isError = false) {

@@ -1,714 +1,253 @@
 ﻿{% extends 'base.html' %}
-{% load static %}
-{% load custom_filters %}
-{% load humanize %}
+{% load static custom_filters humanize %}
 
-{% block title %}{% if selected_supplier %}فاکتورهای {{ selected_supplier.name }}{% else %}انتخاب تأمین‌کننده{% endif %}{% endblock %}
+{% block title %}{% if selected_supplier %}فاکتورهای {{ selected_supplier.name }}{% else %}انتخاب تأمین‌کننده{% endif %} - Kuker{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
 <style>
-    :root {
-        --primary-color: #4f46e5;
-        --primary-hover: #4338ca;
-        --bg-color: #f9fafb;
-        --card-bg: #ffffff;
-        --text-main: #111827;
-        --text-muted: #6b7280;
-        --border-color: #e5e7eb;
-        --success-bg: #dcfce7;
-        --success-text: #166534;
-        --warning-bg: #fef3c7;
-        --warning-text: #92400e;
-        --danger-bg: #fee2e2;
-        --danger-text: #991b1b;
-    }
-
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        font-family: 'Vazir', system-ui, -apple-system, sans-serif;
-    }
-
-    .page-header-custom {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding-top: 1rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    .page-title-wrapper h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-main);
-        margin-bottom: 0.25rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .page-subtitle {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        margin: 0;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .action-btn {
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        border: 1px solid transparent;
-        cursor: pointer;
-    }
-
-    .btn-primary-custom {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-primary-custom:hover {
-        background-color: var(--primary-hover);
-        transform: translateY(-1px);
-    }
-
-    .btn-success-custom {
-        background-color: #10b981;
-        color: white;
-    }
-
-    .btn-success-custom:hover {
-        background-color: #059669;
-        transform: translateY(-1px);
-    }
-
-    .btn-outline-custom {
-        background-color: white;
-        border-color: var(--border-color);
-        color: var(--text-main);
-    }
-
-    .btn-outline-custom:hover {
-        background-color: #f3f4f6;
-    }
-
-    /* Supplier Selection Grid */
-    .supplier-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1.5rem;
-        padding: 1rem 0;
-    }
-
-    .supplier-card {
-        background: white;
-        border: 2px solid var(--border-color);
-        border-radius: 12px;
-        padding: 2rem 1rem;
-        text-align: center;
-        transition: all 0.2s;
-        cursor: pointer;
-        text-decoration: none;
-        color: var(--text-main);
-    }
-
-    .supplier-card:hover {
-        border-color: var(--primary-color);
-        transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    .supplier-card .icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .supplier-card .name {
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    /* Stats Card */
-    .stats-card {
-        background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        color: white;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-    }
-
-    .stats-left {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .stats-icon {
-        font-size: 3rem;
-        opacity: 0.9;
-    }
-
-    .stats-info h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    .stats-info p {
-        margin: 0.25rem 0 0 0;
-        opacity: 0.9;
-        font-size: 0.9rem;
-    }
-
-    .stats-right {
-        display: flex;
-        gap: 2rem;
-    }
-
-    .stat-box {
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        display: block;
-    }
-
-    .stat-label {
-        font-size: 0.85rem;
-        opacity: 0.9;
-        margin-top: 0.25rem;
-    }
-
-    /* Filters */
-    .filters-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--border-color);
-    }
-
-    .filters-form {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        align-items: end;
-    }
-
-    .filter-group {
-        display: flex;
+.supplier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 1rem;
+}
+.sup-pick-card {
+    background: var(--bg-card, #FFFFFF);
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 16px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-primary, #0F172A);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+}
+.sup-pick-card:hover {
+    border-color: var(--primary, #8B5CF6);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+.sup-pick-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(139, 92, 246, 0.08);
+    color: var(--primary-dark, #7C3AED);
+    border: 1px solid rgba(139, 92, 246, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+.sup-pick-name {
+    font-weight: 800;
+    font-size: 0.94rem;
+}
+.filters-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+    padding: 0.9rem 1.1rem;
+}
+#paymentModal.active {
+    display: flex;
+}
+#paymentForm input[name="amount"].js-comma {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 38px;
+    padding: 0 0.85rem;
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 10px;
+    background: var(--bg-card, #FFFFFF);
+    color: var(--text-primary, #0F172A);
+    font-family: 'Vazir', sans-serif;
+    font-size: 0.83rem;
+}
+#paymentForm input[name="amount"].js-comma:focus {
+    outline: none;
+    border-color: var(--primary, #8B5CF6);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+.payment-mode-selector {
+    display: flex;
+    gap: 0.75rem;
+}
+.mode-option {
+    flex: 1;
+    padding: 0.85rem;
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: center;
+    background: var(--gray-50, #F8FAFC);
+    transition: all 0.15s ease;
+}
+.mode-option:hover {
+    border-color: var(--primary, #8B5CF6);
+}
+.mode-option.active {
+    border-color: var(--primary, #8B5CF6);
+    background: rgba(139, 92, 246, 0.08);
+}
+.mode-option input[type="radio"] {
+    display: none;
+}
+.mode-title {
+    font-weight: 800;
+    font-size: 0.86rem;
+    color: var(--text-primary, #0F172A);
+    margin-bottom: 0.15rem;
+}
+.mode-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94A3B8);
+}
+.invoice-selection {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border-default, #E2E8F0);
+    border-radius: 10px;
+    padding: 0.35rem 0.6rem;
+}
+.invoice-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.4rem;
+    border-bottom: 1px solid var(--border-light, #F1F5F9);
+    cursor: pointer;
+}
+.invoice-checkbox:last-child {
+    border-bottom: none;
+}
+.invoice-checkbox input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary, #8B5CF6);
+    margin: 0;
+}
+.invoice-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+}
+@media (max-width: 640px) {
+    .payment-mode-selector {
         flex-direction: column;
     }
-
-    .filter-group label {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-    }
-
-    .filter-group input,
-    .filter-group select {
-        padding: 0.6rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 0.9rem;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .filter-btn {
-        padding: 0.6rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        cursor: pointer;
-        border: none;
-        transition: all 0.2s;
-    }
-
-    .filter-btn-primary {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .filter-btn-primary:hover {
-        background-color: var(--primary-hover);
-    }
-
-    .filter-btn-secondary {
-        background-color: #f3f4f6;
-        color: var(--text-main);
-    }
-
-    /* Table */
-    .table-container {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid var(--border-color);
-    }
-
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .data-table thead {
-        background-color: #f8fafc;
-    }
-
-    .data-table th {
-        padding: 1rem;
-        text-align: right;
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .data-table td {
-        padding: 1rem;
-        border-bottom: 1px solid #f3f4f6;
-        color: var(--text-main);
-    }
-
-    .data-table tbody tr {
-        transition: background-color 0.15s;
-    }
-
-    .data-table tbody tr:hover {
-        background-color: #f9fafb;
-    }
-
-    .invoice-number-link {
-        font-weight: 600;
-        color: var(--primary-color);
-        text-decoration: none;
-    }
-
-    .invoice-number-link:hover {
-        text-decoration: underline;
-    }
-
-    .amount {
-        font-weight: 600;
-        color: #059669;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 0.35rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-
-    .status-draft {
-        background-color: #f3f4f6;
-        color: #4b5563;
-    }
-
-    .status-sent {
-        background-color: #dbeafe;
-        color: #1e40af;
-    }
-
-    .status-approved {
-        background-color: var(--success-bg);
-        color: var(--success-text);
-    }
-
-    .status-rejected {
-        background-color: var(--danger-bg);
-        color: var(--danger-text);
-    }
-
-    .status-paid {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-
-    .status-partial {
-        background-color: var(--warning-bg);
-        color: var(--warning-text);
-    }
-
-    .status-unpaid {
-        background-color: var(--danger-bg);
-        color: var(--danger-text);
-    }
-
-    .empty-state {
-        padding: 4rem 2rem;
-        text-align: center;
-        color: var(--text-muted);
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        opacity: 0.3;
-        margin-bottom: 1rem;
-    }
-
-    .empty-state h3 {
-        font-size: 1.25rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-main);
-    }
-
-    /* Payment Modal */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.5);
-        animation: fadeIn 0.3s;
-    }
-
-    .modal.active {
-        display: block;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    .modal-content {
-        background-color: white;
-        margin: 3% auto;
-        padding: 0;
-        border-radius: 12px;
-        width: 90%;
-        max-width: 800px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: slideIn 0.3s;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateY(-50px);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-
-    .modal-header {
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        border-radius: 12px 12px 0 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 700;
-    }
-
-    .close-modal {
-        color: white;
-        font-size: 1.5rem;
-        font-weight: bold;
-        cursor: pointer;
-        border: none;
-        background: none;
-        opacity: 0.8;
-        transition: opacity 0.2s;
-    }
-
-    .close-modal:hover {
-        opacity: 1;
-    }
-
-    .modal-body {
-        padding: 2rem;
-    }
-
-    .payment-mode-selector {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .mode-option {
-        flex: 1;
-        padding: 1rem;
-        border: 2px solid var(--border-color);
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-    }
-
-    .mode-option:hover {
-        border-color: var(--primary-color);
-        background-color: #f9fafb;
-    }
-
-    .mode-option.active {
-        border-color: var(--primary-color);
-        background-color: #eff6ff;
-    }
-
-    .mode-option input[type="radio"] {
-        display: none;
-    }
-
-    .mode-title {
-        font-weight: 600;
-        color: var(--text-main);
-        margin-bottom: 0.25rem;
-    }
-
-    .mode-desc {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-group label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        color: var(--text-main);
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 0.9rem;
-    }
-
-    .form-group textarea {
-        resize: vertical;
-        min-height: 80px;
-    }
-
-    .invoice-selection {
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-    }
-
-    .invoice-checkbox {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem;
-        border-bottom: 1px solid #f3f4f6;
-        cursor: pointer;
-        transition: background-color 0.15s;
-    }
-
-    .invoice-checkbox:hover {
-        background-color: #f9fafb;
-    }
-
-    .invoice-checkbox:last-child {
-        border-bottom: none;
-    }
-
-    .invoice-checkbox input {
-        margin-left: 1rem;
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-
-    .invoice-info {
-        flex: 1;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .invoice-number-text {
-        font-weight: 600;
-        color: var(--text-main);
-    }
-
-    .invoice-amount-text {
-        color: #059669;
-        font-weight: 600;
-    }
-
-    .modal-footer {
-        padding: 1.5rem;
-        border-top: 1px solid var(--border-color);
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    @media (max-width: 768px) {
-        .table-container {
-            overflow-x: auto;
-        }
-
-        .data-table {
-            min-width: 800px;
-        }
-
-        .stats-card {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .stats-right {
-            justify-content: center;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 5% auto;
-        }
-
-        .payment-mode-selector {
-            flex-direction: column;
-        }
-    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="ui-page">
 {% if not selected_supplier %}
-    <!-- Supplier Selection Page -->
-    <div class="page-header-custom">
-        <div class="page-title-wrapper">
-            <h1><i class="fas fa-truck"></i> انتخاب تأمین‌کننده</h1>
-            <p class="page-subtitle">یک تأمین‌کننده را برای مشاهده فاکتورها انتخاب کنید</p>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-truck" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                انتخاب تأمین‌کننده
+            </h1>
+            <p class="ui-subtitle">یک تأمین‌کننده را برای مشاهده فاکتورها و ثبت پرداخت انتخاب کنید</p>
         </div>
-        <div class="action-buttons">
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="action-btn btn-primary-custom">
+        <div class="ui-topbar-actions">
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i>
-                تأمین‌کننده جدید
+                <span>تأمین‌کننده جدید</span>
             </a>
         </div>
-    </div>
+    </header>
 
+    {% if suppliers %}
     <div class="supplier-grid">
         {% for supplier in suppliers %}
-        <a href="?supplier_id={{ supplier.id }}" class="supplier-card">
-            <div class="icon">🏢</div>
-            <div class="name">{{ supplier.name }}</div>
+        <a href="?supplier_id={{ supplier.id }}" class="sup-pick-card">
+            <div class="sup-pick-icon"><i class="fas fa-building"></i></div>
+            <div class="sup-pick-name">{{ supplier.name }}</div>
         </a>
-        {% empty %}
-        <div class="empty-state" style="grid-column: 1 / -1;">
-            <i class="fas fa-inbox"></i>
-            <h3>تأمین‌کننده‌ای یافت نشد</h3>
-            <p>هیچ تأمین‌کننده فعالی در سیستم وجود ندارد</p>
-            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="action-btn btn-primary-custom">
-                <i class="fas fa-plus"></i>
-                ایجاد تأمین‌کننده جدید
-            </a>
-        </div>
         {% endfor %}
     </div>
+    {% else %}
+    <section class="ui-table-card">
+        <div class="ui-empty">
+            <i class="fas fa-inbox"></i>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">تأمین‌کننده‌ای یافت نشد</div>
+            <p style="margin:0 0 1rem;">هیچ تأمین‌کننده فعالی در سیستم وجود ندارد</p>
+            <a href="{% url 'supplier_create' cafe_code=cafe_code %}" class="ui-btn ui-btn-primary">
+                <i class="fas fa-plus"></i>
+                <span>ایجاد تأمین‌کننده جدید</span>
+            </a>
+        </div>
+    </section>
+    {% endif %}
 
 {% else %}
-    <!-- Invoice List Page -->
-    <div class="page-header-custom">
-        <div class="page-title-wrapper">
-            <h1><i class="fas fa-file-invoice-dollar"></i> فاکتورهای {{ selected_supplier.name }}</h1>
-            <p class="page-subtitle">مشاهده و مدیریت فاکتورهای تأمین‌کننده</p>
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice-dollar" style="color:var(--primary,#8B5CF6);font-size:1.1rem;"></i>
+                فاکتورهای {{ selected_supplier.name }}
+            </h1>
+            <p class="ui-subtitle">
+                <span>مشاهده و مدیریت فاکتورها و پرداخت‌های تأمین‌کننده</span>
+                <span class="ui-subtitle-dot"></span>
+                <span class="ui-pill is-accent">{{ selected_supplier.get_status_display }}</span>
+            </p>
         </div>
-        <div class="action-buttons">
-            <button onclick="openPaymentModal()" class="action-btn btn-success-custom">
+        <div class="ui-topbar-actions">
+            <button type="button" onclick="openPaymentModal()" class="ui-btn ui-btn-success">
                 <i class="fas fa-money-bill-wave"></i>
-                ثبت پرداخت
+                <span>ثبت پرداخت</span>
             </button>
-            <a href="{% url 'invoice_register' cafe_code=cafe_code %}?supplier_id={{ selected_supplier.id }}" class="action-btn btn-primary-custom">
+            <a href="{% url 'invoice_register' cafe_code=cafe_code %}?supplier_id={{ selected_supplier.id }}" class="ui-btn ui-btn-primary">
                 <i class="fas fa-plus"></i>
-                فاکتور جدید
+                <span>فاکتور جدید</span>
             </a>
-            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="action-btn btn-outline-custom">
+            <a href="{% url 'supplier_select' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
                 <i class="fas fa-arrow-right"></i>
-                تغییر تأمین‌کننده
+                <span>تغییر تأمین‌کننده</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- Stats Card -->
-    <div class="stats-card">
-        <div class="stats-left">
-            <div class="stats-icon">🏢</div>
-            <div class="stats-info">
-                <h2>{{ selected_supplier.name }}</h2>
-                <p>{{ selected_supplier.get_status_display }}</p>
-            </div>
+    <section class="ui-metrics-strip cols-3" aria-label="خلاصه مالی تأمین‌کننده">
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تأمین‌کننده</span>
+            <div class="ui-metric-val" style="font-size:1.1rem;">{{ selected_supplier.name }}</div>
+            <span class="ui-metric-hint">{{ selected_supplier.get_status_display }}</span>
         </div>
-        <div class="stats-right">
-            <div class="stat-box">
-                <span class="stat-value">{{ invoices|length }}</span>
-                <div class="stat-label">تعداد فاکتورها</div>
-            </div>
-            <div class="stat-box">
-                <span class="stat-value">{{ total_owed|floatformat:0|intcomma }}</span>
-                <div class="stat-label">مجموع بدهی (ریال)</div>
-            </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">تعداد فاکتورها</span>
+            <div class="ui-metric-val is-accent ui-num">{{ invoices|length|number_format }}<span class="ui-metric-unit">فقره</span></div>
+            <span class="ui-metric-hint">بر اساس فیلترهای فعلی</span>
         </div>
-    </div>
+        <div class="ui-metric-cell">
+            <span class="ui-metric-label">مجموع بدهی</span>
+            <div class="ui-metric-val {% if total_owed > 0 %}is-danger{% else %}is-green{% endif %} ui-num">{{ total_owed|floatformat:0|intcomma }}<span class="ui-metric-unit">ریال</span></div>
+            <span class="ui-metric-hint">مانده قابل پرداخت</span>
+        </div>
+    </section>
 
-    <!-- Filters -->
-    <div class="filters-card">
-        <form method="get" class="filters-form">
-            <input type="hidden" name="supplier_id" value="{{ selected_supplier.id }}">
-            
-            <div class="filter-group">
-                <label>جستجو</label>
-                <input type="text" name="search" placeholder="شماره فاکتور، مبلغ..." value="{{ request.GET.search }}">
+    <form method="get" class="ui-controls-card">
+        <input type="hidden" name="supplier_id" value="{{ selected_supplier.id }}">
+        <div class="filters-form-grid">
+            <div class="ui-field">
+                <label class="ui-field-label">جستجو</label>
+                <input type="text" name="search" class="ui-input" placeholder="شماره فاکتور، مبلغ..." value="{{ request.GET.search }}">
             </div>
 
-            <div class="filter-group">
-                <label>وضعیت پرداخت</label>
-                <select name="payment_status">
+            <div class="ui-field">
+                <label class="ui-field-label">وضعیت پرداخت</label>
+                <select name="payment_status" class="ui-select">
                     <option value="">همه</option>
                     <option value="paid" {% if request.GET.payment_status == 'paid' %}selected{% endif %}>پرداخت شده</option>
                     <option value="partial" {% if request.GET.payment_status == 'partial' %}selected{% endif %}>پرداخت جزئی</option>
@@ -716,9 +255,9 @@
                 </select>
             </div>
 
-            <div class="filter-group">
-                <label>ایرادات</label>
-                <select name="issue">
+            <div class="ui-field">
+                <label class="ui-field-label">ایرادات</label>
+                <select name="issue" class="ui-select">
                     <option value="">همه</option>
                     {% for issue in issues %}
                     <option value="{{ issue.id }}" {% if request.GET.issue == issue.id|stringformat:"s" %}selected{% endif %}>{{ issue.name }}</option>
@@ -726,99 +265,104 @@
                 </select>
             </div>
 
-            <div class="filter-group">
-                <label>از تاریخ</label>
-                <input type="date" name="date_from" value="{{ request.GET.date_from }}">
+            <div class="ui-field">
+                <label class="ui-field-label">از تاریخ</label>
+                <input type="date" name="date_from" class="ui-input" value="{{ request.GET.date_from }}">
             </div>
 
-            <div class="filter-group">
-                <label>تا تاریخ</label>
-                <input type="date" name="date_to" value="{{ request.GET.date_to }}">
+            <div class="ui-field">
+                <label class="ui-field-label">تا تاریخ</label>
+                <input type="date" name="date_to" class="ui-input" value="{{ request.GET.date_to }}">
             </div>
 
-            <div class="filter-actions">
-                <button type="submit" class="filter-btn filter-btn-primary">
-                    <i class="fas fa-search"></i> جستجو
+            <div style="display:flex;gap:0.45rem;align-items:center;">
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-search"></i>
+                    <span>جستجو</span>
                 </button>
-                <a href="?supplier_id={{ selected_supplier.id }}" class="filter-btn filter-btn-secondary">
-                    <i class="fas fa-times"></i> پاک کردن
+                <a href="?supplier_id={{ selected_supplier.id }}" class="ui-btn ui-btn-ghost">
+                    <i class="fas fa-times"></i>
+                    <span>پاک کردن</span>
                 </a>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 
-    <!-- Invoices Table -->
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>شماره فاکتور</th>
-                    <th>تاریخ فاکتور</th>
-                    <th>مبلغ کل</th>
-                    <th>مبلغ پرداختی</th>
-                    <th>مانده</th>
-                    <th>وضعیت پرداخت</th>
-                    <th>عملیات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in invoices %}
-                <tr>
-                    <td>
-                        <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="invoice-number-link">
-                            {{ invoice.invoice_number|default:"بدون شماره" }}
-                        </a>
-                    </td>
-                    <td>{{ invoice.invoice_date|date:"Y/m/d"|default:"-" }}</td>
-                    <td class="amount">{{ invoice.total_amount|floatformat:0|intcomma }} ریال</td>
-                    <td class="amount">{{ invoice.paid_amount|floatformat:0|intcomma }} ریال</td>
-                    <td class="amount">{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</td>
-                    <td>
-                        <span class="status-badge status-{{ invoice.payment_status }}">
-                            {% if invoice.payment_status == 'paid' %}پرداخت شده
-                            {% elif invoice.payment_status == 'partial' %}پرداخت جزئی
-                            {% else %}پرداخت نشده{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="filter-actions">
-                            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="filter-btn filter-btn-secondary" title="مشاهده">
-                                👁️
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="data-table ui-table">
+                <thead>
+                    <tr>
+                        <th>شماره فاکتور</th>
+                        <th>تاریخ فاکتور</th>
+                        <th>مبلغ کل</th>
+                        <th>مبلغ پرداختی</th>
+                        <th>مانده</th>
+                        <th>وضعیت پرداخت</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}"
+                               class="ui-num" style="font-weight:700;color:var(--primary-dark);text-decoration:none;">
+                                {{ invoice.invoice_number|default:"بدون شماره" }}
                             </a>
-                            <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="filter-btn filter-btn-secondary" title="ویرایش">
-                                ✏️
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7">
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <h3>فاکتوری یافت نشد</h3>
-                            <p>هیچ فاکتوری برای این تأمین‌کننده با فیلترهای انتخابی وجود ندارد</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                        </td>
+                        <td class="ui-num">{{ invoice.invoice_date|date:"Y/m/d"|default:"-" }}</td>
+                        <td class="ui-money">{{ invoice.total_amount|floatformat:0|intcomma }} ریال</td>
+                        <td class="ui-money">{{ invoice.paid_amount|floatformat:0|intcomma }} ریال</td>
+                        <td class="ui-money">{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</td>
+                        <td>
+                            <span class="ui-pill {% if invoice.payment_status == 'paid' %}is-ok{% elif invoice.payment_status == 'partial' %}is-warn{% else %}is-danger{% endif %}">
+                                {% if invoice.payment_status == 'paid' %}پرداخت شده
+                                {% elif invoice.payment_status == 'partial' %}پرداخت جزئی
+                                {% else %}پرداخت نشده{% endif %}
+                            </span>
+                        </td>
+                        <td style="text-align:left;">
+                            <div style="display:inline-flex;gap:0.3rem;">
+                                <a href="{% url 'invoice_detail' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-row-action" title="مشاهده">
+                                    <i class="fas fa-eye"></i> مشاهده
+                                </a>
+                                <a href="{% url 'invoice_update' cafe_code=cafe_code invoice_id=invoice.id %}" class="ui-row-action" title="ویرایش">
+                                    <i class="fas fa-pen"></i> ویرایش
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="ui-empty">
+                                <i class="fas fa-inbox"></i>
+                                <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">فاکتوری یافت نشد</div>
+                                <p style="margin:0;">هیچ فاکتوری برای این تأمین‌کننده با فیلترهای انتخابی وجود ندارد</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-    <!-- Payment Modal -->
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-money-bill-wave"></i> ثبت پرداخت برای {{ selected_supplier.name }}</h2>
-                <button class="close-modal" onclick="closePaymentModal()">&times;</button>
+    <div id="paymentModal" class="ui-modal-backdrop modal">
+        <div class="ui-modal is-medium">
+            <div class="ui-modal-head">
+                <h2 class="ui-modal-title">
+                    <i class="fas fa-money-bill-wave" style="color:var(--ui-ok);margin-left:0.4rem;"></i>
+                    ثبت پرداخت برای {{ selected_supplier.name }}
+                </h2>
+                <button type="button" class="ui-modal-close" onclick="closePaymentModal()" aria-label="بستن">&times;</button>
             </div>
             <form method="post" id="paymentForm">
                 {% csrf_token %}
                 <input type="hidden" name="supplier_id" value="{{ selected_supplier.id }}">
-                
-                <div class="modal-body">
-                    <!-- Payment Mode Selection -->
+
+                <div class="ui-modal-body">
                     <div class="payment-mode-selector">
                         <label class="mode-option active" onclick="setPaymentMode('auto')">
                             <input type="radio" name="payment_mode" value="auto" checked>
@@ -832,44 +376,44 @@
                         </label>
                     </div>
 
-                    <!-- Payment Details -->
-                    <div class="form-group">
-                        <label>مبلغ پرداخت (ریال) *</label>
-                        <input type="text" name="amount" class="js-comma" inputmode="numeric" required placeholder="مبلغ را وارد کنید">
+                    <div class="ui-form-grid cols-2">
+                        <div class="ui-field">
+                            <label class="ui-field-label">مبلغ پرداخت (ریال) <span style="color:var(--ui-danger);">*</span></label>
+                            <input type="text" name="amount" class="js-comma" inputmode="numeric" required placeholder="مبلغ را وارد کنید">
+                        </div>
+
+                        <div class="ui-field">
+                            <label class="ui-field-label">محل پرداخت <span style="color:var(--ui-danger);">*</span></label>
+                            <select name="payment_location" class="ui-select" required>
+                                <option value="">انتخاب کنید</option>
+                                {% for method in payment_methods %}
+                                <option value="{{ method.id }}">{{ method.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>محل پرداخت *</label>
-                        <select name="payment_location" required>
-                            <option value="">انتخاب کنید</option>
-                            {% for method in payment_methods %}
-                            <option value="{{ method.id }}">{{ method.name }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="ui-field">
+                        <label class="ui-field-label">شماره مرجع</label>
+                        <input type="text" name="reference_number" class="ui-input" placeholder="شماره پیگیری، چک، کارت و...">
                     </div>
 
-                    <div class="form-group">
-                        <label>شماره مرجع</label>
-                        <input type="text" name="reference_number" placeholder="شماره پیگیری، چک، کارت و...">
+                    <div class="ui-field">
+                        <label class="ui-field-label">توضیحات</label>
+                        <textarea name="notes" class="ui-textarea" placeholder="توضیحات اضافی..."></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label>توضیحات</label>
-                        <textarea name="notes" placeholder="توضیحات اضافی..."></textarea>
-                    </div>
-
-                    <!-- Manual Invoice Selection (hidden by default) -->
                     <div id="manualSelection" style="display: none;">
-                        <div class="form-group">
-                            <label>انتخاب فاکتورها</label>
+                        <div class="ui-field">
+                            <label class="ui-field-label">انتخاب فاکتورها</label>
                             <div class="invoice-selection">
                                 {% for invoice in invoices %}
                                 {% if invoice.remaining_amount > 0 %}
                                 <label class="invoice-checkbox">
                                     <input type="checkbox" name="selected_invoices" value="{{ invoice.id }}">
                                     <div class="invoice-info">
-                                        <span class="invoice-number-text">{{ invoice.invoice_number|default:"بدون شماره" }}</span>
-                                        <span class="invoice-amount-text">{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</span>
+                                        <span class="ui-num" style="font-weight:700;">{{ invoice.invoice_number|default:"بدون شماره" }}</span>
+                                        <span class="ui-money">{{ invoice.remaining_amount|floatformat:0|intcomma }} ریال</span>
                                     </div>
                                 </label>
                                 {% endif %}
@@ -879,11 +423,11 @@
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="action-btn btn-outline-custom" onclick="closePaymentModal()">
+                <div class="ui-modal-foot">
+                    <button type="button" class="ui-btn ui-btn-ghost" onclick="closePaymentModal()">
                         <i class="fas fa-times"></i> انصراف
                     </button>
-                    <button type="submit" class="action-btn btn-success-custom">
+                    <button type="submit" class="ui-btn ui-btn-success">
                         <i class="fas fa-check"></i> ثبت پرداخت
                     </button>
                 </div>
@@ -891,44 +435,43 @@
         </div>
     </div>
 {% endif %}
+</div>
 
 <script>
 function openPaymentModal() {
-    document.getElementById('paymentModal').classList.add('active');
+    const m = document.getElementById('paymentModal');
+    if (m) { m.classList.add('active', 'is-open'); }
 }
 
 function closePaymentModal() {
-    document.getElementById('paymentModal').classList.remove('active');
+    const m = document.getElementById('paymentModal');
+    if (m) { m.classList.remove('active', 'is-open'); }
 }
 
 function setPaymentMode(mode) {
-    // Update radio button
     document.querySelectorAll('input[name="payment_mode"]').forEach(radio => {
         radio.checked = (radio.value === mode);
     });
-    
-    // Update visual state
+
     document.querySelectorAll('.mode-option').forEach(option => {
         option.classList.remove('active');
     });
-    event.currentTarget.classList.add('active');
-    
-    // Show/hide manual selection
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
+
     const manualSelection = document.getElementById('manualSelection');
-    if (mode === 'manual') {
-        manualSelection.style.display = 'block';
-    } else {
-        manualSelection.style.display = 'none';
+    if (manualSelection) {
+        manualSelection.style.display = (mode === 'manual') ? 'block' : 'none';
     }
 }
 
-// Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('paymentModal');
     if (event.target === modal) {
         closePaymentModal();
     }
-}
+};
 
 document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
     const amtInput = this.querySelector('input[name="amount"]');
@@ -946,5 +489,3 @@ document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
 });
 </script>
 {% endblock %}
-
-

@@ -4,61 +4,70 @@
 {% block title %}سفارش‌های تکمیل‌شده برای ایجاد فاکتور{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">سفارش‌های تکمیل‌شده برای ایجاد فاکتور</h3>
-                    <div class="card-tools">
-                        <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-left"></i> بازگشت به لیست فاکتورها
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>شماره سفارش</th>
-                                    <th>تأمین‌کننده</th>
-                                    <th>تاریخ ایجاد</th>
-                                    <th>تاریخ تکمیل</th>
-                                    <th>مجموع</th>
-                                    <th>اقلام</th>
-                                    <th>عملیات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for order in orders %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'purchase_order_detail' cafe_code=cafe_code order_id=order.id %}">{{ order.order_number }}</a>
-                                    </td>
-                                    <td>{{ order.supplier_name }}</td>
-                                    <td>{{ order.created_at|date:"Y/m/d" }}</td>
-                                    <td>{{ order.completed_at|date:"Y/m/d" }}</td>
-                                    <td>{{ order.total_amount|floatformat:0 }} ریال</td>
-                                    <td>{{ order.order_items.count }} قلم</td>
-                                    <td>
-                                        <a href="{% url 'invoice_create' cafe_code=cafe_code order_id=order.id %}" class="btn btn-success btn-sm">
-                                            <i class="fas fa-plus"></i> ایجاد فاکتور
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center">هیچ سفارش تکمیل‌شده‌ای برای ایجاد فاکتور یافت نشد</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+<div class="ui-page">
+
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-file-invoice-dollar" style="color:var(--primary, #8B5CF6);"></i>
+                <span>سفارش‌های تکمیل‌شده برای ایجاد فاکتور</span>
+            </h1>
+            <p class="ui-subtitle">انتخاب سفارش خرید تکمیل‌شده جهت ثبت فاکتور خرید</p>
         </div>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'invoices_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i>
+                <span>بازگشت به لیست فاکتورها</span>
+            </a>
+        </div>
+    </header>
+
+    <section class="ui-table-card">
+        <div class="ui-table-scroll">
+            <table class="ui-table">
+                <thead>
+                    <tr>
+                        <th>شماره سفارش</th>
+                        <th>تأمین‌کننده</th>
+                        <th>تاریخ ایجاد</th>
+                        <th>تاریخ تکمیل</th>
+                        <th>مجموع</th>
+                        <th>اقلام</th>
+                        <th style="text-align:left;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td class="ui-num" style="font-weight:700;">
+                            <a href="{% url 'purchase_order_detail' cafe_code=cafe_code order_id=order.id %}" style="color:var(--primary-dark, #7C3AED); text-decoration:none;">{{ order.order_number }}</a>
+                        </td>
+                        <td style="font-weight:600;">{{ order.supplier_name }}</td>
+                        <td class="ui-num" style="color:var(--text-secondary);">{{ order.created_at|date:"Y/m/d" }}</td>
+                        <td class="ui-num" style="color:var(--text-secondary);">{{ order.completed_at|date:"Y/m/d" }}</td>
+                        <td class="ui-money">{{ order.total_amount|floatformat:0 }} ریال</td>
+                        <td class="ui-num"><span class="ui-chip">{{ order.order_items.count }} قلم</span></td>
+                        <td style="text-align:left;">
+                            <a href="{% url 'invoice_create' cafe_code=cafe_code order_id=order.id %}" class="ui-btn ui-btn-success is-sm">
+                                <i class="fas fa-plus"></i>
+                                <span>ایجاد فاکتور</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="ui-empty">
+                                <i class="fas fa-inbox"></i>
+                                <div>هیچ سفارش تکمیل‌شده‌ای برای ایجاد فاکتور یافت نشد</div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
 </div>
 {% endblock %}
-

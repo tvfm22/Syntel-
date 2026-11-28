@@ -6,74 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jalali_date_group.css' %}">
 <style>
-    /* ═══ فرم یکپارچهٔ حواله — هماهنگ با توکن‌های سیستم ═══ */
-    .voucher-form-wrap { max-width: 1050px; margin: 0 auto; }
-    /* ── هدر یکدست صفحه ── */
-    .voucher-form-wrap .page-header {
-        height: auto; min-height: 64px; padding: var(--space-3) var(--space-5);
-        margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);
-    }
-    .ph-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
-    .ph-icon {
-        width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-        background: rgba(139,92,246,0.1); color: var(--accent-indigo);
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .ph-title { min-width: 0; }
-    .ph-title h1 {
-        font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; line-height: 1.4; margin: 0;
-    }
-    .ph-title .page-sub {
-        font-size: 0.76rem; font-weight: 500; color: var(--text-muted);
-        margin-top: 0.1rem; line-height: 1.7;
-    }
-
-    /* ── انتخاب نوع (فقط در حالت ایجاد) ── */
-    .type-switch {
-        display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: 0.6rem 0.9rem; margin-bottom: var(--space-4);
-    }
-    .type-switch .sw-label {
-        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-        display: inline-flex; align-items: center; gap: 0.35rem; margin-inline-end: 0.15rem;
-        white-space: nowrap;
-    }
-    .type-pill {
-        display: inline-flex; align-items: center; gap: 0.35rem;
-        padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
-        text-decoration: none; background: var(--bg-card); border: 1.5px solid var(--border-default);
-        color: var(--text-secondary); transition: all var(--transition-fast); white-space: nowrap;
-    }
-    .type-pill:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
-    .type-pill.active { background: var(--accent-indigo); border-color: var(--accent-indigo); color: white; }
-
-    /* ── کارت سند ── */
-    .form-card {
-        background: var(--bg-card); border: 1px solid var(--border-light);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);
-        padding: var(--space-5); margin-bottom: var(--space-4);
-    }
-    .form-card-title {
-        font-size: 0.92rem; font-weight: 800; color: var(--text-primary);
-        display: flex; align-items: center; gap: 0.5rem; margin-bottom: var(--space-4);
-    }
-    .form-card-title i { color: var(--accent-indigo); }
-
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
-    .field { display: flex; flex-direction: column; gap: 0.3rem; }
-    .field label { font-size: 0.74rem; font-weight: 700; color: var(--text-muted); }
-    .field input, .field select, .field textarea {
-        padding: 0.55rem 0.8rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
-        font-size: 0.82rem; background: var(--bg-card); color: var(--text-primary);
-    }
-    .field input:focus, .field select:focus, .field textarea:focus {
-        outline: none; border-color: var(--accent-indigo);
-    }
-    .field textarea { min-height: 70px; resize: vertical; }
+    /* ═══ فرم یکپارچهٔ حواله — هم‌تراز با .ui-* ═══ */
+    .mono { font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 0.04em; }
 
     /* ── اقلام ── */
     .items-head, .item-row {
@@ -81,147 +15,146 @@
     }
     .items-head {
         grid-template-columns: 2.3fr 0.75fr 0.9fr 0.95fr 0.95fr 1.3fr 30px;
-        padding: 0 0.2rem 0.4rem; font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+        padding: 0 0.2rem 0.45rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted, #94A3B8);
     }
     .item-row {
         grid-template-columns: 2.3fr 0.75fr 0.9fr 0.95fr 0.95fr 1.3fr 30px;
-        background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg); padding: 0.55rem; margin-bottom: 0.5rem;
+        background: var(--gray-50, #F8FAFC); border: 1px solid var(--border-light, #F1F5F9);
+        border-radius: 12px; padding: 0.55rem; margin-bottom: 0.5rem;
     }
     .item-row select, .item-row input {
-        width: 100%; padding: 0.45rem 0.6rem; border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); font-family: 'Vazir', sans-serif;
-        font-size: 0.76rem; background: var(--bg-card); color: var(--text-primary);
+        width: 100%; height: 36px; padding: 0 0.65rem; border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 9px; font-family: 'Vazir', sans-serif;
+        font-size: 0.78rem; background: var(--bg-card, #FFFFFF); color: var(--text-primary, #0F172A);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .item-row select:focus, .item-row input:focus { outline: none; border-color: var(--accent-indigo); }
+    .item-row select:focus, .item-row input:focus {
+        outline: none; border-color: var(--primary, #8B5CF6); box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
     .item-row input.row-price { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
     .row-stock-badge {
         display: flex; align-items: center; justify-content: center;
-        height: 34px; padding: 0 0.45rem;
-        border-radius: var(--radius-md); border: 1.5px solid var(--border-light);
-        background: var(--bg-card); color: var(--text-muted);
+        height: 36px; padding: 0 0.45rem;
+        border-radius: 9px; border: 1px solid var(--border-default, #E2E8F0);
+        background: var(--bg-card, #FFFFFF); color: var(--text-muted, #94A3B8);
         font-size: 0.78rem; font-weight: 700; white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
-    .row-stock-badge.pos  { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
-    .row-stock-badge.zero { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
-    .row-stock-badge.neg  { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .row-stock-badge.pos  { background: var(--ui-ok-bg, #ECFDF5); border-color: var(--ui-ok-border, #D1FAE5); color: var(--ui-ok, #047857); }
+    .row-stock-badge.zero { background: var(--gray-50, #F8FAFC); border-color: var(--border-default, #E2E8F0); color: var(--text-secondary, #64748B); }
+    .row-stock-badge.neg  { background: var(--ui-danger-bg, #FEF2F2); border-color: var(--ui-danger-border, #FECACA); color: var(--ui-danger-dark, #B91C1C); }
     .item-row input.row-unit-display {
-        background: #f1f5f9; border-color: var(--border-light);
-        color: var(--text-secondary); font-weight: 600; text-align: center;
+        background: var(--gray-100, #F1F5F9); border-color: var(--border-light, #F1F5F9);
+        color: var(--text-secondary, #64748B); font-weight: 600; text-align: center;
         cursor: default;
     }
-    .item-row input.row-unit-display:focus { border-color: var(--border-light); }
+    .item-row input.row-unit-display:focus { border-color: var(--border-light, #F1F5F9); box-shadow: none; }
     .remove-row {
-        width: 28px; height: 28px; border: none; border-radius: var(--radius-md);
-        background: #fee2e2; color: #b91c1c; cursor: pointer; font-size: 0.8rem;
+        width: 30px; height: 30px; border: 1px solid var(--ui-danger-border, #FECACA); border-radius: 8px;
+        background: var(--ui-danger-bg, #FEF2F2); color: var(--ui-danger-dark, #B91C1C); cursor: pointer; font-size: 0.8rem;
         display: flex; align-items: center; justify-content: center;
     }
-    .remove-row:hover { background: #fecaca; }
+    .remove-row:hover { background: var(--ui-danger-bg-hover, #FEE2E2); }
     .add-row-btn {
-        margin-top: 0.4rem; padding: 0.45rem 1rem; border: 1.5px dashed var(--accent-indigo);
-        border-radius: var(--radius-md); background: transparent; color: var(--accent-indigo);
+        margin-top: 0.5rem; height: 36px; padding: 0 1rem;
+        border: 1.5px dashed var(--ui-accent-border, rgba(139,92,246,0.28));
+        border-radius: 10px; background: transparent; color: var(--primary-dark, #7C3AED);
         font-family: 'Vazir', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer;
         display: inline-flex; align-items: center; gap: 0.4rem;
     }
-    .add-row-btn:hover { background: rgba(99,102,241,.08); }
+    .add-row-btn:hover { background: var(--ui-accent-tint, rgba(139,92,246,0.08)); }
 
-    /* ── انتخاب تایپی محصول در ردیف‌ها (مثل باکس نام کالا) ── */
+    /* ── انتخاب تایپی محصول در ردیف‌ها ── */
     .prod-ac { position: relative; }
     .prod-ac-drop {
         position: absolute; top: calc(100% + 3px); right: 0; left: 0; z-index: 60;
-        background: var(--bg-card); border: 1.5px solid var(--border-default);
-        border-radius: var(--radius-md); box-shadow: 0 10px 28px rgba(15,23,42,.18);
+        background: var(--bg-card, #FFFFFF); border: 1px solid var(--border-default, #E2E8F0);
+        border-radius: 10px; box-shadow: 0 12px 28px rgba(15,23,42,.15);
         max-height: 230px; overflow-y: auto; text-align: right;
     }
     .prod-ac-item {
         padding: 0.5rem 0.65rem; font-size: 0.78rem; cursor: pointer;
-        border-bottom: 1px solid var(--border-light); color: var(--text-primary);
+        border-bottom: 1px solid var(--border-light, #F1F5F9); color: var(--text-primary, #0F172A);
         display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
         white-space: nowrap; overflow: hidden;
     }
     .prod-ac-item:last-child { border-bottom: none; }
-    .prod-ac-item.active, .prod-ac-item:hover { background: rgba(99,102,241,.12); color: var(--accent-indigo); }
+    .prod-ac-item.active, .prod-ac-item:hover { background: var(--ui-accent-tint, rgba(139,92,246,0.08)); color: var(--primary-dark, #7C3AED); }
     .prod-ac-noresult {
-        padding: 0.55rem 0.65rem; font-size: 0.74rem; color: var(--text-muted);
+        padding: 0.55rem 0.65rem; font-size: 0.74rem; color: var(--text-muted, #94A3B8);
     }
     .item-row .prod-ac input.row-product-name.invalid {
-        border-color: #dc2626; background: #fef2f2;
+        border-color: var(--ui-danger, #DC2626); background: var(--ui-danger-bg, #FEF2F2);
     }
-
-    /* ── دکمه‌های ثبت ── */
-    .form-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; align-items: center; }
-    .btn { padding: 0.6rem 1.3rem; border: none; border-radius: var(--radius-md);
-        font-family: 'Vazir', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer;
-        display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
-        transition: all var(--transition-fast); }
-    .btn-primary { background: var(--accent-indigo); color: white; }
-    .btn-primary:hover { background: var(--accent-indigo-dark, #4f46e5); }
-    .btn-success { background: #10b981; color: white; }
-    .btn-success:hover { background: #059669; }
-    .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1.5px solid var(--border-default); }
-    .btn-outline:hover { border-color: var(--accent-indigo); color: var(--accent-indigo); }
 
     .hint {
-        margin-top: var(--space-3); font-size: 0.74rem; color: var(--text-muted);
-        display: flex; align-items: flex-start; gap: 0.4rem; line-height: 1.7;
+        margin-top: 0.85rem; font-size: 0.75rem; color: var(--text-secondary, #64748B);
+        display: flex; align-items: flex-start; gap: 0.45rem; line-height: 1.7;
     }
-    .hint i { color: var(--accent-indigo); margin-top: 0.15rem; }
+    .hint i { color: var(--primary, #8B5CF6); margin-top: 0.2rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="voucher-form-wrap">
+<div class="ui-page">
 
-    <div class="page-header">
-        <div class="ph-main">
-            <div class="ph-icon"><i class="fas fa-file-invoice"></i></div>
-            <div class="ph-title">
-                <h1>{% if editing %}ویرایش پیش‌نویس: <span class="mono" style="font-size:1rem">{{ edit_voucher.voucher_number }}</span>{% else %}ثبت {{ type_label }}{% endif %}</h1>
-                <div class="page-sub">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">{% if editing %}ویرایش پیش‌نویس: <span class="mono" style="font-size:1.05rem">{{ edit_voucher.voucher_number }}</span>{% else %}ثبت {{ type_label }}{% endif %}</h1>
+            <div class="ui-subtitle">
+                <span>
                     {% if editing %}این پیش‌نویس هنوز اثر روی موجودی ندارد — پس از ثبت، اثر اعمال می‌شود.{% else %}
                     {% if voucher_type == 'adjustment' %}تعدیل پس از ثبت، برای نهایی‌سازی به تأیید مدیر می‌رود.
                     {% elif voucher_type == 'direct_delivery' %}کالای تازه‌خرید از انبارِ انتخابی می‌گذرد: ورود و بلافاصله خروجِ آن ثبت می‌شود و «تحویل به بخش» در سوابق می‌ماند — موجودیِ خالصِ انبار تغییر نمی‌کند.
                     {% else %}ثبت نوع‌های روتین، همان لحظه اثر روی موجودی دارد.{% endif %}{% endif %}
-                </div>
+                </span>
             </div>
         </div>
-        <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="btn btn-outline">
-            <i class="fas fa-list"></i> لیست حواله‌ها
-        </a>
-    </div>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'voucher_list' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-list"></i> لیست حواله‌ها
+            </a>
+        </div>
+    </header>
 
     {% if not editing %}
     <!-- انتخاب نوع حواله -->
-    <div class="type-switch">
-        <span class="sw-label"><i class="fas fa-arrows-rotate"></i> نوع حواله:</span>
-        {% for key, label in voucher_types_all %}
-        <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type=key %}"
-           class="type-pill {% if key == voucher_type %}active{% endif %}">{{ label }}</a>
-        {% endfor %}
+    <div class="ui-controls-card">
+        <div class="ui-pill-strip" style="border-top:none;background:var(--bg-card);">
+            <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);display:inline-flex;align-items:center;gap:0.35rem;margin-inline-end:0.2rem;white-space:nowrap;">
+                <i class="fas fa-arrows-rotate"></i> نوع حواله:
+            </span>
+            {% for key, label in voucher_types_all %}
+            <a href="{% url 'voucher_create' cafe_code=cafe_code voucher_type=key %}"
+               class="ui-pill-tab type-pill {% if key == voucher_type %}is-active active{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
     </div>
     {% endif %}
 
     {% if form_errors %}
-    <div style="background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:var(--radius-lg);padding:0.9rem 1.2rem;margin-bottom:var(--space-4);font-size:0.85rem">
-        <b><i class="fas fa-triangle-exclamation"></i> اصلاح‌های لازم:</b>
-        <ul style="margin:0.5rem 1.2rem 0 0">
-            {% for e in form_errors %}<li>{{ e }}</li>{% endfor %}
-        </ul>
+    <div class="ui-banner is-danger">
+        <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
+        <div>
+            <b>اصلاح‌های لازم:</b>
+            <ul style="margin:0.4rem 1.1rem 0 0">
+                {% for e in form_errors %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+        </div>
     </div>
     {% endif %}
 
-    <form method="post" id="voucherForm">
+    <form method="post" id="voucherForm" style="display:flex;flex-direction:column;gap:1.1rem;">
         {% csrf_token %}
 
         <!-- کارت سند -->
-        <div class="form-card">
-            <div class="form-card-title"><i class="fas fa-file-signature"></i> مشخصات سند</div>
-            <div class="form-grid">
+        <section class="ui-form-card" style="margin-bottom:0;">
+            <div class="ui-card-title" style="margin-bottom:1rem;"><i class="fas fa-file-signature"></i> مشخصات سند</div>
+            <div class="ui-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
                 {% if 'source' in warehouse_fields %}
-                <div class="field">
-                    <label><i class="fas fa-warehouse"></i> انبار مبدأ <span style="color:#dc2626">*</span></label>
-                    <select name="source_warehouse" id="source_warehouse" required>
+                <div class="ui-field">
+                    <label class="ui-field-label"><i class="fas fa-warehouse" style="color:var(--primary)"></i> انبار مبدأ <span style="color:var(--ui-danger)">*</span></label>
+                    <select name="source_warehouse" id="source_warehouse" class="ui-select" required>
                         <option value="">انتخاب انبار...</option>
                         {% for wh in warehouses %}
                         <option value="{{ wh.id }}"{% if form_source_wh and form_source_wh.id == wh.id or edit_source_wh and edit_source_wh.id == wh.id %} selected{% endif %}>
@@ -232,11 +165,11 @@
                 </div>
                 {% endif %}
                 {% if 'destination' in warehouse_fields %}
-                <div class="field">
-                    <label><i class="fas fa-warehouse"></i>
+                <div class="ui-field">
+                    <label class="ui-field-label"><i class="fas fa-warehouse" style="color:var(--primary)"></i>
                         {% if voucher_type == 'direct_delivery' %}انبار (محل عبور کالا){% else %}انبار مقصد{% endif %}
-                        <span style="color:#dc2626">*</span></label>
-                    <select name="dest_warehouse" id="dest_warehouse" required>
+                        <span style="color:var(--ui-danger)">*</span></label>
+                    <select name="dest_warehouse" id="dest_warehouse" class="ui-select" required>
                         <option value="">انتخاب انبار...</option>
                         {% for wh in warehouses %}
                         <option value="{{ wh.id }}"{% if form_dest_wh and form_dest_wh.id == wh.id or edit_dest_wh and edit_dest_wh.id == wh.id %} selected{% endif %}>
@@ -247,9 +180,9 @@
                 </div>
                 {% endif %}
                 {% if voucher_type == 'direct_delivery' %}
-                <div class="field">
-                    <label><i class="fas fa-users"></i> بخش گیرنده <span style="color:#dc2626">*</span></label>
-                    <select name="department" id="department" required>
+                <div class="ui-field">
+                    <label class="ui-field-label"><i class="fas fa-users" style="color:var(--primary)"></i> بخش گیرنده <span style="color:var(--ui-danger)">*</span></label>
+                    <select name="department" id="department" class="ui-select" required>
                         <option value="">انتخاب بخش...</option>
                         {% for dept in departments %}
                         <option value="{{ dept.id }}"{% if selected_department and selected_department.id == dept.id %} selected{% endif %}>{{ dept.name }}</option>
@@ -257,20 +190,20 @@
                     </select>
                 </div>
                 {% endif %}
-                <div class="field">
-                    <label><i class="fas fa-calendar"></i> تاریخ (شمسی)</label>
+                <div class="ui-field">
+                    <label class="ui-field-label"><i class="fas fa-calendar" style="color:var(--primary)"></i> تاریخ (شمسی)</label>
                     {% include 'includes/jalali_date_group.html' with jd_name='date' jd_id='voucher_date' jd_value=form_date %}
                 </div>
-                <div class="field" style="grid-column:1/-1">
-                    <label><i class="fas fa-align-right"></i> توضیحات</label>
-                    <textarea name="description" placeholder="شرح سند (اختیاری)">{{ edit_voucher.description|default:form_description|default:'' }}</textarea>
+                <div class="ui-field" style="grid-column:1/-1">
+                    <label class="ui-field-label"><i class="fas fa-align-right" style="color:var(--primary)"></i> توضیحات</label>
+                    <textarea name="description" class="ui-textarea" style="min-height:70px;" placeholder="شرح سند (اختیاری)">{{ edit_voucher.description|default:form_description|default:'' }}</textarea>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- اقلام -->
-        <div class="form-card">
-            <div class="form-card-title"><i class="fas fa-list-ul"></i> اقلام حواله</div>
+        <section class="ui-form-card" style="margin-bottom:0;">
+            <div class="ui-card-title" style="margin-bottom:0.95rem;"><i class="fas fa-list-ul"></i> اقلام حواله</div>
             <div class="items-head">
                 <span>محصول</span><span>موجودی</span>
                 <span>واحد</span><span>مقدار پایه</span><span>قیمت واحد</span>
@@ -288,17 +221,17 @@
                     <b>موجودی</b> به‌صورت خودکار میزان فعلی کالا در انبار انتخاب‌شده را نمایش می‌دهد (در صورت نبودن موجودی، <b>۰</b> نشان داده می‌شود) و <b>واحد</b> مطابق واحد تعریف‌شدهٔ کالا تنظیم و قفل می‌شود.
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="form-actions">
-            <button type="submit" name="action" value="submit" class="btn btn-success" id="submitBtn">
+        <div class="ui-form-actions" style="justify-content:flex-start;border-top:none;padding-top:0;margin-top:0;">
+            <button type="submit" name="action" value="submit" class="ui-btn ui-btn-success is-lg" id="submitBtn">
                 <i class="fas fa-check-double"></i>
                 {% if voucher_type == 'adjustment' %}ثبت (در انتظار تأیید مدیر){% elif voucher_type == 'direct_delivery' %}ثبت و تحویل به بخش{% else %}ثبت و نهایی‌سازی{% endif %}
             </button>
-            <button type="submit" name="action" value="draft" class="btn btn-outline">
+            <button type="submit" name="action" value="draft" class="ui-btn ui-btn-ghost is-lg">
                 <i class="fas fa-pen"></i> {% if editing %}ذخیره تغییرات پیش‌نویس{% else %}ذخیره به‌عنوان پیش‌نویس{% endif %}
             </button>
-            <a href="{% if editing %}{% url 'voucher_detail' cafe_code=cafe_code voucher_id=edit_voucher.id %}{% else %}{% url 'voucher_list' cafe_code=cafe_code %}{% endif %}" class="btn btn-outline">انصراف</a>
+            <a href="{% if editing %}{% url 'voucher_detail' cafe_code=cafe_code voucher_id=edit_voucher.id %}{% else %}{% url 'voucher_list' cafe_code=cafe_code %}{% endif %}" class="ui-btn ui-btn-ghost is-lg">انصراف</a>
         </div>
     </form>
 

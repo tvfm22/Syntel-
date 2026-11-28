@@ -5,95 +5,99 @@
 
 {% block extra_css %}
 <style>
-    .rrw-wrap { max-width: 1360px; margin: 0 auto; }
-    .rrw-tabs {
-        display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;
-        background: var(--bg-card); padding: 0.6rem; border-radius: var(--radius-xl);
-        border: 1px solid var(--border-default);
-    }
-    .rrw-tab {
-        flex: 1; min-width: 180px; padding: 0.65rem 0.9rem; border-radius: var(--radius-lg);
-        display: flex; align-items: center; justify-content: space-between;
-        font-size: 0.84rem; font-weight: 700; color: var(--text-secondary);
-        background: var(--bg-subtle); transition: all 0.15s ease;
-    }
-    .rrw-tab.active { background: var(--accent-indigo); color: #fff; }
-    .rrw-tab-count {
-        padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.74rem;
-        background: rgba(15,23,42,0.1);
-    }
-    .rrw-tab.active .rrw-tab-count { background: rgba(255,255,255,0.22); color: #fff; }
+    .rrw-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; align-items: end; }
+    .rrw-split { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; align-items: start; }
     .rrw-chart-wrap { height: 240px; position: relative; }
+    @media (max-width: 960px) {
+        .rrw-split { grid-template-columns: 1fr; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="rrw-wrap">
-    <div class="page-header" style="margin-bottom:1.25rem;">
-        <div class="ph-main">
-            <div class="ph-icon blue"><i class="fas fa-tools"></i></div>
-            <div class="ph-title">
-                <h1>گزارش تعمیرات و وضعیت گارانتی اقلام پلاک‌دار</h1>
-                <div class="page-sub">پایش تجهیزات معیوب، در تعمیرگاه و گارانتی‌های نزدیک به انقضا ({{ warranty_days }} روز آینده)</div>
-            </div>
+<div class="ui-page is-wide">
+    <header class="ui-topbar">
+        <div class="ui-heading">
+            <h1 class="ui-title">
+                <i class="fas fa-tools" style="color: var(--ui-info, #2563EB);"></i>
+                گزارش تعمیرات و وضعیت گارانتی اقلام پلاک‌دار
+            </h1>
+            <p class="ui-subtitle">پایش تجهیزات معیوب، در تعمیرگاه و گارانتی‌های نزدیک به انقضا ({{ warranty_days }} روز آینده)</p>
         </div>
-        <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
-        </a>
+        <div class="ui-topbar-actions">
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-btn ui-btn-ghost">
+                <i class="fas fa-arrow-right"></i> مرکز گزارش‌ها
+            </a>
+        </div>
+    </header>
+
+    <div class="ui-controls-card">
+        <nav class="ui-pill-strip" style="background: var(--bg-card, #FFFFFF); border-top: none;" aria-label="زیربخش‌های گزارش اموال">
+            <a href="{% url 'assets_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-th-large"></i> داشبورد اموال</a>
+            <a href="{% url 'asset_reports_dashboard' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-pie"></i> مرکز گزارش‌ها</a>
+            <a href="{% url 'asset_report_valuation' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-coins"></i> ارزش سکشن‌ها</a>
+            <a href="{% url 'asset_report_variance' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-balance-scale"></i> مغایرت</a>
+            <a href="{% url 'asset_report_breakage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-chart-line"></i> شکستگی</a>
+            <a href="{% url 'asset_report_shortage' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-exclamation-triangle"></i> کسری</a>
+            <a href="{% url 'asset_report_repairs' cafe_code=cafe_code %}" class="ui-pill-tab is-active"><i class="fas fa-tools"></i> تعمیرات و گارانتی</a>
+            <a href="{% url 'asset_report_kardex' cafe_code=cafe_code %}" class="ui-pill-tab"><i class="fas fa-history"></i> کاردکس</a>
+        </nav>
     </div>
 
-    <form method="get" class="filters-container">
+    <form method="get" class="ui-controls-card">
         <input type="hidden" name="tab" value="{{ active_tab }}">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label class="filter-label">سکشن / بخش</label>
-                <select name="department" class="filter-select">
-                    <option value="">همه سکشن‌ها</option>
-                    {% for d in departments %}
-                    <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-                    {% endfor %}
-                </select>
+        <div class="ui-controls-row" style="display: block;">
+            <div class="rrw-filter-grid">
+                <div class="ui-field">
+                    <label class="ui-field-label">سکشن / بخش</label>
+                    <select name="department" class="ui-select">
+                        <option value="">همه سکشن‌ها</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="ui-field">
+                    <label class="ui-field-label">بازه هشدار انقضای گارانتی (روز)</label>
+                    <input type="number" name="days" value="{{ warranty_days }}" min="1" max="365" class="ui-input">
+                </div>
+                <button type="submit" class="ui-btn ui-btn-primary">بروزرسانی</button>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">بازه هشدار انقضای گارانتی (روز)</label>
-                <input type="number" name="days" value="{{ warranty_days }}" min="1" max="365" class="filter-input">
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">بروزرسانی</button>
+        </div>
+
+        <div class="ui-controls-sub">
+            <div class="ui-segmented" style="width:100%;" role="navigation" aria-label="وضعیت تعمیرات و گارانتی">
+                <a href="?tab=needs_repair&department={{ selected_department }}&days={{ warranty_days }}"
+                   class="ui-seg-item {% if active_tab == 'needs_repair' %}is-active active{% endif %}" style="flex:1; justify-content:space-between;">
+                    <span><i class="fas fa-wrench"></i> نیازمند تعمیر</span>
+                    <span class="ui-pill is-warn ui-num">{{ counts.needs_repair }}</span>
+                </a>
+                <a href="?tab=in_repair&department={{ selected_department }}&days={{ warranty_days }}"
+                   class="ui-seg-item {% if active_tab == 'in_repair' %}is-active active{% endif %}" style="flex:1; justify-content:space-between;">
+                    <span><i class="fas fa-cogs"></i> در تعمیرگاه</span>
+                    <span class="ui-pill is-info ui-num">{{ counts.in_repair }}</span>
+                </a>
+                <a href="?tab=expiring_warranty&department={{ selected_department }}&days={{ warranty_days }}"
+                   class="ui-seg-item {% if active_tab == 'expiring_warranty' %}is-active active{% endif %}" style="flex:1; justify-content:space-between;">
+                    <span><i class="fas fa-hourglass-half"></i> گارانتی در حال انقضا</span>
+                    <span class="ui-pill is-warn ui-num">{{ counts.expiring_warranty }}</span>
+                </a>
+                <a href="?tab=expired_warranty&department={{ selected_department }}&days={{ warranty_days }}"
+                   class="ui-seg-item {% if active_tab == 'expired_warranty' %}is-active active{% endif %}" style="flex:1; justify-content:space-between;">
+                    <span><i class="fas fa-calendar-times"></i> گارانتی منقضی</span>
+                    <span class="ui-pill is-danger ui-num">{{ counts.expired_warranty }}</span>
+                </a>
             </div>
         </div>
     </form>
 
-    <div class="rrw-tabs">
-        <a href="?tab=needs_repair&department={{ selected_department }}&days={{ warranty_days }}"
-           class="rrw-tab {% if active_tab == 'needs_repair' %}active{% endif %}">
-            <span><i class="fas fa-wrench"></i> نیازمند تعمیر</span>
-            <span class="rrw-tab-count">{{ counts.needs_repair }}</span>
-        </a>
-        <a href="?tab=in_repair&department={{ selected_department }}&days={{ warranty_days }}"
-           class="rrw-tab {% if active_tab == 'in_repair' %}active{% endif %}">
-            <span><i class="fas fa-cogs"></i> در تعمیرگاه</span>
-            <span class="rrw-tab-count">{{ counts.in_repair }}</span>
-        </a>
-        <a href="?tab=expiring_warranty&department={{ selected_department }}&days={{ warranty_days }}"
-           class="rrw-tab {% if active_tab == 'expiring_warranty' %}active{% endif %}">
-            <span><i class="fas fa-hourglass-half"></i> گارانتی در حال انقضا</span>
-            <span class="rrw-tab-count">{{ counts.expiring_warranty }}</span>
-        </a>
-        <a href="?tab=expired_warranty&department={{ selected_department }}&days={{ warranty_days }}"
-           class="rrw-tab {% if active_tab == 'expired_warranty' %}active{% endif %}">
-            <span><i class="fas fa-calendar-times"></i> گارانتی منقضی</span>
-            <span class="rrw-tab-count">{{ counts.expired_warranty }}</span>
-        </a>
-    </div>
-
-    <div style="display:grid; grid-template-columns:2fr 1fr; gap:1.25rem; align-items:start;">
-        <div class="table-card" style="margin-bottom:0;">
-            <div class="table-header">
-                <div class="table-title"><i class="fas fa-tag"></i> لیست تجهیزات پلاک‌دار ({{ units|length }})</div>
+    <div class="rrw-split">
+        <section class="ui-table-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-tag"></i> لیست تجهیزات پلاک‌دار ({{ units|length }})</h2>
             </div>
-            <div style="overflow-x:auto;">
-                <table class="data-table">
+            <div class="ui-table-scroll">
+                <table class="ui-table">
                     <thead>
                         <tr>
                             <th>پلاک</th>
@@ -107,22 +111,22 @@
                     <tbody>
                         {% for u in units %}
                         <tr>
-                            <td><span class="badge badge-primary">{{ u.asset_tag }}</span></td>
+                            <td><span class="ui-pill is-accent ui-num">{{ u.asset_tag }}</span></td>
                             <td>
                                 <strong>{{ u.asset.name }}</strong>
-                                {% if u.serial_number %}<div style="font-size:0.73rem; color:var(--text-muted);">S/N: {{ u.serial_number }}</div>{% endif %}
+                                {% if u.serial_number %}<div class="ui-num" style="font-size:0.73rem; color:var(--text-muted);">S/N: {{ u.serial_number }}</div>{% endif %}
                             </td>
                             <td>{{ u.department.name|default:'—' }}</td>
                             <td>
-                                <span class="badge {% if u.status == 'active' %}badge-success{% elif u.status == 'needs_repair' %}badge-warning{% elif u.status == 'in_repair' %}badge-info{% else %}badge-danger{% endif %}">
+                                <span class="ui-pill {% if u.status == 'active' %}is-ok{% elif u.status == 'needs_repair' %}is-warn{% elif u.status == 'in_repair' %}is-info{% else %}is-danger{% endif %}">
                                     {{ u.get_status_display }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="ui-num">
                                 {% if u.warranty_until %}
                                     {{ u.warranty_until|jalali_date }}
                                     {% if u.warranty_days_left is not None %}
-                                        <div style="font-size:0.73rem; color:{% if u.warranty_days_left < 0 %}#DC2626{% else %}#D97706{% endif %};">
+                                        <div style="font-size:0.73rem; color:{% if u.warranty_days_left < 0 %}var(--ui-danger){% else %}var(--ui-warn){% endif %};">
                                             {% if u.warranty_days_left < 0 %}منقضی شده{% else %}{{ u.warranty_days_left }} روز مانده{% endif %}
                                         </div>
                                     {% endif %}
@@ -133,21 +137,21 @@
                             <td>{% if u.custodian %}{{ u.custodian.get_full_name|default:u.custodian.username }}{% else %}—{% endif %}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center; padding:2rem;">تجهیزی در این بخش یافت نشد.</td></tr>
+                        <tr><td colspan="6"><div class="ui-empty" style="padding:1.5rem;">تجهیزی در این بخش یافت نشد.</div></td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-chart-pie"></i> توزیع وضعیت پلاک‌ها</div>
+        <section class="ui-card">
+            <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="fas fa-chart-pie"></i> توزیع وضعیت پلاک‌ها</h2>
             </div>
-            <div class="card-body">
+            <div class="ui-card-body">
                 <div class="rrw-chart-wrap"><canvas id="repairsStatusChart"></canvas></div>
             </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %}
